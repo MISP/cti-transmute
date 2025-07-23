@@ -37,11 +37,9 @@ def setup_api(application) -> Api:
             specs_url=f"{http_schema}://{url}/api/swagger.json"
         )
     
-    from .misp_to_stix import misp_to_stix_ns
-    from .stix_to_misp import stix_to_misp_ns
+    from .convert import convert_ns
 
-    api.add_namespace(misp_to_stix_ns, path='/misp_to_stix')
-    api.add_namespace(stix_to_misp_ns, path='/stix_to_misp')
+    api.add_namespace(convert_ns, path='/convert')
 
     return api
 
