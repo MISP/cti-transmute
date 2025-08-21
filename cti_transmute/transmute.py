@@ -12,7 +12,10 @@ class Transmute:
         self.logger = logging.getLogger(f'{self.__class__.__name__}')
         self.logger.setLevel(get_config('generic', 'loglevel'))
 
-    def misp_to_stix(self, version: str, misp_content: BytesIO) -> dict:
+    def misp_to_stix(self, version: str,
+                     misp_content: BytesIO | dict | list | str) -> dict:
         parser = MISPtoSTIX20Parser() if version == '2.0' else MISPtoSTIX21Parser()
-        parser.parse_json_content(misp_content.getvalue().decode())
+        if isinstance(misp_content, BytesIO):
+            misp_content = misp_content.getvalue().decode('utf-8')
+        parser.parse_json_content(misp_content)
         return parser.bundle.serialize()

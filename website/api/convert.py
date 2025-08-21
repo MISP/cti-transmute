@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import json
 import logging
 from flask import request
 from flask_restx import Namespace, Resource, reqparse
@@ -26,22 +27,49 @@ class ConvertersList(Resource):
 
 misp_to_stix_parser = reqparse.RequestParser()
 misp_to_stix_parser.add_argument(
-    'version', type=str, help='STIX version', location='args'
+    'version', type=str, help='STIX version', location='args',
+    choices=('2.0', '2.1'), default='2.1'
 )
-misp_to_stix_parser.add_argument(
-    'file', type=FileStorage, location='files',
-    required=True, help='MISP data file to convert'
-)
+
+
+class MispStixConverter(Resource):
+    def _load_input_from_request(self) -> BytesIO | dict | list | str:
+        input_file = request.files.get('file')
+        if input_file and input_file.filename:
+            return BytesIO(input_file.read())
+        if request.is_json:
+            body = request.get_json(silent=True)
+            if body is None:
+                raise ValueError("Invalid JSON body.")
+            if isinstance(body, (dict, list, str)):
+                return body
+        if request.data:
+            try:
+                return json.loads(request.data)
+            except json.JSONDecodeError:
+                raise ValueError("Invalid JSON data.")
+        raise ValueError(
+            "Unsupported input type; expected Bytes object, array, or string."
+        )
+
 
 @convert_ns.route('/misp_to_stix')
 # @convert_ns.route('/misp_to_stix/<string:version>')
 @convert_ns.doc(description='Convert MISP data collection to STIX format.')
-class MISPtoSTIX(Resource):
+class MISPtoSTIX(MispStixConverter):
     @convert_ns.expect(misp_to_stix_parser)
     def post(self):
         args = misp_to_stix_parser.parse_args()
-        misp_file = args['file']
-        misp_content = BytesIO(misp_file.read())
+        try:
+            misp_content = self._load_input_from_request()
+        except ValueError as e:
+            return (
+                {
+                    'message': 'Input validation failed',
+                    'errors': {'input': str(e)}
+                },
+                400
+            )
         version = args.get('version', '2.1')
         bundle = transmute.misp_to_stix(version, misp_content)
         return bundle
