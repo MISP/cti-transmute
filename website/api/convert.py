@@ -72,3 +72,79 @@ class MISPtoSTIX(MispStixConverter):
             )
         version = args.get('version', '2.1')
         return transmute.misp_to_stix(version, misp_content)
+
+
+stix_to_misp_parser = reqparse.RequestParser()
+stix_to_misp_parser.add_argument(
+    'distribution', type=int, choices=(0, 1, 2, 3, 4), default=0,
+    location='args', help='''
+        Distribution level for the imported MISP content (default is 0)
+            - 0: Your organisation only
+            - 1: This community only
+            - 2: Connected communities
+            - 3: All communities
+            - 4: Sharing Group
+        '''
+)
+stix_to_misp_parser.add_argument(
+    'sharing_group_id', type=int, location='args',
+    help='Sharing group ID when distribution is 4.'
+)
+stix_to_misp_parser.add_argument(
+    'galaxies_as_tags', action='store_true', location='args',
+    help='Import MISP Galaxies as tag names instead of the standard Galaxy format.'
+)
+stix_to_misp_parser.add_argument(
+    'no_force_contextual_data', action='store_true', location='args',
+    help=(
+        'Do not force the creation of custom Galaxy clusters in some '
+        'specific cases when STIX objects could be converted either as '
+        'clusters or MISP objects for instance.'
+    )
+)
+stix_to_misp_parser.add_argument(
+    'cluster_distribution', type=int, choices=(0, 1, 2, 3, 4), default=0,
+    location='args', help='''
+            Galaxy Clusters distribution level
+            in case of External STIX 2 content (default id 0)
+              - 0: Your organisation only
+              - 1: This community only
+              - 2: Connected communities
+              - 3: All communities
+              - 4: Sharing Group
+        '''
+)
+stix_to_misp_parser.add_argument(
+    'cluster_sharing_group_id', type=int, location='args',
+    help='Galaxy Clusters sharing group ID when clusters distribution is 4.'
+)
+stix_to_misp_parser.add_argument(
+    'single_event', action='store_true', location='args',
+    help='Convert STIX data to a single MISP event in case there are multiple reports/groupings.'
+)
+stix_to_misp_parser.add_argument(
+    'producer', type=str, help='Producer of the STIX data', location='args'
+)
+stix_to_misp_parser.add_argument(
+    'title', type=str, location='args',
+    help='Title used to set the MISP Event `info` field.'
+)
+
+
+@convert_ns.route('/stix_to_misp')
+@convert_ns.doc(description='Convert STIX data collection to MISP format.')
+class STIXtoMISP(MispStixConverter):
+    @convert_ns.expect(stix_to_misp_parser)
+    def post(self):
+        args = stix_to_misp_parser.parse_args()
+        try:
+            stix_content = self._load_input_from_request()
+        except ValueError as e:
+            return (
+                {
+                    'message': 'Input validation failed',
+                    'errors': {'input': str(e)}
+                },
+                400
+            )
+        return transmute.stix_to_misp(stix_content, args)
