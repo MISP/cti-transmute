@@ -25,13 +25,6 @@ class ConvertersList(Resource):
         return {'available': available_converters}, 200
 
 
-misp_to_stix_parser = reqparse.RequestParser()
-misp_to_stix_parser.add_argument(
-    'version', type=str, help='STIX version', location='args',
-    choices=('2.0', '2.1'), default='2.1'
-)
-
-
 class MispStixConverter(Resource):
     def _load_input_from_request(self) -> BytesIO | dict | list | str:
         input_file = request.files.get('file')
@@ -53,6 +46,13 @@ class MispStixConverter(Resource):
         )
 
 
+misp_to_stix_parser = reqparse.RequestParser()
+misp_to_stix_parser.add_argument(
+    'version', type=str, help='STIX version', location='args',
+    choices=('2.0', '2.1'), default='2.1'
+)
+
+
 @convert_ns.route('/misp_to_stix')
 # @convert_ns.route('/misp_to_stix/<string:version>')
 @convert_ns.doc(description='Convert MISP data collection to STIX format.')
@@ -71,5 +71,4 @@ class MISPtoSTIX(MispStixConverter):
                 400
             )
         version = args.get('version', '2.1')
-        bundle = transmute.misp_to_stix(version, misp_content)
-        return bundle
+        return transmute.misp_to_stix(version, misp_content)
