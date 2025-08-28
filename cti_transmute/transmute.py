@@ -2,11 +2,12 @@
 
 import json
 import logging
+from flask_restx import reqparse
 from io import BytesIO
 
 from misp_stix_converter import (
-    _get_stix2_parser, _is_stix2_from_misp, ExternalSTIX2toMISPParser,
-    InternalSTIX2toMISPParser, MISPtoSTIX20Parser, MISPtoSTIX21Parser)
+    _get_stix2_parser, _is_stix2_from_misp,
+    MISPtoSTIX20Parser, MISPtoSTIX21Parser)
 from stix2.exceptions import InvalidValueError
 from stix2.parsing import dict_to_stix2, parse as stix2_parser, ParseError
 
@@ -31,28 +32,32 @@ class Transmute:
         parser.parse_json_content(misp_content)
         return json.loads(parser.bundle.serialize())
 
-    def stix_to_misp(self, stix_content: BytesIO | dict | list | str):
+    def stix_to_misp(self, stix_content: BytesIO | dict | list | str,
+                     args: reqparse.RequestParser):
         try:
             bundle = self._load_stix_content(stix_content)
         except (InvalidValueError, ParseError) as e:
             return {
                 'error': f'Error loading STIX content: {str(e)}'
             }
-        parser, args = _get_stix2_parser(
+        parser, arguments = _get_stix2_parser(
             _is_stix2_from_misp(bundle.objects), args.distribution,
             args.sharing_group_id, args.title, args.producer,
-            args.force_contextual_data, args.galaxies_as_tags,
+            not args.no_force_contextual_data, args.galaxies_as_tags,
             args.single_event, args.organisation_uuid,
             args.cluster_distribution, args.cluster_sharing_group_id
         )
         stix_parser = parser()
         stix_parser.load_stix_bundle(bundle)
-        stix_parser.parse_stix_bundle(**args)
+        stix_parser.parse_stix_bundle(**arguments)
         if args.single_event:
             return json.loads(stix_parser.misp_event.to_json())
-        return [
-            json.loads(event.to_json()) for event in stix_parser.misp_events
-        ]
+        if isinstance(stix_parser.misp_events, list):
+            return [
+                json.loads(event.to_json())
+                for event in stix_parser.misp_events
+            ]
+        return json.loads(stix_parser.misp_event.to_json())
 
     @staticmethod
     def _load_stix_content(stix_content: BytesIO | dict | list | str):

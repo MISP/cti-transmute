@@ -119,6 +119,10 @@ stix_to_misp_parser.add_argument(
     help='Galaxy Clusters sharing group ID when clusters distribution is 4.'
 )
 stix_to_misp_parser.add_argument(
+    'organisation_uuid', type=str, location='args',
+    help='Organisation UUID to use when creating custom Galaxy Clusters.'
+)
+stix_to_misp_parser.add_argument(
     'single_event', action='store_true', location='args',
     help='Convert STIX data to a single MISP event in case there are multiple reports/groupings.'
 )
