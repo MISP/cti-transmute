@@ -5,7 +5,6 @@ import logging
 from flask import request
 from flask_restx import Namespace, Resource, reqparse
 from io import BytesIO
-from werkzeug.datastructures import FileStorage
 
 from website.web import transmute
 
@@ -14,15 +13,33 @@ logger = logging.getLogger(__name__)
 convert_ns = Namespace('convert', description='Conversion operations.')
 
 
+def _get_api_from_namespace():
+    for api in convert_ns.apis:
+        if api.blueprint and api.blueprint.name == 'transmute_api':
+            return api
+    raise RuntimeError('No matching Api found for namespace')
+
+
+def _extract_converters_from_schema(schema: dict) -> dict:
+    converters = {}
+    for path, methods in schema.get('paths', {}).items():
+        for method, meta in methods.items():
+            if '/convert/' in path:
+                converters[f'/api{path}'] = {
+                    'description': meta.get('description'),
+                    'method': method.upper(),
+                    'parameters': meta.get('parameters', [])
+                }
+    return {'available': {k: converters[k] for k in sorted(converters)}}
+
+
 @convert_ns.route('/list')
 class ConvertersList(Resource):
     @convert_ns.doc(description='List available converters.')
     def get(self):
-        available_converters = [
-            'MISP to STIX 2.0 & 2.1',
-            'STIX 2.0 & 2.1 to MISP'
-        ]
-        return {'available': available_converters}, 200
+        api = _get_api_from_namespace()
+        schema = api.__schema__
+        return _extract_converters_from_schema(schema), 200
 
 
 class MispStixConverter(Resource):
@@ -54,7 +71,6 @@ misp_to_stix_parser.add_argument(
 
 
 @convert_ns.route('/misp_to_stix')
-# @convert_ns.route('/misp_to_stix/<string:version>')
 @convert_ns.doc(description='Convert MISP data collection to STIX format.')
 class MISPtoSTIX(MispStixConverter):
     @convert_ns.expect(misp_to_stix_parser)

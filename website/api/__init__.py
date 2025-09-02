@@ -7,7 +7,7 @@ from cti_transmute.default import get_config
 from website.web import application, csrf
 
 
-api_blueprint = Blueprint('api', __name__, url_prefix='/api')
+api_blueprint = Blueprint('transmute_api', __name__, url_prefix='/api')
 csrf.exempt(api_blueprint)
 
 
