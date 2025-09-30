@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="mb-4 text-info">Available Converters</h2>
+
+    <!-- Vue will render here -->
+    <div v-if="list_feature && Object.keys(list_feature).length > 0">
+        <div v-for="(feature, path) in list_feature" :key="path"
+             class="card mb-3 bg-secondary text-light shadow clickable-card"
+             style="cursor:pointer;"
+             @click="goTo(path)">
+            <div class="card-body">
+                <h5 class="card-title text-warning">[[ path ]]</h5>
+                <p class="card-text">[[ feature.description ]]</p>
+                <span class="badge bg-info text-dark me-2">[[ feature.method ]]</span>
+
+                <div v-if="feature.parameters && feature.parameters.length > 0" class="mt-2">
+                    <h6 class="text-light">Parameters:</h6>
+                    <ul>
+                        <li v-for="param in feature.parameters" :key="param.name">
+                            <strong class="text-info">[[ param.name ]]</strong>
+                            <span class="text-muted"> ([[ param.type || 'unknown' ]])</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div v-else class="alert alert-warning">
+        No converters available or failed to load.
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+const { createApp, ref } = Vue
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const list_feature = ref({})
+
+        async function fetch_features() {
+            const res = await fetch('/get_features');
+            const data = await res.json();
+            if (data.status === "success") {
+                list_feature.value = data.features
+            } 
+        }
+
+        function goTo(path) {
+            const urlMap = {
+                "/api/convert/list": "/list",
+                "/api/convert/misp_to_stix": "convert/misp_to_stix",
+                "/api/convert/stix_to_misp": "convert/stix_to_misp"
+            }
+            if(urlMap[path]) {
+                window.location.href = urlMap[path]
+            } else {
+                alert("No URL mapped for", path)
+            }
+        }
+
+        fetch_features()
+
+        return { list_feature, goTo }
+    }
+}).mount('#main-container')
+</script>
+{% endblock %}

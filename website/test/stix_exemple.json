@@ -1,0 +1,16 @@
+{
+  "type": "bundle",
+  "id": "bundle--12345678-1234-5678-1234-567812345678",
+  "objects": [
+    {
+      "type": "indicator",
+      "spec_version": "2.1",
+      "id": "indicator--98765432-9876-5432-9876-543298765432",
+      "created": "2025-09-30T12:00:00Z",
+      "modified": "2025-09-30T12:00:00Z",
+      "name": "Malicious domain",
+      "pattern": "[domain-name:value = 'example.com']",
+      "pattern_type": "stix"
+    }
+  ]
+}

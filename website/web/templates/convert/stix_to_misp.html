@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="text-info mb-3">Convert STIX → MISP</h2>
+
+    <!-- Help / Parameters Panel -->
+    <div class="card mb-4 bg-dark text-light">
+        <div class="card-header d-flex justify-content-between align-items-center" 
+             data-bs-toggle="collapse" data-bs-target="#helpPanel" style="cursor: pointer;">
+            <span>Help / Parameters</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <div id="helpPanel" class="collapse">
+            <div class="card-body">
+                <ul>
+                    <li><strong>distribution</strong> (0-4): Distribution level for the imported MISP content</li>
+                    <li><strong>sharing_group_id</strong> (integer): Required if distribution is 4</li>
+                    <li><strong>galaxies_as_tags</strong> (bool): Import MISP Galaxies as tags instead of standard format</li>
+                    <li><strong>no_force_contextual_data</strong> (bool): Skip forced creation of custom Galaxy clusters</li>
+                    <li><strong>cluster_distribution</strong> (0-4): Distribution level for Galaxy clusters</li>
+                    <li><strong>cluster_sharing_group_id</strong> (integer)</li>
+                    <li><strong>organisation_uuid</strong> (string)</li>
+                    <li><strong>single_event</strong> (bool): Convert to a single MISP event if multiple</li>
+                    <li><strong>producer</strong> (string)</li>
+                    <li><strong>title</strong> (string)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversion Form -->
+    <form method="post" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+            <label for="file" class="form-label">STIX File <span class="text-danger">*</span></label>
+            <input type="file" class="form-control" id="file" name="file" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="distribution" class="form-label">Distribution</label>
+            {{ form.distribution(class_="form-select") }}
+        </div>
+
+        <div class="mb-3">
+            <label for="sharing_group_id" class="form-label">Sharing Group ID</label>
+            {{ form.sharing_group_id(class_="form-control") }}
+        </div>
+
+        <div class="mb-3 form-check">
+            {{ form.galaxies_as_tags(class_="form-check-input") }}
+            <label class="form-check-label" for="galaxies_as_tags">Galaxies as tags</label>
+        </div>
+
+        <div class="mb-3 form-check">
+            {{ form.no_force_contextual_data(class_="form-check-input") }}
+            <label class="form-check-label" for="no_force_contextual_data">No force contextual data</label>
+        </div>
+
+        <div class="mb-3">
+            <label for="cluster_distribution" class="form-label">Cluster Distribution</label>
+            {{ form.cluster_distribution(class_="form-select") }}
+        </div>
+
+        <div class="mb-3">
+            <label for="cluster_sharing_group_id" class="form-label">Cluster Sharing Group ID</label>
+            {{ form.cluster_sharing_group_id(class_="form-control") }}
+        </div>
+
+        <div class="mb-3">
+            <label for="organisation_uuid" class="form-label">Organisation UUID</label>
+            {{ form.organisation_uuid(class_="form-control") }}
+        </div>
+
+        <div class="mb-3 form-check">
+            {{ form.single_event(class_="form-check-input") }}
+            <label class="form-check-label" for="single_event">Single Event</label>
+        </div>
+
+        <div class="mb-3">
+            <label for="producer" class="form-label">Producer</label>
+            {{ form.producer(class_="form-control") }}
+        </div>
+
+        <div class="mb-3">
+            <label for="title" class="form-label">Title</label>
+            {{ form.title(class_="form-control") }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">{{ form.convert.label }}</button>
+    </form>
+
+    <!-- Conversion Result / Error -->
+    {% if result %}
+        <div class="card bg-secondary text-light mt-4 clickable-card" data-url="/view_result">
+            <div class="card-body">
+                <h5>Conversion Result:</h5>
+                <pre id="result-json" class="text-light">{{ result | tojson(indent=2) }}</pre>
+
+                <div class="mt-3 d-flex gap-2">
+                    <button id="copy-btn" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-copy me-1"></i> Copy
+                    </button>
+                    <button id="download-btn" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-download me-1"></i> Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    {% elif error %}
+        <div class="card bg-danger text-light mt-4">
+            <div class="card-body">
+                <h5>Error:</h5>
+                <pre class="text-light">{{ error }}</pre>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+const { createApp, ref, onMounted } = Vue
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const result = ref('')
+
+        onMounted(() => {
+            const copyBtn = document.getElementById('copy-btn')
+            const downloadBtn = document.getElementById('download-btn')
+            const resultPre = document.getElementById('result-json')
+
+            if (copyBtn && resultPre) {
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(resultPre.textContent)
+                        .then(() => {
+                            const originalText = copyBtn.textContent
+                            copyBtn.textContent = "Copied"
+                            setTimeout(() => { copyBtn.textContent = originalText }, 2000)
+                        })
+                        .catch(err => console.error("Failed to copy:", err))
+                })
+            }
+
+            if (downloadBtn && resultPre) {
+                downloadBtn.addEventListener('click', () => {
+                    const blob = new Blob([resultPre.textContent], { type: 'application/json' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'converted_misp.json'
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                    URL.revokeObjectURL(url)
+                })
+            }
+
+            // Make card clickable
+            const clickableCard = document.querySelector(".clickable-card")
+            if (clickableCard) {
+                clickableCard.addEventListener("click", () => {
+                    const url = clickableCard.dataset.url
+                    window.location.href = url
+                })
+            }
+        })
+
+        return { result }
+    }
+}).mount('#main-container')
+</script>
+{% endblock %}

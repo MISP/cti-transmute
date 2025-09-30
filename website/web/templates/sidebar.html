@@ -1,0 +1,40 @@
+<nav class="navbar navbar-dark bg-dark flex-column vh-100 p-3">
+    <a class="navbar-brand mb-4" href="#">
+        <i class="fas fa-shield-alt me-2"></i>CTI Transmute
+    </a>
+
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item">
+            <a href="/" class="nav-link text-light">
+                <i class="fas fa-home me-2"></i>Home
+            </a>
+        </li>
+        <li>
+            <a href="/list" class="nav-link text-light">
+                <i class="fas fa-file-upload me-2"></i>List features
+            </a>
+        </li>
+        <li>
+            <a class="nav-link text-light" data-bs-toggle="collapse" href="#convertMenu" role="button" aria-expanded="false" aria-controls="convertMenu">
+                <i class="fas fa-exchange-alt me-2"></i>Convert
+            </a>
+            <div class="collapse ps-3" id="convertMenu">
+                <ul class="nav flex-column">
+                    <li>
+                        <a href="/convert/misp_to_stix" class="nav-link text-light">
+                            <i class="fas fa-arrow-right me-2"></i>MISP → STIX
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/convert/stix_to_misp" class="nav-link text-light">
+                            <i class="fas fa-arrow-left me-2"></i>STIX → MISP
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </li>
+    </ul>
+
+    <hr class="text-secondary">
+    <div class="text-secondary small">&copy; 2025 CTI Transmute</div>
+</nav>

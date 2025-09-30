@@ -1,0 +1,46 @@
+/****************************************STYLE*********************************************/
+
+/**
+  *****************************
+  *   var to dark/light mode  *
+  *****************************
+  **/
+
+  :root {
+  --bg-color: #ffffff;
+  --text-color: #1e1e1e;
+  --subtle-text-color: #6c757d;
+  --card-bg-color: #f9f9f9;
+  --light-bg-color: #f1f1f1;
+  --code-bg-color: #f8f9fa;
+  --border-color: #dee2e6;
+  --card-header-bg-color: rgb(207, 226, 255); 
+
+  --rule-name-color: rgb(10, 88, 202);
+
+  --navbar-bg-color: #ffffff;
+  --navbar-text-color: #000000;
+}
+
+body.dark-mode {
+  --bg-color: #1e1e1e;
+  --text-color: #f8f9fa;
+  --subtle-text-color: #adb5bd;
+  --card-bg-color: #2a2a2a;
+  --light-bg-color: #343a40;
+  --code-bg-color: #2d2d2d;
+  --border-color: #495057;
+  --card-header-bg-color: #333131;
+  --navbar-bg-color: #1c1c1c;
+  --navbar-text-color: #f1f1f1;
+  --rule-name-color: rgb(10, 88, 202);
+}
+
+/**
+  **************
+  *   General  *
+  **************
+  *
+  * card / text / color
+  *
+  **/
