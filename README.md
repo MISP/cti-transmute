@@ -1,6 +1,6 @@
 # CTI-Transmute
 
-[![CTI-Transmute logo](website/web/static/image/transmute.png)](https://github.com/misp/cti-transmute)
+<img src="website/web/static/image/transmute_long.png" alt="CTI-Transmute logo" width="400"/>
 
 An online service for converting cyber threat intelligence, built to promote interoperability and seamless data exchange
 
