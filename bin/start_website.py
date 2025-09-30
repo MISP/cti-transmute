@@ -2,6 +2,7 @@
 
 from cti_transmute.default import get_config
 from website.api import api_blueprint
+from website.web import db
 from website.web import application
 
 
@@ -22,6 +23,7 @@ def main():
 
     with application.app_context():
         application.register_blueprint(api_blueprint)
+        db.create_all()
     application.run(host=ip, port=port, debug=True)
 
 

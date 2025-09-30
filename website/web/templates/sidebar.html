@@ -1,11 +1,9 @@
-<nav class="navbar navbar-dark bg-dark flex-column vh-100 p-3">
-    <a class="navbar-brand mb-4" href="/">
-        <img src="{{ url_for('static', filename='image/transmute.png') }}" 
-            alt="CTI Transmute Logo" 
-            style="height: 30px; width: auto; margin-right: 8px;">
-        CTI Transmute
-    </a>
-
+<!-- Sidebar -->
+<div class="bg-dark sidebar" id="sidebar">
+    <div class="sidebar-header d-flex align-items-center px-3 py-2 text-light">
+        <img src="{{ url_for('static', filename='image/transmute.png') }}" alt="Logo" style="height:30px; margin-right:8px;">
+        <span class="fs-5">CTI Transmute</span>
+    </div>
 
     <ul class="nav nav-pills flex-column mb-auto">
         <li class="nav-item">
@@ -20,7 +18,7 @@
         </li>
         <li>
             <a class="nav-link text-light" data-bs-toggle="collapse" href="#convertMenu" role="button" aria-expanded="false" aria-controls="convertMenu">
-                <i class="fas fa-exchange-alt me-2"></i>Convert
+                <i class="fas fa-exchange-alt me-2"></i>Convert <i class="fa-solid fa-caret-down"></i>
             </a>
             <div class="collapse ps-3" id="convertMenu">
                 <ul class="nav flex-column">
@@ -39,6 +37,11 @@
         </li>
     </ul>
 
-    <hr class="text-secondary">
-    <div class="text-secondary small">&copy; 2025 CTI Transmute</div>
-</nav>
+    <div class="theme-switch-wrapper px-3 mb-4">
+        <label class="theme-switch" for="theme-toggle">
+            <input type="checkbox" id="theme-toggle">
+            <span class="slider"></span>
+        </label>
+    </div>
+    <div class="sidebar-footer">&copy; 2025 CTI Transmute</div>
+</div>
