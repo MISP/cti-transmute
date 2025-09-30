@@ -1,7 +1,7 @@
 # website/web/convert/views.py
 from flask import Blueprint, render_template, request, flash
 from website.web.convert.convert_form import mispToStixParamForm, stixToMispParamForm
-from website.web.untils import form_to_dict
+from website.web.utils import form_to_dict
 import requests
 
 convert_blueprint = Blueprint(
