@@ -1,133 +1,118 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Cti-TRANSMUTE</title>
-    <link rel="icon" href="{{ url_for('static', filename='image/transmute.png') }}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Cti-TRANSMUTE</title>
+        <link rel="icon" href="{{ url_for('static', filename='image/transmute.png') }}">
 
-    <!-- CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-5.3.0/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/fontawesome.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/solid.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/brands.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/core.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
-
-    <style>
-        /* Dark/Light theme transition */
-        body { transition: background-color 0.3s, color 0.3s; }
-        body.light-mode { background-color: #f8f9fa; color: #212529; }
-        body.dark-mode  { background-color: #121212; color: #f1f1f1; }
-
-        .navbar, .sidebar { transition: background-color 0.3s, color 0.3s; }
-        .navbar.light-mode, .sidebar.light-mode { background-color: #ffffff; color: #212529; }
-        .navbar.dark-mode, .sidebar.dark-mode   { background-color: #1f1f1f; color: #f1f1f1; }
-
-        a, a:hover { color: inherit; transition: color 0.3s; }
-
-        /* Sidebar */
-        #wrapper { display: flex; transition: all 0.3s; }
-        #sidebar { width: 250px; transition: all 0.3s; height: 100vh; overflow-y: auto; }
-        #wrapper.toggled #sidebar { margin-left: -250px; }
-        #page-content { width: 100%; transition: all 0.3s; }
-
-        /* Theme toggle slider */
-        .theme-switch-wrapper { display: flex; align-items: center; margin-bottom: 1rem; }
-        .theme-switch input { display: none; }
-        .slider {
-            position: relative; width: 60px; height: 30px; background-color: #ccc;
-            border-radius: 30px; cursor: pointer; transition: background-color 0.4s;
+        <script>
+        (function() {
+        let savedTheme = localStorage.getItem('theme');
+        if (!savedTheme) {
+            savedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
-        .slider:before {
-            content: "🌙"; position: absolute; width: 26px; height: 26px; left: 2px; top: 2px;
-            background-color: white; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; font-size: 14px;
-            transition: transform 0.4s, content 0.4s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        input:checked + .slider { background-color: #888; }
-        input:checked + .slider:before { transform: translateX(30px); content: "☀️"; }
+        document.documentElement.classList.add(savedTheme + '-mode');
+        })();
+        </script>
 
-        .sidebar-footer { padding: 1rem; font-size: 0.8rem; color: #aaa; text-align: center; }
-    </style>
-</head>
-<body>
-<div id="wrapper">
-    {% include 'sidebar.html' %}
 
-    <!-- Page content -->
-    <div id="page-content">
-        <nav class="navbar navbar-dark bg-dark p-2">
-            <button class="btn btn-dark" id="sidebarToggle"><i class="fas fa-bars"></i></button>
-        </nav>
 
-        <div class="container-fluid p-4" id="main-container">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="container my-3">
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <!-- CSS -->
+        <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-5.3.0/css/bootstrap.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/fontawesome.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/solid.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/brands.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/core.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
+    </head>
+    <body>
+        <div id="wrapper">
+            {% include 'sidebar.html' %}
+            
+            <!-- Page content -->
+            <div id="page-content">
+                <nav class="navbar p-2 custom-navbar">
+                    <button class="btn" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                </nav>
+
+
+                <div class="container-fluid p-4" id="main-container">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="container my-3">
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endfor %}
                             </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
+                        {% endif %}
+                    {% endwith %}
 
-            {% block content %}{% endblock %}
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+
+        {% if csrf_token()|safe %}
+        <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}" style="display:none;">
+        {% endif %}
+
+        <!-- Scripts -->
+        <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
+        <script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/dayjs/dayjs.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/dayjs/dayjs-utc.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/dayjs/dayjs-relativeTime.js') }}"></script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const html = document.documentElement;
+                const toggle = document.getElementById('theme-toggle');
+                const savedTheme = localStorage.getItem('theme') || 'light';
+
+                html.classList.add(savedTheme + "-mode");
+                toggle.checked = savedTheme === 'dark';
+
+                toggle.addEventListener('change', () => {
+                    const newTheme = toggle.checked ? 'dark' : 'light';
+                    html.classList.remove('light-mode', 'dark-mode');
+                    html.classList.add(newTheme + "-mode");
+                    localStorage.setItem('theme', newTheme);
+                });
+
+                document.getElementById('sidebarToggle').addEventListener('click', () => {
+                    document.getElementById('wrapper').classList.toggle('toggled');
+                });
+            });
+        </script>
+
+        {% block script %}
+        <script type="module">
+        const {createApp, ref} = Vue
+        createApp({ delimiters: ['[[', ']]'], setup() {} }).mount('#main-container')
+        </script>
+        {% endblock %}
+    </body>
+    <!-- Footer -->
+<footer class="custom-footer text-center">
+    <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-shield-alt"></i>
+            <span>Based on <a href="https://www.misp-project.org/" target="_blank">MISP Standard</a></span>
+        </div>
+        <div class="mt-2 mt-md-0">
+            <i class="fas fa-project-diagram"></i>
+            <span><a href="https://github.com/MISP/cti-transmute.git" target="_blank">Cti-TRANSMUTE Project</a></span>
         </div>
     </div>
-</div>
+</footer>
 
-{% if csrf_token()|safe %}
-<input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}" style="display:none;">
-{% endif %}
-
-<!-- Scripts -->
-<script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
-<script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
-<script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/dayjs/dayjs.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/dayjs/dayjs-utc.js') }}"></script>
-<script src="{{ url_for('static', filename='js/dayjs/dayjs-relativeTime.js') }}"></script>
-<script>
-dayjs.extend(window.dayjs_plugin_utc);
-dayjs.extend(window.dayjs_plugin_relativeTime);
-
-// Theme toggle
-document.addEventListener('DOMContentLoaded', () => {
-    const body = document.body;
-    const toggle = document.getElementById('theme-toggle');
-    const elements = document.querySelectorAll('.navbar, .sidebar');
-    const theme = localStorage.getItem('theme') || 'light';
-    body.classList.add(theme + '-mode');
-    elements.forEach(el => el.classList.add(theme + '-mode'));
-
-    toggle.addEventListener('click', () => {
-        const isLight = body.classList.contains('light-mode');
-        const newTheme = isLight ? 'dark' : 'light';
-        body.classList.replace(isLight ? 'light-mode' : 'dark-mode', newTheme + '-mode');
-        elements.forEach(el => el.classList.replace(isLight ? 'light-mode' : 'dark-mode', newTheme + '-mode'));
-        localStorage.setItem('theme', newTheme);
-    });
-
-    // Sidebar toggle
-    document.getElementById('sidebarToggle').addEventListener('click', () => {
-        document.getElementById('wrapper').classList.toggle('toggled');
-    });
-});
-</script>
-
-{% block script %}
-<script type="module">
-const {createApp, ref} = Vue
-createApp({ delimiters: ['[[', ']]'], setup() {} }).mount('#main-container')
-</script>
-{% endblock %}
-</body>
 </html>

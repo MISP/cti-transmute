@@ -1,23 +1,172 @@
-/* Thèmes clair et sombre */
-  body.light-mode {
-      background-color: #f8f9fa;
-      color: #212529;
-  }
-  body.dark-mode {
-      background-color: #121212;
-      color: #f1f1f1;
-  }
-  .navbar.light-mode, .sidebar.light-mode {
-      background-color: #ffffff;
-      color: #212529;
-  }
-  .navbar.dark-mode, .sidebar.dark-mode {
-      background-color: #1f1f1f;
-      color: #f1f1f1;
-  }
-  a, a:hover {
-      color: inherit;
-  }
+/* Variables globales */
+:root {
+  --color-bg: #f8f9fa;
+  --color-text: #212529;
+  --color-navbar: #ffffff;
+  --color-sidebar: #f1f1f1;
+  --color-link: #212529;
+  --color-link-hover: #0d6efd;
+}
+
+html.dark-mode {
+  --color-bg: #121212;
+  --color-text: #f1f1f1;
+  --color-navbar: #1f1f1f;
+  --color-sidebar: #1c1c1c;
+  --color-link: #f1f1f1;
+  --color-link-hover: #0d6efd;
+}
+
+/* Application */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.navbar {
+  background-color: var(--color-navbar) !important;
+  color: var(--color-text) !important;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.sidebar {
+  background-color: var(--color-sidebar);
+  color: var(--color-text);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+a.nav-link {
+  color: var(--color-link) !important;
+  transition: color 0.3s;
+}
+a.nav-link:hover {
+  color: var(--color-link-hover) !important;
+}
+
+/* Sidebar */
+#wrapper { display: flex; transition: all 0.3s; }
+#sidebar { width: 250px; transition: all 0.3s; height: 100vh; overflow-y: auto; }
+#wrapper.toggled #sidebar { margin-left: -250px; }
+#page-content { width: 100%; transition: all 0.3s; }
+
+/* Theme toggle slider */
+.theme-switch-wrapper { display: flex; align-items: center; margin-bottom: 1rem; }
+.theme-switch input { display: none; }
+.slider {
+    position: relative; width: 60px; height: 30px; background-color: #ccc;
+    border-radius: 30px; cursor: pointer; transition: background-color 0.4s;
+}
+.slider:before {
+    content: "🌙"; position: absolute; width: 26px; height: 26px; left: 2px; top: 2px;
+    background-color: white; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-size: 14px;
+    transition: transform 0.4s, content 0.4s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+input:checked + .slider { background-color: #888; }
+input:checked + .slider:before { transform: translateX(30px); content: "☀️"; }
+
+.sidebar-footer { padding: 1rem; font-size: 0.8rem; color: #aaa; text-align: center; }
+
+
+html {
+  visibility: hidden;
+}
+html.light-mode, html.dark-mode {
+  visibility: visible;
+}
 
 
 
+/* Cartes adaptées au thème */
+.custom-card {
+  background-color: var(--color-navbar);
+  color: var(--color-text);
+  transition: background-color 0.3s, color 0.3s;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.custom-inner-card {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid rgba(0,0,0,0.15);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.custom-card-body {
+  color: var(--color-text);
+}
+
+.custom-pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: var(--color-sidebar);
+  color: var(--color-text);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+
+.custom-navbar {
+    background-color: var(--color-navbar);
+    color: var(--color-text);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.custom-navbar .btn i {
+    color: var(--color-text);
+    transition: color 0.3s;
+}
+
+
+.custom-navbar .btn {
+    background-color: transparent;
+    border: none;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+#wrapper {
+    display: flex;
+    flex: 1; /* prend tout l'espace disponible */
+    transition: all 0.3s;
+}
+
+/* Page content pour pousser le footer */
+#page-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Footer */
+.custom-footer {
+    background-color: var(--color-navbar);
+    color: var(--color-text);
+    border-top: 1px solid rgba(0,0,0,0.1);
+    transition: background-color 0.3s, color 0.3s;
+    padding: 1rem;
+}
+
+.custom-footer a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+.custom-footer a:hover {
+    color: var(--color-link-hover);
+}
+
+.custom-footer i {
+    color: var(--color-text);
+    margin-right: 0.5rem;
+}

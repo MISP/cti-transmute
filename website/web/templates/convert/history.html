@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5" id="main-container">
+    <h2 class="mb-4 text-info">Conversion History</h2>
+
+    <!-- Filter & Sort -->
+    <div class="mb-3 d-flex justify-content-between align-items-end">
+        <div class="w-50 me-3">
+            <label for="conversionFilter" class="form-label">Filter by conversion:</label>
+            <select id="conversionFilter" class="form-select" v-model="filter_type">
+                <option value="">All</option>
+                <option value="MISP_TO_STIX">MISP to STIX</option>
+                <option value="STIX_TO_MISP">STIX to MISP</option>
+            </select>
+        </div>
+
+        <div class="w-25 me-3">
+            <label for="sortOrder" class="form-label">Sort by date:</label>
+            <select id="sortOrder" class="form-select" v-model="sort_order">
+                <option value="desc">Newest first</option>
+                <option value="asc">Oldest first</option>
+            </select>
+        </div>
+
+        <div class="w-25 d-flex align-items-end">
+            <button class="btn btn-primary mt-2" @click="fetchConvertHistory(1)">
+                Apply
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Table of conversions -->
+    <div class="row" v-if="convert_history.length > 0">
+        <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
+            <div class="card custom-card">
+                <div class="card-body custom-card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-truncate">[[ item.name ]]</h5>
+                        <span>Created: [[ item.created_at ]]</span>
+                    </div>
+                    <p class="card-text text-truncate">[[ item.description ]]</p>
+
+                    <button class="btn btn-sm btn-outline-primary" type="button"
+                            data-bs-toggle="collapse" :data-bs-target="'#details-' + item.id"
+                            aria-expanded="false" aria-controls="collapseExample">
+                        <i class="fas fa-eye"></i> View Details
+                    </button>
+
+                    <div class="collapse mt-3" :id="'details-' + item.id">
+                        <div class="card custom-inner-card">
+                            <div class="card-body custom-card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h6>Input Text:</h6>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            @click="copyText(item.input_text, $event)">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <pre class="custom-pre">[[ item.input_text ]]</pre>
+
+                                <div class="d-flex justify-content-between align-items-start mt-2">
+                                    <h6>Output Text:</h6>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                            @click="copyText(item.output_text, $event)">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <pre class="custom-pre">[[ item.output_text ]]</pre>
+
+                                <small class="text-muted">Updated: [[ item.updated_at ]]</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Empty state -->
+    <div v-else>
+        <span>No conversion register for the moment</span>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="convert_history.length > 0">
+        <nav aria-label="Page navigation example" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" :class="{disabled: current_page === 1}">
+                    <button class="page-link" @click="fetchConvertHistory(current_page - 1)">Previous</button>
+                </li>
+                <li class="page-item" v-for="page in total_pages" :key="page"
+                    :class="{active: current_page === page}">
+                    <button class="page-link" @click="fetchConvertHistory(page)">[[ page ]]</button>
+                </li>
+                <li class="page-item" :class="{disabled: current_page === total_pages}">
+                    <button class="page-link" @click="fetchConvertHistory(current_page + 1)">Next</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+const { createApp, ref } = Vue
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const convert_history = ref([])
+        const current_page = ref(1)
+        const total_pages = ref(1)
+        const filter_type = ref('')
+        const sort_order = ref('desc')
+
+        async function fetchConvertHistory(page) {
+            if (page < 1) return
+            const params = new URLSearchParams({
+                page: page,
+                filter_type: filter_type.value || '',
+                sort_order: sort_order.value || 'desc'
+            })
+            const res = await fetch('/convert/get_convert_page_history?' + params.toString())
+            if (res.ok) {
+                const data = await res.json()
+                convert_history.value = data.list
+                total_pages.value = data.total_page
+                current_page.value = page
+            }
+        }
+
+        function copyText(text, event) {
+            const btn = event.target.closest("button")
+            const originalHTML = btn.innerHTML
+            navigator.clipboard.writeText(text).then(() => {
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!'
+                setTimeout(() => { btn.innerHTML = originalHTML }, 1500)
+            }).catch(err => console.error('Copy failed', err))
+        }
+
+        // Initial fetch
+        fetchConvertHistory(1)
+
+        return {
+            convert_history,
+            current_page,
+            total_pages,
+            fetchConvertHistory,
+            copyText,
+            filter_type,
+            sort_order
+        }
+    }
+}).mount('#main-container')
+</script>
+{% endblock %}

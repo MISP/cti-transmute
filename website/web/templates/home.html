@@ -2,8 +2,23 @@
 
 {% block content %}
 <div class="container my-5">
+    <!-- Introduction section -->
+    <div class="mb-5">
+        <h2 class="text-info mb-3">Welcome to CTI-Transmute</h2>
+        <p>
+            CTI-Transmute is a tool for converting Cyber Threat Intelligence (CTI) data between MISP and STIX formats.
+            It provides a set of API endpoints that allow automated conversion of data, making it easier to integrate 
+            different threat intelligence platforms and workflows.  
+            This project is maintained by the MISP Project community and aims to standardize CTI data exchange.
+        </p>
+        <p>
+            For more details, documentation, and examples, check out the 
+            <a href="https://github.com/MISP/cti-transmute" target="_blank">official GitHub repository</a>.
+        </p>
+    </div>
+
     <h2 class="mb-4 text-info">CTI Transmute API Endpoints</h2>
-    <p class="mb-4 text-light">
+    <p class="mb-4">
         Use these endpoints to convert Cyber Threat Intelligence (CTI) files between MISP and STIX formats.
         Click on a card to navigate to the corresponding conversion page.
     </p>
@@ -15,7 +30,7 @@
                  style="cursor:pointer;" 
                  @click="goTo('convert/misp_to_stix')">
                 <div class="card-body">
-                    <h5 class="card-title text-warning"><i class="fas fa-arrow-right me-2"></i>MISP → STIX</h5>
+                    <h5 class="card-title text-warning"><i class="fa-solid fa-arrow-right-arrow-left me-2"></i>MISP to STIX</h5>
                     <p class="card-text">Convert a MISP data collection into STIX format.</p>
                     <span class="badge bg-info text-dark">POST</span>
                 </div>
@@ -28,7 +43,7 @@
                  style="cursor:pointer;" 
                  @click="goTo('convert/stix_to_misp')">
                 <div class="card-body">
-                    <h5 class="card-title text-warning"><i class="fas fa-arrow-left me-2"></i>STIX → MISP</h5>
+                    <h5 class="card-title text-warning"><i class="fa-solid fa-arrow-right-arrow-left me-2"></i>STIX to MISP</h5>
                     <p class="card-text">Convert STIX data collection into MISP format.</p>
                     <span class="badge bg-info text-dark">POST</span>
                 </div>
