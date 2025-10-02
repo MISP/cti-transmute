@@ -1,35 +1,39 @@
-<!-- Sidebar -->
-<div class="bg-dark sidebar" id="sidebar">
-    <div class="sidebar-header d-flex align-items-center px-3 py-2 text-light">
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header d-flex align-items-center px-3 py-2">
         <img src="{{ url_for('static', filename='image/transmute.png') }}" alt="Logo" style="height:30px; margin-right:8px;">
         <span class="fs-5">CTI Transmute</span>
     </div>
 
     <ul class="nav nav-pills flex-column mb-auto">
         <li class="nav-item">
-            <a href="/" class="nav-link text-light">
+            <a href="/" class="nav-link">
                 <i class="fas fa-home me-2"></i>Home
             </a>
         </li>
         <li>
-            <a href="/list" class="nav-link text-light">
+            <a href="/list" class="nav-link">
                 <i class="fas fa-file-upload me-2"></i>List features
             </a>
         </li>
+         <li>
+            <a href="/convert/history" class="nav-link">
+                <i class="fas fa-solid fa-book me-2"></i>History
+            </a>
+        </li>
         <li>
-            <a class="nav-link text-light" data-bs-toggle="collapse" href="#convertMenu" role="button" aria-expanded="false" aria-controls="convertMenu">
+            <a class="nav-link" data-bs-toggle="collapse" href="#convertMenu" role="button" aria-expanded="false" aria-controls="convertMenu">
                 <i class="fas fa-exchange-alt me-2"></i>Convert <i class="fa-solid fa-caret-down"></i>
             </a>
             <div class="collapse ps-3" id="convertMenu">
                 <ul class="nav flex-column">
                     <li>
-                        <a href="/convert/misp_to_stix" class="nav-link text-light">
-                            <i class="fas fa-arrow-right me-2"></i>MISP → STIX
+                        <a href="/convert/misp_to_stix" class="nav-link">
+                           <i class="fa-solid fa-arrow-right-arrow-left me-2"></i>MISP to STIX
                         </a>
                     </li>
                     <li>
-                        <a href="/convert/stix_to_misp" class="nav-link text-light">
-                            <i class="fas fa-arrow-left me-2"></i>STIX → MISP
+                        <a href="/convert/stix_to_misp" class="nav-link">
+                            <i class="fa-solid fa-arrow-right-arrow-left me-2"></i>STIX to MISP
                         </a>
                     </li>
                 </ul>

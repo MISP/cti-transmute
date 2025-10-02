@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container my-5">
-    <h2 class="text-info mb-3">Convert MISP → STIX</h2>
+<div id="main-container" class="container my-5">
+    <h2 class="text-info mb-3">Convert MISP to STIX</h2>
 
     <form method="post" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
@@ -26,23 +26,27 @@
     {% if result %}
         <div class="card bg-secondary text-light mt-4">
             <div class="card-body">
+                <!-- Top buttons -->
                 <div class="mb-3 d-flex gap-2">
-                    <button id="copy-btn" class="btn btn-outline-light btn-sm">
-                        <i class="fas fa-copy me-1"></i> Copy
+                    <button class="btn btn-outline-light btn-sm copy-btn">
+                        <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
                     </button>
-                    <button id="download-btn" class="btn btn-outline-light btn-sm">
+
+                    <button class="btn btn-outline-light btn-sm download-btn">
                         <i class="fas fa-download me-1"></i> Download
                     </button>
                 </div>
+
                 <h5>Conversion Result:</h5>
                 <pre id="result-json" class="text-light">{{ result | tojson(indent=2) }}</pre>
 
-                <!-- Panel for copy / download -->
+                <!-- Bottom buttons -->
                 <div class="mt-3 d-flex gap-2">
-                    <button id="copy-btn" class="btn btn-outline-light btn-sm">
-                        <i class="fas fa-copy me-1"></i> Copy
+                    <button class="btn btn-outline-light btn-sm copy-btn">
+                        <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
                     </button>
-                    <button id="download-btn" class="btn btn-outline-light btn-sm">
+
+                    <button class="btn btn-outline-light btn-sm download-btn">
                         <i class="fas fa-download me-1"></i> Download
                     </button>
                 </div>
@@ -68,28 +72,30 @@ createApp({
         const result = ref('')
 
         onMounted(() => {
-            const copyBtn = document.getElementById('copy-btn')
-            const downloadBtn = document.getElementById('download-btn')
             const resultPre = document.getElementById('result-json')
 
-            if (copyBtn && resultPre) {
+            document.querySelectorAll(".copy-btn").forEach(copyBtn => {
                 copyBtn.addEventListener('click', () => {
+                    if (!resultPre) return
                     navigator.clipboard.writeText(resultPre.textContent)
                         .then(() => {
-                            const originalText = copyBtn.textContent
-                            copyBtn.textContent = "Copied"
+                            const textSpan = copyBtn.querySelector(".btn-text")
+                            const originalText = textSpan.textContent
+                            textSpan.textContent = "Copied"
                             setTimeout(() => {
-                                copyBtn.textContent = originalText
+                                textSpan.textContent = originalText
                             }, 2000)
                         })
                         .catch(err => {
                             console.error("Failed to copy:", err)
                         })
                 })
-            }
+            })
 
-            if (downloadBtn && resultPre) {
+
+            document.querySelectorAll(".download-btn").forEach(downloadBtn => {
                 downloadBtn.addEventListener('click', () => {
+                    if (!resultPre) return
                     const blob = new Blob([resultPre.textContent], { type: 'application/json' })
                     const url = URL.createObjectURL(blob)
                     const a = document.createElement('a')
@@ -100,7 +106,7 @@ createApp({
                     document.body.removeChild(a)
                     URL.revokeObjectURL(url)
                 })
-            }
+            })
         })
 
         return { result }

@@ -23,6 +23,7 @@ def main():
 
     with application.app_context():
         application.register_blueprint(api_blueprint)
+        db.drop_all()
         db.create_all()
     application.run(host=ip, port=port, debug=True)
 
