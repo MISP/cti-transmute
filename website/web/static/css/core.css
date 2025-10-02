@@ -124,3 +124,49 @@ html.light-mode, html.dark-mode {
     background-color: transparent;
     border: none;
 }
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+#wrapper {
+    display: flex;
+    flex: 1; /* prend tout l'espace disponible */
+    transition: all 0.3s;
+}
+
+/* Page content pour pousser le footer */
+#page-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Footer */
+.custom-footer {
+    background-color: var(--color-navbar);
+    color: var(--color-text);
+    border-top: 1px solid rgba(0,0,0,0.1);
+    transition: background-color 0.3s, color 0.3s;
+    padding: 1rem;
+}
+
+.custom-footer a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+
+.custom-footer a:hover {
+    color: var(--color-link-hover);
+}
+
+.custom-footer i {
+    color: var(--color-text);
+    margin-right: 0.5rem;
+}
