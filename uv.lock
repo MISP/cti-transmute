@@ -151,7 +151,6 @@ dependencies = [
     { name = "misp-stix" },
     { name = "psycopg2-binary" },
     { name = "sqlalchemy" },
-    { name = "stix2" },
     { name = "werkzeug" },
 ]
 
@@ -165,7 +164,6 @@ requires-dist = [
     { name = "misp-stix", specifier = ">=2025.6.12" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
-    { name = "stix2", specifier = ">=3.0.1" },
     { name = "werkzeug", specifier = ">=3.1.3" },
 ]
 
@@ -1068,21 +1066,6 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/35/ac76dfd5d6b08fa1ffc0d6f7b3948c23ec2e8ed7376caa241b2eb7ec69a2/stix_edh-1.0.3-py2.py3-none-any.whl", hash = "sha256:709483e53bbd8b77b0267f1cef9879d757f200f196149050b0a805e6b0623d9d", size = 27228, upload-time = "2022-08-10T18:36:52.399Z" },
-]
-
-[[package]]
-name = "stix2"
-version = "3.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pytz" },
-    { name = "requests" },
-    { name = "simplejson" },
-    { name = "stix2-patterns" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/6c/598c368b2822783179b0e7992877a3d4b4a7aded18244c1ed1db4894d729/stix2-3.0.1.tar.gz", hash = "sha256:2a2718dc3451c84c709990b2ca220cc39c75ed23e0864d7e8d8190a9365b0cbf", size = 140969, upload-time = "2021-09-24T13:37:25.628Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6b/4e/f88d650a5cf6483740a9bc31c106a21af3330bef0c8be89dae3c715edca3/stix2-3.0.1-py2.py3-none-any.whl", hash = "sha256:827acf0b5b319c1b857c9db0d54907bb438b2b32312d236c891a305ad49b0ba2", size = 177847, upload-time = "2021-09-24T13:37:24.21Z" },
 ]
 
 [[package]]
