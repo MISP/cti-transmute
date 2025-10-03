@@ -1,0 +1,70 @@
+<!-- {% include 'macros/_flashes.html' %} -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-5">
+    <h2 class="mb-4">Connect</h2>
+    <form  method="post" >
+        {{ form.hidden_tag() }}
+
+        <!-- Email -->
+        <div class="mb-3">
+            <label for="email" class="form-label">{{ form.email.label }}</label>
+            {{ form.email(class_="form-control", id="email", placeholder="Enter your email") }}
+            {% if form.email.errors %}
+                <div class="invalid-feedback d-block">{{ form.email.errors[0] | safe }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="mb-3">
+            <label for="password" class="form-label">{{ form.password.label }}</label>
+            <div class="input-group">
+                {{ form.password(class_="form-control", id="password", placeholder="Enter your password") }}
+                <span class="input-group-text" style="cursor:pointer;" onclick="togglePassword()">
+                    <i class="fa fa-eye" id="togglePasswordIcon"></i>
+                </span>
+            </div>
+        </div>
+
+        <script>
+            function togglePassword() {
+                const passwordInput = document.getElementById("password");
+                const icon = document.getElementById("togglePasswordIcon");
+                const isPassword = passwordInput.type === "password";
+                passwordInput.type = isPassword ? "text" : "password";
+                icon.classList.toggle("fa-eye");
+                icon.classList.toggle("fa-eye-slash");
+            }
+        </script>
+
+        <!-- Remember Me -->
+        <div class="form-check mb-3">
+            {{ form.remember_me(class_="form-check-input", id="remember") }}
+            <label class="form-check-label" for="remember">{{ form.remember_me.label }}</label>
+        </div>
+
+        <!-- Submit + Register -->
+        <div class="d-grid mb-3">
+            {{ form.submit(class='btn btn-primary btn-lg fw-bold') }}
+        </div>
+
+        <div class="text-center">
+            <a href="/account/register" class="text-decoration-none fw-semibold">
+                Don’t have an account? <span class="text-primary">Register</span>
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+const { createApp, ref } = Vue
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+       
+        return { }
+    }
+}).mount('#main-container')
+</script>
+{% endblock %}

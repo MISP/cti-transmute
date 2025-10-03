@@ -10,6 +10,46 @@
                 <i class="fas fa-home me-2"></i>Home
             </a>
         </li>
+
+        <li>
+            <a class="nav-link" data-bs-toggle="collapse" href="#userMenu" role="button" aria-expanded="false" aria-controls="userMenu">
+                <i class="fa-solid fa-user me-2"></i>
+                    {% if current_user.is_authenticated %}
+                        {{ current_user.get_first_name() }} 
+                    {% else %}
+                        User
+                    {% endif %}
+                        <i class="fa-solid fa-caret-down"></i>
+            </a>
+            <div class="collapse ps-3" id="userMenu">
+                <ul class="nav flex-column">
+                    {% if current_user.is_authenticated %}
+                        <li>
+                            <a href="/account/" class="nav-link">
+                                <i class="fa-solid fa-user fa-fw me-2"></i> Profil
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/account/logout" class="nav-link">
+                                <i class="fa-solid fa-right-from-bracket fa-fw me-2"></i> Logout
+                            </a>
+                        </li>
+                    {% else %}
+                        <li>
+                            <a href="/account/register" class="nav-link">
+                                <i class="fa-solid fa-user-plus fa-fw me-2"></i> Register
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/account/login" class="nav-link">
+                                <i class="fa-solid fa-right-to-bracket fa-fw me-2"></i> Login
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </li>
+
         <li>
             <a href="/list" class="nav-link">
                 <i class="fas fa-file-upload me-2"></i>List features
@@ -47,5 +87,5 @@
             <span class="slider"></span>
         </label>
     </div>
-    <div class="sidebar-footer">&copy; 2025 CTI Transmute</div>
+    <div class="sidebar-footer">&copy; 2025 MISP Project</div>
 </div>

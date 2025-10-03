@@ -30,7 +30,8 @@
         </div>
     </div>
 
-
+    {{  current_user.is_admin() }}
+    
     <!-- Table of conversions -->
     <div class="row" v-if="convert_history.length > 0">
         <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
@@ -42,13 +43,65 @@
                     </div>
                     <p class="card-text text-truncate">[[ item.description ]]</p>
 
-                    <button class="btn btn-sm btn-outline-primary" type="button"
-                            data-bs-toggle="collapse" :data-bs-target="'#details-' + item.id"
-                            aria-expanded="false" aria-controls="collapseExample">
-                        <i class="fas fa-eye"></i> View Details
-                    </button>
+                    <div class="d-flex gap-2">
+                        <!-- Bouton View before transforme-->
+                        <div class="d-flex gap-2">
+                            <!-- Bouton Before Transform -->
+                            <button class="btn btn-sm btn-outline-info fw-semibold" type="button"
+                                    data-bs-toggle="collapse" 
+                                    :data-bs-target="'#detailsB-' + item.id"
+                                    aria-expanded="false" 
+                                    aria-controls="detailsB">
+                                <i class="fas fa-eye me-1"></i> Before Transform
+                            </button>
 
-                    <div class="collapse mt-3" :id="'details-' + item.id">
+                            <!-- Bouton After Transform -->
+                            <button class="btn btn-sm btn-outline-success fw-semibold" type="button"
+                                    data-bs-toggle="collapse" 
+                                    :data-bs-target="'#detailsA-' + item.id"
+                                    aria-expanded="false" 
+                                    aria-controls="detailsA">
+                                <i class="fas fa-eye me-1"></i> After Transform
+                            </button>
+                        </div>
+
+
+                        {% if current_user.is_authenticated %}
+                            <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
+                                 <!-- Bouton Delete -->
+                                <button type="button" 
+                                        class="btn btn-outline-danger btn-sm" 
+                                        title="Delete the conversion" 
+                                        data-bs-toggle="modal" 
+                                        :data-bs-target="'#delete_item_modal_'+item.id">
+                                    <i class="fa-solid fa-trash fa-fw"></i>
+                                </button>
+                            </template>
+                        {% endif %}
+                    </div>
+
+                    <!-- Modal Delete -->
+                    <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5" id="delete_item_modal">
+                                        Delete [[ item.name ]] ?
+                                    </h1>
+                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button class="btn btn-danger" @click="deleteItem(item.id)">
+                                        <i class="fa-solid fa-trash"></i> Confirm
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="collapse mt-3" :id="'detailsB-' + item.id">
                         <div class="card custom-inner-card">
                             <div class="card-body custom-card-body">
                                 <div class="d-flex justify-content-between align-items-start">
@@ -60,6 +113,15 @@
                                 </div>
                                 <pre class="custom-pre">[[ item.input_text ]]</pre>
 
+
+
+                                <small class="text-muted">Updated: [[ item.updated_at ]]</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="collapse mt-3" :id="'detailsA-' + item.id">
+                        <div class="card custom-inner-card">
+                            <div class="card-body custom-card-body">
                                 <div class="d-flex justify-content-between align-items-start mt-2">
                                     <h6>Output Text:</h6>
                                     <button class="btn btn-sm btn-outline-secondary"
@@ -73,6 +135,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -102,11 +165,14 @@
         </nav>
     </div>
 </div>
+
+
 {% endblock %}
 
 {% block script %}
 <script type="module">
 const { createApp, ref } = Vue
+import { display_toast, message_list } from '/static/js/toaster.js'
 createApp({
     delimiters: ['[[', ']]'],
     setup() {
@@ -115,6 +181,7 @@ createApp({
         const total_pages = ref(1)
         const filter_type = ref('')
         const sort_order = ref('desc')
+        const current_user_is_admin = ref()
 
         async function fetchConvertHistory(page) {
             if (page < 1) return
@@ -144,14 +211,42 @@ createApp({
         // Initial fetch
         fetchConvertHistory(1)
 
+        async function deleteItem(id) {
+            const params = new URLSearchParams({ id })
+            const res = await fetch('/convert/delete_item?' + params.toString())
+
+            if (res.status === 200) {
+                fetchConvertHistory(current_page)
+
+                const myModalEl = document.getElementById('delete_item_modal_' + id)
+                const modal = bootstrap.Modal.getInstance(myModalEl)
+                modal.hide()
+            } 
+            else if (res.status === 403) {
+                window.location.href = '/account/login'
+                return
+            }
+            display_toast(res)
+        }
+
+        async function fetchCurrentUser() {
+            const res = await fetch('/get_current_user')
+            const data = await res.json()
+            current_user_is_admin.value = data.user
+        }
+        fetchCurrentUser()
+
         return {
+            message_list,
             convert_history,
             current_page,
             total_pages,
             fetchConvertHistory,
             copyText,
             filter_type,
-            sort_order
+            sort_order,
+            deleteItem,
+            current_user_is_admin
         }
     }
 }).mount('#main-container')

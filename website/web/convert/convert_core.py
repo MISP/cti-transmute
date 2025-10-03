@@ -7,7 +7,7 @@ import datetime
 
 
 
-def create_convert(input_text, output_text,convert_choice, description=None):
+def create_convert(user_id ,input_text, output_text,convert_choice, description=None):
     """
     Create a new Convert entry from API response and save history.
     input_text: original file content
@@ -22,6 +22,7 @@ def create_convert(input_text, output_text,convert_choice, description=None):
             name = f"MISP_{now.strftime('%Y%m%d%H%M%S')}"
 
         convert = Convert(
+            user_id=user_id,
             name=name,
             conversion_type=convert_choice,
             input_text=input_text,

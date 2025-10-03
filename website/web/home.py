@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
+from flask_login import current_user
 import requests
 
 
@@ -41,3 +42,7 @@ def get_features():
             "features": {}
         }), 500
 
+@home_blueprint.route("/get_current_user", methods=['GET'])
+def get_current_user() -> jsonify:
+    """Is the current user admin or not for vue js"""
+    return jsonify({'user': current_user.is_admin()})
