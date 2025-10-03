@@ -16,8 +16,7 @@ application.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key-
 application.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://cti_user:cti_pass@localhost:5432/cti_db"
 
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-application.config['SESSION_TYPE'] = 'filesystem'  # simple, stocke les sessions sur disque
-
+application.config['SESSION_TYPE'] = 'filesystem'  
 
 csrf = CSRFProtect(application)
 db = SQLAlchemy()
