@@ -1,6 +1,7 @@
 # website/web/convert/views.py
 import json
-from flask import Blueprint, render_template, request, flash
+from flask import Blueprint, jsonify, render_template, request, flash, url_for
+from flask_login import current_user, login_required
 from website.web.convert.convert_form import mispToStixParamForm, stixToMispParamForm
 from website.web.utils import form_to_dict
 import requests
@@ -50,7 +51,13 @@ def misp_to_stix():
 
                     output_text = json.dumps(data, indent=2)
 
+                    if current_user.is_anonymous():
+                        _user_id = None
+                    else:
+                        _user_id = current_user.id
+
                     success = ConvertModel.create_convert(
+                        user_id=_user_id,
                         input_text=file_content,
                         output_text=output_text,
                         convert_choice="MISP_TO_STIX",
@@ -109,9 +116,14 @@ def stix_to_misp():
                     result = data
                     flash("Converted to MISP successfully!", "success")
 
+                    if current_user.is_anonymous():
+                        _user_id = None
+                    else:
+                        _user_id = current_user.id
  
                     output_text = json.dumps(data, indent=2)
                     success = ConvertModel.create_convert(
+                        user_id=_user_id,
                         input_text=file_content,
                         output_text=output_text,
                         convert_choice="STIX_TO_MISP",
@@ -154,3 +166,24 @@ def get_page_history():
         "total_page": pagination.pages,
         "total_rules": pagination.total
     }, 200
+
+
+@convert_blueprint.route("/delete_item", methods=['GET'])
+def delete_rule() -> jsonify:
+    """Delete an item"""
+    if current_user.is_anonymous():
+        return {"success": False, "message": "You are not connect, you can't delete !" , "toast_class" : "danger"}, 403
+    else:
+        item_id  = request.args.get("id")
+        convert = ConvertModel.get_convert(item_id) 
+        if convert:
+            if current_user.id == convert.user_id or current_user.is_admin():
+                success = ConvertModel.delete_convert(item_id)
+                if success:
+                    return {"success": True, "message": "Conversion history deleted!" , "toast_class" : "success"}, 200
+                else:
+                    return {"success": False, "message": "Error during deleting the item !" , "toast_class" : "danger"}, 500
+            return {"success": False, "message": "You are not connect, you can't delete !" , "toast_class" : "danger"}, 403
+        else:
+            return {"success": False, "message": "No item found !" , "toast_class" : "danger"}, 500
+

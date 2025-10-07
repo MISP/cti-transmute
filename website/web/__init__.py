@@ -6,7 +6,7 @@ from flask_wtf.csrf import CSRFProtect
 from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
 from werkzeug.middleware.proxy_fix import ProxyFix
-
+from flask_login import LoginManager
 from cti_transmute.transmute import Transmute
 
 
@@ -21,11 +21,16 @@ application.config['SESSION_TYPE'] = 'filesystem'
 csrf = CSRFProtect(application)
 db = SQLAlchemy()
 sess = Session()
+login_manager = LoginManager()
 
 
 
 db.init_app(application)
 csrf.init_app(application)
+
+login_manager.login_view = "account.login"
+login_manager.init_app(application)
+
 application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
 

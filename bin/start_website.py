@@ -14,16 +14,18 @@ def main():
 
     from website.web.home import home_blueprint
     from website.web.convert.convert_root import convert_blueprint
+    from website.web.account.account import account_blueprint
     
 
     application.register_blueprint(home_blueprint, url_prefix="/")
     application.register_blueprint(convert_blueprint, url_prefix="/convert")
+    application.register_blueprint(account_blueprint, url_prefix="/account")
 
 
 
     with application.app_context():
         application.register_blueprint(api_blueprint)
-        db.drop_all()
+        # db.drop_all()
         db.create_all()
     application.run(host=ip, port=port, debug=True)
 
