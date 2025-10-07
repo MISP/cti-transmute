@@ -27,17 +27,29 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
+
+        <!-- Color for json -->
+        <!-- Highlight.js CSS -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">   <!-- Change this line for another JSON color -->
+
+        <!-- Highlight.js JS -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+
+
     </head>
     <body>
         <div id="wrapper">
             {% include 'sidebar.html' %}
-            
             <!-- Page content -->
             <div id="page-content">
-                <nav class="navbar p-2 custom-navbar">
+                <div class="d-flex justify-content-between align-items-center p-2 border-bottom custom-navbar">
                     <button class="btn" id="sidebarToggle"><i class="fas fa-bars"></i></button>
-                </nav>
 
+                    <button class="btn btn-outline-secondary" id="theme-toggle">
+                        <i id="theme-icon" class="fas fa-sun"></i>
+                    </button>
+                </div>
                 <div class="container-fluid p-4" id="main-container">
                     {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
@@ -91,25 +103,31 @@
         <script src="{{ url_for('static', filename='js/dayjs/dayjs-relativeTime.js') }}"></script>
 
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const html = document.documentElement;
-                const toggle = document.getElementById('theme-toggle');
-                const savedTheme = localStorage.getItem('theme') || 'light';
+            (function () {
+            const html = document.documentElement;
+            const btn = document.getElementById('theme-toggle');
+            const icon = document.getElementById('theme-icon');
+            const savedTheme = localStorage.getItem('theme') || 
+                                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
-                html.classList.add(savedTheme + "-mode");
-                toggle.checked = savedTheme === 'dark';
+            // Applique le thème sauvegardé
+            html.classList.add(savedTheme + "-mode");
+            icon.className = savedTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
 
-                toggle.addEventListener('change', () => {
-                    const newTheme = toggle.checked ? 'dark' : 'light';
-                    html.classList.remove('light-mode', 'dark-mode');
-                    html.classList.add(newTheme + "-mode");
-                    localStorage.setItem('theme', newTheme);
-                });
-
-                document.getElementById('sidebarToggle').addEventListener('click', () => {
-                    document.getElementById('wrapper').classList.toggle('toggled');
-                });
+            btn.addEventListener('click', () => {
+                const isDark = html.classList.contains('dark-mode');
+                const newTheme = isDark ? 'light' : 'dark';
+                html.classList.remove('light-mode', 'dark-mode');
+                html.classList.add(newTheme + "-mode");
+                localStorage.setItem('theme', newTheme);
+                icon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
             });
+
+            // Sidebar toggle
+            document.getElementById('sidebarToggle').addEventListener('click', () => {
+                document.getElementById('wrapper').classList.toggle('toggled');
+            });
+            })();
         </script>
 
         {% block script %}
@@ -126,6 +144,7 @@
             <i class="fas fa-shield-alt"></i>
             <span>Based on <a href="https://www.misp-project.org/" target="_blank">MISP Standard</a></span>
         </div>
+        <div class="sidebar-footer">&copy; 2025 MISP Project</div>
         <div class="mt-2 mt-md-0">
             <i class="fas fa-project-diagram"></i>
             <span><a href="https://github.com/MISP/cti-transmute.git" target="_blank">Cti-TRANSMUTE Project</a></span>

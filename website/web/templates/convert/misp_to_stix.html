@@ -7,21 +7,57 @@
     <form method="post" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
 
-        <div class="mb-3">
-            {{ form.version.label(class_="form-label") }} <span class="text-danger">*</span>
-            {{ form.version(class_="form-select") }}
-            {% for err in form.version.errors %}
-                <div class="invalid-feedback d-block">{{ err }}</div>
-            {% endfor %}
+        <div class="row mb-3">
+            <div class="col-md-6">
+                {{ form.version.label(class_="form-label") }} <span class="text-danger">*</span>
+                {{ form.version(class_="form-select") }}
+                {% for err in form.version.errors %}
+                    <div class="invalid-feedback d-block">{{ err }}</div>
+                {% endfor %}
+            </div>
+            <div class="col-md-6">
+                {{ form.name.label(class_="form-label") }} 
+                {{ form.name(class_="form-control", placeholder="Enter a name for the conversion") }}
+                {% for err in form.name.errors %}
+                    <div class="invalid-feedback d-block">{{ err }}</div>
+                {% endfor %}
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label for="file" class="form-label">MISP File <span class="text-danger">*</span></label>
-            <input type="file" class="form-control" id="file" name="file" required>
+        <div class="row mb-3">
+            <div class="col-md-12">
+                {{ form.description.label(class_="form-label") }}
+                {{ form.description(class_="form-control", placeholder="Optional description...") }}
+                {% for err in form.description.errors %}
+                    <div class="invalid-feedback d-block">{{ err }}</div>
+                {% endfor %}
+            </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">{{ form.convert.label }}</button>
+        <div class="row mb-3">
+            <div class="col-md-8">
+                <label for="file" class="form-label">MISP File <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="file" name="file" required>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    {{ form.public(class_="form-check-input", id="publicSwitch") }}
+                    {{ form.public.label(class_="form-check-label", for="publicSwitch") }}
+                </div>
+                {% for err in form.public.errors %}
+                    <div class="invalid-feedback d-block">{{ err }}</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="submit" name="convert" class="btn btn-primary">{{ form.convert.label }}</button>
     </form>
+
+
+
 
     {% if result %}
         <div class="card bg-secondary text-light mt-4">

@@ -1,0 +1,575 @@
+{
+    "type": "bundle",
+    "id": "bundle--b3e66762-ddf0-440f-afa4-4e4c6c4b5ee6",
+    "objects": [
+        {
+            "type": "marking-definition",
+            "spec_version": "2.1",
+            "id": "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771",
+            "created": "2023-08-11T15:46:15.983Z",
+            "extensions": {
+                "extension-definition--3a65884d-005a-4290-8335-cb2d778a83ce": {
+                    "access_privilege": [
+                        {
+                            "privilege_action": "CISAUSES",
+                            "privilege_scope": {
+                                "entity": [
+                                    "ALL"
+                                ],
+                                "permitted_nationalities": [
+                                    "ALL"
+                                ],
+                                "permitted_organizations": [
+                                    "ALL"
+                                ],
+                                "shareability": [
+                                    "ALL"
+                                ]
+                            },
+                            "rule_effect": "permit"
+                        }
+                    ],
+                    "authority_reference": [
+                        "urn:isa:authority:ais"
+                    ],
+                    "control_set": {
+                        "classification": "U",
+                        "formal_determination": [
+                            "INFORMATION-DIRECTLY-RELATED-TO-CYBERSECURITY-THREAT",
+                            "PUBREL"
+                        ]
+                    },
+                    "create_date_time": "2023-08-11T15:46:15.983Z",
+                    "extension_type": "property-extension",
+                    "further_sharing": [
+                        {
+                            "sharing_scope": [
+                                "USA.USG"
+                            ],
+                            "rule_effect": "permit"
+                        }
+                    ],
+                    "identifier": "isa:guide.19001.GEMINI-a9bdb603-7f4f-44c6-acb0-d47f614e64b2",
+                    "policy_reference": "urn:isa:policy:acs:ns:v3.0?privdefault=deny&sharedefault=deny",
+                    "responsible_entity_custodian": "USA.DHS.CISA.CSD.TH.CMA",
+                    "responsible_entity_originator": "USA.DHS.CISA.CSD.TH.CMA"
+                }
+            }
+        },
+        {
+            "type": "identity",
+            "spec_version": "2.1",
+            "id": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created_by_ref": "identity--42ac3c92-60d2-418f-ba8e-838944e6110b",
+            "created": "2023-04-12T17:53:09.646Z",
+            "modified": "2023-04-12T17:53:09.646Z",
+            "name": "GeminiProduction_CMA",
+            "description": "Cybersecurity and Infrastructure Security Agency Production Identity. Code and Media Analysis.",
+            "identity_class": "system",
+            "confidence": 100,
+            "lang": "en",
+            "object_marking_refs": [
+                "marking-definition--bab4a63c-aed9-4cf5-a766-dfca5abac2bb"
+            ]
+        },
+        {
+            "type": "file",
+            "spec_version": "2.1",
+            "id": "file--4771b0df-b1df-56ff-8d5d-6791390bda71",
+            "hashes": {
+                "MD5": "e33103767524879293d1b576a8b6257d",
+                "SHA-1": "c2046523f1cb487a473b0a46a5a4a957f1b3200a",
+                "SHA-256": "c1f60ca5a5f7b94ab7122718a44b46de16c69d22c2eb62ce2948cab14bc78d50",
+                "SHA-512": "004b71ebeb4808b6dfdc4e58b95c4b307985c08118c45c02a34cd56ff697259199698989af0725d63802dfc785a72e416d2db5875edd1a0fa80ae01a282b2007",
+                "SSDEEP": "384:kaD+TLeDOl+mDcDFNUaD+TLeDOl+mDcDFNUaD+TLeDOl+mDcDFNUaD+TLeDOl+ms:z6Pl+mwj6Pl+mwj6Pl+mwj6Pl+mw3"
+            },
+            "size": 30996,
+            "name": "web-install.jar",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--59125c98-d493-4c53-b143-af3039d277d2",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "web-install.jar",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a malicious JAR file that contains and loads the compiled Java class file \"ReflectUtil.class\" (065c1c2fb1..) at runtime.",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": " 'namespace'='CISA_Consolidated.yara' rule_name=CISA_251126_01 rule_content=rule CISA_251126_01 : trojan hides_artifacts\n{\n    meta:\n        author = \"CISA Code & Media Analysis\"\n        incident = \"251126\"\n        date = \"2025-07-23\"\n        last_modified = \"20250724_1615\"\n        actor = \"n/a\"\n        family = \"n/a\"\n        capabilities = \"hides-artifacts\"\n        malware_type = \"trojan\"\n        tool_type = \"unknown\"\n        description = \"Detects malicious jar filter samples\"\n        sha256_1 = \"c1f60ca5a5f7b94ab7122718a44b46de16c69d22c2eb62ce2948cab14bc78d50\"\n    strings:\n        $s0 = { 6F 72 67 2F 61 70 61 63 68 65 2F 68 74 74 70 2F 63 6C 69 65 6E 74 }\n        $s1 = { 2F 77 6F 2F 52 65 66 6C 65 63 74 55 74 69 6C 2E 63 6C 61 73 73 }\n        $s2 = { 83 2E 9D 42 02 A3 81 42 02 B3 C7 57 34 C4 A8 21 }\n        $s3 = { 8C 8E C0 B6 14 0E 92 08 89 EE EB 1A 11 7D F4 4E }\n        $s4 = { 5B 97 FF F6 12 C9 16 F5 17 C8 5B 5F 44 0E 07 30 }\n        $s5 = { A9 21 59 ED 8E 7A 28 D6 29 FA E3 D0 4C 3D 0F CE }\n        $s6 = { 5A BD F7 24 E8 66 5F 07 2F 7C 0C 0E A9 E3 8D C5 }\n        $s7 = { 05 1B AE 97 B1 88 FF 01 16 EF 3F 44 9E 5F 43 AE }\n    condition:\n        all of them\n}\n",
+            "pattern_type": "yara",
+            "valid_from": "2025-09-16T14:42:51.568386Z"
+        },
+        {
+            "type": "malware",
+            "spec_version": "2.1",
+            "id": "malware--672a1aa0-32e3-4e07-9f06-8a6946d619c5",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a malicious JAR file that contains and loads the compiled Java class file \"ReflectUtil.class\" (065c1c2fb1..) at runtime.",
+            "malware_types": [
+                "trojan"
+            ],
+            "is_family": false,
+            "sample_refs": [
+                "file--4771b0df-b1df-56ff-8d5d-6791390bda71"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--abb66941-fd6e-425f-8a54-fa2a0cae3d17",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "web-install.jar",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'MD5'='e33103767524879293d1b576a8b6257d' OR file:hashes.'SHA-1'='c2046523f1cb487a473b0a46a5a4a957f1b3200a' OR file:hashes.'SHA-256'='c1f60ca5a5f7b94ab7122718a44b46de16c69d22c2eb62ce2948cab14bc78d50' OR file:hashes.'SHA-512'='004b71ebeb4808b6dfdc4e58b95c4b307985c08118c45c02a34cd56ff697259199698989af0725d63802dfc785a72e416d2db5875edd1a0fa80ae01a282b2007']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2025-09-16T14:42:51.579453Z"
+        },
+        {
+            "type": "file",
+            "spec_version": "2.1",
+            "id": "file--b0d9b486-5980-59e4-b136-05fa6b8cc892",
+            "hashes": {
+                "MD5": "6ec2169312feb9fde0b17e244b32c37d",
+                "SHA-1": "6d7e85862f925e83f6d0c29e291765548fac721a",
+                "SHA-256": "065c1c2fb17ba1c3f882bead409215df612673cd455698768ed71412f9190ba3",
+                "SHA-512": "4cd26b298b448db6b26d91b8cf7ac169d693a0dad4f184742463db872b809b91d462ab4659bb21474578e3202bfc92b0db18716db6b4c3c24b3f9e7f2fccce27",
+                "SSDEEP": "192:KuZ4E9i44LYcyHCi3uFl0xEHqQ+k5bUW0sbh3aUfPuS6GZz:Ku79BP/3uFygq49V0stKEuSpz"
+            },
+            "size": 11886,
+            "name": "ReflectUtil.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--9a7172df-66a7-41db-b851-6002aa6bdb56",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "ReflectUtil.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a compiled Java class file contained within the JAR file \"web-install.jar\" (c1f60ca5a5f...). The class file is part of a package structure within the \"org.apache.http.client.wo\" namespace (Figure 1) and is designed for reflective access to Java objects and their contexts within a Tomcat web server environment. Upon execution, the class file bypasses Java Development Kit (JDK) module restrictions and iterates through a list of objects and their contexts to obtain and add a listener. The class file attempts to load a specific class listener within a JUnit environment or framework using \"getClassName()\" method to return a hard-coded string \"org.junit.SecurityHandlerWanListener\" (Figure 2). If the class is not found, the class file catches the exception and Base64 decodes and gzip decompresses bytecode of a class named \"SecurityHandlerWanListener\" (b1b1cf33b8....) (Figure 3).  The class file uses two different Base64 decoding approaches to decode a Base64 string. The class file first tries to use \"sun.misc.BASE64Decoder\", a non-standard internal Application Programming Interface (API) for decoding. If an exception occurs during the first attempt, it falls back to using \"java.util.Base64\",  the standard API for decoding (Figure 4).\r\n\r\nThe class file uses reflection to invoke the \"defineClass\" method of \"ClassLoader\" to load the new class from the decompressed bytecode. The class file creates a new instance of the dynamically loaded class and returns it as an object (a new listener).\r\n\r\nThe class file retrieves a list of listeners, adds the new listener to this list, and then updates the application's listener list. The class file checks if a specific class name \"evilClassName\" has already been injected into the application's event listener list using reflection to access and inspect the list to prevent multiple injections or to verify the success of a previous injection.",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": " 'namespace'='CISA_Consolidated.yara' rule_name=CISA_251126_02 rule_content=rule CISA_251126_02 : trojan  \n{\n    meta:\n        author = \"CISA Code & Media Analysis\"\n        incident = \"251126\"\n        date = \"2025-07-23\"\n        last_modified = \"20250724_1615\"\n        actor = \"n/a\"\n        family = \"n/a\"\n        capabilities = \"n/a\"\n        malware_type = \"trojan\"\n        tool_type = \"unknown\"\n        description = \"Detects malicious servlet filter class loader samples\"\n        sha256_1 = \"065c1c2fb17ba1c3f882bead409215df612673cd455698768ed71412f9190ba3\"\n    strings:\n        $s0 = { 6F 72 67 2F 61 70 61 63 68 65 2F 68 74 74 70 }\n        $s1 = { 63 6C 69 65 6E 74 2F 77 6F 2F 52 65 66 6C 65 63 74 55 74 69 6C }\n        $s2 = { 53 65 63 75 72 69 74 79 48 61 6E 64 6C 65 72 57 61 6E 4C 69 73 74 65 6E 65 72 }\n        $s3 = { 67 65 74 4C 69 73 74 65 6E 65 72 }\n        $s4 = { 61 64 64 4C 69 73 74 65 6E 65 72 }\n        $s5 = { 54 6F 6D 63 61 74 45 6D 62 65 64 64 65 64 43 6F 6E 74 65 78 74 }\n        $s6 = { 67 7A 69 70 44 65 63 6F 6D 70 72 65 73 73 }\n        $s7 = { 67 65 74 41 70 70 6C 69 63 61 74 69 6F 6E 45 76 65 6E 74 4C 69 73 74 65 6E 65 72 73 }\n        $s8 = { 73 65 74 41 70 70 6C 69 63 61 74 69 6F 6E 45 76 65 6E 74 4C 69 73 74 65 6E 65 72 73 }\n        $s9 = { 65 76 69 6C 43 6C 61 73 73 4E 61 6D 65 }\n    condition:\n        all of them\n}\n",
+            "pattern_type": "yara",
+            "valid_from": "2025-09-16T14:42:51.763688Z"
+        },
+        {
+            "type": "malware",
+            "spec_version": "2.1",
+            "id": "malware--3ce1171a-50d8-48c5-926f-90227b825964",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a compiled Java class file contained within the JAR file \"web-install.jar\" (c1f60ca5a5f...). The class file is part of a package structure within the \"org.apache.http.client.wo\" namespace (Figure 1) and is designed for reflective access to Java objects and their contexts within a Tomcat web server environment. Upon execution, the class file bypasses Java Development Kit (JDK) module restrictions and iterates through a list of objects and their contexts to obtain and add a listener. The class file attempts to load a specific class listener within a JUnit environment or framework using \"getClassName()\" method to return a hard-coded string \"org.junit.SecurityHandlerWanListener\" (Figure 2). If the class is not found, the class file catches the exception and Base64 decodes and gzip decompresses bytecode of a class named \"SecurityHandlerWanListener\" (b1b1cf33b8....) (Figure 3).  The class file uses two different Base64 decoding approaches to decode a Base64 string. The class file first tries to use \"sun.misc.BASE64Decoder\", a non-standard internal Application Programming Interface (API) for decoding. If an exception occurs during the first attempt, it falls back to using \"java.util.Base64\",  the standard API for decoding (Figure 4).\r\n\r\nThe class file uses reflection to invoke the \"defineClass\" method of \"ClassLoader\" to load the new class from the decompressed bytecode. The class file creates a new instance of the dynamically loaded class and returns it as an object (a new listener).\r\n\r\nThe class file retrieves a list of listeners, adds the new listener to this list, and then updates the application's listener list. The class file checks if a specific class name \"evilClassName\" has already been injected into the application's event listener list using reflection to access and inspect the list to prevent multiple injections or to verify the success of a previous injection.",
+            "malware_types": [
+                "trojan"
+            ],
+            "is_family": false,
+            "sample_refs": [
+                "file--b0d9b486-5980-59e4-b136-05fa6b8cc892"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--ddadbec6-668d-417f-a8d2-6ca23983c62c",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "ReflectUtil.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'MD5'='6ec2169312feb9fde0b17e244b32c37d' OR file:hashes.'SHA-1'='6d7e85862f925e83f6d0c29e291765548fac721a' OR file:hashes.'SHA-256'='065c1c2fb17ba1c3f882bead409215df612673cd455698768ed71412f9190ba3' OR file:hashes.'SHA-512'='4cd26b298b448db6b26d91b8cf7ac169d693a0dad4f184742463db872b809b91d462ab4659bb21474578e3202bfc92b0db18716db6b4c3c24b3f9e7f2fccce27']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2025-09-16T14:42:51.768717Z"
+        },
+        {
+            "type": "file",
+            "spec_version": "2.1",
+            "id": "file--d5b11c7a-338c-5b23-8f79-ded82627af8f",
+            "hashes": {
+                "MD5": "5e9d283b483b8d5c637baf7cfdda0e08",
+                "SHA-1": "8b87a881f6f81afb596d3f98abef4225315e26bf",
+                "SHA-256": "b1b1cf33b8d3da35293d6b74c378f0cd9452a4351e26d07c896c4d9a8257ef89",
+                "SHA-512": "07956b3a830bd0885202d9bc7a5b5a5927acf1c5584830ebc1011849f41b1077c3d6e3c2a6e94e36a338fc6b540c4b736751775e7069df4b257fa3786c1140a2",
+                "SSDEEP": "96:bFlm4Dt94EugELCBt+qRAVfOTqM8+U00RO:Blz94ExtlRAITqGQO"
+            },
+            "size": 4690,
+            "name": "SecurityHandlerWanListener.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--8fcd5e55-f515-44ff-b396-3556b7467122",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "SecurityHandlerWanListener.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a compiled Java class file that defines a class named \"SecurityHandlerWanListener\" that uses reflection to access and manipulate internal servlet components. This class contains within the class file \"ReflectUtil.class\" (065c1c2fb17.....). The class file \"SecurityHandlerWanListener\" constructor initializes with a \"ClassLoader\" and sets up instance variables (Figure 5) below:\r\n\r\n--Begin Variables--\r\nPass: A hard-coded key used for decryption (7c6a8867d728c3bb).\r\nHeaderName: The name of the HTTP header to check (\"Referer\").\r\nHeadervalue: The expected value of the header (\"https://www.live.com/\")\r\n--End Variables--\r\n\r\nThe class file implements a custom servlet listener that intercepts HTTP requests and checks if the request contains the specified header with the designated value (Figure 5).  When a new HTTP servlet request object is received, the class file retrieves the request object and checks if the header specified by header name: \"Referer\" exists and contains the header value: \"https://www.live.com/\". If the header matches, the class file creates a HashMap and retrieves the response and session objects from the request and stores the request, response, and session objects within a hashmap under the keys: \"request\", \"response\", and \"session\". The hard-coded key : \"7c6a8867d728c3bb\" is stored into the session. The class file retrieves Base64 encoded payload from the request body by reading a line from the request's input stream ( request.getReader().readLine() ), decodes it using Base64, and then decrypts the decoded data using Advanced Encryption Standard (AES) cipher object with the hard-coded key stored in the session as the decryption key. The decrypted data is passed to the \"g\" method to define and instantiate a new class from the decrypted bytecode. The class file utilizes two different approaches to decode a Base64 encoded string. The HTTP request was not available for analysis.",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": " 'namespace'='CISA_Consolidated.yara' rule_name=CISA_251126_03 rule_content=rule CISA_251126_03 : trojan installs_other_components exfiltrates_data \n{\n    meta:\n        author = \"CISA Code & Media Analysis\"\n        incident = \"251126\"\n        date = \"2025-07-23\"\n        last_modified = \"20250724_1615\"\n        actor = \"n/a\"\n        family = \"n/a\"\n        capabilities = \"installs-other-components exfiltrates-data\"\n        malware_type = \"trojan\"\n        tool_type = \"unknown\"\n        description = \"Detects malicious servlet filter class samples\"\n        sha256_1 = \"b1b1cf33b8d3da35293d6b74c378f0cd9452a4351e26d07c896c4d9a8257ef89\"\n    strings:\n        $s0 = { 53 65 72 76 6C 65 74 52 65 71 75 65 73 74 4C 69 73 74 65 6E 65 72 }\n        $s1 = { 43 6C 61 73 73 4C 6F 61 64 65 72 }\n        $s2 = { 53 65 72 76 6C 65 74 52 65 71 75 65 73 74 45 76 65 6E 74 }\n        $s3 = { 2F 48 74 74 70 53 65 72 76 6C 65 74 52 65 73 70 6F 6E 73 65 }\n        $s4 = { 48 74 74 70 53 65 73 73 69 6F 6E }\n        $s5 = { 48 74 74 70 53 65 72 76 6C 65 74 52 65 73 70 6F 6E 73 65 }\n        $s6 = { 68 65 61 64 65 72 56 61 6C 75 65 }\n        $s7 = { 37 63 36 61 38 38 36 37 64 37 32 38 63 33 62 62 }\n        $s8 = { 70 61 73 73 }\n        $s9 = { 53 65 63 72 65 74 4B 65 79 53 70 65 63 }\n        $s10 = { 15 68 74 74 70 73 3A 2F 2F 77 77 77 2E 6C 69 76 65 2E 63 6F 6D 2F }\n        $s11 = { 52 65 66 65 72 65 72 }\n    condition:\n        all of them\n}\n",
+            "pattern_type": "yara",
+            "valid_from": "2025-09-16T14:42:51.795517Z"
+        },
+        {
+            "type": "malware",
+            "spec_version": "2.1",
+            "id": "malware--f0d41dc3-d888-4123-baf6-397a8679d0af",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a compiled Java class file that defines a class named \"SecurityHandlerWanListener\" that uses reflection to access and manipulate internal servlet components. This class contains within the class file \"ReflectUtil.class\" (065c1c2fb17.....). The class file \"SecurityHandlerWanListener\" constructor initializes with a \"ClassLoader\" and sets up instance variables (Figure 5) below:\r\n\r\n--Begin Variables--\r\nPass: A hard-coded key used for decryption (7c6a8867d728c3bb).\r\nHeaderName: The name of the HTTP header to check (\"Referer\").\r\nHeadervalue: The expected value of the header (\"https://www.live.com/\")\r\n--End Variables--\r\n\r\nThe class file implements a custom servlet listener that intercepts HTTP requests and checks if the request contains the specified header with the designated value (Figure 5).  When a new HTTP servlet request object is received, the class file retrieves the request object and checks if the header specified by header name: \"Referer\" exists and contains the header value: \"https://www.live.com/\". If the header matches, the class file creates a HashMap and retrieves the response and session objects from the request and stores the request, response, and session objects within a hashmap under the keys: \"request\", \"response\", and \"session\". The hard-coded key : \"7c6a8867d728c3bb\" is stored into the session. The class file retrieves Base64 encoded payload from the request body by reading a line from the request's input stream ( request.getReader().readLine() ), decodes it using Base64, and then decrypts the decoded data using Advanced Encryption Standard (AES) cipher object with the hard-coded key stored in the session as the decryption key. The decrypted data is passed to the \"g\" method to define and instantiate a new class from the decrypted bytecode. The class file utilizes two different approaches to decode a Base64 encoded string. The HTTP request was not available for analysis.",
+            "malware_types": [
+                "trojan"
+            ],
+            "is_family": false,
+            "sample_refs": [
+                "file--d5b11c7a-338c-5b23-8f79-ded82627af8f"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--c515e557-0d8e-442f-aa7d-81138fba8827",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "SecurityHandlerWanListener.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'MD5'='5e9d283b483b8d5c637baf7cfdda0e08' OR file:hashes.'SHA-1'='8b87a881f6f81afb596d3f98abef4225315e26bf' OR file:hashes.'SHA-256'='b1b1cf33b8d3da35293d6b74c378f0cd9452a4351e26d07c896c4d9a8257ef89' OR file:hashes.'SHA-512'='07956b3a830bd0885202d9bc7a5b5a5927acf1c5584830ebc1011849f41b1077c3d6e3c2a6e94e36a338fc6b540c4b736751775e7069df4b257fa3786c1140a2']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2025-09-16T14:42:51.800608Z"
+        },
+        {
+            "type": "file",
+            "spec_version": "2.1",
+            "id": "file--a23bf5d9-b632-56ec-8e45-60ba6e796a0c",
+            "hashes": {
+                "MD5": "32f5c3c1582a77c004b1511c77454678",
+                "SHA-1": "2a96ce17ed8a025dd72f3729c247dfdb5b0a19a4",
+                "SHA-256": "b618057de9a8bba95440f23b9cf6374cc66f2acd127b3d478684b22d8f11e00b",
+                "SHA-512": "ec3880dfdc23a06cc1d97153963c3b0bd64db0469069e8dc3395101d12c65bcdcf87e5eac967ddf0b6be7e1dd6e8faaa233224f9f76a90f44f0e9df320d051a3",
+                "SSDEEP": "192:omBb/dSBuj9MLFgWfXsea1Xld+LXxzRlRX+pi+n9PshE6w0Tipbg8:j/T9MLFgWfcnVlSzspic9kCPxpB"
+            },
+            "size": 8728,
+            "name": "web-install.jar",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--65412af9-b045-4c02-b7c2-708e0586e6b1",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "web-install.jar",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a malicious JAR file that contains and loads the compiled Java class file \"WebAndroidAppInstaller.class\"(df501b23885...) (Figure 6) at runtime.",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": " 'namespace'='CISA_Consolidated.yara' rule_name=CISA_251126_04 rule_content=rule CISA_251126_04 : trojan hides_artifacts\n{\n    meta:\n        author = \"CISA Code & Media Analysis\"\n        incident = \"251126\"\n        date = \"2025-07-23\"\n        last_modified = \"20250724_1615\"\n        actor = \"n/a\"\n        family = \"n/a\"\n        capabilities = \"hides-artifacts\"\n        malware_type = \"trojan\"\n        tool_type = \"unknown\"\n        description = \"Detects malicious jar Tomcat listener shell samples\"\n        sha256_1 = \"b618057de9a8bba95440f23b9cf6374cc66f2acd127b3d478684b22d8f11e00b\"\n    strings:\n        $s0 = { 63 6F 6D 2F 6D 6F 62 69 6C 65 69 72 6F 6E 2F 73 65 72 76 69 63 65 2F }\n        $s1 = { 57 65 62 41 6E 64 72 6F 69 64 41 70 70 49 6E 73 74 61 6C 6C 65 72 2E 63 6C 61 73 73 }\n        $s2 = { 5A 5D BB 33 C0 43 31 B0 2D DC 58 F2 75 44 CE E5 }\n        $s3 = { 97 DC AC 0F A7 69 97 A4 5A 72 E8 96 AC 43 9E 01 }\n        $s4 = { E0 E0 7E 40 F3 F8 87 30 C5 83 30 C5 43 14 E7 67 }\n        $s5 = { DB E6 F7 F9 BD FC BE 75 00 BF 6F B3 59 B7 28 07 }\n        $s6 = { C6 BF A4 1D 28 AB 7A B9 3E 09 B1 D8 E2 FA 09 36 }\n        $s7 = { B8 0E 8E 0B 97 2D AE CF B4 B8 6E CD E5 E6 BA 92 }\n    condition:\n        all of them\n}\n",
+            "pattern_type": "yara",
+            "valid_from": "2025-09-16T14:42:51.825976Z"
+        },
+        {
+            "type": "malware-analysis",
+            "spec_version": "2.1",
+            "id": "malware-analysis--3c069de3-f639-4483-a3f4-d7f41d6bc2e5",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "product": "microsoftdefender",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "result_name": "Malware",
+            "result": "unknown",
+            "sample_ref": "file--a23bf5d9-b632-56ec-8e45-60ba6e796a0c"
+        },
+        {
+            "type": "malware",
+            "spec_version": "2.1",
+            "id": "malware--e6bc34a4-b4ab-46ec-a76f-19f2e78e4ea8",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a malicious JAR file that contains and loads the compiled Java class file \"WebAndroidAppInstaller.class\"(df501b23885...) (Figure 6) at runtime.",
+            "malware_types": [
+                "trojan"
+            ],
+            "is_family": false,
+            "sample_refs": [
+                "file--a23bf5d9-b632-56ec-8e45-60ba6e796a0c"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--3865cea5-0f91-4ac4-8b7d-a5ec8d0f399e",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "web-install.jar",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'MD5'='32f5c3c1582a77c004b1511c77454678' OR file:hashes.'SHA-1'='2a96ce17ed8a025dd72f3729c247dfdb5b0a19a4' OR file:hashes.'SHA-256'='b618057de9a8bba95440f23b9cf6374cc66f2acd127b3d478684b22d8f11e00b' OR file:hashes.'SHA-512'='ec3880dfdc23a06cc1d97153963c3b0bd64db0469069e8dc3395101d12c65bcdcf87e5eac967ddf0b6be7e1dd6e8faaa233224f9f76a90f44f0e9df320d051a3']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2025-09-16T14:42:51.832063Z"
+        },
+        {
+            "type": "file",
+            "spec_version": "2.1",
+            "id": "file--e29d1324-5df6-53ba-a18b-18e0cd75c45f",
+            "hashes": {
+                "MD5": "8387a7ce9f2520d8956747fd247b19af",
+                "SHA-1": "9808ab3ddfb9ab4fe3af1b5d1f6a638bc03788e0",
+                "SHA-256": "df501b238854d6579cafebeba82581a728e89ed1f6cd0da54c79ef4eb6f4f9fd",
+                "SHA-512": "a51943a8381e67aca4b8296c9df0b05450525b5b27efbf873fd54a7f68febb503e1eb088d287e3561137fd33d3772dd879a3f00b09285a67f215f7a420e7ffcd",
+                "SSDEEP": "384:iI+1BxqQ3evK5c7aIUnKzaxckO05xiZMQn5JI3c+AK8:iImfqQ3z/nbax1"
+            },
+            "size": 16120,
+            "name": "WebAndroidAppInstaller.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--23182437-7a72-4bf6-aada-fec27eb505d4",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "WebAndroidAppInstaller.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a compiled Java class file that defines a class named \"WebAndroidAppInstaller\". The class file is part of a package structure within the \"com.mobileiron.service\" namespace (Figure 6). The class file is a malicious listener contained within the JAR file \"b618057de9a8bba95440f23b9cf6374cc66f2acd127b3d478684b22d8f11e00b\" (b618057de9a). The class file is designed to retrieve request and response objects from a servlet context. The class file checks the \"Content-Type\" of the request to see if it is not null and contains \"application/x-www-form-urlencoded\" string. If the content type is not null and contains the specified string, the class file retrieves a \"password\" parameter from the request. The value of this \"password\" parameter is Base64 decoded and decrypted using an AES algorithm with the hard-coded key \"3c6e0b8a9c15224a\" if the data is not null and has a length greater than zero. If the decrypted data is not empty, the decrypted data is used to define a new class. The defined class is loaded dynamically using a custom class loader based on the decrypted data. The output of the loaded class is AES encrypted using the same key and before encoded using Base64. The file computes the MD5 hash of the \"password\" and \"key\" fields and checks if any data was written to the \"ByteArrayOutputStream\" (newly allocated byte array). The file creates a \"PrintWriter\" object to generate a response containing the first 16 characters of the computed MD5 hash value, followed by the Base64 encoded and AES encrypted output of the new loaded class, and then the remaining part of the MD5 hash value (Figure 7). The class file utilizes two different approaches to decode a Base64 encoded string.",
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": " 'namespace'='CISA_Consolidated.yara' rule_name=CISA_251126_05 rule_content=rule CISA_251126_05 : trojan installs_other_components exfiltrates_data\n{\n    meta:\n        author = \"CISA Code & Media Analysis\"\n        incident = \"251126_\"\n        date = \"2025-07-23\"\n        last_modified = \"20250724_1615\"\n        actor = \"n/a\"\n        family = \"n/a\"\n        capabilities = \"installs-other-components exfiltrates-data\"\n        malware_type = \"trojan\"\n        tool_type = \"unknown\"\n        description = \"Detects malicious Tomcat listener shell class samples\"\n        sha256_1 = \"df501b238854d6579cafebeba82581a728e89ed1f6cd0da54c79ef4eb6f4f9fd\"\n    strings:\n        $s0 = { 43 6C 61 73 73 4C 6F 61 64 65 72 }\n        $s1 = { 6D 6F 62 69 6C 65 69 72 6F 6E 2F 73 65 72 76 69 63 65 }\n        $s2 = { 57 65 62 41 6E 64 72 6F 69 64 41 70 70 49 6E 73 74 61 6C 6C 65 72 }\n        $s3 = { 61 64 64 4C 69 73 74 65 6E 65 72 }\n        $s4 = { 73 65 72 76 6C 65 74 52 65 71 75 65 73 74 4C 69 73 74 65 6E 65 72 43 6C 61 73 73 }\n        $s5 = { 61 64 64 41 70 70 6C 69 63 61 74 69 6F 6E 45 76 65 6E 74 4C 69 73 74 65 6E 65 72 4D 65 74 68 6F 64 }\n        $s6 = { 62 61 73 65 36 34 44 65 63 6F 64 65 }\n        $s7 = { 63 6F 6E 74 65 6E 74 54 79 70 65 }\n        $s8 = { 08 72 65 73 70 6F 6E 73 65 }\n        $s9 = { 33 63 36 65 30 62 38 61 39 63 31 35 32 32 34 61 }\n        $s10 = { 6B 70 61 73 73 6C 6F 67 69 6E }\n        $s11 = { 53 65 72 76 6C 65 74 52 65 71 75 65 73 74 4C 69 73 74 65 6E 65 72 }\n        $s12 = { 53 65 63 72 65 74 4B 65 79 53 70 65 63 }\n    condition:\n        all of them\n}\n",
+            "pattern_type": "yara",
+            "valid_from": "2025-09-16T14:42:51.858473Z"
+        },
+        {
+            "type": "malware-analysis",
+            "spec_version": "2.1",
+            "id": "malware-analysis--70881e85-5592-4812-8ec0-294b595ba95f",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "product": "microsoftdefender",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "result_name": "Malware",
+            "result": "unknown",
+            "sample_ref": "file--e29d1324-5df6-53ba-a18b-18e0cd75c45f"
+        },
+        {
+            "type": "malware",
+            "spec_version": "2.1",
+            "id": "malware--52554ae4-e2cd-44c7-b9f8-b5b696b2ec0f",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "This artifact is a compiled Java class file that defines a class named \"WebAndroidAppInstaller\". The class file is part of a package structure within the \"com.mobileiron.service\" namespace (Figure 6). The class file is a malicious listener contained within the JAR file \"b618057de9a8bba95440f23b9cf6374cc66f2acd127b3d478684b22d8f11e00b\" (b618057de9a). The class file is designed to retrieve request and response objects from a servlet context. The class file checks the \"Content-Type\" of the request to see if it is not null and contains \"application/x-www-form-urlencoded\" string. If the content type is not null and contains the specified string, the class file retrieves a \"password\" parameter from the request. The value of this \"password\" parameter is Base64 decoded and decrypted using an AES algorithm with the hard-coded key \"3c6e0b8a9c15224a\" if the data is not null and has a length greater than zero. If the decrypted data is not empty, the decrypted data is used to define a new class. The defined class is loaded dynamically using a custom class loader based on the decrypted data. The output of the loaded class is AES encrypted using the same key and before encoded using Base64. The file computes the MD5 hash of the \"password\" and \"key\" fields and checks if any data was written to the \"ByteArrayOutputStream\" (newly allocated byte array). The file creates a \"PrintWriter\" object to generate a response containing the first 16 characters of the computed MD5 hash value, followed by the Base64 encoded and AES encrypted output of the new loaded class, and then the remaining part of the MD5 hash value (Figure 7). The class file utilizes two different approaches to decode a Base64 encoded string.",
+            "malware_types": [
+                "trojan"
+            ],
+            "is_family": false,
+            "sample_refs": [
+                "file--e29d1324-5df6-53ba-a18b-18e0cd75c45f"
+            ]
+        },
+        {
+            "type": "indicator",
+            "spec_version": "2.1",
+            "id": "indicator--2fab01c0-4dc1-406d-9f2d-4eaa4b363dc6",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "WebAndroidAppInstaller.class",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "indicator_types": [
+                "malicious-activity"
+            ],
+            "pattern": "[file:hashes.'MD5'='8387a7ce9f2520d8956747fd247b19af' OR file:hashes.'SHA-1'='9808ab3ddfb9ab4fe3af1b5d1f6a638bc03788e0' OR file:hashes.'SHA-256'='df501b238854d6579cafebeba82581a728e89ed1f6cd0da54c79ef4eb6f4f9fd' OR file:hashes.'SHA-512'='a51943a8381e67aca4b8296c9df0b05450525b5b27efbf873fd54a7f68febb503e1eb088d287e3561137fd33d3772dd879a3f00b09285a67f215f7a420e7ffcd']",
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
+            "valid_from": "2025-09-16T14:42:51.86416Z"
+        },
+        {
+            "type": "relationship",
+            "spec_version": "2.1",
+            "id": "relationship--6990d062-9a08-4a74-af18-de0a0f6bf2ac",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "relationship_type": "related-to",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "source_ref": "malware--672a1aa0-32e3-4e07-9f06-8a6946d619c5",
+            "target_ref": "malware--3ce1171a-50d8-48c5-926f-90227b825964"
+        },
+        {
+            "type": "relationship",
+            "spec_version": "2.1",
+            "id": "relationship--64ae2bfb-3968-4a4e-b0e2-edab7614d2e9",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "relationship_type": "related-to",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "source_ref": "malware--3ce1171a-50d8-48c5-926f-90227b825964",
+            "target_ref": "malware--f0d41dc3-d888-4123-baf6-397a8679d0af"
+        },
+        {
+            "type": "report",
+            "spec_version": "2.1",
+            "id": "report--a4ee78ff-9ba6-4d51-a58a-d3645ff11d88",
+            "created_by_ref": "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+            "created": "2025-09-03T14:14:05.000Z",
+            "modified": "2025-09-03T14:14:05.000Z",
+            "name": "MAR-251126.r1.v1",
+            "object_marking_refs": [
+                "marking-definition--94868c89-83c2-464b-929b-a1a8aa3c8487",
+                "marking-definition--d896763f-3f6f-4917-86e8-1a4b043d9771"
+            ],
+            "description": "The Cybersecurity and Infrastructure Security Agency (CISA) obtained two sets of malware (five files in total) from an organization\u2019s server compromised by cyber threat actors exploiting CVE-2025-4427 and CVE-2025-4428 in Ivanti Endpoint Manager Mobile (Ivanti EPMM). Each set contains loaders for malicious listeners that enable cyber threat actors to run arbitrary code on the compromised server.",
+            "report_types": [
+                "observed-data",
+                "malware",
+                "indicator"
+            ],
+            "published": "2025-09-03T14:14:05Z",
+            "object_refs": [
+                "identity--8e112e72-aa8f-4190-a359-28a9abae2896",
+                "file--4771b0df-b1df-56ff-8d5d-6791390bda71",
+                "indicator--59125c98-d493-4c53-b143-af3039d277d2",
+                "malware--672a1aa0-32e3-4e07-9f06-8a6946d619c5",
+                "indicator--abb66941-fd6e-425f-8a54-fa2a0cae3d17",
+                "file--b0d9b486-5980-59e4-b136-05fa6b8cc892",
+                "indicator--9a7172df-66a7-41db-b851-6002aa6bdb56",
+                "malware--3ce1171a-50d8-48c5-926f-90227b825964",
+                "indicator--ddadbec6-668d-417f-a8d2-6ca23983c62c",
+                "file--d5b11c7a-338c-5b23-8f79-ded82627af8f",
+                "indicator--8fcd5e55-f515-44ff-b396-3556b7467122",
+                "malware--f0d41dc3-d888-4123-baf6-397a8679d0af",
+                "indicator--c515e557-0d8e-442f-aa7d-81138fba8827",
+                "file--a23bf5d9-b632-56ec-8e45-60ba6e796a0c",
+                "indicator--65412af9-b045-4c02-b7c2-708e0586e6b1",
+                "malware-analysis--3c069de3-f639-4483-a3f4-d7f41d6bc2e5",
+                "malware--e6bc34a4-b4ab-46ec-a76f-19f2e78e4ea8",
+                "indicator--3865cea5-0f91-4ac4-8b7d-a5ec8d0f399e",
+                "file--e29d1324-5df6-53ba-a18b-18e0cd75c45f",
+                "indicator--23182437-7a72-4bf6-aada-fec27eb505d4",
+                "malware-analysis--70881e85-5592-4812-8ec0-294b595ba95f",
+                "malware--52554ae4-e2cd-44c7-b9f8-b5b696b2ec0f",
+                "indicator--2fab01c0-4dc1-406d-9f2d-4eaa4b363dc6",
+                "relationship--6990d062-9a08-4a74-af18-de0a0f6bf2ac",
+                "relationship--64ae2bfb-3968-4a4e-b0e2-edab7614d2e9"
+            ]
+        }
+    ]
+}

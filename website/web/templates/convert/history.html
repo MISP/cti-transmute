@@ -2,11 +2,10 @@
 
 {% block content %}
 <div class="container my-5" id="main-container">
-    <h2 class="mb-4 text-info">Conversion History</h2>
+    <h2 class="mb-3 text-info">Conversion History</h2>
 
-    <!-- Filter & Sort -->
-    <div class="mb-3 d-flex justify-content-between align-items-end">
-        <div class="w-50 me-3">
+    <div class="mb-3 d-flex align-items-end ">
+        <div class="w-75 me-2">
             <label for="conversionFilter" class="form-label">Filter by conversion:</label>
             <select id="conversionFilter" class="form-select" v-model="filter_type">
                 <option value="">All</option>
@@ -15,7 +14,7 @@
             </select>
         </div>
 
-        <div class="w-25 me-3">
+        <div class="w-75 me-2">
             <label for="sortOrder" class="form-label">Sort by date:</label>
             <select id="sortOrder" class="form-select" v-model="sort_order">
                 <option value="desc">Newest first</option>
@@ -23,121 +22,81 @@
             </select>
         </div>
 
-        <div class="w-25 d-flex align-items-end">
-            <button class="btn btn-primary mt-2" @click="fetchConvertHistory(1)">
+        <div class="w-25 me-2 d-flex flex-column justify-content-end">
+            <label for="myConvertsOnly" class="form-label">My converts only:</label>
+            <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="myConvertsOnly" v-model="only_mine"
+                    style="width: 3rem; height: 1.5rem; transform: translateY(3px);">
+            </div>
+        </div>
+
+        <div class="w-25 d-flex flex-column justify-content-end">
+            <button class="btn btn-primary w-100" @click="fetchConvertHistory(1)">
                 Apply
             </button>
         </div>
     </div>
 
-    {{  current_user.is_admin() }}
+
+
     
     <!-- Table of conversions -->
     <div class="row" v-if="convert_history.length > 0">
         <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
-            <div class="card custom-card">
-                <div class="card-body custom-card-body">
+            <div class="card mb-3 bg-secondary text-light" @click="seeDetails(item.id)">
+                <div class="card-body ">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 text-truncate">[[ item.name ]]</h5>
+                        <h5 class="card-title mb-0 text-truncate text-warning">
+                            <i class="card-title text-warning" title="Public/Private"></i>
+                            [[ item.name ]]
+                        </h5>
                         <span>Created: [[ item.created_at ]]</span>
                     </div>
-                    <p class="card-text text-truncate">[[ item.description ]]</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="card-text text-truncate">[[ item.description ]]</p>
+                        <template v-if="item.user_id">
 
+                            <span class="badge rounded-pill text-bg-primary">
+                                [[ item.author ]]
+                            </span>
+
+                        </template>
+                    </div>
                     <div class="d-flex gap-2">
-                        <!-- Bouton View before transforme-->
-                        <div class="d-flex gap-2">
-                            <!-- Bouton Before Transform -->
-                            <button class="btn btn-sm btn-outline-info fw-semibold" type="button"
-                                    data-bs-toggle="collapse" 
-                                    :data-bs-target="'#detailsB-' + item.id"
-                                    aria-expanded="false" 
-                                    aria-controls="detailsB">
-                                <i class="fas fa-eye me-1"></i> Before Transform
-                            </button>
-
-                            <!-- Bouton After Transform -->
-                            <button class="btn btn-sm btn-outline-success fw-semibold" type="button"
-                                    data-bs-toggle="collapse" 
-                                    :data-bs-target="'#detailsA-' + item.id"
-                                    aria-expanded="false" 
-                                    aria-controls="detailsA">
-                                <i class="fas fa-eye me-1"></i> After Transform
-                            </button>
-                        </div>
-
-
                         {% if current_user.is_authenticated %}
                             <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
-                                 <!-- Bouton Delete -->
+                                <!-- Bouton Delete -->
                                 <button type="button" 
-                                        class="btn btn-outline-danger btn-sm" 
+                                        class="btn btn-danger btn-sm" 
                                         title="Delete the conversion" 
                                         data-bs-toggle="modal" 
-                                        :data-bs-target="'#delete_item_modal_'+item.id">
+                                        :data-bs-target="'#delete_item_modal_'+item.id" @click.stop>
                                     <i class="fa-solid fa-trash fa-fw"></i>
                                 </button>
                             </template>
                         {% endif %}
                     </div>
-
                     <!-- Modal Delete -->
-                    <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true">
+                    <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true" @click.stop>
                         <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
+                            <div style="background-color:var(--color-sidebar);" class="modal-content">
                                 <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="delete_item_modal">
+                                    <h2 id="delete_item_modal" style="color: var( --color-text);">
                                         Delete [[ item.name ]] ?
-                                    </h1>
+                                    </h2>
                                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button class="btn btn-danger" @click="deleteItem(item.id)">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click.stop>Close</button>
+                                    <button class="btn btn-danger" @click="deleteItem(item.id)" @click.stop>
                                         <i class="fa-solid fa-trash"></i> Confirm
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-
-                    <div class="collapse mt-3" :id="'detailsB-' + item.id">
-                        <div class="card custom-inner-card">
-                            <div class="card-body custom-card-body">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <h6>Input Text:</h6>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(item.input_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                                <pre class="custom-pre">[[ item.input_text ]]</pre>
-
-
-
-                                <small class="text-muted">Updated: [[ item.updated_at ]]</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="collapse mt-3" :id="'detailsA-' + item.id">
-                        <div class="card custom-inner-card">
-                            <div class="card-body custom-card-body">
-                                <div class="d-flex justify-content-between align-items-start mt-2">
-                                    <h6>Output Text:</h6>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(item.output_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                                <pre class="custom-pre">[[ item.output_text ]]</pre>
-
-                                <small class="text-muted">Updated: [[ item.updated_at ]]</small>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
-            </div>
+            </div>  
         </div>
     </div>
 
@@ -182,13 +141,20 @@ createApp({
         const filter_type = ref('')
         const sort_order = ref('desc')
         const current_user_is_admin = ref()
+        const only_mine = ref("false")
+
+
+        const currentUserId = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
+        const isAuthenticated = "{{ 'true' if current_user.is_authenticated else 'false' }}";
+
 
         async function fetchConvertHistory(page) {
             if (page < 1) return
             const params = new URLSearchParams({
                 page: page,
                 filter_type: filter_type.value || '',
-                sort_order: sort_order.value || 'desc'
+                sort_order: sort_order.value || 'desc',
+                only_mine: only_mine.value  
             })
             const res = await fetch('/convert/get_convert_page_history?' + params.toString())
             if (res.ok) {
@@ -236,6 +202,10 @@ createApp({
         }
         fetchCurrentUser()
 
+        function seeDetails(id){
+            window.location.href = "/convert/detail/" + id;
+        }
+
         return {
             message_list,
             convert_history,
@@ -246,7 +216,11 @@ createApp({
             filter_type,
             sort_order,
             deleteItem,
-            current_user_is_admin
+            current_user_is_admin,
+            only_mine,
+            currentUserId,
+            isAuthenticated,
+            seeDetails
         }
     }
 }).mount('#main-container')

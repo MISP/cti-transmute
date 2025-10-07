@@ -9,6 +9,23 @@ class mispToStixParamForm(FlaskForm):
         default='2.1',
         validators=[DataRequired()]
     )
+    name = StringField(
+        "Name of the convert",
+        validators=[Optional()],
+        description="Name of the convert"
+    )
+    
+    description = StringField(
+        "Description of the convert",
+        validators=[Optional()],
+        description="Descriptiom of the convert"
+    )
+
+    public = BooleanField(
+        "Able to publish or not",
+        description="Let the user who create this convert to choose if he wants to share or not to the community"
+    )
+
     file = SubmitField('Upload File')
     convert = SubmitField('Convert')
 
@@ -19,6 +36,23 @@ class stixToMispParamForm(FlaskForm):
         validators=[Optional(), NumberRange(min=0, max=4, message="Value must be between 0 and 4")],
         default=0,
         description="Distribution level for the imported MISP content (0-4)"
+    )
+
+    name = StringField(
+        "Name of the convert",
+        validators=[Optional()],
+        description="Name of the convert"
+    )
+    
+    description = StringField(
+        "Description of the convert",
+        validators=[Optional()],
+        description="Descriptiom of the convert"
+    )
+
+    public = BooleanField(
+        "Able to publish or not",
+        description="Let the user who create this convert to choose if he wants to share or not to the community"
     )
 
     sharing_group_id = IntegerField(

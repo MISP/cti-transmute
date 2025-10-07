@@ -1,53 +1,79 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
-<div class="container my-5">
+<div class="container my-5" id="main-container">
+
+   <h2 class="text-info text-center mb-3">
+      My Profile
+  </h2>
+
+  <!-- Profile card -->
   <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card shadow border-0">
-        <div class="card-body p-4 bg-light rounded">
-          
-          <div class="text-center mb-4">
-            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar" class="rounded-circle mb-2" width="100" height="100">
-            <h2 class="text-primary"><i class="fas fa-user-circle me-2"></i>My Profile</h2>
-            <hr class="w-25 mx-auto">
+    <div class="col-md-10 col-lg-8">
+      <div class="card bg-secondary text-light shadow border  rounded-4">
+        <div class="card-body p-4">
+          <div class="row align-items-center g-4">
+
+            <!-- Avatar -->
+            <div class="col-md-4 text-center">
+              <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                   alt="Avatar"
+                   class="rounded-circle border  shadow-sm mb-3"
+                   width="120" height="120">
+              <h5 class="fw-bold text-warning">{{ user.first_name }} {{ user.last_name }}</h5>
+              <span class="badge bg-info text-dark">CTI-Transmute User</span>
+            </div>
+
+            <!-- User Info -->
+            <div class="col-md-8">
+              <div class="p-3 rounded bg-dark bg-opacity-50 border">
+                <div class="mb-3 d-flex align-items-center">
+                  <strong class="me-2 text-warning">First Name:</strong>
+                  <span class="text-light">{{ user.first_name }}</span>
+                </div>
+
+                <div class="mb-3 d-flex align-items-center">
+                  <strong class="me-2 text-warning">Last Name:</strong>
+                  <span class="text-light">{{ user.last_name }}</span>
+                </div>
+
+                <div class="mb-3 d-flex align-items-center">
+                  <strong class="me-2 text-warning">Email:</strong>
+                  <span class="text-light">{{ user.email }}</span>
+                </div>
+
+                <div class="mb-3 d-flex align-items-center">
+                  <strong class="me-2 text-warning">API Key:</strong>
+                  <span class="text-break text-light">{{ user.api_key }}</span>
+                </div>
+              </div>
+
+              <div class="text-center mt-2">
+                <a class="btn btn-info btn-lg "
+                  href="{{ url_for('account.edit_user') }}"
+                  title="Edit Profile">
+                  Edit
+                </a>
+              </div>
+
+            </div>
+
           </div>
-
-          <!-- User Info -->
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-id-badge me-2 text-secondary"></i>
-            <strong class="me-2">First Name:</strong>
-            <span class="h5 mb-0">{{ user.first_name }}</span>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-id-badge me-2 text-secondary"></i>
-            <strong class="me-2">Last Name:</strong>
-            <span class="h5 mb-0">{{ user.last_name }}</span>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-envelope me-2 text-secondary"></i>
-            <strong class="me-2">Email:</strong>
-            <span class="h5 mb-0">{{ user.email }}</span>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-key me-2 text-secondary"></i>
-            <strong class="me-2">API Key:</strong>
-            <span class="h5 mb-0 text-break">{{ user.api_key }}</span>
-          </div>
-
-
-          <div class="text-end mt-4">
-            <a class="btn btn-outline-success btn-lg" href="{{ url_for('account.edit_user') }}">
-              <i class="fas fa-edit me-2"></i>Edit Profile
-            </a>
-          </div>
-
         </div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+const { createApp } = Vue
+createApp({
+  delimiters: ['[[', ']]'],
+  setup() {
+    return {}
+  }
+}).mount('#main-container')
+</script>
 {% endblock %}

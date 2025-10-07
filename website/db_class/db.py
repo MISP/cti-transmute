@@ -76,11 +76,16 @@ class Convert(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     conversion_type = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)  # optional description
+    uuid = db.Column(db.String(36), index=True)
     input_text = db.Column(db.Text, nullable=False)    # Original text
     output_text = db.Column(db.Text, nullable=True)    # Converted text
     created_at = db.Column(db.DateTime, index=True)
     updated_at = db.Column(db.DateTime, index=True)
+    public = db.Column(db.Boolean, default=True, index=True) #able to share with the community
 
+    def get_user_name_by_id(self):
+        user = User.query.get(self.user_id)  
+        return user.first_name if user else None
 
     def to_json(self):
         """Return JSON representation"""
@@ -93,5 +98,8 @@ class Convert(db.Model):
             "conversion_type": self.conversion_type,
             "output_text": self.output_text,
             "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M')
+            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "public": self.public,
+            "uuid": self.uuid,
+            "author": self.get_user_name_by_id()
         }
