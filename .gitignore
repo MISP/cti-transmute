@@ -62,6 +62,7 @@ db.sqlite3
 db.sqlite3-journal
 
 # Flask stuff:
+flask_session/
 instance/
 .webassets-cache
 
@@ -192,4 +193,3 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
-flask_session/
