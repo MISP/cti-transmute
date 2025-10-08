@@ -7,7 +7,7 @@
     <div class="mb-3 d-flex align-items-end ">
         <div class="w-75 me-2">
             <label for="conversionFilter" class="form-label">Filter by conversion:</label>
-            <select id="conversionFilter" class="form-select" v-model="filter_type">
+            <select id="conversionFilter" class="form-select" v-model="filter_type" style="background-color:var(--color-sidebar); color: var(--color-text);">
                 <option value="">All</option>
                 <option value="MISP_TO_STIX">MISP to STIX</option>
                 <option value="STIX_TO_MISP">STIX to MISP</option>
@@ -16,7 +16,7 @@
 
         <div class="w-75 me-2">
             <label for="sortOrder" class="form-label">Sort by date:</label>
-            <select id="sortOrder" class="form-select" v-model="sort_order">
+            <select id="sortOrder" class="form-select" v-model="sort_order" style="background-color:var(--color-sidebar); color: var(--color-text);">
                 <option value="desc">Newest first</option>
                 <option value="asc">Oldest first</option>
             </select>
@@ -43,17 +43,17 @@
     <!-- Table of conversions -->
     <div class="row" v-if="convert_history.length > 0">
         <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
-            <div class="card mb-3 bg-secondary text-light" @click="seeDetails(item.id)">
+            <div class="card mb-3" style="background-color:var(--color-sidebar);" @click="seeDetails(item.id)">
                 <div class="card-body ">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0 text-truncate text-warning">
                             <i class="card-title text-warning" title="Public/Private"></i>
                             [[ item.name ]]
                         </h5>
-                        <span>Created: [[ item.created_at ]]</span>
+                        <span style="color: var(--color-text);">Created: [[ item.created_at ]]</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
-                        <p class="card-text text-truncate">[[ item.description ]]</p>
+                        <p class="card-text text-truncate" style="color: var(--color-text);">[[ item.description ]]</p>
                         <template v-if="item.user_id">
 
                             <span class="badge rounded-pill text-bg-primary">
@@ -108,7 +108,7 @@
 
     <!-- Pagination -->
     <div v-if="convert_history.length > 0">
-        <nav aria-label="Page navigation example" class="mt-4">
+        <nav aria-label="Page navigation example" class="mt-4" >
             <ul class="pagination justify-content-center">
                 <li class="page-item" :class="{disabled: current_page === 1}">
                     <button class="page-link" @click="fetchConvertHistory(current_page - 1)">Previous</button>

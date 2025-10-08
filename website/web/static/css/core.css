@@ -161,3 +161,53 @@ body {
     color: var(--color-text);
     margin-right: 0.5rem;
 }
+
+
+/* Back to top button - hidden by default, fades in when .show is added */
+#backToTop {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #0d6efd; /* Bootstrap primary */
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.18);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+    z-index: 1050;
+}
+
+#backToTop.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+#backToTop:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem rgba(13,110,253,0.25);
+}
+
+/* Dark mode adjustment (if you use .dark-mode class) */
+.dark-mode #backToTop {
+    background-color: #6c757d; /* neutral color in dark mode */
+}
+
+/* Slightly larger icon for readability */
+#backToTop .fa-chevron-up {
+    font-size: 16px;
+}
+
+/* Small screens: move button in a bit */
+@media (max-width: 480px) {
+    #backToTop { right: 12px; bottom: 12px; width: 40px; height: 40px; }
+}
