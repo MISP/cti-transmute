@@ -5,7 +5,7 @@ import uuid
 from flask_login import AnonymousUserMixin, current_user
 from website.db_class.db import Convert
 from website.web import db
-from sqlalchemy import desc, asc
+from sqlalchemy import desc, asc, or_
 import datetime
 
 
@@ -69,7 +69,7 @@ def list_all():
     return Convert.query.all()
 
 
-def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false'):
+def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None):
     """
     Return paginated conversion history with optional filter, sort and ownership filtering.
     - page: int
@@ -79,6 +79,14 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
     """
 
     query = Convert.query
+    if searchQuery:
+        search_lower = f"%{searchQuery.lower()}%"
+        query = query.filter(
+            or_(
+                Convert.name.ilike(search_lower),
+                Convert.description.ilike(search_lower),
+            )
+        )
 
     # Filter by conversion type if provided
     if filter_type:
@@ -94,21 +102,16 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
         if only_mine_bool:
             # Admin wants to see only their own conversions
             query = query.filter(Convert.user_id == current_user.id)
-            print("les siens de ladmin")
         # else: no filter, show absolutely everything    
-        print("je suis admin et je veux tout voir")
     elif current_user.is_authenticated:
         if only_mine_bool:
             # Show only current user's conversions
             query = query.filter(Convert.user_id == current_user.id)
-            print("les siens du user")
         else:
             # Show public conversions and the user's private conversions
-            print("else autotify")
             query = query.filter((Convert.public == True) | (Convert.user_id == current_user.id))
     else:
         # Anonymous user: only public conversions
-        print("dernier else")
         query = query.filter(Convert.public == True)
 
     # Order by created_at
@@ -118,7 +121,7 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
         query = query.order_by(desc(Convert.created_at))
 
     # Pagination
-    return query.paginate(page=page, per_page=20)
+    return query.paginate(page=page, per_page=10)
 
 
 # edit

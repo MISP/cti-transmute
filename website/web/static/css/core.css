@@ -211,3 +211,39 @@ body {
 @media (max-width: 480px) {
     #backToTop { right: 12px; bottom: 12px; width: 40px; height: 40px; }
 }
+
+
+/* Pagination Light/Dark Mode */
+.pagination .page-item .page-link {
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.1);
+    padding: 0.5rem 0.75rem;
+    margin: 0 2px;
+    background-color: var(--color-navbar);
+    color: var(--color-text);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    cursor: pointer;
+}
+
+/* Hover effect */
+.pagination .page-item .page-link:hover:not(.disabled):not(.active) {
+    background-color: var(--color-sidebar);
+}
+
+/* Active page */
+.pagination .page-item.active .page-link {
+    background-color: #4f46e5; /* violet doux pour l'actif */
+    color: #fff;
+    border-color: #4f46e5;
+}
+
+/* Disabled page */
+.pagination .page-item.disabled .page-link {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Dark mode adjustment (optional: uses the same variables so works automatically) */
+html.dark-mode .pagination .page-item .page-link {
+    border-color: rgba(255,255,255,0.15);
+}
