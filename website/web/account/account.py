@@ -1,11 +1,11 @@
-from flask import Blueprint, jsonify, render_template, redirect, url_for, flash
+from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash
 
 from website.db_class.db import User
 from website.web.account.account_form import AddNewUserForm, EditUserForm, LoginForm
 from website.web.utils import form_to_dict, generate_api_key
 from . import account_core as AccountModel
 from flask_login import current_user, login_required, login_user, logout_user
-
+from ..convert import convert_core as ConvertModel
 
 account_blueprint = Blueprint(
     'account',
@@ -87,3 +87,102 @@ def edit_user() -> redirect:
         form.email.data = current_user.email
         # form.password.data = "" # current_user.password_hash
     return render_template("account/edit_user.html", form=form)
+
+#####################
+#   Admin section   #
+#####################
+
+@account_blueprint.route("/manage_user", methods=['GET', "POST"])
+@login_required
+def manage_user() -> redirect:
+    """Manage user section"""
+    if current_user.is_admin():
+        return render_template("admin/manage_user.html")
+    return render_template("access_denied.html")
+
+@account_blueprint.route("/get_users", methods=['GET'])
+@login_required
+def get_users():
+    """History of the last convert, with optional filter and sort"""
+    page = request.args.get('page', 1, type=int)
+    searchQuery = request.args.get('searchQuery',  type=str) 
+    filterConnection = request.args.get('filterConnection',  type=str)
+    filterAdmin = request.args.get('filterAdmin',  type=str)
+    if current_user.is_admin():
+        pagination = AccountModel.get_users_page(page, searchQuery=searchQuery, filterConnection=filterConnection, filterAdmin=filterAdmin)
+        users_list = [item.to_json() for item in pagination.items]
+
+        return {
+            "list": users_list,
+            "total_page": pagination.page,
+            "success": False, 
+        }, 200
+    else:
+        return render_template("access_denied.html")
+
+@account_blueprint.route("/detail_user/<int:id>", methods=['GET', "POST"])
+@login_required
+def detail_user(id) -> redirect:
+    """Manage user section"""
+    if current_user.is_admin():
+        user = AccountModel.get_user(id)
+        if user:
+            return render_template("admin/detail_user.html" , user=user)
+        else:
+            flash('No user with this id !', 'danger')
+            return redirect("/admin/manage_user")
+    return render_template("access_denied.html")
+
+@account_blueprint.route("/get_user", methods=['GET', "POST"])
+@login_required
+def get_user() -> redirect:
+    """Manage user section"""
+    id = request.args.get('user_id', type=int)
+    if current_user.is_admin():
+        user = AccountModel.get_user(id)
+        if user:
+            return {
+                "success": True,
+                "user": user.to_json(),
+                "Message": "All good"
+            }, 200
+           
+        else:
+            return {
+                "success": False,
+                "user": None,
+                "Message": " No user found with this id "
+            }, 404
+    return render_template("access_denied.html")
+
+
+@account_blueprint.route("/get_user_convert", methods=['GET', "POST"])
+@login_required
+def get_user_convert() -> redirect:
+    """Manage user section"""
+    id = request.args.get('user_id', type=int)
+    page = request.args.get('page', 1, type=int)
+    if current_user.is_admin():
+        user = AccountModel.get_user(id)
+        if user:
+            user_convert = ConvertModel.get_convert_by_user(page, user.id)
+            if user_convert:
+                user_convert_list = [item.to_json() for item in user_convert.items]
+                return {
+                    "success": True,
+                    "list": user_convert_list,
+                    "total_page": user_convert.pages,
+                    "Message": "All good"
+                }, 200
+            return {
+                "success": False,
+                "user": None,
+                "Message": " Error to access to db"
+            }, 500
+        else:
+            return {
+                "success": False,
+                "user": None,
+                "Message": " No user found with this id "
+            }, 404
+    return render_template("access_denied.html")

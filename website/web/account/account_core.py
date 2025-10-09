@@ -1,4 +1,5 @@
 from flask_login import current_user
+from sqlalchemy import or_
 from website.db_class.db import User
 from website.web.utils import generate_api_key
 from .. import db
@@ -57,7 +58,7 @@ def get_admin_user()-> id:
     """Return the default user"""
     return User.query.filter_by(email='admin@admin.admin').first()
 
-def get_user(id) -> id:
+def get_user(id) -> User:
     """Return the user"""
     return User.query.get(id)
 
@@ -70,10 +71,35 @@ def get_username_by_id(user_id) -> str:
     user = get_user(user_id)
     return user.first_name 
 
+def get_users_page(page, searchQuery=None, filterConnection=None, filterAdmin=None):
+    """Return paginated users with optional search and filters."""
+    if not current_user.is_admin():
+        return None
 
+    query = User.query
 
+    # Search filter
+    if searchQuery:
+        search_lower = f"%{searchQuery.lower()}%"
+        query = query.filter(
+            or_(
+                User.first_name.ilike(search_lower),
+                User.last_name.ilike(search_lower),
+                User.email.ilike(search_lower)
+            )
+        )
 
+    # Connection filter
+    if filterConnection == "connected":
+        query = query.filter(User.is_connected.is_(True))
+    elif filterConnection == "disconnected":
+        query = query.filter(User.is_connected.is_(False))
 
+    # Admin filter
+    if filterAdmin == "admin":
+        query = query.filter(User.admin.is_(True))
+    elif filterAdmin == "user":
+        query = query.filter(User.admin.is_(False))
 
-
-
+    # Pagination
+    return query.paginate(page=page, per_page=10)

@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container my-5">
-    <h2 class="mb-3 text-info">Available Converters</h2>
+    <h2 class="mb-3 ">Available Converters</h2>
 
     <!-- Vue will render here -->
     <div v-if="list_feature && Object.keys(list_feature).length > 0">
@@ -11,7 +11,7 @@
              style="cursor:pointer;"
              @click="goTo(path)">
             <div class="card-body">
-                <h5 class="card-title text-warning">[[ path ]]</h5>
+                <h5 class="card-title ">[[ path ]]</h5>
                 <p class="card-text">[[ feature.description ]]</p>
                 <span class="badge bg-info text-dark me-2">[[ feature.method ]]</span>
 
@@ -19,7 +19,7 @@
                     <h6 class="text-light">Parameters:</h6>
                     <ul>
                         <li v-for="param in feature.parameters" :key="param.name">
-                            <strong class="text-info">[[ param.name ]]</strong>
+                            <strong >[[ param.name ]]</strong>
                             <span class="text-muted"> ([[ param.type || 'unknown' ]])</span>
                         </li>
                     </ul>

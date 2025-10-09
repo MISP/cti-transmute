@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container my-5">
-    <h2 class="mb-3 text-info">Connect</h2>
+    <h2 class="mb-3 ">Connect</h2>
     <form  method="post" >
         {{ form.hidden_tag() }}
 
@@ -19,7 +19,7 @@
         <div class="mb-3">
             <label for="password" class="form-label">{{ form.password.label }}</label>
             <div class="input-group">
-                {{ form.password(class_="form-control", id="password", placeholder="Enter your password") }}
+                {{ form.password(class_="form-control" , style="background-color:var(--color-navbar); color:var(--color-text);", id="password", placeholder="Enter your password") }}
                 <span class="input-group-text" style="cursor:pointer;" onclick="togglePassword()">
                     <i class="fa fa-eye" id="togglePasswordIcon"></i>
                 </span>
@@ -39,7 +39,7 @@
 
         <!-- Remember Me -->
         <div class="form-check mb-3">
-            {{ form.remember_me(class_="form-check-input", id="remember") }}
+            {{ form.remember_me(class_="form-check-input", style="background-color:var(--color-navbar); color:var(--color-text);", id="remember") }}
             <label class="form-check-label" for="remember">{{ form.remember_me.label }}</label>
         </div>
 
@@ -50,7 +50,7 @@
 
         <div class="text-center">
             <a href="/account/register" class="text-decoration-none fw-semibold">
-                Don’t have an account? <span class="text-primary">Register</span>
+                Don’t have an account? 
             </a>
         </div>
     </form>

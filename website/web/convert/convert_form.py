@@ -18,11 +18,12 @@ class mispToStixParamForm(FlaskForm):
     description = StringField(
         "Description of the convert",
         validators=[Optional()],
-        description="Descriptiom of the convert"
+        description="Description of the convert"
     )
 
     public = BooleanField(
-        "Able to publish or not",
+        "Public",
+        default='true',
         description="Let the user who create this convert to choose if he wants to share or not to the community"
     )
 
@@ -51,7 +52,8 @@ class stixToMispParamForm(FlaskForm):
     )
 
     public = BooleanField(
-        "Able to publish or not",
+        "Public",
+        default='true',
         description="Let the user who create this convert to choose if he wants to share or not to the community"
     )
 
