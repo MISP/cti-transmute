@@ -34,27 +34,27 @@ Here are some examples:
 - *Get the list of currently supported convertes*
 
 ```bash
-curl -X GET http://127.0.0.1:6868/api/convert/list
+curl -X GET https://cti-transmute.org/api/convert/list
 ```
 
 - *Convert MISP data to STIX 2.1*
 
 ```bash
 curl -X POST -H "Content-Type: application/json" -d "@/path/to/misp_data.json" \
-http://127.0.0.1:6868/api/convert/misp_to_stix
+https://cti-transmute.org//api/convert/misp_to_stix
 
 # OR
-curl -X POST -F "file=@/path/to/misp_data.json" http://127.0.0.1:6868/api/convert/misp_to_stix
+curl -X POST -F "file=@/path/to/misp_data.json" https://cti-transmute.org/api/convert/misp_to_stix
 ```
 
 - *Convert STIX 2.x Bundle to MISP standard format*
 
 ```bash
 curl -X POST -H "Content-Type: application/json" -d "@/path/to/stix_data.json" \
-http://127.0.0.1:6868/api/convert/stix_to_misp
+https://cti-transmute.org/api/convert/stix_to_misp
 
 # OR
-curl -X POST -F "file=@/path/to/stix_data.json" http://127.0.0.1:6868/api/convert/stix_to_misp
+curl -X POST -F "file=@/path/to/stix_data.json" https://cti-transmute.org/api/convert/stix_to_misp
 ```
 
 ## License
