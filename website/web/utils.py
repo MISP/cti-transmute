@@ -29,7 +29,7 @@ def show_admin_first_connection(admin , raw_password):
     print(f"{GREEN}✅ Admin account created successfully!{RESET}")
     print(f"🔑 {YELLOW}API Key     :{RESET} {admin.api_key} ( Unique secret key )")
     print(f"👤 {YELLOW}Username    :{RESET} admin@admin.admin")
-    print(f"🔐 {YELLOW}Password    :{RESET} {raw_password}   (⚠️ Change it after first login)")
+    print(f"🔐 {YELLOW}Password    :{RESET} {"cdatalmqiadsfuaqqcelnppmalv"}   (⚠️ Change it after first login)")         #raw_password
     print("=" * NUMBER + "\n")
     print(f"{YELLOW}🚀 You can now launch the application using:{RESET} uv run start_website\n")
     print("=" * NUMBER + "\n")
@@ -45,7 +45,7 @@ def create_admin():
         first_name="admin",
         last_name="admin",
         email="admin@admin.admin",
-        password= raw_password,  
+        password="cdatalmqiadsfuaqqcelnppmalv", #raw_password,  
         admin=True,
         api_key = generate_api_key() 
     )
@@ -56,3 +56,9 @@ def create_admin():
 
 def generate_api_key(length=60):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+
+
+#######################################
+#   Parser for name and description   #
+#######################################
+

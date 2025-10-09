@@ -2,7 +2,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container my-5">
-    <h2 class="mb-4">Connect</h2>
+    <h2 class="mb-3 text-info">Connect</h2>
     <form  method="post" >
         {{ form.hidden_tag() }}
 
@@ -44,8 +44,8 @@
         </div>
 
         <!-- Submit + Register -->
-        <div class="d-grid mb-3">
-            {{ form.submit(class='btn btn-primary btn-lg fw-bold') }}
+        <div class="mt-4 text-center">
+            {{ form.submit(class='btn btn-primary') }}
         </div>
 
         <div class="text-center">

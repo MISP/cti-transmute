@@ -2,75 +2,88 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <form action="" method="post">
-        {{ form.hidden_tag() }}
-        {% if not edit_mode %}
-            {{form.user_id}}
-        {% endif %}
+<form action="" method="post" id="main-container" class="my-5">
+    {{ form.hidden_tag() }}
+    <h2 class="text-info mb-3 ">
+        Edit Profile 
+    </h2>
+    <div class="">
         
-        <div class="modal-body bg-light p-4 rounded shadow-sm">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="{{ form.first_name.id }}" class="col-form-label text-primary">{{ form.first_name.label }}</label>  <span style="color:red">*</span>
-                    {{ form.first_name(class_="form-control border-primary") }}
-                    {% if form.first_name.errors %}
-                        <div class="text-danger">{{ form.first_name.errors[0] | safe }}</div>
-                    {% endif %}
-                </div>
-                
-                <div class="col-md-6 mb-3">
-                    <label for="{{ form.last_name.id }}" class="col-form-label text-primary">{{ form.last_name.label }}</label>  <span style="color:red">*</span>
-                    {{ form.last_name(class_="form-control border-primary") }}
-                    {% if form.last_name.errors %}
-                        <div class="text-danger">{{ form.last_name.errors[0] | safe }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <div class="mb-3">
-                <label for="{{ form.email.id }}" class="col-form-label text-primary">{{ form.email.label }}</label>  <span style="color:red">*</span>
-                {{ form.email(class_="form-control border-primary") }}
-                {% if form.email.errors %}
-                    <div class="text-danger">{{ form.email.errors[0] | safe }}</div>
-                {% endif %}
-            </div>
-            <div class="mb-3 position-relative">
-                <label for="{{ form.password.id }}" class="col-form-label text-primary">{{ form.password.label }}</label>  <span style="color:red">*</span>
-                <small class="form-text text-muted">
-                    Leave blank to keep your current password. For security reasons, it cannot be shown.
-                </small>
 
-                <div class="input-group">
-                    {{ form.password(class_="form-control border-primary", id="passwordInput") }}
-                    <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()" tabindex="-1">
-                        <i class="fa-solid fa-eye" id="togglePasswordIcon"></i>
-                    </button>
-                </div>
-
-                {% if form.password.errors %}
-                    <div class="text-danger mt-1">{{ form.password.errors[0] | safe }}</div>
+        <div class="row g-3">
+            <!-- First name -->
+            <div class="col-md-6">
+                <label for="{{ form.first_name.id }}" class="form-label">
+                    {{ form.first_name.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.first_name(class_="form-control bg-dark text-light ") }}
+                {% if form.first_name.errors %}
+                    <div class="text-danger mt-1 small">{{ form.first_name.errors[0] | safe }}</div>
                 {% endif %}
             </div>
 
-            <script>
-                function togglePassword() {
-                    const passwordInput = document.getElementById("passwordInput");
-                    const icon = document.getElementById("togglePasswordIcon");
-
-                    const isPassword = passwordInput.type === "password";
-                    passwordInput.type = isPassword ? "text" : "password";
-
-                    // Change icon
-                    icon.classList.toggle("fa-eye");
-                    icon.classList.toggle("fa-eye-slash");
-                }
-            </script>
-
-
-
-            <div class="modal-footer mt-3">
-                {{ form.submit(class_="btn btn-success") }}
+            <!-- Last name -->
+            <div class="col-md-6">
+                <label for="{{ form.last_name.id }}" class="form-label">
+                    {{ form.last_name.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.last_name(class_="form-control bg-dark text-light") }}
+                {% if form.last_name.errors %}
+                    <div class="text-danger mt-1 small">{{ form.last_name.errors[0] | safe }}</div>
+                {% endif %}
             </div>
         </div>
-    </form>
+
+        <!-- Email -->
+        <div class="mt-3">
+            <label for="{{ form.email.id }}" class="form-label">
+                {{ form.email.label }} <span class="text-danger">*</span>
+            </label>
+            {{ form.email(class_="form-control bg-dark text-light") }}
+            {% if form.email.errors %}
+                <div class="text-danger mt-1 small">{{ form.email.errors[0] | safe }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Password -->
+        <div class="mt-3 position-relative">
+            <label for="{{ form.password.id }}" class="form-label">
+                {{ form.password.label }} <span class="text-danger">*</span>
+            </label>
+            <small class=" d-block mb-2">
+                Leave blank to keep your current password. For security reasons, it cannot be shown.
+            </small>
+
+            <div class="input-group">
+                {{ form.password(class_="form-control bg-dark text-light", id="passwordInput") }}
+                <span class="input-group-text" style="cursor:pointer;" onclick="togglePassword()">
+                    <i class="fa fa-eye" id="togglePasswordIcon"></i>
+                </span>
+            </div>
+
+            {% if form.password.errors %}
+                <div class="text-danger mt-1 small">{{ form.password.errors[0] | safe }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Submit -->
+        <div class="mt-4 text-center">
+            {{ form.submit(class_="btn btn-info  px-4") }}
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block script %}
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById("passwordInput");
+    const icon = document.getElementById("togglePasswordIcon");
+    const isPassword = passwordInput.type === "password";
+    passwordInput.type = isPassword ? "text" : "password";
+    icon.classList.toggle("fa-eye");
+    icon.classList.toggle("fa-eye-slash");
+}
+</script>
 {% endblock %}

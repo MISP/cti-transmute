@@ -2,142 +2,139 @@
 
 {% block content %}
 <div class="container my-5" id="main-container">
-    <h2 class="mb-4 text-info">Conversion History</h2>
+    <h2 class="mb-3 text-info">Conversion History</h2>
 
-    <!-- Filter & Sort -->
-    <div class="mb-3 d-flex justify-content-between align-items-end">
-        <div class="w-50 me-3">
+    <div class="mb-3 d-flex align-items-end flex-wrap g-2">
+        <!-- Search input -->
+        <div class="flex-fill me-2" style="min-width: 200px;">
+            <label for="search" class="form-label">Search:</label>
+            <input 
+                id="search" 
+                type="text" 
+                v-model="searchQuery" 
+                @input="onSearchInput" 
+                @keyup.enter="onEnterKey" 
+                class="form-control form-control-sm rounded-pill" 
+                placeholder="Search by keywords..."
+            >
+        </div>
+
+        <!-- Filter by conversion -->
+        <div class="flex-fill me-2" style="min-width: 180px;">
             <label for="conversionFilter" class="form-label">Filter by conversion:</label>
-            <select id="conversionFilter" class="form-select" v-model="filter_type">
+            <select 
+                id="conversionFilter" 
+                class="form-select" 
+                v-model="filter_type" 
+                style="background-color:var(--color-sidebar); color: var(--color-text);"
+            >
                 <option value="">All</option>
                 <option value="MISP_TO_STIX">MISP to STIX</option>
                 <option value="STIX_TO_MISP">STIX to MISP</option>
             </select>
         </div>
 
-        <div class="w-25 me-3">
+        <!-- Sort by date -->
+        <div class="flex-fill me-2" style="min-width: 180px;">
             <label for="sortOrder" class="form-label">Sort by date:</label>
-            <select id="sortOrder" class="form-select" v-model="sort_order">
+            <select 
+                id="sortOrder" 
+                class="form-select" 
+                v-model="sort_order" 
+                style="background-color:var(--color-sidebar); color: var(--color-text);"
+            >
                 <option value="desc">Newest first</option>
                 <option value="asc">Oldest first</option>
             </select>
         </div>
 
-        <div class="w-25 d-flex align-items-end">
-            <button class="btn btn-primary mt-2" @click="fetchConvertHistory(1)">
+        <!-- My converts only switch -->
+        <div class="d-flex flex-column justify-content-end me-2" style="min-width: 130px;">
+            <label for="myConvertsOnly" class="form-label">My converts only:</label>
+            <div class="form-check form-switch mt-1">
+                <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    id="myConvertsOnly" 
+                    v-model="only_mine"
+                    style="width: 3rem; height: 1.5rem; transform: translateY(3px);"
+                >
+            </div>
+        </div>
+
+        <!-- Apply button -->
+        <div class="d-flex flex-column justify-content-end" style="min-width: 100px;">
+            <button 
+                class="btn btn-primary w-100" 
+                @click="fetchConvertHistory(1)"
+            >
                 Apply
             </button>
         </div>
     </div>
-
-    {{  current_user.is_admin() }}
     
     <!-- Table of conversions -->
     <div class="row" v-if="convert_history.length > 0">
         <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
-            <div class="card custom-card">
-                <div class="card-body custom-card-body">
+            <div id="card-item"
+                class="card mb-3"
+                style="background-color: var(--color-bg); cursor: pointer; transition: background-color 0.3s;"
+                @click="seeDetails(item.id)">
+                <div class="card-body ">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 text-truncate">[[ item.name ]]</h5>
-                        <span>Created: [[ item.created_at ]]</span>
+                        <h5 class="card-title mb-0 text-truncate ">
+                            <i class="card-title " title="Public/Private"></i>
+                            [[ item.name ]]
+                        </h5>
+                        <span style="color: var(--color-text);">Created: [[ item.created_at ]]</span>
                     </div>
-                    <p class="card-text text-truncate">[[ item.description ]]</p>
-
-                    <div class="d-flex gap-2">
-                        <!-- Bouton View before transforme-->
-                        <div class="d-flex gap-2">
-                            <!-- Bouton Before Transform -->
-                            <button class="btn btn-sm btn-outline-info fw-semibold" type="button"
-                                    data-bs-toggle="collapse" 
-                                    :data-bs-target="'#detailsB-' + item.id"
-                                    aria-expanded="false" 
-                                    aria-controls="detailsB">
-                                <i class="fas fa-eye me-1"></i> Before Transform
-                            </button>
-
-                            <!-- Bouton After Transform -->
-                            <button class="btn btn-sm btn-outline-success fw-semibold" type="button"
-                                    data-bs-toggle="collapse" 
-                                    :data-bs-target="'#detailsA-' + item.id"
-                                    aria-expanded="false" 
-                                    aria-controls="detailsA">
-                                <i class="fas fa-eye me-1"></i> After Transform
-                            </button>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <p class="card-text text-truncate" style="color: var(--color-text);">[[ item.description ]]</p>
+                        <!-- <template v-if="item.user_id"> -->
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="badge" :class="item.public ? 'bg-success' : 'bg-danger'">
+                                [[ item.public ? 'public' : 'private' ]]
+                            </span>
+                            <span class="badge rounded-pill text-bg-primary">
+                                [[ item.author ? item.author : 'Anonymous' ]]
+                            </span>
                         </div>
-
-
+                    </div>
+                    <div class="d-flex gap-2">
                         {% if current_user.is_authenticated %}
                             <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
-                                 <!-- Bouton Delete -->
+                                <!-- Bouton Delete -->
                                 <button type="button" 
-                                        class="btn btn-outline-danger btn-sm" 
+                                        class="btn btn-danger btn-sm" 
                                         title="Delete the conversion" 
                                         data-bs-toggle="modal" 
-                                        :data-bs-target="'#delete_item_modal_'+item.id">
+                                        :data-bs-target="'#delete_item_modal_'+item.id" @click.stop>
                                     <i class="fa-solid fa-trash fa-fw"></i>
                                 </button>
                             </template>
                         {% endif %}
                     </div>
-
                     <!-- Modal Delete -->
-                    <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true">
+                    <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true" @click.stop>
                         <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
+                            <div style="background-color:var(--color-sidebar);" class="modal-content">
                                 <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="delete_item_modal">
+                                    <h2 id="delete_item_modal" style="color: var( --color-text);">
                                         Delete [[ item.name ]] ?
-                                    </h1>
+                                    </h2>
                                     <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button class="btn btn-danger" @click="deleteItem(item.id)">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click.stop>Close</button>
+                                    <button class="btn btn-danger" @click="deleteItem(item.id)" @click.stop>
                                         <i class="fa-solid fa-trash"></i> Confirm
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-
-                    <div class="collapse mt-3" :id="'detailsB-' + item.id">
-                        <div class="card custom-inner-card">
-                            <div class="card-body custom-card-body">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <h6>Input Text:</h6>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(item.input_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                                <pre class="custom-pre">[[ item.input_text ]]</pre>
-
-
-
-                                <small class="text-muted">Updated: [[ item.updated_at ]]</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="collapse mt-3" :id="'detailsA-' + item.id">
-                        <div class="card custom-inner-card">
-                            <div class="card-body custom-card-body">
-                                <div class="d-flex justify-content-between align-items-start mt-2">
-                                    <h6>Output Text:</h6>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(item.output_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                                <pre class="custom-pre">[[ item.output_text ]]</pre>
-
-                                <small class="text-muted">Updated: [[ item.updated_at ]]</small>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
-            </div>
+            </div>  
         </div>
     </div>
 
@@ -148,18 +145,29 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="convert_history.length > 0">
-        <nav aria-label="Page navigation example" class="mt-4">
-            <ul class="pagination justify-content-center">
-                <li class="page-item" :class="{disabled: current_page === 1}">
-                    <button class="page-link" @click="fetchConvertHistory(current_page - 1)">Previous</button>
+    <div v-if="convert_history.length > 0" >
+        <nav aria-label="Page navigation" style="margin-bottom: 100px;">
+            <ul class="pagination justify-content-center mt-3">
+                <li class="page-item" :class="{ disabled: current_page === 1 }">
+                    <button class="page-link" @click="current_page > 1 && fetchConvertHistory(current_page - 1)">
+                        <i class="fa-solid fa-angle-left"></i>
+                    </button>
                 </li>
-                <li class="page-item" v-for="page in total_pages" :key="page"
-                    :class="{active: current_page === page}">
-                    <button class="page-link" @click="fetchConvertHistory(page)">[[ page ]]</button>
+
+                <li class="page-item"
+                    v-for="page in visiblePages"
+                    :key="page"
+                    :class="{ active: page === current_page, disabled: page === '...' }">
+                    <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">
+                        [[ page ]]
+                    </button>
+                    <span class="page-link" v-else>...</span>
                 </li>
-                <li class="page-item" :class="{disabled: current_page === total_pages}">
-                    <button class="page-link" @click="fetchConvertHistory(current_page + 1)">Next</button>
+
+                <li class="page-item" :class="{ disabled: current_page === total_pages }">
+                    <button class="page-link" @click="current_page < total_pages && fetchConvertHistory(current_page + 1)">
+                        <i class="fa-solid fa-angle-right"></i>
+                    </button>
                 </li>
             </ul>
         </nav>
@@ -171,7 +179,7 @@
 
 {% block script %}
 <script type="module">
-const { createApp, ref } = Vue
+const { createApp, ref ,computed} = Vue
 import { display_toast, message_list } from '/static/js/toaster.js'
 createApp({
     delimiters: ['[[', ']]'],
@@ -179,16 +187,28 @@ createApp({
         const convert_history = ref([])
         const current_page = ref(1)
         const total_pages = ref(1)
+
+
         const filter_type = ref('')
         const sort_order = ref('desc')
+        const searchQuery = ref('')
+        const only_mine = ref("false")
+
         const current_user_is_admin = ref()
+
+
+        const currentUserId = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
+        const isAuthenticated = "{{ 'true' if current_user.is_authenticated else 'false' }}";
+
 
         async function fetchConvertHistory(page) {
             if (page < 1) return
             const params = new URLSearchParams({
                 page: page,
                 filter_type: filter_type.value || '',
-                sort_order: sort_order.value || 'desc'
+                sort_order: sort_order.value || 'desc',
+                only_mine: only_mine.value,  
+                searchQuery: searchQuery.value || ''
             })
             const res = await fetch('/convert/get_convert_page_history?' + params.toString())
             if (res.ok) {
@@ -236,7 +256,42 @@ createApp({
         }
         fetchCurrentUser()
 
+        function seeDetails(id){
+            window.location.href = "/convert/detail/" + id;
+        }
+
+        const visiblePages = computed(() => {
+            const pages = []
+            const total = total_pages.value
+            const current = current_page.value
+            if (total <= 7) {
+            for (let i = 1; i <= total; i++) pages.push(i)
+            } else {
+            if (current <= 4) {
+                pages.push(1, 2, 3, 4, 5, '...', total)
+            } else if (current >= total - 3) {
+                pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
+            } else {
+                pages.push(1, '...', current - 1, current, current + 1, '...', total)
+            }
+            }
+            return pages
+        })
+
+        async function onSearchInput() {
+            if (searchQuery.value.trim() === "") {
+            await fetchConvertHistory(1)
+            } else {
+            await fetchConvertHistory(1)
+            }
+        }
+
+      async function onEnterKey() {
+        await fetchRules(1)
+      }
+
         return {
+            visiblePages,
             message_list,
             convert_history,
             current_page,
@@ -246,7 +301,14 @@ createApp({
             filter_type,
             sort_order,
             deleteItem,
-            current_user_is_admin
+            current_user_is_admin,
+            only_mine,
+            currentUserId,
+            isAuthenticated,
+            seeDetails,
+            searchQuery,
+            onEnterKey,
+            onSearchInput
         }
     }
 }).mount('#main-container')

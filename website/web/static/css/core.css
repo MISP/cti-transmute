@@ -5,7 +5,8 @@
   --color-navbar: #ffffff;
   --color-sidebar: #f1f1f1;
   --color-link: #212529;
-  --color-link-hover: #0d6efd;
+  --color-link-hover: #0d6efd;  
+  --color-card-hover: #d4d4d4;
 }
 
 html.dark-mode {
@@ -15,7 +16,14 @@ html.dark-mode {
   --color-sidebar: #1c1c1c;
   --color-link: #f1f1f1;
   --color-link-hover: #0d6efd;
+  --color-card-hover: #1f1f1f;
 }
+
+#card-item:hover{
+  background-color: var(--color-card-hover) !important;
+}
+
+
 
 /* Application */
 body {
@@ -44,29 +52,25 @@ a.nav-link:hover {
   color: var(--color-link-hover) !important;
 }
 
+.nav.nav-underline .nav-link {
+    border-bottom: 2px solid transparent; 
+    color: var(--color-link) !important;
+}
+
+.nav.nav-underline .nav-link.active {
+    border-bottom-color: var(--color-link-hover) !important; 
+    font-weight: 600;
+}
+
+
+
 /* Sidebar */
 #wrapper { display: flex; transition: all 0.3s; }
 #sidebar { width: 250px; transition: all 0.3s; height: 100vh; overflow-y: auto; }
 #wrapper.toggled #sidebar { margin-left: -250px; }
 #page-content { width: 100%; transition: all 0.3s; }
 
-/* Theme toggle slider */
-.theme-switch-wrapper { display: flex; align-items: center; margin-bottom: 1rem; }
-.theme-switch input { display: none; }
-.slider {
-    position: relative; width: 60px; height: 30px; background-color: #ccc;
-    border-radius: 30px; cursor: pointer; transition: background-color 0.4s;
-}
-.slider:before {
-    content: "🌙"; position: absolute; width: 26px; height: 26px; left: 2px; top: 2px;
-    background-color: white; border-radius: 50%; display: flex;
-    align-items: center; justify-content: center; font-size: 14px;
-    transition: transform 0.4s, content 0.4s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-input:checked + .slider { background-color: #888; }
-input:checked + .slider:before { transform: translateX(30px); content: "☀️"; }
 
-.sidebar-footer { padding: 1rem; font-size: 0.8rem; color: #aaa; text-align: center; }
 
 
 html {
@@ -148,13 +152,20 @@ body {
     flex-direction: column;
 }
 
-/* Footer */
 .custom-footer {
     background-color: var(--color-navbar);
     color: var(--color-text);
     border-top: 1px solid rgba(0,0,0,0.1);
     transition: background-color 0.3s, color 0.3s;
     padding: 1rem;
+
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+
+    text-align: center;
 }
 
 .custom-footer a {
@@ -169,4 +180,90 @@ body {
 .custom-footer i {
     color: var(--color-text);
     margin-right: 0.5rem;
+}
+
+
+/* Back to top button - hidden by default, fades in when .show is added */
+#backToTop {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #0d6efd; /* Bootstrap primary */
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.18);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+    z-index: 1050;
+}
+
+#backToTop.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+#backToTop:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem rgba(13,110,253,0.25);
+}
+
+/* Dark mode adjustment (if you use .dark-mode class) */
+.dark-mode #backToTop {
+    background-color: #6c757d; /* neutral color in dark mode */
+}
+
+/* Slightly larger icon for readability */
+#backToTop .fa-chevron-up {
+    font-size: 16px;
+}
+
+/* Small screens: move button in a bit */
+@media (max-width: 480px) {
+    #backToTop { right: 12px; bottom: 12px; width: 40px; height: 40px; }
+}
+
+
+/* Pagination Light/Dark Mode */
+.pagination .page-item .page-link {
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.1);
+    padding: 0.5rem 0.75rem;
+    margin: 0 2px;
+    background-color: var(--color-navbar);
+    color: var(--color-text);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    cursor: pointer;
+}
+
+/* Hover effect */
+.pagination .page-item .page-link:hover:not(.disabled):not(.active) {
+    background-color: var(--color-sidebar);
+}
+
+/* Active page */
+.pagination .page-item.active .page-link {
+    background-color: #4f46e5; /* violet doux pour l'actif */
+    color: #fff;
+    border-color: #4f46e5;
+}
+
+/* Disabled page */
+.pagination .page-item.disabled .page-link {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Dark mode adjustment (optional: uses the same variables so works automatically) */
+html.dark-mode .pagination .page-item .page-link {
+    border-color: rgba(255,255,255,0.15);
 }

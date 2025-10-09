@@ -1,53 +1,77 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
-<div class="container my-5">
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card shadow border-0">
-        <div class="card-body p-4 bg-light rounded">
-          
-          <div class="text-center mb-4">
-            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" alt="Avatar" class="rounded-circle mb-2" width="100" height="100">
-            <h2 class="text-primary"><i class="fas fa-user-circle me-2"></i>My Profile</h2>
-            <hr class="w-25 mx-auto">
-          </div>
+<div class="container my-5" id="main-container" >
 
-          <!-- User Info -->
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-id-badge me-2 text-secondary"></i>
-            <strong class="me-2">First Name:</strong>
-            <span class="h5 mb-0">{{ user.first_name }}</span>
-          </div>
+  <h2 class="text-info mb-4 ">My Profile</h2>
 
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-id-badge me-2 text-secondary"></i>
-            <strong class="me-2">Last Name:</strong>
-            <span class="h5 mb-0">{{ user.last_name }}</span>
-          </div>
+  <div class="custom-card rounded-4 shadow p-4 d-flex flex-column align-items-center">
+    <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+         alt="Avatar"
+         class="rounded-circle shadow-sm mb-3"
+         style="width: 120px; height: 120px;">
 
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-envelope me-2 text-secondary"></i>
-            <strong class="me-2">Email:</strong>
-            <span class="h5 mb-0">{{ user.email }}</span>
-          </div>
+    <h4 class="fw-bold text-warning mb-1">{{ user.first_name }} {{ user.last_name }}</h4>
+    <span class="badge bg-info text-dark mb-3">CTI-Transmute User</span>
 
-          <div class="mb-3 d-flex align-items-center">
-            <i class="fas fa-key me-2 text-secondary"></i>
-            <strong class="me-2">API Key:</strong>
-            <span class="h5 mb-0 text-break">{{ user.api_key }}</span>
-          </div>
-
-
-          <div class="text-end mt-4">
-            <a class="btn btn-outline-success btn-lg" href="{{ url_for('account.edit_user') }}">
-              <i class="fas fa-edit me-2"></i>Edit Profile
-            </a>
-          </div>
-
+    <div class="custom-inner-card w-100 p-3 mb-3" @click="editProfil()" title="edit the profil">
+      <div class="mb-2 d-flex justify-content-between">
+        <strong class="text-warning">First Name:</strong>
+        <span>{{ user.first_name }}</span>
+      </div>
+      <div class="mb-2 d-flex justify-content-between">
+        <strong class="text-warning">Last Name:</strong>
+        <span>{{ user.last_name }}</span>
+      </div>
+      <div class="mb-2 d-flex justify-content-between">
+        <strong class="text-warning">Email:</strong>
+        <span>{{ user.email }}</span>
+      </div>
+      <div class="mb-2 d-flex justify-content-between align-items-center">
+        <strong class="text-warning">API Key:</strong>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-break" id="apiKey">{{ user.api_key }}</span>
+          <button class="btn btn-sm" id="copyBtn" @click="copyApiKey()" title="Copy API Key" @click.stop style="color: var( --color-text);">
+            <i class="fa-solid fa-copy"></i>
+          </button>
         </div>
       </div>
+
     </div>
   </div>
 </div>
+{% endblock %}
+
+
+{% block script %}
+<script type="module">
+const { createApp } = Vue
+createApp({
+  delimiters: ['[[', ']]'],
+  setup() {
+    function editProfil(){
+       window.location.href = "/account/edit";
+    }
+
+    function copyApiKey() {
+      const apiKey = document.getElementById('apiKey').innerText;
+      navigator.clipboard.writeText(apiKey).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.innerHTML = 'Copied';
+        setTimeout(() => {
+          btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+
+
+    return {
+      copyApiKey,
+      editProfil
+    }
+  }
+}).mount('#main-container')
+</script>
 {% endblock %}
