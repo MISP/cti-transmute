@@ -128,7 +128,6 @@ def stix_to_misp():
                     name_to_use = (
                         form.name.data.strip()
                         or (parsed_name.strip() if parsed_name else None)
-                        or "Unnamed STIX Report"
                     )
                     description_to_use = (
                         form.description.data.strip()
