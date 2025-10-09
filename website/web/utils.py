@@ -1,6 +1,8 @@
 import random
 import string
 from website.db_class.db import User , db
+import json
+from typing import List, Optional, Tuple, Union
 
 def form_to_dict(form):
     """Parse a form into a dict"""
@@ -62,3 +64,55 @@ def generate_api_key(length=60):
 #   Parser for name and description   #
 #######################################
 
+import json
+from typing import List, Tuple, Optional
+
+def parse_stix_reports(json_text: str) -> List[Tuple[str, Optional[str]]]:
+    """
+    Parse a STIX JSON string and extract all objects of type 'report' or 'grouping'.
+    Always extract 'name' and optionally 'description'.
+    Works with both bundles and raw object lists.
+    """
+    print("=== Parsing STIX JSON for reports/groupings ===")
+    try:
+        data = json.loads(json_text)
+        print("JSON loaded successfully.")
+    except json.JSONDecodeError as e:
+        print("❌ JSON decode error:", e)
+        return []
+
+    results = []
+
+    # If STIX bundle structure: {"type": "bundle", "objects": [...]}
+    if isinstance(data, dict):
+        if data.get("type") == "bundle" and "objects" in data:
+            print("Detected STIX bundle with", len(data["objects"]), "objects.")
+            objects = data["objects"]
+        else:
+            # Maybe it's a single object or non-bundle dict
+            print("Detected single STIX object or unknown dict structure.")
+            objects = [data]
+    elif isinstance(data, list):
+        print("Detected a list of STIX objects.")
+        objects = data
+    else:
+        print("❌ Unsupported JSON structure:", type(data))
+        return []
+
+    # Traverse all objects
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+
+        obj_type = obj.get("type")
+        if obj_type in ("report", "grouping"):
+            name = obj.get("name", "").strip()
+            description = obj.get("description", None)
+            print(f"✅ Found {obj_type}: name='{name}', description='{description}'")
+            results.append((name, description))
+        else:
+            # Debug non-report/grouping objects
+            print(f"Skipping object of type '{obj_type}'")
+
+    print(f"=== Finished parsing. Found {len(results)} report/grouping objects ===")
+    return results

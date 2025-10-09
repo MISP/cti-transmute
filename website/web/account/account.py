@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template, redirect, url_for, flash
+from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash
 
 from website.db_class.db import User
 from website.web.account.account_form import AddNewUserForm, EditUserForm, LoginForm
@@ -87,3 +87,35 @@ def edit_user() -> redirect:
         form.email.data = current_user.email
         # form.password.data = "" # current_user.password_hash
     return render_template("account/edit_user.html", form=form)
+
+#####################
+#   Admin section   #
+#####################
+
+@account_blueprint.route("/manage_user", methods=['GET', "POST"])
+@login_required
+def manage_user() -> redirect:
+    """Manage user section"""
+    if current_user.is_admin():
+        return render_template("admin/manage_user.html")
+    return render_template("access_denied.html")
+
+@account_blueprint.route("/get_users", methods=['GET'])
+@login_required
+def get_users():
+    """History of the last convert, with optional filter and sort"""
+    page = request.args.get('page', 1, type=int)
+    searchQuery = request.args.get('searchQuery',  type=str) 
+    filterConnection = request.args.get('filterConnection',  type=str)
+    filterAdmin = request.args.get('filterAdmin',  type=str)
+    if current_user.is_admin():
+        pagination = AccountModel.get_users_page(page, searchQuery=searchQuery, filterConnection=filterConnection, filterAdmin=filterAdmin)
+        users_list = [item.to_json() for item in pagination.items]
+
+        return {
+            "list": users_list,
+            "total_page": pagination.page,
+            "success": False, 
+        }, 200
+    else:
+        return render_template("access_denied.html")
