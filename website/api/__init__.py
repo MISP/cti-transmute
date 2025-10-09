@@ -30,7 +30,7 @@ def setup_api(application) -> Api:
     @api.documentation
     def custom_ui() -> str:
         http_schema = 'http' if application.debug else 'https'
-        url = get_config('generic', 'public_domain')
+        url = get_config('generic')
         return render_template(
             'swagger-ui.html',
             title=api.title,
