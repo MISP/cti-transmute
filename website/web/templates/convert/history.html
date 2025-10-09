@@ -7,7 +7,9 @@
     <div class="mb-3 d-flex align-items-end flex-wrap g-2">
         <!-- Search input -->
         <div class="flex-fill me-2" style="min-width: 200px;">
+            <label for="search" class="form-label">Search:</label>
             <input 
+                id="search" 
                 type="text" 
                 v-model="searchQuery" 
                 @input="onSearchInput" 
@@ -70,19 +72,18 @@
             </button>
         </div>
     </div>
-
-
-
-
     
     <!-- Table of conversions -->
     <div class="row" v-if="convert_history.length > 0">
         <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
-            <div class="card mb-3" style="background-color:var(--color-sidebar);" @click="seeDetails(item.id)">
+            <div id="card-item"
+                class="card mb-3"
+                style="background-color: var(--color-bg); cursor: pointer; transition: background-color 0.3s;"
+                @click="seeDetails(item.id)">
                 <div class="card-body ">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 text-truncate text-warning">
-                            <i class="card-title text-warning" title="Public/Private"></i>
+                        <h5 class="card-title mb-0 text-truncate ">
+                            <i class="card-title " title="Public/Private"></i>
                             [[ item.name ]]
                         </h5>
                         <span style="color: var(--color-text);">Created: [[ item.created_at ]]</span>

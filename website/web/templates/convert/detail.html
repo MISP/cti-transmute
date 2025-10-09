@@ -12,7 +12,7 @@
                 <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
                     <div class="d-flex align-items-center gap-1">
                         <!-- Small edit button -->
-                        <button class="btn btn-sm "
+                        <button class="btn btn-sm text-bg-primary "
                                 style="color: var(--color-text);" 
                                 title="Edit convert" 
                                 data-bs-toggle="modal" 
@@ -62,7 +62,7 @@
                             </div>
                         </div>
                         <!-- Delete button -->
-                        <button class="btn btn-sm "
+                        <button class="btn btn-sm text-bg-danger"
                                 style="color: var(--color-text);" 
                                 title="Delete convert"
                                 data-bs-toggle="modal" 
@@ -112,149 +112,123 @@
 
 
         <div class="mb-3 small">
-            <i class="fas fa-user me-1"></i> Author:
+            <i class="fas fa-user me-1"></i> Author :
             <span v-if="convert.author" class="badge rounded-pill text-bg-primary">
                 [[ convert.author ]]
             </span>
             <span v-else class="fst-italic"  class="badge rounded-pill text-bg-primary">Anonymous</span>
             <br>
             <i class="far fa-calendar-alt me-1"></i> Created on [[ convert.created_at ]]
+            <br>
+            <i class="far fa-key me-1"></i> Uuid : [[ convert.uuid ]]
         </div>
 
         <div class="custom-inner-card p-3 mb-4">
-            <h6 class="fw-bold text-warning text-uppercase mb-2">Description</h6>
+            <h6 class="fw-bold  text-uppercase mb-2">Description</h6>
             <p class="mb-0" v-if="convert.description">[[ convert.description ]]</p>
             <p class="fst-italic text-muted mb-0" v-else>No description provided.</p>
         </div>
 
         <div>
-            <!-- Tabs Header -->
-            <ul class="nav nav-tabs mb-3" :id="'convertTabs-' + convert.id" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button style="background-color:var(--color-sidebar);"
-                            class="nav-link active fw-semibold"
-                            :id="'input-tab-' + convert.id"
-                            data-bs-toggle="tab"
-                            :data-bs-target="'#input-pane-' + convert.id"
-                            type="button" role="tab"
-                            :aria-controls="'input-pane-' + convert.id"
-                            aria-selected="true">
+            <ul class="nav nav-underline mb-3" :id="'convertTabs-' + convert.id" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" :id="'input-tab-' + convert.id" data-bs-toggle="tab" :href="'#input-pane-' + convert.id" role="tab" aria-current="page"  :aria-controls="'input-pane-' + convert.id"  aria-selected="true">
                         <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
-                            <span class="text-warning"> STIX Input </span>
+                            STIX Input
                         </template>
                         <template v-else>
-                            <span class="text-warning"> MISP Input </span>
+                            MISP Input
                         </template>
-                    </button>
+                    </a>
                 </li>
 
-                <li class="nav-item" role="presentation">
-                    <button style="background-color:var(--color-sidebar);"
-                            class="nav-link fw-semibold"
-                            :id="'output-tab-' + convert.id"
-                            data-bs-toggle="tab"
-                            :data-bs-target="'#output-pane-' + convert.id"
-                            type="button" role="tab"
-                            :aria-controls="'output-pane-' + convert.id"
-                            aria-selected="false">
+                <!-- Onglet OUTPUT -->
+                <li class="nav-item">
+                    <a  class="nav-link" :id="'output-tab-' + convert.id"  data-bs-toggle="tab" :href="'#output-pane-' + convert.id" role="tab"  :aria-controls="'output-pane-' + convert.id"  aria-selected="false" >
                         <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
-                             <span class="text-warning"> MISP Output </span>
+                            MISP Output
                         </template>
                         <template v-else>
-                            <span class="text-warning"> STIX Output </span>
+                            STIX Output
                         </template>
-                    </button>
+                    </a>
                 </li>
             </ul>
 
-            <!-- Tabs Content -->
             <div class="tab-content" :id="'convertTabsContent-' + convert.id">
-                <!-- Input Panel -->
-                <div class="tab-pane fade show active" 
-                    :id="'input-pane-' + convert.id"
-                    role="tabpanel"
-                    :aria-labelledby="'input-tab-' + convert.id">
-
-                    <div class="card custom-inner-card">
-                        <div class="card-body custom-card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0">Input Text</h6>
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name ,convert.input_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(convert.input_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                 </div>
-
-
-                                
-                            </div>
-                            <!-- <pre class="custom-pre mb-2">[[ convert.input_text ]]</pre> -->
-                            <pre class="custom-pre mb-2"><code class="json">[[ convert.input_text ]]</code></pre>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <small class="text-small">Updated: [[ convert.updated_at ]]</small>
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name ,convert.input_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(convert.input_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                 </div>
-                            </div>
-                            
+                <div
+                class="tab-pane fade show active"
+                :id="'input-pane-' + convert.id"
+                role="tabpanel"
+                :aria-labelledby="'input-tab-' + convert.id"
+                >
+                <div class="card custom-inner-card">
+                    <div class="card-body custom-card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-1">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="downloadText(convert.name, convert.input_text, $event)">
+                            <i class="fas fa-download me-1"></i> Download
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="copyText(convert.input_text, $event)">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
                         </div>
+                    </div>
+                    <pre class="custom-pre mb-2"><code class="json">[[ convert.input_text ]]</code></pre>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-small">Updated: [[ convert.updated_at ]]</small>
+                        <div class="d-flex align-items-center gap-1">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="downloadText(convert.name, convert.input_text, $event)">
+                            <i class="fas fa-download me-1"></i> Download
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="copyText(convert.input_text, $event)">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        </div>
+                    </div>
                     </div>
                 </div>
+                </div>
 
-                <!-- Output Panel -->
-                <div class="tab-pane fade" 
-                    :id="'output-pane-' + convert.id"
-                    role="tabpanel"
-                    :aria-labelledby="'output-tab-' + convert.id">
-
-                    <div class="card custom-inner-card">
-                        <div class="card-body custom-card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0">Output Text</h6>
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name ,convert.output_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(convert.output_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                 </div>
-                            </div>
-                            <!-- <pre class="custom-pre mb-2">[[ convert.output_text ]]</pre> -->
-                            <pre class="custom-pre mb-2"><code class="json">[[ convert.output_text ]]</code></pre>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <small class="text-small">Updated: [[ convert.updated_at ]]</small>
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name ,convert.output_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            @click="copyText(convert.Output_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                 </div>
-                            </div>
-                            
+                <div class="tab-pane fade":id="'output-pane-' + convert.id" role="tabpanel" :aria-labelledby="'output-tab-' + convert.id">
+                <div class="card custom-inner-card">
+                    <div class="card-body custom-card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-1">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="downloadText(convert.name, convert.output_text, $event)">
+                            <i class="fas fa-download me-1"></i> Download
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="copyText(convert.output_text, $event)">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
                         </div>
                     </div>
+                    <pre class="custom-pre mb-2"><code class="json">[[ convert.output_text ]]</code></pre>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-small">Updated: [[ convert.updated_at ]]</small>
+                        <div class="d-flex align-items-center gap-1">
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="downloadText(convert.name, convert.output_text, $event)">
+                            <i class="fas fa-download me-1"></i> Download
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary"
+                                @click="copyText(convert.output_text, $event)">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
                 </div>
             </div>
-        </div>
+            </div>
+
         <div class="text-end mt-3" style="margin-bottom: 70px;">
             <a href="{{ url_for('convert.history') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Back to history

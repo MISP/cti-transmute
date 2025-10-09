@@ -56,3 +56,9 @@ def create_admin():
 
 def generate_api_key(length=60):
     return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+
+
+#######################################
+#   Parser for name and description   #
+#######################################
+

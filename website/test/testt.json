@@ -1,7 +1,7 @@
 {
     "type": "bundle",
     "id": "bundle--b3e66762-ddf0-440f-afa4-4e4c6c4b5ee6",
-    "objects": [
+    "object     s": [
         {
             "type": "marking-definition",
             "spec_version": "2.1",
