@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if not current_user.is_admin() %}
+        <script>
+            window.location.href = "/access_denied";
+        </script>
+    {% else %}
+
+        <div class="container my-5" id="main-container">
+
+            <div id="user_id" data-user-id="{{ user.id }}"></div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block script %}
+    <script type="module">
+        const user_id = document.getElementById('user_id').dataset.userId;
+        const { createApp, ref,computed } = Vue
+        import { display_toast, message_list, display_prepared_toast } from '/static/js/toaster.js'
+
+        createApp({
+            delimiters: ['[[', ']]'],
+            setup() {
+                const user = ref([])
+
+                const user_convert = ref([]) // all the convert create by the user
+                const current_page = ref(1)
+                const total_pages = ref(1)
+
+                async function fetchUser(){
+                    const params = new URLSearchParams({
+                        user_id:user_id
+                    })
+                    const res = await fetch(`/account/get_user?`+ params.toString());
+                    if (res.ok) {
+                        const data = await res.json();
+                        user.value = data.user;
+                    }
+                }
+                fetchUser(1)
+
+
+                async function fetchConvertuser(page) {
+                     const params = new URLSearchParams({
+                        user_id:user_id,
+                        page:page
+                    })
+                    const res = await fetch(`/account/get_user_convert?`+ params.toString());
+                    if (res.ok) {
+                        const data = await res.json();
+                        user_convert.value = data.list || []
+                        total_pages.value = data.total_page || 1
+                        current_page.value = page
+                    }
+                }
+                fetchConvertuser(1)
+
+                return {
+                    fetchConvertuser,
+                    fetchUser,
+                    user,
+                    user_convert,
+                    current_page,
+                    total_pages
+                }
+            }
+        }).mount('#main-container')
+    </script>
+{% endblock %}

@@ -24,6 +24,13 @@
             <div class="collapse ps-3" id="userMenu">
                 <ul class="nav flex-column">
                     {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin() %}
+                            <li>
+                                <a href="/account/manage_user" class="nav-link">
+                                    <i class="fa-solid fa-users fa-fw me-2"></i> Manage users
+                                </a>
+                            </li>
+                        {% endif %}
                         <li>
                             <a href="/account/" class="nav-link">
                                 <i class="fa-solid fa-user fa-fw me-2"></i> Profil

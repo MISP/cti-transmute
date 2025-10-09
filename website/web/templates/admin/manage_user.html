@@ -41,7 +41,7 @@
 
     <div class="user-list">
         <div  v-for="user in users" :key="user.id" class="user-item mb-3 p-3 border rounded shadow-sm">
-            <div  class="d-flex justify-content-between align-items-center"role="button">
+            <div  class="d-flex justify-content-between align-items-center"role="button" @click="seeUserDetail(user.id)">
                 <div class="d-flex flex-column">
                     <h5 class="mb-1">[[ user.first_name ]] [[ user.last_name ]]</h5>
                     <small class="text-muted">[[ user.email ]]</small>
@@ -128,6 +128,10 @@ createApp({
       await fetchUser(1)
     }
 
+    function seeUserDetail(id){
+        window.location.href = "/account/detail_user/"+id;
+    }
+
     fetchUser(1)
 
     const visiblePages = computed(() => {
@@ -159,7 +163,8 @@ createApp({
       message_list,
       visiblePages,
       filterConnection,
-      filterAdmin
+      filterAdmin,
+      seeUserDetail
     }
   }
 }).mount('#main-container')

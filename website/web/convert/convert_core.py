@@ -156,3 +156,20 @@ def edit_convert(id, data):
     # Commit changes
     db.session.commit()
     return True 
+def get_convert_by_user(page, user_id):
+    """
+    Return paginated conversions created by a specific user.
+    
+    Parameters:
+        page (int): page number
+        user_id (int): ID of the user
+    
+    Returns:
+        Pagination object with 10 items per page
+    """
+    if not user_id:
+        return None
+
+    query = Convert.query.filter_by(user_id=user_id).order_by(Convert.created_at.desc())
+    
+    return query.paginate(page=page, per_page=10)

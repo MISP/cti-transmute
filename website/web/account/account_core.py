@@ -58,7 +58,7 @@ def get_admin_user()-> id:
     """Return the default user"""
     return User.query.filter_by(email='admin@admin.admin').first()
 
-def get_user(id) -> id:
+def get_user(id) -> User:
     """Return the user"""
     return User.query.get(id)
 
