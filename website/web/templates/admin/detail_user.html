@@ -6,10 +6,156 @@
             window.location.href = "/access_denied";
         </script>
     {% else %}
-
         <div class="container my-5" id="main-container">
-
             <div id="user_id" data-user-id="{{ user.id }}"></div>
+
+            <div class="card shadow-lg border-0 mb-4" style="background-color: var(--color-sidebar);">
+                <div class="card-body ">
+                    <h3 class="mb-3 ">
+                        <i class="fa-solid fa-user-circle me-2"></i>
+                        Profil [[ user.first_name ]]
+                    </h3>
+                   <div v-if="user" class="row">
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="fa-solid fa-id-badge me-2 "></i>Last_name :</strong>
+                            [[ user.last_name ]]
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="fa-solid fa-user me-2"></i>First_name :</strong>
+                            [[ user.first_name ]]
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="fa-solid fa-envelope me-2"></i>Email :</strong>
+                            [[ user.email ]]
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="fa-solid fa-user-gear me-2 "></i>Admin :</strong>
+                            <span class="badge" :class="user.admin ? 'bg-success' : 'bg-danger'">
+                                [[ user.admin ? 'Yes' : 'No' ]]
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-lg border-0" style="background-color: var(--color-sidebar);">
+                <div class="card-body ">
+                    
+                    <div class="mb-3 d-flex align-items-end flex-wrap g-2">
+                        <!-- Search input -->
+                        <div class="flex-fill me-2" style="min-width: 200px;">
+                            <label for="search" class="form-label">Search:</label>
+                            <input 
+                                id="search" 
+                                type="text" 
+                                v-model="searchQuery" 
+                                @input="onSearchInput" 
+                                @keyup.enter="onEnterKey" 
+                                class="form-control form-control-sm rounded-pill" 
+                                placeholder="Search by keywords..."
+                            >
+                        </div>
+
+                        <!-- Filter by conversion -->
+                        <div class="flex-fill me-2" style="min-width: 180px;">
+                            <label for="conversionFilter" class="form-label">Filter by conversion:</label>
+                            <select 
+                                id="conversionFilter" 
+                                class="form-select" 
+                                @change="onSearchInput"
+                                v-model="filter_type" 
+                                style="background-color:var(--color-sidebar); color: var(--color-text);"
+                            >
+                                <option value="">All</option>
+                                <option value="MISP_TO_STIX">MISP to STIX</option>
+                                <option value="STIX_TO_MISP">STIX to MISP</option>
+                            </select>
+                        </div>
+
+                        <!-- Sort by date -->
+                        <div class="flex-fill me-2" style="min-width: 180px;">
+                            <label for="sortOrder" class="form-label">Sort by date:</label>
+                            <select 
+                                id="sortOrder" 
+                                class="form-select" 
+                                @change="onSearchInput"
+                                v-model="sort_order" 
+                                style="background-color:var(--color-sidebar); color: var(--color-text);"
+                            >
+                                <option value="desc">Newest first</option>
+                                <option value="asc">Oldest first</option>
+                            </select>
+                        </div>
+                    </div>
+
+
+
+                    <div v-if="user_convert.length > 0">
+                        <div class="table-responsive">
+                            <table class="table align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th><i class="fa-solid fa-hashtag me-1"></i>ID</th>
+                                        <th><i class="fa-solid fa-user me-1"></i>Name</th>
+                                        <th><i class="fa-solid fa-code-compare me-1"></i>Type</th>
+                                        <th><i class="fa-solid fa-align-left me-1"></i>Description</th>
+                                        <th><i class="fa-solid fa-calendar me-1"></i>Created at</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="conv in user_convert"
+                                        :key="conv.id"
+                                        @click="goTo(conv.id)"
+                                        style="cursor: pointer; transition: background-color 0.3s;"
+                                        @mouseover="hover = conv.id"
+                                        @mouseleave="hover = null"
+                                        :style="{ backgroundColor: hover === conv.id ? '#f1f3f5' : 'transparent' }">
+
+                                        <td>[[ conv.id ]]</td>
+                                        <td>[[ conv.name ]]</td>
+                                        <td>
+                                            <span class="badge bg-info text-dark">[[ conv.conversion_type ]]</span>
+                                        </td>
+                                        <td>[[ conv.description ]]</td>
+                                        <td>[[ conv.created_at ]]</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div v-else class="text-center  py-4">
+                        <i class="fa-solid fa-circle-info fa-2x mb-2 "></i>
+                        <p>No convert created by <strong>[[ user.first_name]]</strong></p>
+                    </div>
+                </div>
+                <div v-if="user_convert.length > 0" >
+                    <nav aria-label="Page navigation" >
+                        <ul class="pagination justify-content-center mt-3">
+                            <li class="page-item" :class="{ disabled: current_page === 1 }">
+                                <button class="page-link" @click="current_page > 1 && fetchConvertuser(current_page - 1)">
+                                    <i class="fa-solid fa-angle-left"></i>
+                                </button>
+                            </li>
+
+                            <li class="page-item"
+                                v-for="page in visiblePages"
+                                :key="page"
+                                :class="{ active: page === current_page, disabled: page === '...' }">
+                                <button class="page-link" v-if="page !== '...'" @click="fetchConvertuser(page)">
+                                    [[ page ]]
+                                </button>
+                                <span class="page-link" v-else>...</span>
+                            </li>
+
+                            <li class="page-item" :class="{ disabled: current_page === total_pages }">
+                                <button class="page-link" @click="current_page < total_pages && fetchConvertuser(current_page + 1)">
+                                    <i class="fa-solid fa-angle-right"></i>
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
         </div>
     {% endif %}
 {% endblock %}
@@ -25,9 +171,13 @@
             setup() {
                 const user = ref([])
 
-                const user_convert = ref([]) // all the convert create by the user
+                const user_convert = ref([]) 
                 const current_page = ref(1)
                 const total_pages = ref(1)
+
+                const filter_type = ref('')
+                const sort_order = ref('desc')
+                const searchQuery = ref('')
 
                 async function fetchUser(){
                     const params = new URLSearchParams({
@@ -45,7 +195,10 @@
                 async function fetchConvertuser(page) {
                      const params = new URLSearchParams({
                         user_id:user_id,
-                        page:page
+                        page:page,
+                        filter_type:filter_type,
+                        sort_order:sort_order,
+                        searchQuery
                     })
                     const res = await fetch(`/account/get_user_convert?`+ params.toString());
                     if (res.ok) {
@@ -57,13 +210,51 @@
                 }
                 fetchConvertuser(1)
 
+                function goTo(id){
+                    window.location.href = "/convert/detail/" + id;
+                }
+
+                const visiblePages = computed(() => {
+                    const pages = []
+                    const total = total_pages.value
+                    const current = current_page.value
+                    if (total <= 7) {
+                    for (let i = 1; i <= total; i++) pages.push(i)
+                    } else {
+                    if (current <= 4) {
+                        pages.push(1, 2, 3, 4, 5, '...', total)
+                    } else if (current >= total - 3) {
+                        pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
+                    } else {
+                        pages.push(1, '...', current - 1, current, current + 1, '...', total)
+                    }
+                    }
+                    return pages
+                })
+
+
+                async function onSearchInput() {
+                    await fetchConvertuser(1)
+                }
+
+                async function onEnterKey() {
+                    await fetchConvertuser(1)
+                }
+
                 return {
                     fetchConvertuser,
                     fetchUser,
                     user,
                     user_convert,
                     current_page,
-                    total_pages
+                    total_pages,
+                    visiblePages,
+                    goTo,
+                    onSearchInput,
+                    onEnterKey,
+                    filter_type,
+                    sort_order,
+                    searchQuery 
                 }
             }
         }).mount('#main-container')

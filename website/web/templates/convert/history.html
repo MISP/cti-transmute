@@ -25,6 +25,7 @@
             <select 
                 id="conversionFilter" 
                 class="form-select" 
+                @change="onSearchInput"
                 v-model="filter_type" 
                 style="background-color:var(--color-sidebar); color: var(--color-text);"
             >
@@ -41,6 +42,7 @@
                 id="sortOrder" 
                 class="form-select" 
                 v-model="sort_order" 
+                @change="onSearchInput"
                 style="background-color:var(--color-sidebar); color: var(--color-text);"
             >
                 <option value="desc">Newest first</option>
@@ -56,20 +58,11 @@
                     class="form-check-input" 
                     type="checkbox" 
                     id="myConvertsOnly" 
+                    @change="onSearchInput"
                     v-model="only_mine"
                     style="width: 3rem; height: 1.5rem; transform: translateY(3px);"
                 >
             </div>
-        </div>
-
-        <!-- Apply button -->
-        <div class="d-flex flex-column justify-content-end" style="min-width: 100px;">
-            <button 
-                class="btn btn-primary w-100" 
-                @click="fetchConvertHistory(1)"
-            >
-                Apply
-            </button>
         </div>
     </div>
     

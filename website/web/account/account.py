@@ -162,10 +162,13 @@ def get_user_convert() -> redirect:
     """Manage user section"""
     id = request.args.get('user_id', type=int)
     page = request.args.get('page', 1, type=int)
+    filter_type = request.args.get('filter_type',  type=str)  
+    sort_order = request.args.get('sort_order',  type=str) 
+    searchQuery = request.args.get('searchQuery',  type=str) 
     if current_user.is_admin():
         user = AccountModel.get_user(id)
         if user:
-            user_convert = ConvertModel.get_convert_by_user(page, user.id)
+            user_convert = ConvertModel.get_convert_by_user(page, user.id , filter_type, sort_order, searchQuery)
             if user_convert:
                 user_convert_list = [item.to_json() for item in user_convert.items]
                 return {
