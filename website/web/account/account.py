@@ -228,19 +228,19 @@ def delete_user(id) -> redirect:
 @login_required
 def edit_admin():
     """Manage admin right for user"""
-    id = request.args.get('id', 1, type=int)
-    if id:
-        user = AccountModel.get_user(id)
-        if user:
-            if current_user.id == user.id:
-                return {
-                        "success": False, 
-                        "message": "You can't remove your admin right ", 
-                        "admin": user.admin,
-                        "toast_class" : "info"
-                    }, 200
-            else:
-                if current_user.is_admin():
+    if current_user.is_admin():
+        id = request.args.get('id', 1, type=int)
+        if id:
+            user = AccountModel.get_user(id)
+            if user:
+                if current_user.id == user.id:
+                    return {
+                            "success": False, 
+                            "message": "You can't remove your admin right ", 
+                            "admin": user.admin,
+                            "toast_class" : "info"
+                        }, 200
+                else:
                     success , _bool = AccountModel.edit_admin(id)
                     if success:
                         if _bool == True:
@@ -258,14 +258,16 @@ def edit_admin():
                         "message": "Error during the edit of the public/private section", 
                         "toast_class" : "danger"
                     }, 500
-                return redirect(url_for("access_denied"))
+            return {
+                "success": False, 
+                "message": "No convert history for this id", 
+                "toast_class" : "danger"
+                }, 500
         return {
             "success": False, 
-            "message": "No convert history for this id", 
+            "message": "No id provided", 
             "toast_class" : "danger"
-            }, 500
-    return {
-        "success": False, 
-        "message": "No id provided", 
-        "toast_class" : "danger"
-        }, 404
+            }, 404
+                    
+    return render_template("access_denied.html")
+   
