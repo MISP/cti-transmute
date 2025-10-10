@@ -127,14 +127,26 @@ def parse_misp_reports(file_content):
 
 
 
+import json
+
 def extract_name_from_misp_json(json_text: str) -> str | None:
+    """
+    Extrait la valeur de 'info' depuis un JSON MISP.
+    Fonctionne si 'info' est à la racine ou dans 'Event'.
+    """
     try:
         data = json.loads(json_text)
-        event = data.get("Event")
-        if isinstance(event, dict):
-            info_value = event.get("info")
-            if isinstance(info_value, str) and info_value.strip():
-                return info_value.strip()
+
+        info_value = data.get("info")
+
+        if not info_value and isinstance(data.get("Event"), dict):
+            info_value = data["Event"].get("info")
+
+        if isinstance(info_value, str) and info_value.strip():
+            return info_value.strip()
+
     except (ValueError, TypeError):
         pass
+
     return None
+

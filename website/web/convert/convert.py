@@ -50,8 +50,14 @@ def misp_to_stix():
                     flash("Converted to STIX successfully!", "success")
 
                     auto_name = extract_name_from_misp_json(file_content)
-                    if  auto_name:
-                        form.name.data = auto_name
+
+                    if not form.name.data:
+                        if  auto_name:
+                            form.name.data = auto_name
+                        
+                    if not form.description.data:
+                        if  auto_name:
+                            form.description.data = f"MISP to STIX conversion, version {form.version.data} -"+f" {auto_name}" 
 
                     output_text = json.dumps(data, indent=2)
 
@@ -193,21 +199,18 @@ def get_page_history():
 @login_required
 def delete_rule() -> jsonify:
     """Delete an item"""
-    if current_user.is_anonymous():
-        return {"success": False, "message": "You are not connect, you can't delete !" , "toast_class" : "danger"}, 403
+    item_id  = request.args.get("id")
+    convert = ConvertModel.get_convert(item_id) 
+    if convert:
+        if current_user.id == convert.user_id or current_user.is_admin():
+            success = ConvertModel.delete_convert(item_id)
+            if success:
+                return {"success": True, "message": "Conversion history deleted!" , "toast_class" : "success"}, 200
+            else:
+                return {"success": False, "message": "Error during deleting the item !" , "toast_class" : "danger"}, 500
+        return render_template("access_denied.html")
     else:
-        item_id  = request.args.get("id")
-        convert = ConvertModel.get_convert(item_id) 
-        if convert:
-            if current_user.id == convert.user_id or current_user.is_admin():
-                success = ConvertModel.delete_convert(item_id)
-                if success:
-                    return {"success": True, "message": "Conversion history deleted!" , "toast_class" : "success"}, 200
-                else:
-                    return {"success": False, "message": "Error during deleting the item !" , "toast_class" : "danger"}, 500
-            return {"success": False, "message": "You are not connect, you can't delete !" , "toast_class" : "danger"}, 403
-        else:
-            return {"success": False, "message": "No item found !" , "toast_class" : "danger"}, 500
+        return {"success": False, "message": "No item found !" , "toast_class" : "danger"}, 500
 
 
 @convert_blueprint.route("/detail/<int:id>", methods=['GET'])
@@ -256,7 +259,6 @@ def edit(id):
 
             return render_template("convert/edit.html", form=form, convert_id=id )
     else:
-            print("ah")
             return render_template("access_denied.html")
         
         
