@@ -189,3 +189,82 @@ def get_user_convert() -> redirect:
                 "Message": " No user found with this id "
             }, 404
     return render_template("access_denied.html")
+
+
+
+
+@account_blueprint.route("/delete/<int:id>", methods=['GET', "POST"])
+@login_required
+def delete_user(id) -> redirect:
+    """Delete the user"""
+    if current_user.is_admin():
+        user = AccountModel.get_user(id)
+        if user:
+            if user.id == current_user.id:
+                flash(f"You can't delete you account because you are admin!", 'danger')
+                return redirect(f"/account/detail_user/{id}")
+            else:
+                _success = AccountModel.get_all_convert_own_by_user_id(id)
+                if _success:
+                    success = AccountModel.delete(user.id)
+                    if success:
+                        flash(f"User {user.last_name} {user.first_name} deleted with success", 'success')
+                        return redirect("/account/manage_user")
+                    else:
+                        flash(f"Enable to delete User: {user.last_name} {user.first_name}!", 'danger')
+                        return redirect(f"/account/detail_user/{id}")
+                else:
+                    flash(f"Enable to delete User: {user.last_name} {user.first_name}!", 'danger')
+                    return redirect(f"/account/detail_user/{id}")
+
+        flash(f"Enable to delete User: {user.last_name} {user.first_name}!", 'danger')
+        return redirect(f"/account/detail_user/{id}")
+    return render_template("access_denied.html")
+
+
+
+@account_blueprint.route("/edit_admin", methods=['GET'])
+@login_required
+def edit_admin():
+    """Manage admin right for user"""
+    id = request.args.get('id', 1, type=int)
+    if id:
+        user = AccountModel.get_user(id)
+        if user:
+            if current_user.id == user.id:
+                return {
+                        "success": False, 
+                        "message": "You can't remove your admin right ", 
+                        "admin": user.admin,
+                        "toast_class" : "info"
+                    }, 200
+            else:
+                if current_user.is_admin():
+                    success , _bool = AccountModel.edit_admin(id)
+                    if success:
+                        if _bool == True:
+                            message="This user has admin right now"
+                        else:
+                            message="This user has no more admin right now"
+                        return {
+                            "success": True, 
+                            "admin": user.admin,
+                            "message": message, 
+                            "toast_class" : "success"
+                            }, 200
+                    return {
+                        "success": False, 
+                        "message": "Error during the edit of the public/private section", 
+                        "toast_class" : "danger"
+                    }, 500
+                return redirect(url_for("access_denied"))
+        return {
+            "success": False, 
+            "message": "No convert history for this id", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No id provided", 
+        "toast_class" : "danger"
+        }, 404

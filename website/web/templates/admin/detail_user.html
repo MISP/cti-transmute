@@ -12,9 +12,40 @@
             <div class="card shadow-lg border-0 mb-4" style="background-color: var(--color-sidebar);">
                 <div class="card-body ">
                     <h3 class="mb-3 ">
-                        <i class="fa-solid fa-user-circle me-2"></i>
-                        Profil [[ user.first_name ]]
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fa-solid fa-user-circle me-2"></i> Profil [[ user.first_name ]]
+                                <button type="button" class="btn btn-danger btn-sm" title="Delete the conversion" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'">
+                                    <i class="fa-solid fa-trash fa-fw"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-2">
+                                <span  v-if="user.admin"  class="badge bg-secondary">Admin</span>
+                                <span  v-if="user.is_connected"  class="badge bg-success" >Online</span>
+                                <span  v-else class="badge bg-danger">Offline</span>
+                                <i class="bi bi-chevron-down small"></i>
+                            </div>
+                        </div>
                     </h3>
+                    <div class="modal fade" :id="'delete_user_modal_'" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true" >
+                        <div class="modal-dialog modal-lg">
+                            <div style="background-color:var(--color-sidebar);" class="modal-content">
+                                <div class="modal-header">
+                                    <h2 id="delete_item_modal" style="color: var( --color-text);">
+                                        Delete [[ user.first_name ]] ?
+                                    </h2>
+                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <a :href="`/account/delete/${user.id}`" class="btn btn-danger">
+                                        <i class="fa-solid fa-trash"></i> Confirm
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                    <div v-if="user" class="row">
                         <div class="col-md-6 mb-2">
                             <strong><i class="fa-solid fa-id-badge me-2 "></i>Last_name :</strong>
@@ -30,9 +61,12 @@
                         </div>
                         <div class="col-md-6 mb-2">
                             <strong><i class="fa-solid fa-user-gear me-2 "></i>Admin :</strong>
-                            <span class="badge" :class="user.admin ? 'bg-success' : 'bg-danger'">
-                                [[ user.admin ? 'Yes' : 'No' ]]
-                            </span>
+                            <button class="btn btn-sm fw-semibold"
+                                :class="user.admin ? 'btn-success' : 'btn-danger'"
+                                :title="user.admin ? 'Remove admin right' : 'Give admin right'"
+                                @click="changeAdminRight()">
+                                [[ user.admin ? 'Yes' : 'No'  ]]
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -100,16 +134,11 @@
                                         <th><i class="fa-solid fa-code-compare me-1"></i>Type</th>
                                         <th><i class="fa-solid fa-align-left me-1"></i>Description</th>
                                         <th><i class="fa-solid fa-calendar me-1"></i>Created at</th>
+                                        <th><i class="fa-solid fa-calendar me-1"></i>Public</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="conv in user_convert"
-                                        :key="conv.id"
-                                        @click="goTo(conv.id)"
-                                        style="cursor: pointer; transition: background-color 0.3s;"
-                                        @mouseover="hover = conv.id"
-                                        @mouseleave="hover = null"
-                                        :style="{ backgroundColor: hover === conv.id ? '#f1f3f5' : 'transparent' }">
+                                    <tr v-for="conv in user_convert" :key="conv.id" @click="goTo(conv.id)" style="cursor: pointer; transition: background-color 0.3s; background-color:var(--color-navbar); color:var(--color-text);" id="card-item">
 
                                         <td>[[ conv.id ]]</td>
                                         <td>[[ conv.name ]]</td>
@@ -118,6 +147,10 @@
                                         </td>
                                         <td>[[ conv.description ]]</td>
                                         <td>[[ conv.created_at ]]</td>
+                                        <td>
+                                            <span class="badge" :class="conv.public ? 'bg-success' : 'bg-danger'">
+                                                [[ conv.public ? 'Public' : 'Private' ]]
+                                            </span></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -125,7 +158,7 @@
                     </div>
                     <div v-else class="text-center  py-4">
                         <i class="fa-solid fa-circle-info fa-2x mb-2 "></i>
-                        <p>No convert created by <strong>[[ user.first_name]]</strong></p>
+                        <p>No convert found for <strong>[[ user.first_name]]</strong></p>
                     </div>
                 </div>
                 <div v-if="user_convert.length > 0" >
@@ -196,9 +229,9 @@
                      const params = new URLSearchParams({
                         user_id:user_id,
                         page:page,
-                        filter_type:filter_type,
-                        sort_order:sort_order,
-                        searchQuery
+                        filter_type: filter_type.value || '',
+                        sort_order: sort_order.value || 'desc',
+                        searchQuery: searchQuery.value || ''
                     })
                     const res = await fetch(`/account/get_user_convert?`+ params.toString());
                     if (res.ok) {
@@ -241,7 +274,25 @@
                     await fetchConvertuser(1)
                 }
 
+                async function changeAdminRight() {
+                    const params = new URLSearchParams({
+                        id:user_id
+                    })
+                    const res = await fetch(`/account/edit_admin?`+ params.toString());
+                    const data = await res.json();
+                    if(res.ok){
+                        user.value.admin = data.admin
+                    }
+                    const message = {
+                        message: data.message,
+                        toast_class: data.toast_class,
+                        id: Math.random()
+                    };
+                    display_prepared_toast(message);
+                }
+
                 return {
+                    message_list,
                     fetchConvertuser,
                     fetchUser,
                     user,
@@ -254,7 +305,8 @@
                     onEnterKey,
                     filter_type,
                     sort_order,
-                    searchQuery 
+                    searchQuery ,
+                    changeAdminRight
                 }
             }
         }).mount('#main-container')

@@ -157,21 +157,14 @@ def edit_convert(id, data):
     db.session.commit()
     return True 
 
-def get_convert_by_user(page, user_id , filter_type=None, sort_order='desc',  searchQuery=None):
+def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', searchQuery=None):
     """
     Return paginated conversions created by a specific user.
-    
-    Parameters:
-        page (int): page number
-        user_id (int): ID of the user
-    
-    Returns:
-        Pagination object with 10 items per page
     """
     if not user_id:
         return None
-    
-    query = Convert.query
+
+    query = Convert.query.filter_by(user_id=user_id)
 
     if searchQuery:
         search_lower = f"%{searchQuery.lower()}%"
@@ -181,6 +174,7 @@ def get_convert_by_user(page, user_id , filter_type=None, sort_order='desc',  se
                 Convert.description.ilike(search_lower),
             )
         )
+
     if filter_type:
         query = query.filter(Convert.conversion_type == filter_type)
 
@@ -188,9 +182,7 @@ def get_convert_by_user(page, user_id , filter_type=None, sort_order='desc',  se
         query = query.order_by(asc(Convert.created_at))
     else:
         query = query.order_by(desc(Convert.created_at))
-    
-    
 
-    query = Convert.query.filter_by(user_id=user_id)
-    
     return query.paginate(page=page, per_page=10)
+
+
