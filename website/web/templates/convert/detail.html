@@ -12,55 +12,11 @@
                 <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
                     <div class="d-flex align-items-center gap-1">
                         <!-- Small edit button -->
-                        <button class="btn btn-sm text-bg-primary "
-                                style="color: var(--color-text);" 
-                                title="Edit convert" 
-                                data-bs-toggle="modal" 
-                                :data-bs-target="'#edit_convert_modal_'+convert.id">
+                        <a :href="'/convert/edit/'+convert.id" class="btn btn-sm text-bg-primary" style="color: var(--color-text);" title="Edit convert">
                             <i class="fas fa-edit"></i>
-                        </button>
+                        </a>
 
-                        <!-- Edit Modal -->
-                        <div class="modal fade" 
-                            :id="'edit_convert_modal_'+convert.id" 
-                            tabindex="-1" 
-                            aria-labelledby="edit_convert_modal" 
-                            aria-hidden="true">
-                            <div class="modal-dialog">
-                                <div style="background-color:var(--color-sidebar);" class="modal-content">
 
-                                    <!-- Modal Header -->
-                                    <div class="modal-header">
-                                        <h1 class="fs-5 text-truncate" style="color: var(--color-text);" id="edit_convert_modal">
-                                            Edit Convert
-                                        </h1>
-                                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-
-                                    <!-- Modal Body -->
-                                    <div class="modal-body" >
-                                        <div class="mb-3">
-                                            <label class="form-label text-warning">Title</label>
-                                            <input type="text" class="form-control" style="background-color:var(--color-sidebar); color: var(--color-text);" v-model="convert.name" placeholder="Enter title">
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label text-warning">Description</label>
-                                            <textarea class="form-control" v-model="convert.description" style="background-color:var(--color-sidebar); color: var(--color-text);" rows="3" placeholder="Enter description"></textarea>
-                                        </div>
-                                    </div>
-
-                                    <!-- Modal Footer -->
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        <button class="btn btn-success" @click="saveConvert()">
-                                            <i class="fas fa-check"></i> Save
-                                        </button>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
                         <!-- Delete button -->
                         <button class="btn btn-sm text-bg-danger"
                                 style="color: var(--color-text);" 
@@ -332,36 +288,6 @@ createApp({
         }
         fetchCurrentUser()
 
-        const csrf_token = '{{ csrf_token() }}';
-
-
-        async function saveConvert() {
-            const res = await fetch(`/convert/edit/${convert_id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json',
-                            "X-CSRFToken": csrf_token
-                 },
-                body: JSON.stringify({
-                    name: convert.value.name,
-                    description: convert.value.description
-                })
-            });
-
-            const data = await res.json();
-
-            // close the modal
-
-            const myModalEl = document.getElementById('edit_convert_modal_' + convert_id)
-            const modal = bootstrap.Modal.getInstance(myModalEl)
-            modal.hide()
-
-            const message = {
-                message: data.message,
-                toast_class: data.toast_class,
-                id: Math.random()
-            };
-            display_prepared_toast(message);
-        }
 
         async function deleteConvert() {
             const params = new URLSearchParams({ id:convert_id })
@@ -388,8 +314,7 @@ createApp({
             copyText,
             togglePublic,
             deleteConvert,
-            saveConvert ,
-            downloadText
+            downloadText,
         }
     }
 }).mount('#main-container')

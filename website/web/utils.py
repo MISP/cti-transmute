@@ -73,12 +73,9 @@ def parse_stix_reports(json_text: str) -> List[Tuple[str, Optional[str]]]:
     Always extract 'name' and optionally 'description'.
     Works with both bundles and raw object lists.
     """
-    print("=== Parsing STIX JSON for reports/groupings ===")
     try:
         data = json.loads(json_text)
-        print("JSON loaded successfully.")
     except json.JSONDecodeError as e:
-        print("❌ JSON decode error:", e)
         return []
 
     results = []
@@ -86,17 +83,13 @@ def parse_stix_reports(json_text: str) -> List[Tuple[str, Optional[str]]]:
     # If STIX bundle structure: {"type": "bundle", "objects": [...]}
     if isinstance(data, dict):
         if data.get("type") == "bundle" and "objects" in data:
-            print("Detected STIX bundle with", len(data["objects"]), "objects.")
             objects = data["objects"]
         else:
             # Maybe it's a single object or non-bundle dict
-            print("Detected single STIX object or unknown dict structure.")
             objects = [data]
     elif isinstance(data, list):
-        print("Detected a list of STIX objects.")
         objects = data
     else:
-        print("❌ Unsupported JSON structure:", type(data))
         return []
 
     # Traverse all objects
@@ -108,11 +101,52 @@ def parse_stix_reports(json_text: str) -> List[Tuple[str, Optional[str]]]:
         if obj_type in ("report", "grouping"):
             name = obj.get("name", "").strip()
             description = obj.get("description", None)
-            print(f"✅ Found {obj_type}: name='{name}', description='{description}'")
             results.append((name, description))
-        else:
-            # Debug non-report/grouping objects
-            print(f"Skipping object of type '{obj_type}'")
-
-    print(f"=== Finished parsing. Found {len(results)} report/grouping objects ===")
     return results
+
+
+
+
+def parse_misp_reports(file_content):
+    """
+    Extract 'name' and 'description' from a MISP JSON file content.
+    """
+    try:
+        data = json.loads(file_content)
+    except json.JSONDecodeError:
+        return None, None
+
+    event = data.get("event")
+    if not event:
+        return None, None
+
+    name = event.get("info", "Unnamed MISP Event")
+    description = event.get("description", f"MISP event: {name}")
+
+    return name, description
+
+
+
+import json
+
+def extract_name_from_misp_json(json_text: str) -> str | None:
+    """
+    Extrait la valeur de 'info' depuis un JSON MISP.
+    Fonctionne si 'info' est à la racine ou dans 'Event'.
+    """
+    try:
+        data = json.loads(json_text)
+
+        info_value = data.get("info")
+
+        if not info_value and isinstance(data.get("Event"), dict):
+            info_value = data["Event"].get("info")
+
+        if isinstance(info_value, str) and info_value.strip():
+            return info_value.strip()
+
+    except (ValueError, TypeError):
+        pass
+
+    return None
+
