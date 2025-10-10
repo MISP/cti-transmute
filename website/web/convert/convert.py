@@ -190,6 +190,7 @@ def get_page_history():
     }, 200
 
 @convert_blueprint.route("/delete_item", methods=['GET'])
+@login_required
 def delete_rule() -> jsonify:
     """Delete an item"""
     if current_user.is_anonymous():
@@ -243,7 +244,7 @@ def edit(id):
             
             success, message = ConvertModel.edit_convert(id, form_dict)
             if success:
-                flash(f"{convert.name} convert successfully","success")
+                flash(f"{convert.name} edit successfully","success")
                 return redirect(f"/convert/detail/{id}")
             else:
                 flash(f"Error : {message}", "danger")
