@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
-from website.web.utils import form_to_dict, parse_stix_reports
+from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports
 import requests
 from ..convert import convert_core as ConvertModel
 
@@ -48,6 +48,10 @@ def misp_to_stix():
                 if response.status_code == 200 and data and not data.get("error"):
                     result = data
                     flash("Converted to STIX successfully!", "success")
+
+                    auto_name = extract_name_from_misp_json(file_content)
+                    if  auto_name:
+                        form.name.data = auto_name
 
                     output_text = json.dumps(data, indent=2)
 

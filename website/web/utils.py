@@ -124,3 +124,17 @@ def parse_misp_reports(file_content):
     description = event.get("description", f"MISP event: {name}")
 
     return name, description
+
+
+
+def extract_name_from_misp_json(json_text: str) -> str | None:
+    try:
+        data = json.loads(json_text)
+        event = data.get("Event")
+        if isinstance(event, dict):
+            info_value = event.get("info")
+            if isinstance(info_value, str) and info_value.strip():
+                return info_value.strip()
+    except (ValueError, TypeError):
+        pass
+    return None
