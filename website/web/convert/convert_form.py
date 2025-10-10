@@ -1,6 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, IntegerField, SelectField, StringField, SubmitField
+from wtforms import BooleanField, IntegerField, SelectField, StringField, SubmitField, ValidationError
 from wtforms.validators import DataRequired , Optional, NumberRange
+
+from website.db_class.db import Convert
 
 class mispToStixParamForm(FlaskForm):
     version = SelectField(
@@ -29,6 +31,14 @@ class mispToStixParamForm(FlaskForm):
 
     file = SubmitField('Upload File')
     convert = SubmitField('Convert')
+
+    def validate_name(self, field):
+        existing_convert = Convert.query.filter_by(name=field.data).first()
+        if existing_convert:
+            raise ValidationError(
+                f'Convert already registered with this name '
+            )
+
 
 
 class stixToMispParamForm(FlaskForm):
@@ -110,3 +120,35 @@ class stixToMispParamForm(FlaskForm):
     )
 
     convert = SubmitField("Convert")
+
+    def validate_name(self, field):
+        existing_convert = Convert.query.filter_by(name=field.data).first()
+        if existing_convert:
+            raise ValidationError(
+                f'Convert already registered with this name '
+            )
+        
+
+class editConvertForm(FlaskForm):
+    name = StringField(
+        "Name of the convert",
+        validators=[DataRequired()],
+        description="Name of the convert"
+    )
+    
+    description = StringField(
+        "Description of the convert",
+        validators=[Optional()],
+        description="Description of the convert"
+    )
+
+    edit = SubmitField("Edit")
+
+    # def validate_name(self, field):
+
+
+    #     existing_convert = Convert.query.filter_by(name=field.data).first()
+    #     if existing_convert:
+    #         raise ValidationError(
+    #             f'Convert already registered with this name '
+    #         )

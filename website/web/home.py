@@ -46,3 +46,8 @@ def get_features():
 def get_current_user() -> jsonify:
     """Is the current user admin or not for vue js"""
     return jsonify({'user': current_user.is_admin()})
+
+@home_blueprint.route("/access_denied", methods=['GET'])
+def access_denied() -> jsonify:
+    """Access denied page"""
+    return render_template("access_denied.html")

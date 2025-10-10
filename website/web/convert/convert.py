@@ -2,7 +2,7 @@
 import json
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
-from website.web.convert.convert_form import mispToStixParamForm, stixToMispParamForm
+from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
 from website.web.utils import form_to_dict, parse_stix_reports
 import requests
 from ..convert import convert_core as ConvertModel
@@ -209,7 +209,6 @@ def delete_rule() -> jsonify:
 def detail(id):
     """Detail page of the convert"""
     convert = ConvertModel.get_convert(id)
-
     if not convert:
         flash("The convert id is unknown", "danger")
         return redirect(url_for("convert.history"))
@@ -226,6 +225,35 @@ def detail(id):
 
     flash("You do not have permission to view this convert.", "danger")
     return redirect(url_for("convert.history"))
+
+@convert_blueprint.route("/edit/<int:id>", methods=['GET', 'POST'])
+@login_required
+def edit(id):
+    """Detail page of the convert"""
+
+    form = editConvertForm()  
+    convert = ConvertModel.get_convert(id)
+    if convert.user_id == current_user.id or current_user.is_admin():
+        if form.validate_on_submit():
+            form_dict = form_to_dict(form)
+            
+            success, message = ConvertModel.edit_convert(id, form_dict)
+            if success:
+                flash(f"{convert.name} convert successfully","success")
+                return redirect(f"/convert/detail/{id}")
+            else:
+                flash(f"Error : {message}", "danger")
+                return render_template("convert/edit.html", form=form, convert_id=id )
+            
+        else:
+            form.name.data = convert.name
+            form.description.data = convert.description
+
+            return render_template("convert/edit.html", form=form, convert_id=id )
+    else:
+            return render_template("access_denied.html")
+        
+        
 
 #############################
 #   Feature on the convert  #
@@ -292,30 +320,4 @@ def edit_public():
         "message": "No id provided", 
         "toast_class" : "danger"
         }, 404
-
-@convert_blueprint.route('/edit/<int:id>', methods=['POST'])
-@login_required
-def edit_convert_route(id):
-    print(id)
-    convert = ConvertModel.get_convert(id)
-    if not convert:
-        return jsonify({'success': False, 'error': 'Convert not found' ,"toast_class": "danger"}), 404
-
-    if convert.user_id != current_user.id and not getattr(current_user, 'is_admin', False):
-        return jsonify({'success': False, 'error': 'Not authorized' , "toast_class": "danger"}), 403
-
-    data = request.get_json()
-    print(data)
-    success = ConvertModel.edit_convert(id, data)
-    if success:
-        return {
-            "success": True, 
-            "message": "Edit with success", 
-            "toast_class" : "success"
-        }, 200
-    return {
-            "success": False, 
-            "message": "Error during edit the convert", 
-            "toast_class" : "danger"
-            }, 500
 

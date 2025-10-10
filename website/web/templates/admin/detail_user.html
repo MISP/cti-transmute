@@ -60,7 +60,7 @@
                             [[ user.email ]]
                         </div>
                         <div class="col-md-6 mb-2">
-                            <strong><i class="fa-solid fa-user-gear me-2 "></i>Admin :</strong>
+                            <strong><i class="fa-solid fa-user-gear me-2 "></i>Admin : </strong>
                             <button class="btn btn-sm fw-semibold"
                                 :class="user.admin ? 'btn-success' : 'btn-danger'"
                                 :title="user.admin ? 'Remove admin right' : 'Give admin right'"
@@ -93,16 +93,20 @@
                         <!-- Filter by conversion -->
                         <div class="flex-fill me-2" style="min-width: 180px;">
                             <label for="conversionFilter" class="form-label">Filter by conversion:</label>
-                            <select 
-                                id="conversionFilter" 
-                                class="form-select" 
-                                @change="onSearchInput"
-                                v-model="filter_type" 
-                                style="background-color:var(--color-sidebar); color: var(--color-text);"
-                            >
+                            <select id="conversionFilter" class="form-select"  @change="onSearchInput" v-model="filter_type"  style="background-color:var(--color-sidebar); color: var(--color-text);" >
                                 <option value="">All</option>
                                 <option value="MISP_TO_STIX">MISP to STIX</option>
                                 <option value="STIX_TO_MISP">STIX to MISP</option>
+                            </select>
+                        </div>
+
+                        <!-- Filter by public -->
+                        <div class="flex-fill me-2" style="min-width: 180px;">
+                            <label for="publicFilter" class="form-label">Filter by conversion:</label>
+                            <select id="publicFilter" class="form-select"  @change="onSearchInput" v-model="filter_public"  style="background-color:var(--color-sidebar); color: var(--color-text);" >
+                                <option value="">All</option>
+                                <option value="PUBLIC">Public</option>
+                                <option value="PRIVATE">Private</option>
                             </select>
                         </div>
 
@@ -211,6 +215,7 @@
                 const filter_type = ref('')
                 const sort_order = ref('desc')
                 const searchQuery = ref('')
+                const filter_public = ref('')
 
                 async function fetchUser(){
                     const params = new URLSearchParams({
@@ -231,7 +236,8 @@
                         page:page,
                         filter_type: filter_type.value || '',
                         sort_order: sort_order.value || 'desc',
-                        searchQuery: searchQuery.value || ''
+                        searchQuery: searchQuery.value || '',
+                        filter_public: filter_public.value || ''
                     })
                     const res = await fetch(`/account/get_user_convert?`+ params.toString());
                     if (res.ok) {
@@ -306,7 +312,8 @@
                     filter_type,
                     sort_order,
                     searchQuery ,
-                    changeAdminRight
+                    changeAdminRight,
+                    filter_public
                 }
             }
         }).mount('#main-container')
