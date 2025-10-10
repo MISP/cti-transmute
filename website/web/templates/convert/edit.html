@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-{% if not current_user.is_admin() %}
-    <script>
-        window.location.href = "/access_denied";
-    </script>
-{% else %}
     <div class="container my-5" id="main-container">
         <form method="post" enctype="multipart/form-data">
             {{ form.hidden_tag() }}
@@ -42,7 +37,6 @@
 
         </form>
     </div>
-{% endif %}
 {% endblock %}
 
 
