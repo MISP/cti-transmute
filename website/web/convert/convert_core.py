@@ -1,22 +1,20 @@
 # website/web/convert/convert_service.py
 import json
 import uuid
-
 from flask_login import AnonymousUserMixin, current_user
 from website.db_class.db import Convert
 from website.web import db
 from sqlalchemy import desc, asc, or_
 import datetime
+import random
+import string
 
-
-
-def create_convert(user_id ,input_text, output_text,convert_choice, description, name, public):
+def create_convert(user_id, input_text, output_text, convert_choice, description, name, public):
     """
     Create a new Convert entry from API response and save history.
     input_text: original file content
     output_text: converted content
     """
-
     try:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
         if convert_choice == "MISP_TO_STIX":
@@ -24,9 +22,16 @@ def create_convert(user_id ,input_text, output_text,convert_choice, description,
         else:
             _name = f"MISP_{now.strftime('%Y%m%d%H%M%S')}"
 
+        final_name = name or _name
+
+        existing = Convert.query.filter_by(name=final_name).first()
+        if existing:
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            final_name = f"{final_name}_{suffix}"
+
         convert = Convert(
             user_id=user_id,
-            name= name or _name,
+            name=final_name,
             conversion_type=convert_choice,
             input_text=input_text,
             output_text=output_text,
@@ -147,7 +152,12 @@ def edit_convert(id, data):
     """
     convert = get_convert(id)
     if not convert:
-        return False 
+        return False , 'no convert with this id'
+    
+    if convert.name != data.get('name', convert.name):
+        existing = Convert.query.filter_by(name=data.get('name', convert.name)).first()
+        if existing:
+            return False , 'Name already existe'
 
     # Update fields if provided
     convert.name = data.get('name', convert.name)
@@ -155,4 +165,46 @@ def edit_convert(id, data):
 
     # Commit changes
     db.session.commit()
-    return True 
+    return True , ''
+
+def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', searchQuery=None, filter_public=None):
+    """
+    Return paginated conversions created by a specific user.
+    """
+    if not user_id:
+        return None
+
+    query = Convert.query.filter_by(user_id=user_id)
+
+    if searchQuery:
+        search_lower = f"%{searchQuery.lower()}%"
+        query = query.filter(
+            or_(
+                Convert.name.ilike(search_lower),
+                Convert.description.ilike(search_lower),
+            )
+        )
+
+    if filter_type:
+        query = query.filter(Convert.conversion_type == filter_type)
+
+    if sort_order == 'asc':
+        query = query.order_by(asc(Convert.created_at))
+    else:
+        query = query.order_by(desc(Convert.created_at))
+
+    if filter_public is not None:
+        if isinstance(filter_public, str):
+            if filter_public.upper() == "PUBLIC":
+                filter_public = True
+            elif filter_public.upper() == "PRIVATE":
+                filter_public = False
+            else:
+                filter_public = None
+
+        if filter_public is not None:
+            query = query.filter(Convert.public == filter_public)
+
+    return query.paginate(page=page, per_page=10)
+
+

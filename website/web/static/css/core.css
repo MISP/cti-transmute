@@ -23,7 +23,9 @@ html.dark-mode {
   background-color: var(--color-card-hover) !important;
 }
 
-
+td{
+  color: var(--color-text);
+}
 
 /* Application */
 body {

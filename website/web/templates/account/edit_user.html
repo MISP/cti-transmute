@@ -4,19 +4,17 @@
 {% block content %}
 <form action="" method="post" id="main-container" class="my-5">
     {{ form.hidden_tag() }}
-    <h2 class="text-info mb-3 ">
+    <h2 class=" mb-3 ">
         Edit Profile 
     </h2>
-    <div class="">
-        
-
+    <div >
         <div class="row g-3">
             <!-- First name -->
             <div class="col-md-6">
                 <label for="{{ form.first_name.id }}" class="form-label">
                     {{ form.first_name.label }} <span class="text-danger">*</span>
                 </label>
-                {{ form.first_name(class_="form-control bg-dark text-light ") }}
+                {{ form.first_name(class_="form-control" , style="background-color:var(--color-navbar); color:var(--color-text);") }}
                 {% if form.first_name.errors %}
                     <div class="text-danger mt-1 small">{{ form.first_name.errors[0] | safe }}</div>
                 {% endif %}
@@ -27,7 +25,7 @@
                 <label for="{{ form.last_name.id }}" class="form-label">
                     {{ form.last_name.label }} <span class="text-danger">*</span>
                 </label>
-                {{ form.last_name(class_="form-control bg-dark text-light") }}
+                {{ form.last_name(class_="form-control" , style="background-color:var(--color-navbar); color:var(--color-text);") }}
                 {% if form.last_name.errors %}
                     <div class="text-danger mt-1 small">{{ form.last_name.errors[0] | safe }}</div>
                 {% endif %}
@@ -39,7 +37,7 @@
             <label for="{{ form.email.id }}" class="form-label">
                 {{ form.email.label }} <span class="text-danger">*</span>
             </label>
-            {{ form.email(class_="form-control bg-dark text-light") }}
+            {{ form.email(class_="form-control" , style="background-color:var(--color-navbar); color:var(--color-text);") }}
             {% if form.email.errors %}
                 <div class="text-danger mt-1 small">{{ form.email.errors[0] | safe }}</div>
             {% endif %}
@@ -55,7 +53,7 @@
             </small>
 
             <div class="input-group">
-                {{ form.password(class_="form-control bg-dark text-light", id="passwordInput") }}
+                {{ form.password(class_="form-control ", id="passwordInput" , style="background-color:var(--color-navbar); color:var(--color-text);") }}
                 <span class="input-group-text" style="cursor:pointer;" onclick="togglePassword()">
                     <i class="fa fa-eye" id="togglePasswordIcon"></i>
                 </span>
@@ -68,7 +66,7 @@
 
         <!-- Submit -->
         <div class="mt-4 text-center">
-            {{ form.submit(class_="btn btn-info  px-4") }}
+            {{ form.submit(class_="btn btn-success  px-4") }}
         </div>
     </div>
 </form>

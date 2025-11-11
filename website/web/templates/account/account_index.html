@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container my-5" id="main-container" >
 
-  <h2 class="text-info mb-4 ">My Profile</h2>
+  <h2 class=" mb-4 ">My Profile</h2>
 
   <div class="custom-card rounded-4 shadow p-4 d-flex flex-column align-items-center">
     <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
@@ -11,33 +11,33 @@
          class="rounded-circle shadow-sm mb-3"
          style="width: 120px; height: 120px;">
 
-    <h4 class="fw-bold text-warning mb-1">{{ user.first_name }} {{ user.last_name }}</h4>
-    <span class="badge bg-info text-dark mb-3">CTI-Transmute User</span>
-
-    <div class="custom-inner-card w-100 p-3 mb-3" @click="editProfil()" title="edit the profil">
+    <div class="custom-inner-card w-100 p-3 mb-3" style="cursor: pointer;" @click="editProfil()" title="edit the profil">
       <div class="mb-2 d-flex justify-content-between">
-        <strong class="text-warning">First Name:</strong>
+        <strong >First Name:</strong>
         <span>{{ user.first_name }}</span>
       </div>
       <div class="mb-2 d-flex justify-content-between">
-        <strong class="text-warning">Last Name:</strong>
+        <strong >Last Name:</strong>
         <span>{{ user.last_name }}</span>
       </div>
       <div class="mb-2 d-flex justify-content-between">
-        <strong class="text-warning">Email:</strong>
+        <strong >Email:</strong>
         <span>{{ user.email }}</span>
       </div>
       <div class="mb-2 d-flex justify-content-between align-items-center">
-        <strong class="text-warning">API Key:</strong>
+        <strong >API Key:</strong>
         <div class="d-flex align-items-center gap-2">
-          <span class="text-break" id="apiKey">{{ user.api_key }}</span>
           <button class="btn btn-sm" id="copyBtn" @click="copyApiKey()" title="Copy API Key" @click.stop style="color: var( --color-text);">
             <i class="fa-solid fa-copy"></i>
           </button>
+          <span class="text-break" id="apiKey">{{ user.api_key }}</span>
         </div>
       </div>
-
     </div>
+    <a class="btn btn-primary" href="/account/edit">
+      Edit
+    </a>
+
   </div>
 </div>
 {% endblock %}

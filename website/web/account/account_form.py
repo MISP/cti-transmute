@@ -22,7 +22,7 @@ class EditUserForm(FlaskForm):
     last_name = StringField('Last name', validators=[InputRequired()])
     email = EmailField('Email', validators=[InputRequired(), Email()])
     password = PasswordField('Password')
-    submit = SubmitField('Register')
+    submit = SubmitField('Save')
 
     def validate_email(self, field):
         if field.data != current_user.email:

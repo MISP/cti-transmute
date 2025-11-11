@@ -1,6 +1,8 @@
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, IntegerField, SelectField, StringField, SubmitField
+from wtforms import BooleanField, IntegerField, SelectField, StringField, SubmitField, ValidationError
 from wtforms.validators import DataRequired , Optional, NumberRange
+
+from website.db_class.db import Convert
 
 class mispToStixParamForm(FlaskForm):
     version = SelectField(
@@ -18,16 +20,25 @@ class mispToStixParamForm(FlaskForm):
     description = StringField(
         "Description of the convert",
         validators=[Optional()],
-        description="Descriptiom of the convert"
+        description="Description of the convert"
     )
 
     public = BooleanField(
-        "Able to publish or not",
+        "Public",
+        default='true',
         description="Let the user who create this convert to choose if he wants to share or not to the community"
     )
 
     file = SubmitField('Upload File')
     convert = SubmitField('Convert')
+
+    def validate_name(self, field):
+        existing_convert = Convert.query.filter_by(name=field.data).first()
+        if existing_convert:
+            raise ValidationError(
+                f'Convert already registered with this name '
+            )
+
 
 
 class stixToMispParamForm(FlaskForm):
@@ -51,7 +62,8 @@ class stixToMispParamForm(FlaskForm):
     )
 
     public = BooleanField(
-        "Able to publish or not",
+        "Public",
+        default='true',
         description="Let the user who create this convert to choose if he wants to share or not to the community"
     )
 
@@ -108,3 +120,35 @@ class stixToMispParamForm(FlaskForm):
     )
 
     convert = SubmitField("Convert")
+
+    def validate_name(self, field):
+        existing_convert = Convert.query.filter_by(name=field.data).first()
+        if existing_convert:
+            raise ValidationError(
+                f'Convert already registered with this name '
+            )
+        
+
+class editConvertForm(FlaskForm):
+    name = StringField(
+        "Name of the convert",
+        validators=[DataRequired()],
+        description="Name of the convert"
+    )
+    
+    description = StringField(
+        "Description of the convert",
+        validators=[Optional()],
+        description="Description of the convert"
+    )
+
+    edit = SubmitField("Edit")
+
+    # def validate_name(self, field):
+
+
+    #     existing_convert = Convert.query.filter_by(name=field.data).first()
+    #     if existing_convert:
+    #         raise ValidationError(
+    #             f'Convert already registered with this name '
+    #         )
