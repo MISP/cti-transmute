@@ -188,7 +188,7 @@ def get_page_history():
     searchQuery = request.args.get('searchQuery',  type=str) 
 
     pagination = ConvertModel.get_convert_page(page, filter_type=filter_type, sort_order=sort_order, only_mine=only_mine , searchQuery=searchQuery)
-    convert_list = [item.to_json() for item in pagination.items]
+    convert_list = [item.to_json_list() for item in pagination.items]
 
     return {
         "list": convert_list,
