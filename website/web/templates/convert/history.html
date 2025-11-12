@@ -65,111 +65,127 @@
             </div>
         </div>
     </div>
-    
+    <div>
+        
+    </div>
+
+    <!-- Spinner de chargement -->
+    <div v-if="is_loading" class="d-flex justify-content-center align-items-center my-5" style="min-height: 200px;">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status" style="width: 4rem; height: 4rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="mt-3" style="color: var(--color-text);">
+                <i class="fa-solid fa-rotate fa-spin me-2"></i> Loading conversion history...
+            </div>
+        </div>
+    </div>
+
     <!-- Table of conversions -->
-    <div class="row" v-if="convert_history.length > 0">
-        <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
-            <div id="card-item"
-                class="card mb-3"
-                style="background-color: var(--color-bg); cursor: pointer; transition: background-color 0.3s;"
-                @click="seeDetails(item.id)">
-                <div class="card-body ">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 text-truncate ">
-                            <i class="card-title " title="Public/Private"></i>
-                            [[ item.name ]]
-                        </h5>
-                        <span style="color: var(--color-text);">Created: [[ item.created_at ]]</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <p class="card-text text-truncate" style="color: var(--color-text);">[[ item.description ]]</p>
-                        <!-- <template v-if="item.user_id"> -->
-                        <div class="d-flex align-items-center gap-1">
-                            <span class="badge" :class="item.public ? 'bg-success' : 'bg-danger'">
-                                [[ item.public ? 'public' : 'private' ]]
-                            </span>
-                            <span class="badge rounded-pill text-bg-primary">
-                                [[ item.author ? item.author : 'Anonymous' ]]
-                            </span>
+    <div v-else v-cloak>
+        <div class="row" v-if="convert_history.length > 0">
+            <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
+                <div id="card-item"
+                    class="card mb-3"
+                    style="background-color: var(--color-bg); cursor: pointer; transition: background-color 0.3s;"
+                    @click="seeDetails(item.id)">
+                    <div class="card-body ">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0 text-truncate ">
+                                <i class="card-title " title="Public/Private"></i>
+                                [[ item.name ]]
+                            </h5>
+                            <span style="color: var(--color-text);">Created: [[ item.created_at ]]</span>
                         </div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        {% if current_user.is_authenticated %}
-                            <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
-                                <!-- Bouton Delete -->
-                                <button type="button" 
-                                        class="btn btn-danger btn-sm" 
-                                        title="Delete the conversion" 
-                                        data-bs-toggle="modal" 
-                                        :data-bs-target="'#delete_item_modal_'+item.id" @click.stop>
-                                    <i class="fa-solid fa-trash fa-fw"></i>
-                                </button>
-                            </template>
-                        {% endif %}
-                    </div>
-                    <!-- Modal Delete -->
-                    <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true" @click.stop>
-                        <div class="modal-dialog modal-lg">
-                            <div style="background-color:var(--color-sidebar);" class="modal-content">
-                                <div class="modal-header">
-                                    <h2 id="delete_item_modal" style="color: var( --color-text);">
-                                        Delete [[ item.name ]] ?
-                                    </h2>
-                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click.stop>Close</button>
-                                    <button class="btn btn-danger" @click="deleteItem(item.id)" @click.stop>
-                                        <i class="fa-solid fa-trash"></i> Confirm
+                        <div class="d-flex justify-content-between align-items-center">
+                            <p class="card-text text-truncate" style="color: var(--color-text);">[[ item.description ]]</p>
+                            <!-- <template v-if="item.user_id"> -->
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="badge" :class="item.public ? 'bg-success' : 'bg-danger'">
+                                    [[ item.public ? 'public' : 'private' ]]
+                                </span>
+                                <span class="badge rounded-pill text-bg-primary">
+                                    [[ item.author ? item.author : 'Anonymous' ]]
+                                </span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            {% if current_user.is_authenticated %}
+                                <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
+                                    <!-- Bouton Delete -->
+                                    <button type="button" 
+                                            class="btn btn-danger btn-sm" 
+                                            title="Delete the conversion" 
+                                            data-bs-toggle="modal" 
+                                            :data-bs-target="'#delete_item_modal_'+item.id" @click.stop>
+                                        <i class="fa-solid fa-trash fa-fw"></i>
                                     </button>
+                                </template>
+                            {% endif %}
+                        </div>
+                        <!-- Modal Delete -->
+                        <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true" @click.stop>
+                            <div class="modal-dialog modal-lg">
+                                <div style="background-color:var(--color-sidebar);" class="modal-content">
+                                    <div class="modal-header">
+                                        <h2 id="delete_item_modal" style="color: var( --color-text);">
+                                            Delete [[ item.name ]] ?
+                                        </h2>
+                                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click.stop>Close</button>
+                                        <button class="btn btn-danger" @click="deleteItem(item.id)" @click.stop>
+                                            <i class="fa-solid fa-trash"></i> Confirm
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>  
+                </div>  
+            </div>
         </div>
-    </div>
 
 
-    <!-- Empty state -->
-    <div v-else>
-        <span>No conversion register for the moment</span>
-    </div>
+        <!-- Empty state -->
+        <div v-else>
+            <span>No conversion register for the moment</span>
+        </div>
 
-    <!-- Pagination -->
-    <div v-if="convert_history.length > 0" >
-        <nav aria-label="Page navigation" style="margin-bottom: 100px;">
-            <ul class="pagination justify-content-center mt-3">
-                <li class="page-item" :class="{ disabled: current_page === 1 }">
-                    <button class="page-link" @click="current_page > 1 && fetchConvertHistory(current_page - 1)">
-                        <i class="fa-solid fa-angle-left"></i>
-                    </button>
-                </li>
+        <!-- Pagination -->
+        <div v-if="convert_history.length > 0" >
+            <nav aria-label="Page navigation" style="margin-bottom: 100px;">
+                <ul class="pagination justify-content-center mt-3">
+                    <li class="page-item" :class="{ disabled: current_page === 1 }">
+                        <button class="page-link" @click="current_page > 1 && fetchConvertHistory(current_page - 1)">
+                            <i class="fa-solid fa-angle-left"></i>
+                        </button>
+                    </li>
 
-                <li class="page-item"
-                    v-for="page in visiblePages"
-                    :key="page"
-                    :class="{ active: page === current_page, disabled: page === '...' }">
-                    <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">
-                        [[ page ]]
-                    </button>
-                    <span class="page-link" v-else>...</span>
-                </li>
+                    <li class="page-item"
+                        v-for="page in visiblePages"
+                        :key="page"
+                        :class="{ active: page === current_page, disabled: page === '...' }">
+                        <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">
+                            [[ page ]]
+                        </button>
+                        <span class="page-link" v-else>...</span>
+                    </li>
 
-                <li class="page-item" :class="{ disabled: current_page === total_pages }">
-                    <button class="page-link" @click="current_page < total_pages && fetchConvertHistory(current_page + 1)">
-                        <i class="fa-solid fa-angle-right"></i>
-                    </button>
-                </li>
-            </ul>
-        </nav>
+                    <li class="page-item" :class="{ disabled: current_page === total_pages }">
+                        <button class="page-link" @click="current_page < total_pages && fetchConvertHistory(current_page + 1)">
+                            <i class="fa-solid fa-angle-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
     </div>
 </div>
 
 
 {% endblock %}
-
 {% block script %}
 <script type="module">
 const { createApp, ref ,computed} = Vue
@@ -193,9 +209,11 @@ createApp({
         const currentUserId = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
         const isAuthenticated = "{{ 'true' if current_user.is_authenticated else 'false' }}";
 
+        const is_loading = ref(false)
 
         async function fetchConvertHistory(page) {
             if (page < 1) return
+            is_loading.value = true 
             const params = new URLSearchParams({
                 page: page,
                 filter_type: filter_type.value || '',
@@ -210,6 +228,7 @@ createApp({
                 total_pages.value = data.total_page
                 current_page.value = page
             }
+            is_loading.value = false
         }
 
         function copyText(text, event) {
@@ -301,7 +320,8 @@ createApp({
             seeDetails,
             searchQuery,
             onEnterKey,
-            onSearchInput
+            onSearchInput,
+            is_loading
         }
     }
 }).mount('#main-container')

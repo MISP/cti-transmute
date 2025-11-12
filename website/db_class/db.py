@@ -103,3 +103,17 @@ class Convert(db.Model):
             "uuid": self.uuid,
             "author": self.get_user_name_by_id()
         }
+    def to_json_list(self):
+        """Return JSON list"""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "name": self.name,
+            "description": self.description,
+            "conversion_type": self.conversion_type,
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
+            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "public": self.public,
+            "uuid": self.uuid,
+            "author": self.get_user_name_by_id()
+        }

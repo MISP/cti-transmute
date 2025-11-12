@@ -1,4 +1,7 @@
-/* Variables globales */
+[v-cloak] {
+    display: none;
+  }
+
 :root {
   --color-bg: #f8f9fa;
   --color-text: #212529;
