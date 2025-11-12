@@ -165,7 +165,7 @@ requires-dist = [
     { name = "flask-session", specifier = ">=0.8.0" },
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
     { name = "flask-wtf", specifier = ">=1.2.2" },
-    { name = "misp-stix", specifier = ">=2025.11.11" },
+    { name = "misp-stix", specifier = ">=2025.11.12" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "sqlalchemy", specifier = ">=2.0.43" },
     { name = "werkzeug", specifier = ">=3.1.3" },
@@ -625,7 +625,7 @@ wheels = [
 
 [[package]]
 name = "misp-stix"
-version = "2025.11.11"
+version = "2025.11.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cybox" },
@@ -638,9 +638,9 @@ dependencies = [
     { name = "stix" },
     { name = "stix-edh" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/77/9c/859e609d9f65686205476c0819da414b1420e8c82e18e884f06f1b017ac9/misp_stix-2025.11.11.tar.gz", hash = "sha256:68117dcaab78b21164857b665eda1a4297fe7197a47fd37aa2b1768588273584", size = 31725635, upload-time = "2025-11-11T12:20:52.002Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/67/335fd64a672c0ae300604b3071b8b481c8e00a1a05c8dd747180cd0f958f/misp_stix-2025.11.12.tar.gz", hash = "sha256:eb79b9880d5615f81b3bc34189e6640a150bcd39853f440f2b5c4a4c061263ba", size = 31726068, upload-time = "2025-11-12T16:24:50.468Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/4e/22cd65c28be3208485e8660521042166f07ae48f41be9047d6617fe14760/misp_stix-2025.11.11-py3-none-any.whl", hash = "sha256:cf97c43a5ee64359a722049594cee063a1a75f56cad598a247836abed9f4f781", size = 56898851, upload-time = "2025-11-11T12:20:47.201Z" },
+    { url = "https://files.pythonhosted.org/packages/65/59/a7a23bc16728fcab473cecfe6fa38aff1dad4d5e95971e086c0718b3d621/misp_stix-2025.11.12-py3-none-any.whl", hash = "sha256:d3e769f541c5d3e6eeb5d81a686cca9b4e904e18799adcb935196dd208bfe646", size = 56901487, upload-time = "2025-11-12T16:24:44.222Z" },
 ]
 
 [[package]]
