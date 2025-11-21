@@ -207,4 +207,5 @@ def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', sear
 
     return query.paginate(page=page, per_page=10)
 
-
+def get_convert_by_uuid(uuid):
+    return Convert.query.filter_by(uuid=uuid).first()

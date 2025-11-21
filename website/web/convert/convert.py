@@ -329,3 +329,30 @@ def edit_public():
         "toast_class" : "danger"
         }, 404
 
+#########################
+#   Share the convert   #
+#########################
+
+@convert_blueprint.route("/share/<string:uuid>", methods=['GET'])
+def share(uuid):
+    """Get the convert thanks to the uuid to a json file" with all the information"""
+    convert = ConvertModel.get_convert_by_uuid(uuid)
+    if convert:
+        if convert.public:
+            return {
+                "success": True, 
+                "convert": convert.to_share(),
+                "message": "Convert found", 
+                "toast_class" : "success"
+                }, 200
+        return {
+            "success": False, 
+            "message": "This convert is private", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No convert history for this uuid", 
+        "toast_class" : "danger"
+        }, 500
+    

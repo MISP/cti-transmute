@@ -117,3 +117,19 @@ class Convert(db.Model):
             "uuid": self.uuid,
             "author": self.get_user_name_by_id()
         }
+    def to_share(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "conversion_type": self.conversion_type,
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
+            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "public": self.public,
+            "uuid": self.uuid,
+            "author": self.get_user_name_by_id(),
+            "input_text": self.input_text,
+            "output_text": self.output_text,
+            "share_url": f"http://cti-transmute.org/convert/share/{self.uuid}",
+            "detail_url": f"http://cti-transmute.org/convert/detail/{self.id}"
+        }
