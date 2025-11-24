@@ -17,17 +17,27 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
     """
     try:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+
         if convert_choice == "MISP_TO_STIX":
             _name = f"STIX_{now.strftime('%Y%m%d%H%M%S')}"
         else:
             _name = f"MISP_{now.strftime('%Y%m%d%H%M%S')}"
 
+
         final_name = name or _name
 
         existing = Convert.query.filter_by(name=final_name).first()
+
+        MAX_NAME_LEN = 100
+
         if existing:
             suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            final_name = f"{final_name}_{suffix}"
+            base_length = MAX_NAME_LEN - (len(suffix) + 1)
+            final_name = f"{final_name[:base_length]}_{suffix}"
+
+        if len(final_name) > MAX_NAME_LEN:
+            final_name = final_name[:MAX_NAME_LEN]
 
         convert = Convert(
             user_id=user_id,
@@ -43,11 +53,13 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
         )
 
         db.session.add(convert)
+
         db.session.commit()
 
         return True
 
     except Exception as e:
+        print("Exception:", e)
         return False
 
 

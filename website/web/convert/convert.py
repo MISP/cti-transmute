@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
-from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports
+from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
 import requests
 from ..convert import convert_core as ConvertModel
 
@@ -105,11 +105,34 @@ def stix_to_misp():
             file_data.seek(0)
 
             files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
+
             params = form_to_dict(form)
+
+            # Instead of sending all form fields blindly:
+            raw_params = form_to_dict(form)
+
+            # Remove empty values AND remove booleans that are false
+            params = {
+                key: value
+                for key, value in raw_params.items()
+                if value not in [None, "", False, "False"]
+            }
+
+            # Add boolean flags only when True
+            if form.galaxies_as_tags.data:
+                params["galaxies_as_tags"] = ""
+
+            if form.no_force_contextual_data.data:
+                params["no_force_contextual_data"] = ""
+
+            if form.single_event.data:
+                params["single_event"] = ""
+
+            print(params)
 
             try:
                 response = requests.post(
-                    "http://127.0.0.1:6868/api/convert/stix_to_misp",
+                    "http://0.0.0.0:6868/api/convert/stix_to_misp",
                     files=files,
                     params=params
                 )
