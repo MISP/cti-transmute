@@ -25,10 +25,12 @@ sess = Session()
 login_manager = LoginManager()
 
 
-
+migrate = Migrate()
 db.init_app(application)
 csrf.init_app(application)
-migrate = Migrate(application, db)
+
+from website.db_class import db as db_module 
+migrate.init_app(application, db, directory='website/migrations', render_as_batch=True)
 
 
 login_manager.login_view = "account.login"

@@ -82,7 +82,7 @@ class Convert(db.Model):
     created_at = db.Column(db.DateTime, index=True)
     updated_at = db.Column(db.DateTime, index=True)
     public = db.Column(db.Boolean, default=True, index=True) #able to share with the community
-    # share_key = db.Column(db.String(36), index=True, nullable=True)
+    share_key = db.Column(db.String(36), index=True, nullable=True)
 
     def get_user_name_by_id(self):
         user = User.query.get(self.user_id)  

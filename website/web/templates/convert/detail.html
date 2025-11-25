@@ -18,7 +18,7 @@
                     </a>
 
                     <!-- Share button -->
-                    <template v-if="convert.public">
+                    <template v-if="!convert.public">
                         <button class="btn btn-sm text-bg-primary" style="color: var(--color-text);"
                             title="Share convert" data-bs-toggle="modal"
                             :data-bs-target="'#share_convert_modal_' + {{ convert.id }}">
@@ -42,15 +42,15 @@
                                     <div class="modal-body">
                                         <div class="input-group mb-3">
                                             <input type="text" class="form-control" readonly
-                                                :value="'https://cti-transmute.org/convert/share/{{ convert.uuid }}'"
-                                                id="share_link_{{ convert.id }}">
+                                                :value="`http://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`"
+                                                :id="`share_link_${convert.id}`">
                                             <button class="btn btn-primary" type="button"
-                                                @click="copyText('https://cti-transmute.org/convert/share/{{ convert.uuid }}', $event)">
+                                                @click="copyText('http://cti-transmute.org/convert/share?uuid='+convert.uuid+'&share_key='+share_key, $event)">
                                                 <i class="fas fa-copy"></i> Copy
                                             </button>
                                         </div>
-
                                     </div>
+
 
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -123,6 +123,30 @@
             <i class="far fa-calendar-alt me-1"></i> Created on [[ convert.created_at ]]
             <br>
             <i class="far fa-key me-1"></i> Uuid : [[ convert.uuid ]]
+            <template v-if="!convert.public">
+                <br>
+                <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-eye me-1"></i> Share Key :
+                        <div class="flex-grow-1 text-truncate me-2" style="max-width: 320px;">
+                            [[ share_key ]]
+                        </div>
+                        <button class="btn text-dark btn-link p-1" @click="regenerateShareKey(convert.id)"
+                            title="Regenerate Share Key">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+
+                        <button class="btn text-dark btn-link p-1" @click="copyText(share_key, $event)"
+                            title="Copy Share Key">
+                            <i class="fas fa-copy"></i>
+                        </button>
+
+                    </div>
+                </template>
+            </template>
+
+
+
         </div>
 
         <div class="custom-inner-card p-3 mb-4">
@@ -244,8 +268,8 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref } = Vue
-    import { display_toast, message_list, display_prepared_toast } from '/static/js/toaster.js'
+    const { createApp, ref, onMounted, watch } = Vue
+    import { display_toast, message_list, create_message } from '/static/js/toaster.js'
     const convert_id = document.getElementById('convert_id').dataset.convertId;
     /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -319,12 +343,8 @@
                     convert.value.public = data.convert_public
                     getConvert()
                 }
-                const message = {
-                    message: data.message,
-                    toast_class: data.toast_class,
-                    id: Math.random()
-                };
-                display_prepared_toast(message);
+
+                create_message(data.message, data.toast_class);
 
             }
 
@@ -355,7 +375,71 @@
                 }
             }
 
+            const share_key = ref('')
 
+            async function fetchShareKey() {
+                const currentUserId = parseInt('{{current_user.id}}');
+                const isAdmin = current_user_is_admin?.value || false;
+                const convertUserId = convert?.value?.user_id;
+
+                if (!isAdmin && currentUserId !== convertUserId) {
+                    return;
+                }
+
+                if (!convert_id) {
+                    return;
+                }
+
+
+                const params = new URLSearchParams({ id: convert_id });
+                const res = await fetch('/convert/get_share_key?' + params.toString());
+                if (!res.ok) throw new Error("Fetch failed with status " + res.status);
+                const data = await res.json();
+                share_key.value = data.share_key;
+            }
+
+            async function regenerateShareKey(convertId) {
+                const currentUserId = parseInt('{{current_user.id}}');
+                const isAdmin = current_user_is_admin?.value || false;
+                const convertUserId = convert?.value?.user_id;
+
+                if (!isAdmin && currentUserId !== convertUserId) {
+                    display_toast({
+                        message: "You do not have permission to regenerate the share key.",
+                        toast_class: "toast-error",
+                        id: Math.random()
+                    });
+                    return;
+                }
+
+                const params = new URLSearchParams({ id: convertId });
+                const res = await fetch('/convert/regenerate_share_key?' + params.toString());
+
+                const data = await res.json();
+                if (res.ok) {
+
+                    share_key.value = data.share_key;
+                }
+
+                create_message(data.message, data.toast_class);
+            }
+
+
+            watch(
+                [convert, current_user_is_admin],
+                ([newConvert, newAdmin]) => {
+                    if (newConvert && newConvert.user_id !== undefined) {
+                        fetchShareKey()
+                    }
+                },
+                { immediate: true }
+            )
+
+            onMounted(() => {
+                if (convert.value && convert.value.user_id !== undefined) {
+                    fetchShareKey()
+                }
+            })
 
 
             return {
@@ -365,7 +449,9 @@
                 copyText,
                 togglePublic,
                 deleteConvert,
-                downloadText
+                downloadText,
+                share_key,
+                regenerateShareKey
             }
         }
     }).mount('#main-container')

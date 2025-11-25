@@ -356,26 +356,86 @@ def edit_public():
 #   Share the convert   #
 #########################
 
-@convert_blueprint.route("/share/<string:uuid>", methods=['GET'])
-def share(uuid):
-    """Get the convert thanks to the uuid to a json file" with all the information"""
-    convert = ConvertModel.get_convert_by_uuid(uuid)
-    if convert:
-        if convert.public:
-            return {
-                "success": True, 
-                "convert": convert.to_share(),
-                "message": "Convert found", 
-                "toast_class" : "success"
-                }, 200
+@convert_blueprint.route("/get_share_key", methods=['GET'])
+@login_required
+def get_share_key():
+    """Get the share key of a convert"""
+    id = request.args.get('id', 1, type=int)
+    if id:
+        convert = ConvertModel.get_convert(id)
+        if convert:
+            if convert.user_id == current_user.id or current_user.is_admin():
+                return {
+                    "success": True, 
+                    "share_key": convert.share_key,
+                    "message": "Share key found", 
+                    "toast_class" : "success"
+                    }, 200
+            return redirect(url_for("access_denied"))
         return {
             "success": False, 
-            "message": "This convert is private", 
+            "message": "No convert history for this id", 
             "toast_class" : "danger"
             }, 500
     return {
         "success": False, 
-        "message": "No convert history for this uuid", 
+        "message": "No id provided", 
+        "toast_class" : "danger"
+        }, 500
+
+
+@convert_blueprint.route("/regenerate_share_key", methods=['GET'])
+@login_required
+def regenerate_share_key():
+    """Regenerate the share key of a convert"""
+    id = request.args.get('id', 1, type=int)
+    if id:
+        convert = ConvertModel.get_convert(id)
+        if convert:
+            if convert.user_id == current_user.id or current_user.is_admin():
+                success , new_share_key = ConvertModel.regenerate_share_key_convert(id)
+                if success:
+                    return {
+                        "success": True, 
+                        "share_key": new_share_key,
+                        "message": "Share key regenerated", 
+                        "toast_class" : "success"
+                        }, 200
+                return {
+                    "success": False, 
+                    "message": "Error during the regeneration of the share key", 
+                    "toast_class" : "danger"
+                }, 500
+            return redirect(url_for("access_denied"))
+        return {
+            "success": False, 
+            "message": "No convert history for this id", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No id provided", 
         "toast_class" : "danger"
         }, 500
     
+# https://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`
+@convert_blueprint.route("/share", methods=['GET'])
+def share_convert():
+    """Share a convert using uuid and share_key"""
+    uuid = request.args.get('uuid', type=str)
+    share_key = request.args.get('share_key', type=str)
+
+    if not uuid or not share_key:
+        flash("Please provide a valid UUID and Share Key", "danger")
+        return redirect(url_for("convert.history"))
+    print(f"UUID: {uuid}, Share Key: {share_key}")
+    convert = ConvertModel.get_convert_by_uuid(uuid)
+    if not convert:
+        flash("No convert found for the provided UUID", "danger")
+        return redirect(url_for("convert.history"))
+
+    if convert.share_key != share_key:
+        flash("The provided Share Key is invalid", "danger")
+        return redirect(url_for("convert.history"))
+
+    return render_template("convert/detail.html", convert=convert)
