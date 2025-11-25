@@ -2,6 +2,7 @@
 
 import os
 from flask import  Flask
+from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
@@ -27,6 +28,8 @@ login_manager = LoginManager()
 
 db.init_app(application)
 csrf.init_app(application)
+migrate = Migrate(application, db)
+
 
 login_manager.login_view = "account.login"
 login_manager.init_app(application)
