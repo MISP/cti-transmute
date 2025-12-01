@@ -134,3 +134,52 @@ class Convert(db.Model):
             "share_url": f"http://cti-transmute.org/convert/share/{self.uuid}",
             "detail_url": f"http://cti-transmute.org/convert/detail/{self.id}"
         }
+
+class ConvertHistory(db.Model):
+    __tablename__ = "convert_history"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, nullable=True)
+
+    convert_id = db.Column(
+        db.Integer,
+        db.ForeignKey("convert.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    version = db.Column(db.Integer, nullable=False)
+    uuid = db.Column(db.String(36), index=True, nullable=False)
+    status = db.Column(db.String(20), nullable=False) # pending , accepted , rejected
+    public = db.Column(db.Boolean, default=False, index=True)   # able to share with the community
+
+    input_text = db.Column(db.Text, nullable=True)
+
+    old_output_text = db.Column(db.Text, nullable=True)
+    new_output_text = db.Column(db.Text, nullable=True)
+
+    # Metadata
+    created_at = db.Column(db.DateTime, index=True)
+    comment = db.Column(db.Text, nullable=True)
+
+    # Relationship
+    convert = db.relationship("Convert", backref=db.backref(
+        "history",
+        lazy=True,
+        cascade="all, delete-orphan"
+    ))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "convert_id": self.convert_id,
+            "version": self.version,
+            "uuid": self.uuid,
+            "input_text": self.input_text,
+            "old_output_text": self.old_output_text,
+            "new_output_text": self.new_output_text,
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "comment": self.comment,
+            "status": self.status,
+            "public": self.public
+        }
+    

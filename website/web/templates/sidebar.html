@@ -1,6 +1,7 @@
 <div class="sidebar" id="sidebar">
     <div class="sidebar-header d-flex align-items-center px-3 py-2">
-        <img src="{{ url_for('static', filename='image/transmute.png') }}" alt="Logo" style="height:30px; margin-right:8px;">
+        <img src="{{ url_for('static', filename='image/transmute.png') }}" alt="Logo"
+            style="height:30px; margin-right:8px;">
         <span class="fs-5">CTI Transmute</span>
     </div>
 
@@ -12,46 +13,47 @@
         </li>
 
         <li>
-            <a class="nav-link" data-bs-toggle="collapse" href="#userMenu" role="button" aria-expanded="false" aria-controls="userMenu">
+            <a class="nav-link" data-bs-toggle="collapse" href="#userMenu" role="button" aria-expanded="false"
+                aria-controls="userMenu">
                 <i class="fa-solid fa-user me-2"></i>
-                    {% if current_user.is_authenticated %}
-                        {{ current_user.get_first_name() }} 
-                    {% else %}
-                        User
-                    {% endif %}
-                        <i class="fa-solid fa-caret-down"></i>
+                {% if current_user.is_authenticated %}
+                {{ current_user.get_first_name() }}
+                {% else %}
+                User
+                {% endif %}
+                <i class="fa-solid fa-caret-down"></i>
             </a>
             <div class="collapse ps-3" id="userMenu">
                 <ul class="nav flex-column">
                     {% if current_user.is_authenticated %}
-                        {% if current_user.is_admin() %}
-                            <li>
-                                <a href="/account/manage_user" class="nav-link">
-                                    <i class="fa-solid fa-users fa-fw me-2"></i> Manage users
-                                </a>
-                            </li>
-                        {% endif %}
-                        <li>
-                            <a href="/account/" class="nav-link">
-                                <i class="fa-solid fa-user fa-fw me-2"></i> Profil
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/account/logout" class="nav-link">
-                                <i class="fa-solid fa-right-from-bracket fa-fw me-2"></i> Logout
-                            </a>
-                        </li>
+                    {% if current_user.is_admin() %}
+                    <li>
+                        <a href="/account/manage_user" class="nav-link">
+                            <i class="fa-solid fa-users fa-fw me-2"></i> Manage users
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li>
+                        <a href="/account/" class="nav-link">
+                            <i class="fa-solid fa-user fa-fw me-2"></i> Profil
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/account/logout" class="nav-link">
+                            <i class="fa-solid fa-right-from-bracket fa-fw me-2"></i> Logout
+                        </a>
+                    </li>
                     {% else %}
-                        <li>
-                            <a href="/account/register" class="nav-link">
-                                <i class="fa-solid fa-user-plus fa-fw me-2"></i> Register
-                            </a>
-                        </li>
-                        <li>
-                            <a href="/account/login" class="nav-link">
-                                <i class="fa-solid fa-right-to-bracket fa-fw me-2"></i> Login
-                            </a>
-                        </li>
+                    <li>
+                        <a href="/account/register" class="nav-link">
+                            <i class="fa-solid fa-user-plus fa-fw me-2"></i> Register
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/account/login" class="nav-link">
+                            <i class="fa-solid fa-right-to-bracket fa-fw me-2"></i> Login
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
             </div>
@@ -62,20 +64,21 @@
                 <i class="fas fa-file-upload me-2"></i>List features
             </a>
         </li>
-         <li>
+        <li>
             <a href="/convert/history" class="nav-link">
                 <i class="fas fa-solid fa-book me-2"></i>History
             </a>
         </li>
         <li>
-            <a class="nav-link" data-bs-toggle="collapse" href="#convertMenu" role="button" aria-expanded="false" aria-controls="convertMenu">
+            <a class="nav-link" data-bs-toggle="collapse" href="#convertMenu" role="button" aria-expanded="false"
+                aria-controls="convertMenu">
                 <i class="fas fa-exchange-alt me-2"></i>Convert <i class="fa-solid fa-caret-down"></i>
             </a>
             <div class="collapse ps-3" id="convertMenu">
                 <ul class="nav flex-column">
                     <li>
                         <a href="/convert/misp_to_stix" class="nav-link">
-                          MISP to STIX
+                            MISP to STIX
                         </a>
                     </li>
                     <li>
@@ -88,6 +91,6 @@
         </li>
     </ul>
 
-    
-    
+
+
 </div>

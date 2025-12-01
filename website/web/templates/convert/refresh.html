@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5" id="main-container">
+
+    <div class="custom-card shadow-sm p-4">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0 text-truncate p-2">
+                <i class="fas fa-sync-alt me-2"></i> Re-run Conversion
+            </h3>
+
+            <!-- <a href="{{ url_for('convert.detail', id=convert_obj.id) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back
+            </a> -->
+        </div>
+
+        <div class="custom-inner-card p-3 mb-4">
+            <h6 class="fw-bold text-uppercase mb-2">Conversion Details</h6>
+
+            <p class="mb-1"><strong>Name:</strong> {{ convert_obj.name }}</p>
+            <p class="mb-1">
+                <strong>Conversion Type:</strong>
+                <span class="badge bg-primary">{{ convert_obj.conversion_type }}</span>
+            </p>
+
+            {% if filename %}
+            <p class="mb-1">
+                <strong>File Used:</strong> <code>{{ filename }}</code>
+            </p>
+            {% endif %}
+        </div>
+
+        <h5 class="fw-bold mt-4 mb-3">
+            {% if convert_obj.conversion_type == "MISP_TO_STIX" %}
+            MISP → STIX Options
+            {% elif convert_obj.conversion_type == "STIX_TO_MISP" %}
+            STIX → MISP Options
+            {% else %}
+            Conversion Options
+            {% endif %}
+        </h5>
+
+        {% if convert_obj.conversion_type == "MISP_TO_STIX" %}
+        {% from "macros/form_refresh/misp_to_stix_form.html" import misp_to_stix_form %}
+        {{ misp_to_stix_form(form, uploaded_filename=filename) }}
+
+        {% elif convert_obj.conversion_type == "STIX_TO_MISP" %}
+        {% from "macros/form_refresh/stix_to_misp_form.html" import stix_to_misp_form %}
+        {{ stix_to_misp_form(form, uploaded_filename=filename) }}
+
+        {% else %}
+        <div class="alert alert-danger mt-4" role="alert">
+            <strong>Error:</strong> Unsupported conversion type.
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="alert alert-danger mt-4" role="alert">
+            <strong>Conversion Error:</strong> {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- HISTORY TABLE -->
+        <h4 class="fw-bold mt-5">History of Changes</h4>
+
+        <ul class="nav nav-underline justify-content-center w-100 mb-3" id="exampleTabs" role="tablist">
+            <li class="nav-item flex-fill text-center">
+                <a class="nav-link active" id="chap1-tab" data-bs-toggle="tab" href="#chap1-pane" role="tab"
+                    aria-controls="chap1-pane" aria-selected="true" style="color: var(--text-color);">
+                    Pending Changes
+                </a>
+            </li>
+            <li class="nav-item flex-fill text-center">
+                <a class="nav-link" id="chap2-tab" data-bs-toggle="tab" href="#chap2-pane" role="tab"
+                    aria-controls="chap2-pane" aria-selected="false" style="color: var(--text-color);">
+                    History Archive
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="exampleTabsContent">
+
+            <!-- Pending Changes -->
+            <div class="tab-pane fade show active" id="chap1-pane" role="tabpanel" aria-labelledby="chap1-tab">
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Comment</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="latest_pending" @click="goToDiff(latest_pending.id)" style="cursor:pointer">
+                                <td>[[ latest_pending.id ]]</td>
+                                <td><span class="badge bg-info">v[[ latest_pending.version ]]</span></td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                </td>
+                                <td :title="latest_pending.created_at">[[ formatDate(latest_pending.created_at) ]]</td>
+                                <td class="text-truncate" style="max-width: 250px;">
+                                    [[ latest_pending.comment || 'No comment' ]]
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-success btn-sm me-2"
+                                        @click.stop="historyAction(latest_pending.id, 'accept')">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn btn-danger btn-sm"
+                                        @click.stop="historyAction(latest_pending.id, 'reject')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr v-else>
+                                <td colspan="6" class="text-center text-muted">
+                                    No pending history found for this Convert.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- History Archive -->
+            <div class="tab-pane fade" id="chap2-pane" role="tabpanel" aria-labelledby="chap2-tab">
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Comment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="h in history_archive" :key="h.id" @click="goToDiff(h.id)" style="cursor:pointer">
+                                <td>[[ h.id ]]</td>
+                                <td><span class="badge bg-info">v[[ h.version ]]</span></td>
+                                <td>
+                                    <span v-if="h.status === 'pending'"
+                                        class="badge bg-warning text-dark">Pending</span>
+                                    <span v-else-if="h.status === 'accepted'" class="badge bg-success">Accepted</span>
+                                    <span v-else-if="h.status === 'rejected'" class="badge bg-danger">Rejected</span>
+                                    <span v-else class="badge bg-secondary">[[ h.status ]]</span>
+                                </td>
+                                <td :title="h.created_at">[[ formatDate(h.created_at) ]]</td>
+                                <td class="text-truncate" style="max-width: 250px;">[[ h.comment || 'No comment' ]]</td>
+                            </tr>
+                            <tr v-if="history_archive.length === 0">
+                                <td colspan="6" class="text-center text-muted">No history available.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+
+        <div class="text-center mt-4 mb-5">
+            <a href="{{ url_for('convert.detail', id=convert_obj.id) }}"
+                class="btn btn-light border shadow-sm px-4 py-2 rounded-pill back-btn">
+                <i class="fas fa-arrow-left me-2"></i>
+                Back
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, computed } = Vue;
+    import { display_toast, message_list, create_message } from '/static/js/toaster.js';
+
+    createApp({
+        delimiters: ['[[', ']]'],
+
+        setup() {
+            const history_list = ref([]);
+
+            async function getHistory() {
+                const res = await fetch(`/convert/get_new_convert?id={{ convert_obj.id }}`);
+                const data = await res.json();
+
+                if (res.ok && data.history_convert) {
+                    history_list.value = data.history_convert;
+                } else {
+                    history_list.value = [];
+                }
+            }
+
+            const latest_pending = computed(() => {
+                const pendings = history_list.value.filter(h => h.status === 'pending');
+                if (!pendings.length) return null;
+                return pendings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            });
+
+            const history_archive = computed(() => {
+                return history_list.value
+                    .filter(h => h !== latest_pending.value)
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            });
+
+            async function historyAction(id, action) {
+                const params = new URLSearchParams({
+                    history_id: id,
+                    action: action
+                });
+
+                const res = await fetch(`/convert/history_action?` + params.toString());
+                const data = await res.json();
+
+                create_message(data.message, data.toast_class);
+
+                await getHistory();
+            }
+
+            function goToDiff(id) {
+                window.location.href = `/convert/difference/${id}`;
+            }
+
+            function formatDate(str) {
+                if (!str) return "N/A";
+                const date = new Date(str.replace(" ", "T"));
+                if (isNaN(date)) return str;
+                return date.toLocaleString();
+            }
+
+            getHistory();
+
+            return {
+                message_list,
+                latest_pending,
+                history_archive,
+                goToDiff,
+                historyAction,
+                formatDate
+            };
+        }
+    }).mount("#main-container");
+</script>
+{% endblock %}

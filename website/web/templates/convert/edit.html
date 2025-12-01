@@ -1,42 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <div class="container my-5" id="main-container">
-        <form method="post" enctype="multipart/form-data">
-            {{ form.hidden_tag() }}
+<div class="container my-5" id="main-container">
+    <form method="post" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
 
-            
-            <div class="row mb-3">
-                <div class="col-md-6">
-                    {{ form.name.label(class_="form-label") }} <span class="text-danger">*</span>
-                    {{ form.name(class_="form-control", style="background-color:var(--color-navbar); color:var(--color-text);", placeholder="Enter a name for the convert") }}
-                    {% for err in form.name.errors %}
-                        <div class="invalid-feedback d-block">{{ err }}</div>
-                    {% endfor %}
-                </div>
-                <div class="col-md-6">
-                    {{ form.description.label(class_="form-label") }}
-                    {{ form.description(class_="form-control", style="background-color:var(--color-navbar); color:var(--color-text);", placeholder="Optional description...") }}
-                </div>
+
+        <div class="row mb-3">
+            <div class="mb-3">
+                {{ form.name.label(class_="form-label") }} <span class="text-danger">*</span>
+                {{ form.name(class_="form-control", style="background-color:var(--color-navbar);
+                color:var(--color-text);", placeholder="Enter a name for the convert") }}
+                {% for err in form.name.errors %}
+                <div class="invalid-feedback d-block">{{ err }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-3">
+                {{ form.description.label(class_="form-label") }}
+                {{ form.description(class_="form-control", style="background-color:var(--color-navbar);
+                color:var(--color-text);", placeholder="Optional description...", rows="4") }}
             </div>
 
+        </div>
 
-            <div class="mb-3 d-flex justify-content-between">
-                <div>
-                    {{ form.edit(class_="btn btn-primary") }}
-                </div>
 
-                <div>
-                    <a href="{{ url_for('convert.detail', id=convert_id) }}" 
-                    class="btn btn-secondary" 
+        <div class="mb-3 d-flex justify-content-between">
+            <div>
+                {{ form.edit(class_="btn btn-primary") }}
+            </div>
+
+            <div>
+                <a href="{{ url_for('convert.detail', id=convert_id) }}" class="btn btn-secondary"
                     title="Back to detail">
-                        <i class="fas fa-arrow-left me-1"></i> Back
-                    </a>
-                </div>
+                    <i class="fas fa-arrow-left me-1"></i> Back
+                </a>
             </div>
+        </div>
 
-        </form>
-    </div>
+    </form>
+</div>
 {% endblock %}
-
-

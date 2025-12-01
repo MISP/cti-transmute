@@ -1,0 +1,132 @@
+{% macro stix_to_misp_form(form, uploaded_filename=None) %}
+<form method="post" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+
+    <!-- File -->
+    <div class="mb-4">
+        <label class="form-label">STIX File <span class="text-danger">*</span></label>
+
+        {% if uploaded_filename %}
+        <!-- Champ fichier désactivé -->
+        <input type="text" class="form-control" value="{{ uploaded_filename }}" disabled
+            style="background-color:var(--color-navbar); color:var(--color-text);">
+        <input type="hidden" name="existing_file" value="{{ uploaded_filename }}">
+        {% else %}
+        <!-- Champ normal si aucun fichier encore upload -->
+        <input type="file" class="form-control" name="file" required
+            style="background-color:var(--color-navbar); color:var(--color-text);">
+        {% endif %}
+    </div>
+
+    <!-- Distribution -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="distribution" class="form-label">Distribution Level</label>
+            <select class="form-select" id="distribution" name="distribution"
+                style="background-color:var(--color-navbar); color:var(--color-text);">
+                <option value="0" {% if form.distribution.data==0 %}selected{% endif %}>0 – Your organisation only
+                </option>
+                <option value="1" {% if form.distribution.data==1 %}selected{% endif %}>1 – This community only</option>
+                <option value="2" {% if form.distribution.data==2 %}selected{% endif %}>2 – Connected communities
+                </option>
+                <option value="3" {% if form.distribution.data==3 %}selected{% endif %}>3 – All communities</option>
+                <option value="4" {% if form.distribution.data==4 %}selected{% endif %}>4 – Sharing Group</option>
+            </select>
+            {% for err in form.distribution.errors %}
+            <div class="invalid-feedback d-block">{{ err }}</div>
+            {% endfor %}
+        </div>
+
+        <div class="col-md-6">
+            {{ form.sharing_group_id.label(class_="form-label") }}
+            {{ form.sharing_group_id(class_="form-control",
+            placeholder="Only if distribution = 4",
+            style="background-color:var(--color-navbar); color:var(--color-text);") }}
+        </div>
+    </div>
+
+    <!-- Cluster Distribution -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="cluster_distribution" class="form-label">Cluster Distribution Level</label>
+            <select class="form-select" id="cluster_distribution" name="cluster_distribution"
+                style="background-color:var(--color-navbar); color:var(--color-text);">
+                <option value="0" {% if form.cluster_distribution.data==0 %}selected{% endif %}>0 – Your organisation
+                    only</option>
+                <option value="1" {% if form.cluster_distribution.data==1 %}selected{% endif %}>1 – This community only
+                </option>
+                <option value="2" {% if form.cluster_distribution.data==2 %}selected{% endif %}>2 – Connected
+                    communities</option>
+                <option value="3" {% if form.cluster_distribution.data==3 %}selected{% endif %}>3 – All communities
+                </option>
+                <option value="4" {% if form.cluster_distribution.data==4 %}selected{% endif %}>4 – Sharing Group
+                </option>
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            {{ form.cluster_sharing_group_id.label(class_="form-label") }}
+            {{ form.cluster_sharing_group_id(class_="form-control",
+            placeholder="Only if cluster distribution = 4",
+            style="background-color:var(--color-navbar); color:var(--color-text);") }}
+        </div>
+    </div>
+
+    <!-- Organisation + Producer -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            {{ form.organisation_uuid.label(class_="form-label") }}
+            {{ form.organisation_uuid(class_="form-control",
+            placeholder="Organisation UUID (optional)",
+            style="background-color:var(--color-navbar); color:var(--color-text);") }}
+        </div>
+
+        <div class="col-md-6">
+            {{ form.producer.label(class_="form-label") }}
+            {{ form.producer(class_="form-control",
+            placeholder="Producer of the STIX data",
+            style="background-color:var(--color-navbar); color:var(--color-text);") }}
+        </div>
+    </div>
+
+    <!-- Title -->
+    <div class="mb-3">
+        {{ form.title.label(class_="form-label") }}
+        {{ form.title(class_="form-control",
+        placeholder="Optional title for the resulting MISP event",
+        style="background-color:var(--color-navbar); color:var(--color-text);") }}
+    </div>
+
+    <!-- Switches -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="form-check form-switch">
+                {{ form.galaxies_as_tags(class_="form-check-input", id="galaxiesSwitch") }}
+                {{ form.galaxies_as_tags.label(class_="form-check-label", for="galaxiesSwitch") }}
+                <small class="text-muted d-block">Import galaxies as simple tags</small>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="form-check form-switch">
+                {{ form.no_force_contextual_data(class_="form-check-input", id="contextSwitch") }}
+                {{ form.no_force_contextual_data.label(class_="form-check-label", for="contextSwitch") }}
+                <small class="text-muted d-block">Avoid forced cluster creation</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check form-switch">
+                {{ form.single_event(class_="form-check-input", id="singleEventSwitch") }}
+                {{ form.single_event.label(class_="form-check-label", for="singleEventSwitch") }}
+                <small class="text-muted d-block">Convert into one MISP event</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Convert button -->
+    <div>
+        <button type="submit" class="btn btn-primary">{{ form.convert.label }}</button>
+    </div>
+
+</form>
+{% endmacro %}

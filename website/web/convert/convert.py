@@ -1,4 +1,5 @@
 # website/web/convert/views.py
+import io
 import json
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
@@ -128,7 +129,7 @@ def stix_to_misp():
             if form.single_event.data:
                 params["single_event"] = ""
 
-            print(params)
+            #print(params)
 
             try:
                 response = requests.post(
@@ -439,3 +440,248 @@ def share_convert():
         return redirect(url_for("convert.history"))
 
     return render_template("convert/detail.html", convert=convert)
+
+
+
+###########################
+#   Refresh a conversion  #
+###########################
+
+@convert_blueprint.route("/refresh/<string:uuid>", methods=['GET', 'POST'])
+def refresh(uuid):
+
+    convert_obj = ConvertModel.get_convert_by_uuid(uuid)
+
+    if not convert_obj:
+        flash("Conversion not found.", "danger")
+        return redirect(url_for("convert.history"))
+
+    # Choose which WTForm to use
+    if convert_obj.conversion_type == "MISP_TO_STIX":
+        print("Using MISP to STIX form")
+        form = mispToStixParamForm()
+    elif convert_obj.conversion_type == "STIX_TO_MISP":
+        print("Using STIX to MISP form")
+        form = stixToMispParamForm()
+    else:
+        flash("Unsupported conversion type.", "danger")
+        return redirect(url_for("convert.history"))
+
+    # Prefill form (GET)
+    if request.method == "GET":
+        form.name.data = convert_obj.name
+        form.description.data = convert_obj.description
+        form.public.data = convert_obj.public
+
+    result = None
+    diff = None
+    error = None
+
+    if form.validate_on_submit():
+
+        # Call the generic dispatcher
+        new_output, is_identical, error_msg = ConvertModel.reconvert_conversion(convert_obj, form)
+
+        if error_msg:
+            error = error_msg
+            flash(error_msg, "danger")
+        else:
+            if not is_identical:
+                flash("Conversion re-executed successfully! Changes detected.", "success")
+                result = new_output
+                diff = "The new conversion result is DIFFERENT from the previous one."
+            else:
+                flash("Conversion re-executed successfully! No changes detected.", "success")
+                result = new_output
+                diff = "The new conversion result is IDENTICAL to the previous one."
+
+    return render_template(
+        "convert/refresh.html",
+        form=form,
+        convert_obj=convert_obj,
+        result=result,
+        diff=diff,
+        error=error,
+        filename=f"{convert_obj.name}_refresh.json"
+    )
+
+
+# get_history
+
+@convert_blueprint.route("/get_history", methods=['GET'])
+def get_history():
+    id = request.args.get('id', 1, type=int)
+    if id:
+        convert_obj = ConvertModel.get_convert(id)
+        if convert_obj:
+            latest_history = ConvertModel.get_history_list(convert_obj.id)
+            if latest_history:
+                return {
+                    "success": True, 
+                    "history_convert": [h.to_json() for h in latest_history],
+                    "message": "New convert found", 
+                    "toast_class" : "success"
+                    }, 200
+            return {
+                "success": True, 
+                "message": "No conversion history found for this convert", 
+                "toast_class" : "danger"
+                }, 200
+        return {
+            "success": False, 
+            "message": "No convert found for this id", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No id provided", 
+        "toast_class" : "danger"
+        }, 500
+
+
+
+
+@convert_blueprint.route("/get_new_convert", methods=['GET'])
+def get_new_convert():
+    """Get the new convert after a refresh to show the difference"""
+    id = request.args.get('id', 1, type=int)
+    if id:
+        convert_obj = ConvertModel.get_convert(id)
+        if convert_obj:
+            latest_history = ConvertModel.get_latest_history_list(convert_obj.id)
+            if latest_history:
+                return {
+                    "success": True, 
+                    "history_convert": [h.to_json() for h in latest_history],
+                    "message": "New convert found", 
+                    "toast_class" : "success"
+                    }, 200
+            return {
+                "success": True, 
+                "message": "No conversion history found for this convert", 
+                "toast_class" : "danger"
+                }, 200
+        return {
+            "success": False, 
+            "message": "No convert found for this id", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No id provided", 
+        "toast_class" : "danger"
+        }, 500
+
+
+@convert_blueprint.route("/history_action", methods=['GET'])
+def history_action():
+    """Handle actions related to conversion history"""
+    action = request.args.get('action')
+    history_id = request.args.get('history_id', type=int)
+    convert_id = request.args.get('convert_id', type=int)
+
+    if current_user.is_anonymous():
+        return {
+            "success": False,
+            "message": "You must be logged in to perform this action.",
+            "toast_class": "danger"
+        }, 401
+    if not current_user.is_admin() and current_user.id != ConvertModel.get_convert(convert_id).user_id:
+        return {
+            "success": False,
+            "message": "You do not have permission to perform this action.",
+            "toast_class": "danger"
+        }, 403
+    else:
+        # --- Handle Conversion History Actions (Accept/Reject) ---
+        if history_id and action in ["accept", "reject"]:
+            
+            if action == "accept":
+                success = ConvertModel.accept_history(history_id)
+            elif action == "reject":
+                success = ConvertModel.reject_history(history_id)
+            success = True # Replace with actual database call
+            
+            if success:
+                flash("Convert history updated", "success")
+                return {
+                    "success": True,
+                    "message": f"History entry {history_id} {action}ed successfully.",
+                    "toast_class": "success"
+                }, 200
+            return {
+                "success": False,
+                "message": f"Failed to {action} history entry {history_id}.",
+                "toast_class": "danger"
+            }, 500
+
+    # --- Default Error ---
+    return {
+        "success": False,
+        "message": "Invalid action or missing parameters (history_id or convert_id).",
+        "toast_class": "danger"
+    }, 400
+
+
+@convert_blueprint.route("/difference/<int:id>", methods=['GET'])
+def difference(id):
+    """Show the difference between two convert versions"""
+    convert_obj_history = ConvertModel.get_convert_history_by_id(id)
+    if not convert_obj_history:
+        flash("Conversion not found.", "danger")
+        return redirect(url_for("convert.history"))
+
+    convert_obj = ConvertModel.get_convert(convert_obj_history.convert_id)
+    if not convert_obj:
+        flash("Conversion not found.", "danger")
+        return redirect(url_for("convert.history"))
+    
+    if convert_obj.public == False:
+        if current_user.is_anonymous():
+            flash("You must be logged in to view this convert if you are the owner of this convert.", "warning")
+            return redirect(url_for("account.login"))  
+
+        if current_user.id != convert_obj.user_id and not current_user.is_admin():
+            flash("You do not have permission to view this convert.", "danger")
+            return redirect(url_for("convert.history"))
+        
+        return render_template(
+            "convert/compare_version/difference.html",
+            old_result=convert_obj_history.old_output_text,
+            new_result=convert_obj_history.new_output_text,
+            convert_obj=convert_obj,
+            history_id=convert_obj_history.id
+        )
+    else:
+        return render_template(
+            "convert/compare_version/difference.html",
+            old_result=convert_obj_history.old_output_text,
+            new_result=convert_obj_history.new_output_text,
+            convert_obj=convert_obj,
+            history_id=convert_obj_history.id
+        )
+
+# get_history_details
+@convert_blueprint.route("/get_history_details", methods=['GET'])
+def get_history_details():
+    """Get the details of a convert history entry"""
+    history_id = request.args.get('history_id', type=int)
+    if history_id:
+        convert_history = ConvertModel.get_convert_history_by_id(history_id)
+        if convert_history:
+            return {
+                "success": True, 
+                "history": convert_history.to_json(),
+                "message": "Convert history found", 
+                "toast_class" : "success"
+                }, 200
+        return {
+            "success": False, 
+            "message": "No convert history found for this id", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No history_id provided", 
+        "toast_class" : "danger"
+        }, 500
