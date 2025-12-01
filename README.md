@@ -2,11 +2,11 @@
 
 <img src="website/web/static/image/transmute_long.png" alt="CTI-Transmute logo" width="400"/>
 
-An online service for converting cyber threat intelligence, built to promote interoperability and seamless data exchange
+An **online service for converting cyber threat intelligence format** ([CTI-Transmute.org](https://cti-transmute.org/)), built to **promote interoperability and seamless data exchange**. This repository includes the complete source code of the online service if you want to run it locally. This service **leverages** the **misp-stix open-source library** ([misp-stix](https://github.com/misp/misp-stix)) to facilitate conversion.
 
 ## Main features (Work in Progress)
 
-- **API**: A quick and easy-to-use API for converting between MISP and STIX formats.
+- **API**: A quick and easy-to-use API for converting between [MISP](https://misp-standard.org/) and [STIX](https://github.com/misp/misp-stix) formats.
 
 ## Installation
 
@@ -64,4 +64,5 @@ CTI-Transmute is free software released under the "GNU Affero General Public Lic
 ~~~
 Copyright (c) 2025 Computer Incident Response Center Luxembourg (CIRCL)
 Copyright (c) 2025 Christian Studer - https://github.com/chrisr3d
+Copyright (c) 2025 Theo Geffe - https://github.com/ecrou-exact/ 
 ~~~
