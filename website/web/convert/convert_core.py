@@ -1,8 +1,9 @@
 # website/web/convert/convert_service.py
 import json
+from sqlite3 import IntegrityError
 import uuid
 from flask_login import AnonymousUserMixin, current_user
-from website.db_class.db import Convert
+from website.db_class.db import Convert, ConvertHistory
 from website.web import db
 from sqlalchemy import desc, asc, or_
 import datetime
@@ -233,3 +234,293 @@ def regenerate_share_key_convert(convert_id):
     convert.share_key = generate_api_key(36)
     db.session.commit()
     return True, convert.share_key
+
+
+# convert/convert_core.py
+
+import io
+import json
+import requests
+
+def reconvert_conversion(convert_obj, form):
+    """
+    Dispatcher: call the right reconversion depending on the type.
+    """
+    if convert_obj.conversion_type == "MISP_TO_STIX":
+        return reconvert_misp_to_stix(convert_obj, form)
+
+    elif convert_obj.conversion_type == "STIX_TO_MISP":
+        return reconvert_stix_to_misp(convert_obj, form)
+
+    else:
+        return None, None, "Unsupported conversion type"
+    
+
+# ---------------------------------------------------------
+# MISP → STIX
+# ---------------------------------------------------------
+def reconvert_misp_to_stix(convert_obj, form):
+    old_input = convert_obj.input_text
+    old_output = convert_obj.output_text
+
+    file_stream = io.BytesIO(old_input.encode("utf-8"))
+    file_stream.name = "input.json"
+
+    files = {"file": ("input.json", file_stream, "application/json")}
+    params = {"version": form.version.data}
+
+    try:
+        response = requests.post(
+            "http://127.0.0.1:6868/api/convert/misp_to_stix",
+            files=files,
+            params=params
+        )
+
+        new_data = response.json() if response.ok else None
+
+        if not new_data or new_data.get("error"):
+            return None, None, new_data.get("error", "Unknown error")
+
+        new_output_json = json.dumps(new_data, indent=2)
+        is_identical = (old_output.strip() == new_output_json.strip())
+
+        if not is_identical:
+            # create an history entry
+            success, history_entry = create_history(
+                convert_obj,
+                user_id=current_user.id,
+                comment="Reconversion triggered from history",
+                new_output_text=new_output_json
+            )
+            if not success:
+                return None, None, "Failed to create history entry"
+        
+        # create history entry
+        
+
+        return new_output_json, is_identical, None
+
+    except Exception as e:
+        return None, None, f"Conversion failed: {e}"
+
+
+# ---------------------------------------------------------
+# STIX → MISP
+# ---------------------------------------------------------
+def reconvert_stix_to_misp(convert_obj, form):
+    """
+    Re-run a STIX → MISP conversion using the original stored STIX input.
+    """
+
+    old_input = convert_obj.input_text
+    old_output = convert_obj.output_text
+
+    # Convert stored input text into a simulated uploaded file
+    file_stream = io.BytesIO(old_input.encode("utf-8"))
+    file_stream.name = "input.json"
+
+    files = {"file": ("input.json", file_stream, "application/json")}
+
+    # Build parameters exactly like the macro template fields
+    params = {
+        "distribution": form.distribution.data,
+        "sharing_group_id": form.sharing_group_id.data,
+        "galaxies_as_tags": form.galaxies_as_tags.data,
+        "no_force_contextual_data": form.no_force_contextual_data.data,
+        "cluster_distribution": form.cluster_distribution.data,
+        "cluster_sharing_group_id": form.cluster_sharing_group_id.data,
+        "organisation_uuid": form.organisation_uuid.data,
+        "single_event": form.single_event.data,
+        "producer": form.producer.data,
+        "title": form.title.data,
+    }
+
+    # Remove None values to avoid sending them as strings
+    params = {k: v for k, v in params.items() if v not in [None, ""]}
+    raw_params = params.copy()
+    # Remove empty values AND remove booleans that are false
+    params = {
+        key: value
+        for key, value in raw_params.items()
+        if value not in [None, "", False, "False"]
+    }
+
+    # Add boolean flags only when True
+    if form.galaxies_as_tags.data:
+        params["galaxies_as_tags"] = ""
+
+    if form.no_force_contextual_data.data:
+        params["no_force_contextual_data"] = ""
+
+    if form.single_event.data:
+        params["single_event"] = ""
+
+    try:
+        response = requests.post(
+            "http://127.0.0.1:6868/api/convert/stix_to_misp",
+            files=files,
+            params=params
+        )
+
+        if not response.ok:
+            return None, None, f"Conversion HTTP error: {response.status_code}"
+
+        try:
+            new_data = response.json()
+        except Exception:
+            return None, None, "Invalid JSON returned from conversion API"
+
+        if new_data.get("error"):
+            return None, None, new_data["error"]
+
+        # Prepare formatted output JSON
+        new_output_json = json.dumps(new_data, indent=2)
+
+        # Compare with old result
+        is_identical = (old_output.strip() == new_output_json.strip())
+
+        if not is_identical:
+            # create an history entry
+            success, history_entry = create_history(
+                convert_obj,
+                user_id=current_user.id,
+                comment="Reconversion triggered from history",
+                new_output_text=new_output_json
+            )
+            if not success:
+                return None, None, "Failed to create history entry"
+        
+
+        # Update DB
+        # convert_obj.output_text = new_output_json
+        # convert_obj.description = form.description.data
+        # convert_obj.public = form.public.data
+        # convert_obj.updated_at = now
+
+        # db.session.commit()
+
+        return new_output_json, is_identical, None
+
+    except Exception as e:
+        return None, None, f"Conversion failed: {str(e)}"
+
+
+#################################
+#   History saving functions    #
+#################################
+
+def create_history(convert_obj, user_id=None, comment=None, new_output_text=None):
+    if convert_obj is None:
+        return False, None
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    try:
+        # 1) Get the last version and check for potential duplicate
+        last_entry = (
+            ConvertHistory.query
+            .filter_by(convert_id=convert_obj.id, status='accepted')  
+            .order_by(ConvertHistory.version.desc())
+            .first()
+        )
+
+        next_version = 2 if last_entry is None else last_entry.version + 1
+
+
+        # Check for duplication (comparing input_text and new_output_text with the last entry)
+        if last_entry:
+            # Normalize texts for comparison (strip whitespace, etc., if necessary, but keep it simple here)
+            last_input = last_entry.input_text.strip() if last_entry.input_text else None
+            current_input = convert_obj.input_text.strip() if convert_obj.input_text else None
+
+            last_output = last_entry.new_output_text.strip() if last_entry.new_output_text else None
+            current_output = new_output_text.strip() if new_output_text else None
+            
+            # If the input text is identical AND the output text (new_output_text) is identical to the last recorded output
+            # We assume a duplicate run.
+            is_duplicate = (
+                last_input == current_input and
+                last_output == current_output
+            )
+            
+            if is_duplicate:
+                # If duplicate, return True without creating a new entry
+                return True, last_entry
+
+        # 2) UUID unique
+        history_uuid = str(uuid.uuid4())
+
+        # 3) Create history entry
+        history = ConvertHistory(
+            user_id=user_id,
+            convert_id=convert_obj.id,
+            version=next_version,
+            uuid=history_uuid,
+
+            status="pending",
+            public=convert_obj.public,
+
+            input_text=convert_obj.input_text,
+
+            old_output_text=convert_obj.output_text,
+            new_output_text=new_output_text,
+
+            created_at=now,
+            comment=comment
+        )
+
+        db.session.add(history)
+        db.session.commit()
+        return True, history
+
+    except Exception:
+        db.session.rollback()
+        return False, None
+
+
+def get_latest_history(convert_id):
+    return ConvertHistory.query.filter_by(convert_id=convert_id).order_by(ConvertHistory.version.desc()).first()
+
+def get_latest_history_list(convert_id):
+    return ConvertHistory.query.filter_by(convert_id=convert_id).order_by(ConvertHistory.version.desc()).all()
+
+def get_history_list(convert_id):
+    return (
+        ConvertHistory.query
+        .filter_by(convert_id=convert_id, status="accepted")
+        .order_by(ConvertHistory.version.asc())
+        .all()
+    )
+
+
+def accept_history(history_id):
+    history = ConvertHistory.query.get(history_id)
+    if history is None:
+        return False
+    history.status = "accepted"
+
+    # Update the main Convert entry with the new output
+    convert = history.convert
+    convert.output_text = history.new_output_text
+    convert.updated_at = datetime.datetime.now(tz=datetime.timezone.utc)
+
+
+    db.session.commit()
+    return True
+
+def reject_history(history_id):
+    history = ConvertHistory.query.get(history_id)
+    if history is None:
+        return False
+    history.status = "rejected"
+
+    db.session.commit()
+    return True
+
+def get_convert_history_by_id(convert_history_id):
+     return (
+        ConvertHistory.query
+        .filter_by(id=convert_history_id)
+        .order_by(ConvertHistory.version.desc())
+        .first()
+    )
