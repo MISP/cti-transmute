@@ -9,6 +9,8 @@ import datetime
 import random
 import string
 
+from website.web.utils import generate_api_key
+
 def create_convert(user_id, input_text, output_text, convert_choice, description, name, public):
     """
     Create a new Convert entry from API response and save history.
@@ -17,17 +19,27 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
     """
     try:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
+
+
         if convert_choice == "MISP_TO_STIX":
             _name = f"STIX_{now.strftime('%Y%m%d%H%M%S')}"
         else:
             _name = f"MISP_{now.strftime('%Y%m%d%H%M%S')}"
 
+
         final_name = name or _name
 
         existing = Convert.query.filter_by(name=final_name).first()
+
+        MAX_NAME_LEN = 100
+
         if existing:
             suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            final_name = f"{final_name}_{suffix}"
+            base_length = MAX_NAME_LEN - (len(suffix) + 1)
+            final_name = f"{final_name[:base_length]}_{suffix}"
+
+        if len(final_name) > MAX_NAME_LEN:
+            final_name = final_name[:MAX_NAME_LEN]
 
         convert = Convert(
             user_id=user_id,
@@ -40,14 +52,17 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
             updated_at=now,
             public=public,
             uuid=str(uuid.uuid4()),
+            share_key=generate_api_key(36)
         )
 
         db.session.add(convert)
+
         db.session.commit()
 
         return True
 
     except Exception as e:
+        print("Exception:", e)
         return False
 
 
@@ -207,4 +222,14 @@ def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', sear
 
     return query.paginate(page=page, per_page=10)
 
+def get_convert_by_uuid(uuid):
+    return Convert.query.filter_by(uuid=uuid).first()
 
+def regenerate_share_key_convert(convert_id):
+    """Regenerate the share key for a Convert entry"""
+    convert = get_convert(convert_id)
+    if not convert:
+        return False , None
+    convert.share_key = generate_api_key(36)
+    db.session.commit()
+    return True, convert.share_key

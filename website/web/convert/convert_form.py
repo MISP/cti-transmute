@@ -75,6 +75,7 @@ class stixToMispParamForm(FlaskForm):
 
     galaxies_as_tags = BooleanField(
         "Galaxies as Tags",
+        # default='false',
         description="Import MISP Galaxies as tag names instead of the standard Galaxy format"
     )
 

@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
-from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports
+from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
 import requests
 from ..convert import convert_core as ConvertModel
 
@@ -105,11 +105,34 @@ def stix_to_misp():
             file_data.seek(0)
 
             files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
+
             params = form_to_dict(form)
+
+            # Instead of sending all form fields blindly:
+            raw_params = form_to_dict(form)
+
+            # Remove empty values AND remove booleans that are false
+            params = {
+                key: value
+                for key, value in raw_params.items()
+                if value not in [None, "", False, "False"]
+            }
+
+            # Add boolean flags only when True
+            if form.galaxies_as_tags.data:
+                params["galaxies_as_tags"] = ""
+
+            if form.no_force_contextual_data.data:
+                params["no_force_contextual_data"] = ""
+
+            if form.single_event.data:
+                params["single_event"] = ""
+
+            print(params)
 
             try:
                 response = requests.post(
-                    "http://127.0.0.1:6868/api/convert/stix_to_misp",
+                    "http://0.0.0.0:6868/api/convert/stix_to_misp",
                     files=files,
                     params=params
                 )
@@ -329,3 +352,90 @@ def edit_public():
         "toast_class" : "danger"
         }, 404
 
+#########################
+#   Share the convert   #
+#########################
+
+@convert_blueprint.route("/get_share_key", methods=['GET'])
+@login_required
+def get_share_key():
+    """Get the share key of a convert"""
+    id = request.args.get('id', 1, type=int)
+    if id:
+        convert = ConvertModel.get_convert(id)
+        if convert:
+            if convert.user_id == current_user.id or current_user.is_admin():
+                return {
+                    "success": True, 
+                    "share_key": convert.share_key,
+                    "message": "Share key found", 
+                    "toast_class" : "success"
+                    }, 200
+            return redirect(url_for("access_denied"))
+        return {
+            "success": False, 
+            "message": "No convert history for this id", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No id provided", 
+        "toast_class" : "danger"
+        }, 500
+
+
+@convert_blueprint.route("/regenerate_share_key", methods=['GET'])
+@login_required
+def regenerate_share_key():
+    """Regenerate the share key of a convert"""
+    id = request.args.get('id', 1, type=int)
+    if id:
+        convert = ConvertModel.get_convert(id)
+        if convert:
+            if convert.user_id == current_user.id or current_user.is_admin():
+                success , new_share_key = ConvertModel.regenerate_share_key_convert(id)
+                if success:
+                    return {
+                        "success": True, 
+                        "share_key": new_share_key,
+                        "message": "Share key regenerated", 
+                        "toast_class" : "success"
+                        }, 200
+                return {
+                    "success": False, 
+                    "message": "Error during the regeneration of the share key", 
+                    "toast_class" : "danger"
+                }, 500
+            return redirect(url_for("access_denied"))
+        return {
+            "success": False, 
+            "message": "No convert history for this id", 
+            "toast_class" : "danger"
+            }, 500
+    return {
+        "success": False, 
+        "message": "No id provided", 
+        "toast_class" : "danger"
+        }, 500
+    
+# https://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`
+@convert_blueprint.route("/share", methods=['GET'])
+def share_convert():
+    """Share a convert using uuid and share_key"""
+    uuid = request.args.get('uuid', type=str)
+    share_key = request.args.get('share_key', type=str)
+
+    if not uuid or not share_key:
+        flash("Please provide a valid UUID and Share Key", "danger")
+        return redirect(url_for("convert.history"))
+    print(f"UUID: {uuid}, Share Key: {share_key}")
+    convert = ConvertModel.get_convert_by_uuid(uuid)
+    if not convert:
+        flash("No convert found for the provided UUID", "danger")
+        return redirect(url_for("convert.history"))
+
+    if convert.share_key != share_key:
+        flash("The provided Share Key is invalid", "danger")
+        return redirect(url_for("convert.history"))
+
+    return render_template("convert/detail.html", convert=convert)
