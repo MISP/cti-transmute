@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cti-transmute"
-version = "0.1.0"
+version = "0.1.1"
 description = "CTI Transmute is an online service to facilitate the conversion of Cyber Threat Intelligence between MISP standard and other formats."
 readme = "README.md"
 authors = [
