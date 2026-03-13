@@ -1,34 +1,22 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container my-5" id="main-container">
+<div class="container my-5" id="history-container">
     <h2 class="mb-3 ">Conversion History</h2>
 
     <div class="mb-3 d-flex align-items-end flex-wrap g-2">
         <!-- Search input -->
         <div class="flex-fill me-2" style="min-width: 200px;">
             <label for="search" class="form-label">Search:</label>
-            <input 
-                id="search" 
-                type="text" 
-                v-model="searchQuery" 
-                @input="onSearchInput" 
-                @keyup.enter="onEnterKey" 
-                class="form-control form-control-sm rounded-pill" 
-                placeholder="Search by keywords..."
-            >
+            <input id="search" type="text" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onEnterKey"
+                class="form-control form-control-sm rounded-pill" placeholder="Search by keywords...">
         </div>
 
         <!-- Filter by conversion -->
         <div class="flex-fill me-2" style="min-width: 180px;">
             <label for="conversionFilter" class="form-label">Filter by conversion:</label>
-            <select 
-                id="conversionFilter" 
-                class="form-select" 
-                @change="onSearchInput"
-                v-model="filter_type" 
-                style="background-color:var(--color-sidebar); color: var(--color-text);"
-            >
+            <select id="conversionFilter" class="form-select" @change="onSearchInput" v-model="filter_type"
+                style="background-color:var(--color-sidebar); color: var(--color-text);">
                 <option value="">All</option>
                 <option value="MISP_TO_STIX">MISP to STIX</option>
                 <option value="STIX_TO_MISP">STIX to MISP</option>
@@ -38,13 +26,8 @@
         <!-- Sort by date -->
         <div class="flex-fill me-2" style="min-width: 180px;">
             <label for="sortOrder" class="form-label">Sort by date:</label>
-            <select 
-                id="sortOrder" 
-                class="form-select" 
-                v-model="sort_order" 
-                @change="onSearchInput"
-                style="background-color:var(--color-sidebar); color: var(--color-text);"
-            >
+            <select id="sortOrder" class="form-select" v-model="sort_order" @change="onSearchInput"
+                style="background-color:var(--color-sidebar); color: var(--color-text);">
                 <option value="desc">Newest first</option>
                 <option value="asc">Oldest first</option>
             </select>
@@ -54,19 +37,10 @@
         <div class="d-flex flex-column justify-content-end me-2" style="min-width: 130px;">
             <label for="myConvertsOnly" class="form-label">My converts only:</label>
             <div class="form-check form-switch mt-1">
-                <input 
-                    class="form-check-input" 
-                    type="checkbox" 
-                    id="myConvertsOnly" 
-                    @change="onSearchInput"
-                    v-model="only_mine"
-                    style="width: 3rem; height: 1.5rem; transform: translateY(3px);"
-                >
+                <input class="form-check-input" type="checkbox" id="myConvertsOnly" @change="onSearchInput"
+                    v-model="only_mine" style="width: 3rem; height: 1.5rem; transform: translateY(3px);">
             </div>
         </div>
-    </div>
-    <div>
-        
     </div>
 
     <!-- Spinner de chargement -->
@@ -85,8 +59,7 @@
     <div v-else v-cloak>
         <div class="row" v-if="convert_history.length > 0">
             <div class="col-12 mb-3" v-for="item in convert_history" :key="item.id">
-                <div id="card-item"
-                    class="card mb-3"
+                <div id="card-item" class="card mb-3"
                     style="background-color: var(--color-bg); cursor: pointer; transition: background-color 0.3s;"
                     @click="seeDetails(item.id)">
                     <div class="card-body ">
@@ -98,7 +71,8 @@
                             <span style="color: var(--color-text);">Created: [[ item.created_at ]]</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <p class="card-text text-truncate" style="color: var(--color-text);">[[ item.description ]]</p>
+                            <p class="card-text text-truncate" style="color: var(--color-text);">[[ item.description ]]
+                            </p>
                             <!-- <template v-if="item.user_id"> -->
                             <div class="d-flex align-items-center gap-1">
                                 <span class="badge" :class="item.public ? 'bg-success' : 'bg-danger'">
@@ -111,20 +85,18 @@
                         </div>
                         <div class="d-flex gap-2">
                             {% if current_user.is_authenticated %}
-                                <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
-                                    <!-- Bouton Delete -->
-                                    <button type="button" 
-                                            class="btn btn-danger btn-sm" 
-                                            title="Delete the conversion" 
-                                            data-bs-toggle="modal" 
-                                            :data-bs-target="'#delete_item_modal_'+item.id" @click.stop>
-                                        <i class="fa-solid fa-trash fa-fw"></i>
-                                    </button>
-                                </template>
+                            <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
+                                <!-- Bouton Delete -->
+                                <button type="button" class="btn btn-danger btn-sm" title="Delete the conversion"
+                                    data-bs-toggle="modal" :data-bs-target="'#delete_item_modal_'+item.id" @click.stop>
+                                    <i class="fa-solid fa-trash fa-fw"></i>
+                                </button>
+                            </template>
                             {% endif %}
                         </div>
                         <!-- Modal Delete -->
-                        <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1" aria-labelledby="delete_item_modal" aria-hidden="true" @click.stop>
+                        <div class="modal fade" :id="'delete_item_modal_'+item.id" tabindex="-1"
+                            aria-labelledby="delete_item_modal" aria-hidden="true" @click.stop>
                             <div class="modal-dialog modal-lg">
                                 <div style="background-color:var(--color-sidebar);" class="modal-content">
                                     <div class="modal-header">
@@ -134,7 +106,8 @@
                                         <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @click.stop>Close</button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                                            @click.stop>Close</button>
                                         <button class="btn btn-danger" @click="deleteItem(item.id)" @click.stop>
                                             <i class="fa-solid fa-trash"></i> Confirm
                                         </button>
@@ -143,7 +116,7 @@
                             </div>
                         </div>
                     </div>
-                </div>  
+                </div>
             </div>
         </div>
 
@@ -154,7 +127,7 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="convert_history.length > 0" >
+        <div v-if="convert_history.length > 0">
             <nav aria-label="Page navigation" style="margin-bottom: 100px;">
                 <ul class="pagination justify-content-center mt-3">
                     <li class="page-item" :class="{ disabled: current_page === 1 }">
@@ -163,9 +136,7 @@
                         </button>
                     </li>
 
-                    <li class="page-item"
-                        v-for="page in visiblePages"
-                        :key="page"
+                    <li class="page-item" v-for="page in visiblePages" :key="page"
                         :class="{ active: page === current_page, disabled: page === '...' }">
                         <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">
                             [[ page ]]
@@ -174,7 +145,8 @@
                     </li>
 
                     <li class="page-item" :class="{ disabled: current_page === total_pages }">
-                        <button class="page-link" @click="current_page < total_pages && fetchConvertHistory(current_page + 1)">
+                        <button class="page-link"
+                            @click="current_page < total_pages && fetchConvertHistory(current_page + 1)">
                             <i class="fa-solid fa-angle-right"></i>
                         </button>
                     </li>
@@ -188,142 +160,142 @@
 {% endblock %}
 {% block script %}
 <script type="module">
-const { createApp, ref ,computed} = Vue
-import { display_toast, message_list } from '/static/js/toaster.js'
-createApp({
-    delimiters: ['[[', ']]'],
-    setup() {
-        const convert_history = ref([])
-        const current_page = ref(1)
-        const total_pages = ref(1)
+    const { createApp, ref, computed } = Vue
+    import { display_toast, message_list } from '/static/js/toaster.js'
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const convert_history = ref([])
+            const current_page = ref(1)
+            const total_pages = ref(1)
 
 
-        const filter_type = ref('')
-        const sort_order = ref('desc')
-        const searchQuery = ref('')
-        const only_mine = ref("false")
+            const filter_type = ref('')
+            const sort_order = ref('desc')
+            const searchQuery = ref('')
+            const only_mine = ref("false")
 
-        const current_user_is_admin = ref()
+            const current_user_is_admin = ref()
 
 
-        const currentUserId = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
-        const isAuthenticated = "{{ 'true' if current_user.is_authenticated else 'false' }}";
+            const currentUserId = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
+            const isAuthenticated = "{{ 'true' if current_user.is_authenticated else 'false' }}";
 
-        const is_loading = ref(false)
+            const is_loading = ref(false)
 
-        async function fetchConvertHistory(page) {
-            if (page < 1) return
-            is_loading.value = true 
-            const params = new URLSearchParams({
-                page: page,
-                filter_type: filter_type.value || '',
-                sort_order: sort_order.value || 'desc',
-                only_mine: only_mine.value,  
-                searchQuery: searchQuery.value || ''
-            })
-            const res = await fetch('/convert/get_convert_page_history?' + params.toString())
-            if (res.ok) {
+            async function fetchConvertHistory(page) {
+                if (page < 1) return
+                is_loading.value = true
+                const params = new URLSearchParams({
+                    page: page,
+                    filter_type: filter_type.value || '',
+                    sort_order: sort_order.value || 'desc',
+                    only_mine: only_mine.value,
+                    searchQuery: searchQuery.value || ''
+                })
+                const res = await fetch('/convert/get_convert_page_history?' + params.toString())
+                if (res.ok) {
+                    const data = await res.json()
+                    convert_history.value = data.list
+                    total_pages.value = data.total_page
+                    current_page.value = page
+                }
+                is_loading.value = false
+            }
+
+            function copyText(text, event) {
+                const btn = event.target.closest("button")
+                const originalHTML = btn.innerHTML
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Copied!'
+                    setTimeout(() => { btn.innerHTML = originalHTML }, 1500)
+                }).catch(err => console.error('Copy failed', err))
+            }
+
+            // Initial fetch
+            fetchConvertHistory(1)
+
+            async function deleteItem(id) {
+                const params = new URLSearchParams({ id })
+                const res = await fetch('/convert/delete_item?' + params.toString())
+
+                if (res.status === 200) {
+                    fetchConvertHistory(current_page)
+
+                    const myModalEl = document.getElementById('delete_item_modal_' + id)
+                    const modal = bootstrap.Modal.getInstance(myModalEl)
+                    modal.hide()
+                }
+                else if (res.status === 403) {
+                    window.location.href = '/account/login'
+                    return
+                }
+                display_toast(res)
+            }
+
+            async function fetchCurrentUser() {
+                const res = await fetch('/get_current_user')
                 const data = await res.json()
-                convert_history.value = data.list
-                total_pages.value = data.total_page
-                current_page.value = page
+                current_user_is_admin.value = data.user
             }
-            is_loading.value = false
-        }
+            fetchCurrentUser()
 
-        function copyText(text, event) {
-            const btn = event.target.closest("button")
-            const originalHTML = btn.innerHTML
-            navigator.clipboard.writeText(text).then(() => {
-                btn.innerHTML = '<i class="fas fa-check"></i> Copied!'
-                setTimeout(() => { btn.innerHTML = originalHTML }, 1500)
-            }).catch(err => console.error('Copy failed', err))
-        }
-
-        // Initial fetch
-        fetchConvertHistory(1)
-
-        async function deleteItem(id) {
-            const params = new URLSearchParams({ id })
-            const res = await fetch('/convert/delete_item?' + params.toString())
-
-            if (res.status === 200) {
-                fetchConvertHistory(current_page)
-
-                const myModalEl = document.getElementById('delete_item_modal_' + id)
-                const modal = bootstrap.Modal.getInstance(myModalEl)
-                modal.hide()
-            } 
-            else if (res.status === 403) {
-                window.location.href = '/account/login'
-                return
+            function seeDetails(id) {
+                window.location.href = "/convert/detail/" + id;
             }
-            display_toast(res)
-        }
 
-        async function fetchCurrentUser() {
-            const res = await fetch('/get_current_user')
-            const data = await res.json()
-            current_user_is_admin.value = data.user
-        }
-        fetchCurrentUser()
+            const visiblePages = computed(() => {
+                const pages = []
+                const total = total_pages.value
+                const current = current_page.value
+                if (total <= 7) {
+                    for (let i = 1; i <= total; i++) pages.push(i)
+                } else {
+                    if (current <= 4) {
+                        pages.push(1, 2, 3, 4, 5, '...', total)
+                    } else if (current >= total - 3) {
+                        pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
+                    } else {
+                        pages.push(1, '...', current - 1, current, current + 1, '...', total)
+                    }
+                }
+                return pages
+            })
 
-        function seeDetails(id){
-            window.location.href = "/convert/detail/" + id;
-        }
-
-        const visiblePages = computed(() => {
-            const pages = []
-            const total = total_pages.value
-            const current = current_page.value
-            if (total <= 7) {
-            for (let i = 1; i <= total; i++) pages.push(i)
-            } else {
-            if (current <= 4) {
-                pages.push(1, 2, 3, 4, 5, '...', total)
-            } else if (current >= total - 3) {
-                pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-            } else {
-                pages.push(1, '...', current - 1, current, current + 1, '...', total)
+            async function onSearchInput() {
+                if (searchQuery.value.trim() === "") {
+                    await fetchConvertHistory(1)
+                } else {
+                    await fetchConvertHistory(1)
+                }
             }
-            }
-            return pages
-        })
 
-        async function onSearchInput() {
-            if (searchQuery.value.trim() === "") {
-            await fetchConvertHistory(1)
-            } else {
-            await fetchConvertHistory(1)
+            async function onEnterKey() {
+                await fetchRules(1)
+            }
+
+            return {
+                visiblePages,
+                message_list,
+                convert_history,
+                current_page,
+                total_pages,
+                fetchConvertHistory,
+                copyText,
+                filter_type,
+                sort_order,
+                deleteItem,
+                current_user_is_admin,
+                only_mine,
+                currentUserId,
+                isAuthenticated,
+                seeDetails,
+                searchQuery,
+                onEnterKey,
+                onSearchInput,
+                is_loading
             }
         }
-
-      async function onEnterKey() {
-        await fetchRules(1)
-      }
-
-        return {
-            visiblePages,
-            message_list,
-            convert_history,
-            current_page,
-            total_pages,
-            fetchConvertHistory,
-            copyText,
-            filter_type,
-            sort_order,
-            deleteItem,
-            current_user_is_admin,
-            only_mine,
-            currentUserId,
-            isAuthenticated,
-            seeDetails,
-            searchQuery,
-            onEnterKey,
-            onSearchInput,
-            is_loading
-        }
-    }
-}).mount('#main-container')
+    }).mount('#history-container')
 </script>
 {% endblock %}

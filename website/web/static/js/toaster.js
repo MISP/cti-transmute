@@ -35,3 +35,48 @@ export async function display_prepared_toast(message){
 			message_list.value.splice(index, 1)
 	})
 }
+
+
+
+function manage_icon(toast_class){
+	let icon = ""
+	if(toast_class){
+		switch(toast_class){
+			case "success-subtle":
+				icon = "fas fa-check"
+				break
+			case "warning-subtle":
+				icon = "fas fa-triangle-exclamation"
+				break
+			case "danger-subtle":
+				icon = "fas fa-xmark"
+				break
+		}
+	}
+	return icon
+}
+
+export async function create_message(message, toast_class, not_hide, icon){
+	let id = Math.random()
+	
+	if(!icon){
+		icon = manage_icon(toast_class)
+	}
+	let message_loc = {"message": message, "toast_class": toast_class, "id": id, "icon": icon}	
+	
+	message_list.value.push(message_loc)
+	await nextTick()
+	const toastLiveExample = document.getElementById('liveToast-'+id)
+
+	if(not_hide){
+		toastLiveExample.setAttribute("data-bs-autohide", "false")
+	}
+
+	const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toastLiveExample)
+	toastBootstrap.show()
+	toastLiveExample.addEventListener('hidden.bs.toast', () => {
+		let index = message_list.value.indexOf(message_loc)
+		if(index > -1)
+			message_list.value.splice(index, 1)
+	})
+}

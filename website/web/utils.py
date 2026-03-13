@@ -18,6 +18,7 @@ def form_to_dict(form):
 
 
 
+
 ############
 ############
 
@@ -31,7 +32,7 @@ def show_admin_first_connection(admin , raw_password):
     print(f"{GREEN}✅ Admin account created successfully!{RESET}")
     print(f"🔑 {YELLOW}API Key     :{RESET} {admin.api_key} ( Unique secret key )")
     print(f"👤 {YELLOW}Username    :{RESET} admin@admin.admin")
-    print(f"🔐 {YELLOW}Password    :{RESET} {"raw_password"}   (⚠️ Change it after first login)")         #
+    print(f"🔐 {YELLOW}Password    :{RESET} {raw_password}   (⚠️ Change it after first login)")         #
     print("=" * NUMBER + "\n")
     print(f"{YELLOW}🚀 You can now launch the application using:{RESET} uv run start_website\n")
     print("=" * NUMBER + "\n")
@@ -150,3 +151,20 @@ def extract_name_from_misp_json(json_text: str) -> str | None:
 
     return None
 
+
+def sanitazed_params(params):
+    """
+    Sanitize the params dictionary by changing values.
+
+    Args:
+        params (dict): The dictionary to sanitize.
+
+    Returns:
+        dict: The sanitized dictionary.
+
+    """
+    for key, value in params.items():
+        if isinstance(value, str):
+            params[key] = value.strip()
+    return params
+    

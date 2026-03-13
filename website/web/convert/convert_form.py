@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import BooleanField, IntegerField, SelectField, StringField, SubmitField, ValidationError
+from wtforms import BooleanField, IntegerField, SelectField, StringField, SubmitField, TextAreaField, ValidationError
 from wtforms.validators import DataRequired , Optional, NumberRange
 
 from website.db_class.db import Convert
@@ -17,7 +17,7 @@ class mispToStixParamForm(FlaskForm):
         description="Name of the convert"
     )
     
-    description = StringField(
+    description = TextAreaField(
         "Description of the convert",
         validators=[Optional()],
         description="Description of the convert"
@@ -54,11 +54,11 @@ class stixToMispParamForm(FlaskForm):
         validators=[Optional()],
         description="Name of the convert"
     )
-    
-    description = StringField(
+
+    description = TextAreaField(
         "Description of the convert",
         validators=[Optional()],
-        description="Descriptiom of the convert"
+        description="Description of the convert"
     )
 
     public = BooleanField(
@@ -75,6 +75,7 @@ class stixToMispParamForm(FlaskForm):
 
     galaxies_as_tags = BooleanField(
         "Galaxies as Tags",
+        # default='false',
         description="Import MISP Galaxies as tag names instead of the standard Galaxy format"
     )
 
@@ -136,7 +137,7 @@ class editConvertForm(FlaskForm):
         description="Name of the convert"
     )
     
-    description = StringField(
+    description = TextAreaField(
         "Description of the convert",
         validators=[Optional()],
         description="Description of the convert"

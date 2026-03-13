@@ -1,121 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>Cti-TRANSMUTE</title>
-        <link rel="icon" href="{{ url_for('static', filename='image/transmute.png') }}">
 
-        <script>
-        (function() {
-        let savedTheme = localStorage.getItem('theme');
-        if (!savedTheme) {
-            savedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        document.documentElement.classList.add(savedTheme + '-mode');
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Cti-TRANSMUTE</title>
+    <link rel="icon" href="{{ url_for('static', filename='image/transmute.png') }}">
+
+    <script>
+        // Initial theme setup
+        (function () {
+            let savedTheme = localStorage.getItem('theme');
+            if (!savedTheme) {
+                savedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.classList.add(savedTheme + '-mode');
         })();
-        </script>
+    </script>
 
-        <!-- CSS -->
-        <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-5.3.0/css/bootstrap.min.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/fontawesome.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/solid.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/brands.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/core.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-5.3.0/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/fontawesome.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/solid.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/brands.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/core.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
 
-        <!-- Color for json -->
-        <!-- Highlight.js CSS -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css"> <!-- Change this line for another JSON color -->
+    <!-- Highlight.js for JSON -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+</head>
 
-        <!-- Highlight.js JS -->
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+<body>
+    <div id="wrapper">
+        {% include 'sidebar.html' %}
 
-        <!-- Back to Top button styles -->
-        <style>
-            
-        </style>
-    </head>
-    <body>
-        <div id="wrapper">
-            {% include 'sidebar.html' %}
-            <!-- Page content -->
-            <div id="page-content">
-                <div class="d-flex justify-content-between align-items-center p-2 border-bottom custom-navbar">
-                    <button class="btn" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+        <!-- Page content -->
+        <div id="page-content">
+            <div class="d-flex justify-content-between align-items-center p-2 border-bottom custom-navbar">
+                <button class="btn" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                <button class="btn btn-outline-secondary" id="theme-toggle" aria-pressed="false"
+                    aria-label="Toggle theme">
+                    <i id="theme-icon" class="fas fa-sun"></i>
+                </button>
+            </div>
 
-                    <button class="btn btn-outline-secondary" id="theme-toggle" aria-pressed="false" aria-label="Toggle theme">
-                        <i id="theme-icon" class="fas fa-sun"></i>
-                    </button>
+            <div class="container-fluid p-4" id="main-container">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="container my-3">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} alert-dismissible fade show"
+                        role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
                 </div>
-                <div class="container-fluid p-4" id="main-container">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            <div class="container my-3">
-                                {% for category, message in messages %}
-                                    <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} alert-dismissible fade show" role="alert">
-                                        {{ message }}
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    {% endwith %}
+                {% endif %}
+                {% endwith %}
 
-                    <div aria-live="polite" aria-atomic="true" class="">
-                        <div class="toast-container start-50 translate-middle-x top-0 p-3" style="position: fixed;">
-                            <template v-if="message_list">
-                                <template v-for="message in message_list" v-key="message.id">
-                                    <div :id="`liveToast-${message.id}`" :class="`toast bg-${message.toast_class}`" role="alert" aria-live="assertive" data-bs-delay="5000" aria-atomic="true" style="--bs-toast-spacing: 0.5rem;">
-                                        <div class="d-flex">
-                                            <div class="toast-body">
-                                                <template v-if="message.message">
-                                                    [[message.message]]
-                                                </template>
-                                            </div>
-                                            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                                        </div>
-                                    </div>
-                                </template>
-                            </template>
+                <div aria-live="polite" aria-atomic="true">
+                    <div class="toast-container start-50 translate-middle-x top-0 p-3" style="position: fixed;">
+                        <div v-for="message in message_list" :key="message.id" class="toast"
+                            :class="`bg-${message.toast_class}`" role="alert" aria-live="assertive" data-bs-delay="5000"
+                            aria-atomic="true" style="--bs-toast-spacing: 0.5rem;">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    [[message.message]]
+                                </div>
+                                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast"
+                                    aria-label="Close"></button>
+                            </div>
                         </div>
                     </div>
-
-                    {% block content %}{% endblock %}
-
                 </div>
+
+                {% block content %}{% endblock %}
             </div>
         </div>
+    </div>
 
-        {% if csrf_token()|safe %}
-        <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}" style="display:none;">
-        {% endif %}
+    {% if csrf_token()|safe %}
+    <input type="hidden" id="csrf_token" name="csrf_token" value="{{ csrf_token()|safe }}" style="display:none;">
+    {% endif %}
 
-        <!-- Back to Top button -->
-        <button id="backToTop" aria-hidden="true" title="Back to top" aria-label="Back to top">
-            <i class="fas fa-chevron-up" aria-hidden="true"></i>
-        </button>
+    <!-- Back to Top button -->
+    <button id="backToTop" aria-hidden="true" title="Back to top" aria-label="Back to top">
+        <i class="fas fa-chevron-up" aria-hidden="true"></i>
+    </button>
 
-        <!-- Scripts -->
-        <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
-        <script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/dayjs/dayjs.min.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/dayjs/dayjs-utc.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/dayjs/dayjs-relativeTime.js') }}"></script>
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
+    <script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dayjs/dayjs.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dayjs/dayjs-utc.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dayjs/dayjs-relativeTime.js') }}"></script>
 
-        <script>
-            (function () {
+    <script>
+        (function () {
             const html = document.documentElement;
             const btn = document.getElementById('theme-toggle');
             const icon = document.getElementById('theme-icon');
-            const savedTheme = localStorage.getItem('theme') || 
-                                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
             html.classList.add(savedTheme + "-mode");
             icon.className = savedTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
@@ -133,72 +127,59 @@
             document.getElementById('sidebarToggle').addEventListener('click', () => {
                 document.getElementById('wrapper').classList.toggle('toggled');
             });
-            })();
-        </script>
+        })();
+    </script>
 
-        {% block script %}
-        <script type="module">
-        const {createApp, ref} = Vue
-        createApp({ delimiters: ['[[', ']]'], setup() {} }).mount('#main-container')
-        </script>
-        {% endblock %}
+    {% block script %}{% endblock %}
 
-        <!-- Back to Top functionality -->
-        <script>
-            (function () {
-                const backToTopBtn = document.getElementById('backToTop');
-                if (!backToTopBtn) return;
+    <script>
+        (function () {
+            const backToTopBtn = document.getElementById('backToTop');
+            const SHOW_AFTER = 200;
 
-                const SHOW_AFTER = 200; // px scrolled before button appears
-
-                function updateBackToTopVisibility() {
-                    try {
-                        if (window.scrollY > SHOW_AFTER) {
-                            backToTopBtn.classList.add('show');
-                            backToTopBtn.setAttribute('aria-hidden', 'false');
-                        } else {
-                            backToTopBtn.classList.remove('show');
-                            backToTopBtn.setAttribute('aria-hidden', 'true');
-                        }
-                    } catch (e) {
-                        // noop
-                    }
+            function updateBackToTopVisibility() {
+                if (window.scrollY > SHOW_AFTER) {
+                    backToTopBtn.classList.add('show');
+                    backToTopBtn.setAttribute('aria-hidden', 'false');
+                } else {
+                    backToTopBtn.classList.remove('show');
+                    backToTopBtn.setAttribute('aria-hidden', 'true');
                 }
+            }
 
-                // Improve performance by using passive scroll listener
-                window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
-                window.addEventListener('resize', updateBackToTopVisibility);
-                document.addEventListener('DOMContentLoaded', updateBackToTopVisibility);
+            window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
+            window.addEventListener('resize', updateBackToTopVisibility);
+            document.addEventListener('DOMContentLoaded', updateBackToTopVisibility);
 
-                backToTopBtn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    // Respect user's reduced motion preference
-                    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                    if (!prefersReducedMotion && 'scrollBehavior' in document.documentElement.style) {
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    } else {
-                        window.scrollTo(0, 0);
-                    }
-                });
+            backToTopBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                if (!prefersReducedMotion && 'scrollBehavior' in document.documentElement.style) {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    window.scrollTo(0, 0);
+                }
+            });
 
-                // Initial check in case page is loaded scrolled
-                updateBackToTopVisibility();
-            })();
-        </script>
+            updateBackToTopVisibility();
+        })();
+    </script>
 
-        <!-- Footer (inside body) -->
-        <footer class="custom-footer text-center">
-            <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
-                <div>
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Based on <a href="https://www.misp-project.org/" target="_blank" rel="noopener noreferrer">MISP Standard</a></span>
-                </div>
-                <div class="sidebar-footer">&copy; 2025 MISP Project</div>
-                <div class="mt-2 mt-md-0">
-                    <i class="fas fa-project-diagram"></i>
-                    <span><a href="https://github.com/MISP/cti-transmute.git" target="_blank" rel="noopener noreferrer">Cti-TRANSMUTE Project</a></span>
-                </div>
+    <footer class="custom-footer text-center mt-4">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-shield-alt"></i>
+                <span>Based on <a href="https://www.misp-project.org/" target="_blank" rel="noopener noreferrer">MISP
+                        Standard</a></span>
             </div>
-        </footer>
-    </body>
+            <div class="sidebar-footer">&copy; 2025 MISP Project</div>
+            <div class="mt-2 mt-md-0">
+                <i class="fas fa-project-diagram"></i>
+                <span><a href="https://github.com/MISP/cti-transmute.git" target="_blank"
+                        rel="noopener noreferrer">Cti-TRANSMUTE Project</a></span>
+            </div>
+        </div>
+    </footer>
+</body>
+
 </html>

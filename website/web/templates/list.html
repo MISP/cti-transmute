@@ -2,14 +2,13 @@
 
 {% block content %}
 <div class="container my-5" v-cloak>
-    <h2 class="mb-3 ">Available Converters</h2>
+
+    <h2 class="mb-3 "> <i class="fa-solid fa-bars me-2"></i>Available Converters</h2>
 
     <!-- Vue will render here -->
     <div v-if="list_feature && Object.keys(list_feature).length > 0">
         <div v-for="(feature, path) in list_feature" :key="path"
-             class="card mb-3 bg-secondary text-light shadow clickable-card"
-             style="cursor:pointer;"
-             @click="goTo(path)">
+            class="card mb-3 bg-secondary text-light shadow clickable-card" style="cursor:pointer;" @click="goTo(path)">
             <div class="card-body">
                 <h5 class="card-title ">[[ path ]]</h5>
                 <p class="card-text">[[ feature.description ]]</p>
@@ -19,7 +18,7 @@
                     <h6 class="text-light">Parameters:</h6>
                     <ul>
                         <li v-for="param in feature.parameters" :key="param.name">
-                            <strong >[[ param.name ]]</strong>
+                            <strong>[[ param.name ]]</strong>
                             <span class="text-muted"> ([[ param.type || 'unknown' ]])</span>
                         </li>
                     </ul>
@@ -36,37 +35,37 @@
 
 {% block script %}
 <script type="module">
-const { createApp, ref } = Vue
-createApp({
-    delimiters: ['[[', ']]'],
-    setup() {
-        const list_feature = ref({})
+    const { createApp, ref } = Vue
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const list_feature = ref({})
 
-        async function fetch_features() {
-            const res = await fetch('/get_features');
-            const data = await res.json();
-            if (data.status === "success") {
-                list_feature.value = data.features
-            } 
-        }
-
-        function goTo(path) {
-            const urlMap = {
-                "/api/convert/list": "/list",
-                "/api/convert/misp_to_stix": "convert/misp_to_stix",
-                "/api/convert/stix_to_misp": "convert/stix_to_misp"
+            async function fetch_features() {
+                const res = await fetch('/get_features');
+                const data = await res.json();
+                if (data.status === "success") {
+                    list_feature.value = data.features
+                }
             }
-            if(urlMap[path]) {
-                window.location.href = urlMap[path]
-            } else {
-                alert("No URL mapped for", path)
+
+            function goTo(path) {
+                const urlMap = {
+                    "/api/convert/list": "/list",
+                    "/api/convert/misp_to_stix": "convert/misp_to_stix",
+                    "/api/convert/stix_to_misp": "convert/stix_to_misp"
+                }
+                if (urlMap[path]) {
+                    window.location.href = urlMap[path]
+                } else {
+                    alert("No URL mapped for", path)
+                }
             }
+
+            fetch_features()
+
+            return { list_feature, goTo }
         }
-
-        fetch_features()
-
-        return { list_feature, goTo }
-    }
-}).mount('#main-container')
+    }).mount('#main-container')
 </script>
 {% endblock %}
