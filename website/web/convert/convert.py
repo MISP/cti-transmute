@@ -15,26 +15,39 @@ convert_blueprint = Blueprint(
     static_folder="static"
 )
 
-
-
 @convert_blueprint.route("/misp_to_stix", methods=['GET', 'POST'])
 def misp_to_stix():
     form = mispToStixParamForm()
     result = None
-    error = None  
+    error = None
 
     if form.validate_on_submit():
-        file_data = request.files.get('file')
-        if not file_data:
-            error = "Please upload a MISP file"
-            flash(error, "danger")
-        else:
-            file_content = file_data.read().decode('utf-8')
-            file_data.seek(0)  
+        input_mode = request.form.get('input_mode', 'paste')
+        file_content = None
+        files = None
 
-            files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
+        # ── Récupération de l'input selon le mode ──────────────────
+        if input_mode == 'file':
+            file_data = request.files.get('file')
+            if not file_data or not file_data.filename:
+                error = "Please upload a MISP file"
+                flash(error, "danger")
+            else:
+                file_content = file_data.read().decode('utf-8')
+                file_data.seek(0)
+                files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
+        else:  # mode paste
+            raw = request.form.get('misp_content', '') or ''
+            if not raw.strip():
+                error = "Please paste your MISP JSON content"
+                flash(error, "danger")
+            else:
+                file_content = raw
+                files = {'file': ('misp.json', raw.encode('utf-8'), 'application/json')}
+
+        # ── Conversion ─────────────────────────────────────────────
+        if file_content and files:
             params = {'version': form.version.data}
-
             try:
                 response = requests.post(
                     "http://127.0.0.1:6868/api/convert/misp_to_stix",
@@ -50,35 +63,33 @@ def misp_to_stix():
                     result = data
                     flash("Converted to STIX successfully!", "success")
 
+                    # ── Auto-remplissage name / description ─────────
                     auto_name = extract_name_from_misp_json(file_content)
+                    if not form.name.data and auto_name:
+                        form.name.data = auto_name
+                    if not form.description.data and auto_name:
+                        form.description.data = (
+                            f"MISP to STIX conversion, version {form.version.data} - {auto_name}"
+                        )
 
-                    if not form.name.data:
-                        if  auto_name:
-                            form.name.data = auto_name
-                        
-                    if not form.description.data:
-                        if  auto_name:
-                            form.description.data = f"MISP to STIX conversion, version {form.version.data} -"+f" {auto_name}" 
-
+                    # ── Sauvegarde en base ──────────────────────────
                     output_text = json.dumps(data, indent=2)
+                    _user_id = None if current_user.is_anonymous() else current_user.id
 
-                    if current_user.is_anonymous():
-                        _user_id = None
-                    else:
-                        _user_id = current_user.id
                     success = ConvertModel.create_convert(
                         user_id=_user_id,
                         input_text=file_content,
                         output_text=output_text,
                         convert_choice="MISP_TO_STIX",
-                        name= form.name.data,
-                        description= form.description.data or f"MISP to STIX conversion, version {form.version.data}",
+                        name=form.name.data,
+                        description=form.description.data or f"MISP to STIX conversion, version {form.version.data}",
                         public=form.public.data
                     )
                     if success:
                         flash("Convert registered successfully!", "success")
                     else:
                         flash("Error during registering the convert!", "danger")
+
                 else:
                     error_msg = data.get("error") if data else f"Conversion failed with status {response.status_code}"
                     error = error_msg
@@ -89,7 +100,6 @@ def misp_to_stix():
                 flash(error, "danger")
 
     return render_template("convert/misp_to_stix.html", form=form, result=result, error=error)
-
 @convert_blueprint.route("/stix_to_misp", methods=['GET', 'POST'])
 def stix_to_misp():
     form = stixToMispParamForm()
@@ -97,79 +107,87 @@ def stix_to_misp():
     error = None
 
     if form.validate_on_submit():
+        # Le JS transforme le mode 'paste' en 'file' juste avant le submit
+        input_mode = request.form.get('input_mode', 'paste')
+        file_content = None
+        files = None
+
+        # ── 1. Récupération de l'input (Fichier ou Paste converti) ──
         file_data = request.files.get('file')
-        if not file_data:
-            error = "Please upload a STIX file"
-            flash(error, "danger")
-        else:
+        
+        if file_data and file_data.filename != '':
+            # Cas normal : Fichier uploadé OU Paste converti en fichier par JS
             file_content = file_data.read().decode('utf-8')
-            file_data.seek(0)
-
+            file_data.seek(0) # Reset du curseur pour requests.post
             files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
+        
+        elif input_mode == 'paste':
+            # Fallback : Si le JS n'a pas fonctionné, on récupère le texte brut
+            raw = form.stix_content.data or ''
+            if not raw.strip():
+                error = "Please paste your STIX JSON content"
+                flash(error, "danger")
+            else:
+                file_content = raw
+                files = {'file': ('stix.json', raw.encode('utf-8'), 'application/json')}
+        
+        if not file_content:
+            if not error: # Évite d'écraser une erreur déjà flashée
+                error = "No STIX content provided"
+                flash(error, "danger")
 
-            params = form_to_dict(form)
-
-            # Instead of sending all form fields blindly:
+        # ── 2. Conversion via l'API ─────────────────────────────────
+        if file_content and files:
+            # Préparation des paramètres de conversion
             raw_params = form_to_dict(form)
-
-            # Remove empty values AND remove booleans that are false
             params = {
                 key: value
                 for key, value in raw_params.items()
                 if value not in [None, "", False, "False"]
+                and key not in ['stix_content', 'name', 'description', 'csrf_token']
             }
-
-            # Add boolean flags only when True
-            if form.galaxies_as_tags.data:
-                params["galaxies_as_tags"] = ""
-
-            if form.no_force_contextual_data.data:
-                params["no_force_contextual_data"] = ""
-
-            if form.single_event.data:
-                params["single_event"] = ""
-
-            #print(params)
+            
+            # Flags booléens spécifiques
+            if form.galaxies_as_tags.data: params["galaxies_as_tags"] = ""
+            if form.no_force_contextual_data.data: params["no_force_contextual_data"] = ""
+            if form.single_event.data: params["single_event"] = ""
 
             try:
                 response = requests.post(
-                    "http://0.0.0.0:6868/api/convert/stix_to_misp",
+                    "http://127.0.0.1:6868/api/convert/stix_to_misp",
                     files=files,
                     params=params
                 )
-
+                
                 try:
                     data = response.json()
                 except Exception:
                     data = None
 
-                # Parse the STIX file for report/grouping info
-                parsed_reports = parse_stix_reports(file_content)
-                parsed_name = None
-                parsed_description = None
-
-                if parsed_reports:
-                    # Take the first (name, description)
-                    parsed_name, parsed_description = parsed_reports[0]
-
                 if response.status_code == 200 and data and not data.get("error"):
                     result = data
                     flash("Converted to MISP successfully!", "success")
 
-                    _user_id = None if current_user.is_anonymous() else current_user.id
+                    # ── 3. Extraction métadonnées & Sauvegarde ──────
+                    parsed_reports = parse_stix_reports(file_content)
+                    parsed_name = None
+                    parsed_description = None
+                    if parsed_reports:
+                        parsed_name, parsed_description = parsed_reports[0]
 
-                    # Choose best name/description source
                     name_to_use = (
-                        form.name.data.strip()
-                        or (parsed_name.strip() if parsed_name else None)
+                        form.name.data.strip() 
+                        or (parsed_name.strip() if parsed_name else None) 
+                        or "STIX Conversion"
                     )
                     description_to_use = (
-                        form.description.data.strip()
-                        or (parsed_description.strip() if parsed_description else None)
+                        form.description.data.strip() 
+                        or (parsed_description.strip() if parsed_description else None) 
                         or "STIX to MISP conversion"
                     )
 
                     output_text = json.dumps(data, indent=2)
+                    _user_id = None if current_user.is_anonymous() else current_user.id
 
                     success = ConvertModel.create_convert(
                         user_id=_user_id,
@@ -180,18 +198,18 @@ def stix_to_misp():
                         description=description_to_use,
                         public=form.public.data
                     )
-
+                    
                     if success:
                         flash("Convert registered successfully!", "success")
                     else:
-                        flash("Error during registering the convert!", "danger")
+                        flash("Error during registering in database", "danger")
+
                 else:
-                    error_msg = data.get("error") if data else f"Conversion failed with status {response.status_code}"
-                    error = error_msg
-                    flash(error_msg, "danger")
+                    error = data.get("error") if data else f"Conversion failed (HTTP {response.status_code})"
+                    flash(error, "danger")
 
             except requests.RequestException as e:
-                error = f"Conversion failed: {e}"
+                error = f"API Connection error: {e}"
                 flash(error, "danger")
 
     return render_template("convert/stix_to_misp.html", form=form, result=result, error=error)

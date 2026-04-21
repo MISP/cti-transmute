@@ -1,86 +1,118 @@
 {% extends "base.html" %}
-
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
 {% block content %}
-<div class="container my-5">
-    <!-- Introduction section -->
-    <div class="mb-3">
-        <h2 class=" mb-3">Welcome to CTI-Transmute</h2>
-        <p>
-            CTI-Transmute is a tool for converting Cyber Threat Intelligence (CTI) data between MISP and STIX formats.
-            It provides a set of API endpoints that allow automated conversion of data, making it easier to integrate 
-            different threat intelligence platforms and workflows.  
-            This project is maintained by the MISP Project community and aims to standardize CTI data exchange.
-        </p>
-        <p>
-            For more details, documentation, and examples, check out the 
-            <a href="https://github.com/MISP/cti-transmute" target="_blank">official GitHub repository</a>.
-        </p>
-    </div>
 
-    <h2 class="mb-4 ">CTI Transmute API Endpoints</h2>
-    <p class="mb-4">
-        Use these endpoints to convert Cyber Threat Intelligence (CTI) files between MISP and STIX formats.
-        Click on a card to navigate to the corresponding conversion page.
+<!-- Hero -->
+<section class="home-hero">
+    <div class="home-hero-badge">
+        <i class="fas fa-shield-halved"></i> MISP Project
+    </div>
+    <h1 class="home-hero-title">CTI Transmute</h1>
+    <p class="home-hero-sub">
+        CTI-Transmute is a tool for converting Cyber Threat Intelligence (CTI) data between MISP and STIX formats.
+        It provides a set of API endpoints that allow automated conversion of data, making it easier to integrate
+        different threat intelligence platforms and workflows.
+        This project is maintained by the MISP Project community and aims to standardize CTI data exchange.
+    </p>
+    <div class="home-hero-actions">
+        <a href="/convert/misp_to_stix" class="btn-hero-primary">
+            <i class="fas fa-exchange-alt me-2"></i> Start Converting
+        </a>
+        <a href="https://github.com/MISP/cti-transmute" target="_blank" rel="noopener" class="btn-hero-secondary">
+            <i class="fab fa-github me-2"></i> GitHub
+        </a>
+        <a href="/api" target="_blank" rel="noopener" class="btn-hero-primary">
+            <i class="fas fa-code me-2"></i> API
+        </a>
+    </div>
+</section>
+
+<!-- Cards -->
+<section class="home-cards">
+    <div class="home-section-label">API Endpoints</div>
+    <p class="home-section-desc">
+        Click a card to navigate to the corresponding conversion page, or use the endpoints directly via API.
     </p>
 
-    <div class="row g-3">
+    <div class="home-grid">
+
         <!-- MISP → STIX -->
-        <div class="col-md-4">
-            <div class="card bg-secondary text-light shadow clickable-card" 
-                 style="cursor:pointer;" 
-                 @click="goTo('convert/misp_to_stix')">
-                <div class="card-body">
-                    <h5 class="card-title "><i class="fa-solid fa-arrow-right-arrow-left me-2"></i>MISP to STIX</h5>
-                    <p class="card-text">Convert a MISP data collection into STIX format.</p>
-                    <span class="badge bg-info text-dark">POST</span>
-                </div>
+        <a href="/convert/misp_to_stix" class="home-card">
+            <div class="home-card-icon home-card-icon--blue">
+                <i class="fas fa-arrow-right-arrow-left"></i>
             </div>
-        </div>
+            <div class="home-card-body">
+                <div class="home-card-header">
+                    <span class="home-card-title">MISP to STIX</span>
+                    <span class="home-badge home-badge--post">POST</span>
+                </div>
+                <p class="home-card-desc">Convert a MISP event collection into STIX 2.0 or 2.1 bundle format.</p>
+            </div>
+            <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
+        </a>
 
         <!-- STIX → MISP -->
-        <div class="col-md-4">
-            <div class="card bg-secondary text-light shadow clickable-card" 
-                 style="cursor:pointer;" 
-                 @click="goTo('convert/stix_to_misp')">
-                <div class="card-body">
-                    <h5 class="card-title "><i class="fa-solid fa-arrow-right-arrow-left me-2"></i>STIX to MISP</h5>
-                    <p class="card-text">Convert STIX data collection into MISP format.</p>
-                    <span class="badge bg-info text-dark">POST</span>
+        <a href="/convert/stix_to_misp" class="home-card">
+            <div class="home-card-icon home-card-icon--indigo">
+                <i class="fas fa-arrow-right-arrow-left fa-flip-horizontal"></i>
+            </div>
+            <div class="home-card-body">
+                <div class="home-card-header">
+                    <span class="home-card-title">STIX to MISP</span>
+                    <span class="home-badge home-badge--post">POST</span>
                 </div>
+                <p class="home-card-desc">Import a STIX bundle and convert it back into MISP event format.</p>
+            </div>
+            <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
+        </a>
+
+        <!-- List -->
+        <a href="/list" class="home-card">
+            <div class="home-card-icon home-card-icon--slate">
+                <i class="fas fa-list-ul"></i>
+            </div>
+            <div class="home-card-body">
+                <div class="home-card-header">
+                    <span class="home-card-title">List Converters</span>
+                    <span class="home-badge home-badge--get">GET</span>
+                </div>
+                <p class="home-card-desc">Browse all available conversion operations and their accepted parameters.</p>
+            </div>
+            <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
+        </a>
+
+    </div>
+</section>
+
+<!-- About strip -->
+<section class="home-about">
+    <div class="home-about-inner">
+        <div class="home-about-block">
+            <i class="fas fa-code-branch home-about-icon"></i>
+            <div>
+                <div class="home-about-label">Open Source</div>
+                <div class="home-about-value">Maintained by the MISP Project community</div>
             </div>
         </div>
-
-        <!-- List available converters -->
-        <div class="col-md-4">
-            <div class="card bg-secondary text-light shadow clickable-card" 
-                 style="cursor:pointer;" 
-                 @click="goTo('/list')">
-                <div class="card-body">
-                    <h5 class="card-title "><i class="fas fa-list me-2"></i>List Converters</h5>
-                    <p class="card-text">View all available conversion operations with their parameters.</p>
-                    <span class="badge bg-info text-dark">GET</span>
-                </div>
+        <div class="home-about-divider"></div>
+        <div class="home-about-block">
+            <i class="fas fa-plug home-about-icon"></i>
+            <div>
+                <div class="home-about-label">REST API</div>
+                <div class="home-about-value">Automate conversions via simple HTTP endpoints</div>
+            </div>
+        </div>
+        <div class="home-about-divider"></div>
+        <div class="home-about-block">
+            <i class="fas fa-layer-group home-about-icon"></i>
+            <div>
+                <div class="home-about-label">Standards</div>
+                <div class="home-about-value">STIX 2.0 &amp; 2.1 · MISP Standard Format</div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+</section>
 
-{% block script %}
-<script type="module">
-const { createApp, ref } = Vue
-createApp({
-    delimiters: ['[[', ']]'],
-    setup() {
-        const result = ref('')
-
-        // Function to navigate to a URL
-        function goTo(url) {
-            window.location.href = url
-        }
-
-        return { result, goTo }
-    }
-}).mount('#main-container')
-</script>
 {% endblock %}

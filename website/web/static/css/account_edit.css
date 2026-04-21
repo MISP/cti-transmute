@@ -1,0 +1,252 @@
+/* ═══════════════════════════════════════════════════════════════
+   edit_profile.css
+   Depends on: core.css (design tokens only)
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Page header (shared with list / profile) ──────────────── */
+.list-header {
+    text-align: center;
+    padding: 3rem 1rem 2rem;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.list-title {
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+}
+
+.list-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-2);
+    line-height: 1.7;
+    margin: 0;
+}
+
+.home-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+/* ── Profile wrapper card ──────────────────────────────────── */
+.profile-wrapper {
+    max-width: 580px;
+    margin: 0 auto 3rem;
+    padding: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+/* ── Divider ───────────────────────────────────────────────── */
+.profile-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0;
+}
+
+/* ── Field label (shared with profile page) ────────────────── */
+.profile-field-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+}
+.profile-field-label i { opacity: 0.6; font-size: 0.75rem; }
+
+/* ── Actions bar ───────────────────────────────────────────── */
+.profile-actions {
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn-hero-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    border: none;
+    cursor: pointer;
+    transition: background var(--t), box-shadow var(--t), transform var(--t);
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2), 0 4px 12px rgba(37, 99, 235, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+.btn-hero-primary::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.15) 50%, transparent 60%);
+    transform: translateX(-100%);
+    transition: transform 0.4s ease;
+}
+.btn-hero-primary:hover {
+    background: var(--accent-hover);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25), 0 8px 20px rgba(37, 99, 235, 0.2);
+    transform: translateY(-1px);
+}
+.btn-hero-primary:hover::after  { transform: translateX(100%); }
+.btn-hero-primary:active        { transform: translateY(0); box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2); }
+
+.btn-hero-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 10px 20px;
+    background: var(--surface);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.875rem;
+    font-family: var(--font-ui);
+    text-decoration: none;
+    transition: all var(--t);
+    cursor: pointer;
+}
+.btn-hero-secondary:hover {
+    color: var(--text);
+    border-color: var(--border-2);
+    background: var(--bg-2);
+    transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EDIT PROFILE — specific
+═══════════════════════════════════════════════════════════════ */
+
+/* Two-column row for first / last name */
+.edit-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+}
+.edit-field-row .edit-field {
+    padding: 18px 28px;
+    transition: background var(--t);
+}
+.edit-field-row .edit-field:first-child {
+    border-right: 1px solid var(--border);
+}
+.edit-field-row .edit-field:hover { background: var(--surface-2); }
+
+/* Single-column block (email, password) */
+.edit-field-block {
+    padding: 18px 28px;
+    transition: background var(--t);
+}
+.edit-field-block:hover { background: var(--surface-2); }
+
+/* Input */
+.edit-input {
+    margin-top: 8px;
+    background: var(--bg) !important;
+    border-color: var(--border) !important;
+    color: var(--text) !important;
+    font-size: 0.875rem;
+    border-radius: var(--radius-sm) !important;
+    transition: border-color var(--t), box-shadow var(--t);
+}
+.edit-input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: var(--shadow-focus) !important;
+    outline: none;
+}
+.edit-input::placeholder { color: var(--text-3); }
+
+/* Hint text */
+.edit-field-hint {
+    font-size: 0.78rem;
+    color: var(--text-3);
+    margin: 4px 0 8px;
+    font-style: italic;
+}
+
+/* Validation error */
+.edit-field-error {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--danger);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Password row with eye toggle */
+.edit-password-row {
+    display: flex;
+    align-items: stretch;
+    margin-top: 8px;
+}
+.edit-password-row .edit-input {
+    margin-top: 0;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm) !important;
+    flex: 1;
+}
+.edit-eye-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-3);
+    cursor: pointer;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: color var(--t), background var(--t);
+}
+.edit-eye-btn:hover {
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 560px) {
+    .edit-field-row { grid-template-columns: 1fr; }
+    .edit-field-row .edit-field:first-child {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+    .profile-actions { flex-direction: column-reverse; }
+    .btn-hero-primary,
+    .btn-hero-secondary { width: 100%; justify-content: center; }
+}

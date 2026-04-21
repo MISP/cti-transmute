@@ -342,7 +342,7 @@
         {% block script %}
         <script type="module">
             const { createApp, ref, onMounted, watch } = Vue
-            import { display_toast, message_list, create_message } from '/static/js/toaster.js'
+            import { create_message, message_list } from '/static/js/toaster.js';
             const convert_id = document.getElementById('convert_id').dataset.convertId;
             /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -557,6 +557,6 @@
                         formatDate
                     }
                 }
-            }).mount('#main-container')
+            }).mount('#main-containers')
         </script>
         {% endblock %}

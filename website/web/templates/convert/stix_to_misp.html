@@ -2,30 +2,28 @@
 
 {% block content %}
 <div id="main-container" class="container my-5">
-    <h2 class=" mb-3">Convert STIX to MISP</h2>
+    <h2 class="mb-3">Convert STIX to MISP</h2>
 
-    <!-- Help / Parameters Panel -->
-    <div class="card mb-4 bg-dark text-light">
+    <!-- Help Panel -->
+    <div class="card mb-4" style="background:var(--color-navbar); border:1px solid rgba(255,255,255,0.1);">
         <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
-            data-bs-target="#helpPanel" style="cursor: pointer;">
-            <span>Help / Parameters</span>
-            <i class="fas fa-chevron-down"></i>
+            data-bs-target="#helpPanel" style="cursor:pointer;">
+            <span><i class="fas fa-circle-info me-2 opacity-50"></i>Help / Parameters</span>
+            <i class="fas fa-chevron-down opacity-50"></i>
         </div>
         <div id="helpPanel" class="collapse">
             <div class="card-body">
-                <ul>
-                    <li><strong>distribution</strong> (0-4): Distribution level for the imported MISP content</li>
-                    <li><strong>sharing_group_id</strong> (integer): Required if distribution is 4</li>
-                    <li><strong>galaxies_as_tags</strong> (bool): Import MISP Galaxies as tags instead of standard
-                        format</li>
-                    <li><strong>no_force_contextual_data</strong> (bool): Skip forced creation of custom Galaxy clusters
-                    </li>
-                    <li><strong>cluster_distribution</strong> (0-4): Distribution level for Galaxy clusters</li>
-                    <li><strong>cluster_sharing_group_id</strong> (integer)</li>
-                    <li><strong>organisation_uuid</strong> (string)</li>
-                    <li><strong>single_event</strong> (bool): Convert to a single MISP event if multiple</li>
-                    <li><strong>producer</strong> (string)</li>
-                    <li><strong>title</strong> (string)</li>
+                <ul class="mb-0" style="font-size:0.85rem; opacity:0.8; line-height:2;">
+                    <li><strong>distribution</strong> (0-4) — Distribution level for the imported MISP content</li>
+                    <li><strong>sharing_group_id</strong> — Required if distribution is 4</li>
+                    <li><strong>galaxies_as_tags</strong> — Import MISP Galaxies as tags instead of standard format</li>
+                    <li><strong>no_force_contextual_data</strong> — Skip forced creation of custom Galaxy clusters</li>
+                    <li><strong>cluster_distribution</strong> (0-4) — Distribution level for Galaxy clusters</li>
+                    <li><strong>cluster_sharing_group_id</strong> — Sharing group for clusters</li>
+                    <li><strong>organisation_uuid</strong> — UUID for custom Galaxy Clusters</li>
+                    <li><strong>single_event</strong> — Convert to a single MISP event if multiple</li>
+                    <li><strong>producer</strong> — Producer of the STIX data</li>
+                    <li><strong>title</strong> — Title for the resulting MISP Event</li>
                 </ul>
             </div>
         </div>
@@ -34,26 +32,88 @@
     <form method="post" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
 
-        <!-- Fichier -->
-        <div class="mb-4">
-            <label for="file" class="form-label">STIX File <span class="text-danger">*</span></label>
-            <input type="file" class="form-control" id="file" name="file" required
-                style="background-color:var(--color-navbar); color:var(--color-text);">
+        <!-- STIX INPUT TABS -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <label class="form-label">STIX Input <span class="text-danger">*</span></label>
+                <div class="input-tab-container">
+                    <div class="input-tab-header">
+                        <button type="button" class="input-tab-btn active" data-tab="paste">
+                            <i class="fas fa-paste me-1"></i> Paste JSON
+                        </button>
+                        <button type="button" class="input-tab-btn" data-tab="file">
+                            <i class="fas fa-upload me-1"></i> Upload File
+                        </button>
+                    </div>
+                    <div class="input-tab-body">
+                        <!-- PASTE TAB -->
+                        <div class="input-tab-pane active" id="tab-paste">
+                            <div class="json-editor-wrapper">
+                                <div class="json-editor-toolbar">
+                                    <span class="json-editor-label">
+                                        <i class="fas fa-code me-1"></i> JSON
+                                    </span>
+                                    <div class="json-editor-actions">
+                                        <button type="button" class="json-action-btn" id="btn-format">
+                                            <i class="fas fa-align-left me-1"></i> Format
+                                        </button>
+                                        <button type="button" class="json-action-btn" id="btn-clear">
+                                            <i class="fas fa-times me-1"></i> Clear
+                                        </button>
+                                    </div>
+                                </div>
+                                {{ form.stix_content(
+                                class_="json-editor",
+                                id="stix_content",
+                                placeholder='{\n "type": "bundle",\n "objects": [\n ...\n ]\n}',
+                                rows="14",
+                                spellcheck="false"
+                                ) }}
+                                <div class="json-editor-footer">
+                                    <span id="json-status" class="json-status"></span>
+                                    <span id="json-chars" class="json-chars">0 chars</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- FILE TAB -->
+                        <div class="input-tab-pane" id="tab-file">
+                            <div class="file-drop-zone" id="drop-zone">
+                                <input type="file" id="file" name="file" accept=".json" class="file-drop-input">
+                                <div class="file-drop-content">
+                                    <i class="fas fa-cloud-upload-alt file-drop-icon"></i>
+                                    <p class="file-drop-text">Drag & drop your STIX JSON file here</p>
+                                    <p class="file-drop-subtext">or</p>
+                                    <label for="file" class="btn-browse">Browse file</label>
+                                    <p class="file-drop-hint">.json files only</p>
+                                </div>
+                                <div class="file-selected-info d-none" id="file-info">
+                                    <i class="fas fa-file-code file-selected-icon"></i>
+                                    <span id="file-name"></span>
+                                    <button type="button" class="file-remove-btn" id="btn-remove-file">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" name="input_mode" id="input_mode" value="paste">
+            </div>
         </div>
 
         <!-- Nom et description -->
         <div class="row mb-3">
             <div class="col-md-6">
                 {{ form.name.label(class_="form-label") }}
-                {{ form.name(class_="form-control" , style="background-color:var(--color-navbar);
-                color:var(--color-text);" , placeholder="Enter a name for the conversion") }}
+                {{ form.name(class_="form-control", placeholder="Enter a name for the conversion",
+                style="background-color:var(--color-navbar); color:var(--color-text);") }}
                 {% for err in form.name.errors %}
                 <div class="invalid-feedback d-block">{{ err }}</div>
                 {% endfor %}
             </div>
             <div class="col-md-6">
                 {{ form.description.label(class_="form-label") }}
-                {{ form.description(class_="form-control", placeholder="Optional description..." ,
+                {{ form.description(class_="form-control", placeholder="Optional description...",
                 style="background-color:var(--color-navbar); color:var(--color-text);") }}
             </div>
         </div>
@@ -109,9 +169,11 @@
             </div>
             <div class="col-md-6">
                 {{ form.cluster_sharing_group_id.label(class_="form-label") }}
-                {{ form.cluster_sharing_group_id(class_="form-control", id="cluster_sharing_group_id" ,
-                placeholder="Only if cluster distribution = 4" ,
-                style="background-color:var(--color-navbar); color:var(--color-text);") }}
+                {{ form.cluster_sharing_group_id(
+                class_="form-control", id="cluster_sharing_group_id",
+                placeholder="Only if cluster distribution = 4",
+                style="background-color:var(--color-navbar); color:var(--color-text);"
+                ) }}
             </div>
         </div>
 
@@ -119,12 +181,12 @@
         <div class="row mb-3">
             <div class="col-md-6">
                 {{ form.organisation_uuid.label(class_="form-label") }}
-                {{ form.organisation_uuid(class_="form-control", placeholder="Organisation UUID (optional)" ,
+                {{ form.organisation_uuid(class_="form-control", placeholder="Organisation UUID (optional)",
                 style="background-color:var(--color-navbar); color:var(--color-text);") }}
             </div>
             <div class="col-md-6">
                 {{ form.producer.label(class_="form-label") }}
-                {{ form.producer(class_="form-control", placeholder="Producer of the STIX data" ,
+                {{ form.producer(class_="form-control", placeholder="Producer of the STIX data",
                 style="background-color:var(--color-navbar); color:var(--color-text);") }}
             </div>
         </div>
@@ -132,37 +194,33 @@
         <!-- Title -->
         <div class="mb-3">
             {{ form.title.label(class_="form-label") }}
-            {{ form.title(class_="form-control", placeholder="Optional title for the resulting MISP Event" ,
+            {{ form.title(class_="form-control", placeholder="Optional title for the resulting MISP Event",
             style="background-color:var(--color-navbar); color:var(--color-text);") }}
         </div>
 
         <!-- Switches -->
-        <div class="row mb-4">
-            <div class="col-md-4">
+        <div class="row mb-3">
+            <div class="col-md-3">
                 <div class="form-check form-switch">
                     {{ form.public(class_="form-check-input", id="publicSwitch") }}
-                    {{ form.public.label(class_="form-check-label", for="publicSwitch" ) }}
+                    {{ form.public.label(class_="form-check-label", for="publicSwitch") }}
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="form-check form-switch">
                     {{ form.galaxies_as_tags(class_="form-check-input", id="galaxiesSwitch") }}
                     {{ form.galaxies_as_tags.label(class_="form-check-label", for="galaxiesSwitch") }}
                     <small class="text-muted d-block">Import galaxies as simple tag names</small>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="form-check form-switch">
                     {{ form.no_force_contextual_data(class_="form-check-input", id="contextSwitch") }}
                     {{ form.no_force_contextual_data.label(class_="form-check-label", for="contextSwitch") }}
                     <small class="text-muted d-block">Avoid forcing ambiguous Galaxy cluster creation</small>
                 </div>
             </div>
-        </div>
-
-        <!-- Single Event -->
-        <div class="row mb-4">
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="form-check form-switch">
                     {{ form.single_event(class_="form-check-input", id="singleEventSwitch") }}
                     {{ form.single_event.label(class_="form-check-label", for="singleEventSwitch") }}
@@ -171,21 +229,16 @@
             </div>
         </div>
 
-        <!-- Bouton Convert -->
-        <div class="text-end">
-            <button type="submit" class="btn btn-primary">{{ form.convert.label }}</button>
-        </div>
+        <button type="submit" name="convert" class="btn btn-primary">
+            <i class="fas fa-exchange-alt me-1"></i> {{ form.convert.label }}
+        </button>
     </form>
 
-
-
-    <!-- Conversion Result / Error -->
+    <!-- Result / Error -->
     {% if result %}
     <div class="card bg-secondary text-light mt-4">
         <div class="card-body">
-            <h5>Conversion Result:</h5>
-
-            <div class="mt-3 d-flex gap-2 mb-3">
+            <div class="mb-3 d-flex gap-2">
                 <button class="btn btn-outline-light btn-sm copy-btn">
                     <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
                 </button>
@@ -193,9 +246,8 @@
                     <i class="fas fa-download me-1"></i> <span class="btn-text">Download</span>
                 </button>
             </div>
-
+            <h5>Conversion Result:</h5>
             <pre id="result-json" class="text-light">{{ result | tojson(indent=2) }}</pre>
-
             <div class="mt-3 d-flex gap-2">
                 <button class="btn btn-outline-light btn-sm copy-btn">
                     <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
@@ -219,127 +271,199 @@
 
 {% block script %}
 <script type="module">
-    document.addEventListener("DOMContentLoaded", function () {
-
-        const distributionSelect = document.getElementById("distribution");
-        const sgInput = document.getElementById("sharing_group_id");
-
-        const clusterDistributionSelect = document.getElementById("cluster_distribution");
-        const clusterSgInput = document.getElementById("cluster_sharing_group_id");
-
-        function toggleField(input, condition) {
-            if (condition) {
-                input.disabled = false;
-                input.classList.remove("disabled-input");
-                input.removeAttribute("title");
-            } else {
-                input.disabled = true;
-                input.value = "";
-                input.classList.add("disabled-input");
-                input.setAttribute("title", "Enable distribution 4 to edit this field.");
-            }
-        }
-
-
-
-        toggleField(sgInput, distributionSelect.value === "4");
-        toggleField(clusterSgInput, clusterDistributionSelect.value === "4");
-
-        distributionSelect.addEventListener("change", () => {
-            toggleField(sgInput, distributionSelect.value === "4");
-        });
-
-        clusterDistributionSelect.addEventListener("change", () => {
-            toggleField(clusterSgInput, clusterDistributionSelect.value === "4");
-        });
-
-        // Tooltip on click for disabled inputs
-        document.querySelectorAll(".disabled-hint").forEach(input => {
-            input.addEventListener("click", function (e) {
-                if (!this.disabled) return;
-
-                let message = this.dataset.tooltip;
-                let tooltip = document.createElement("div");
-                tooltip.className = "tooltip-hint";
-                tooltip.innerText = message;
-
-                document.body.appendChild(tooltip);
-
-                let rect = this.getBoundingClientRect();
-                tooltip.style.left = rect.left + "px";
-                tooltip.style.top = (rect.top - 35) + "px";
-
-                requestAnimationFrame(() => {
-                    tooltip.style.opacity = 1;
-                });
-
-                setTimeout(() => {
-                    tooltip.style.opacity = 0;
-                    setTimeout(() => tooltip.remove(), 200);
-                }, 2000);
-            });
-        });
-
-    });
-
-
-    const { createApp, ref, onMounted } = Vue
+    const { createApp, onMounted } = Vue
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const result = ref('')
-
             onMounted(() => {
-                const resultPre = document.getElementById('result-json')
 
-                document.querySelectorAll(".copy-btn").forEach(copyBtn => {
-                    copyBtn.addEventListener('click', () => {
-                        if (!resultPre) return
-                        navigator.clipboard.writeText(resultPre.textContent)
-                            .then(() => {
-                                const textSpan = copyBtn.querySelector(".btn-text")
-                                const originalText = textSpan.textContent
-                                textSpan.textContent = "Copied"
-                                setTimeout(() => {
-                                    textSpan.textContent = originalText
-                                }, 2000)
-                            })
-                            .catch(err => console.error("Failed to copy:", err))
+                // ── Tab switching ──────────────────────────────────────
+                const tabBtns = document.querySelectorAll('.input-tab-btn')
+                const tabPanes = document.querySelectorAll('.input-tab-pane')
+                const inputMode = document.getElementById('input_mode')
+                const textarea = document.getElementById('stix_content')
+                const fileInput = document.getElementById('file')
+
+                tabBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        tabBtns.forEach(b => b.classList.remove('active'))
+                        tabPanes.forEach(p => p.classList.remove('active'))
+                        btn.classList.add('active')
+                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active')
+                        inputMode.value = btn.dataset.tab
+
+                        if (btn.dataset.tab === 'file') {
+                            textarea.removeAttribute('required')
+                            fileInput.setAttribute('required', '')
+                        } else {
+                            fileInput.removeAttribute('required')
+                        }
                     })
                 })
 
-                document.querySelectorAll(".download-btn").forEach(downloadBtn => {
-                    downloadBtn.addEventListener('click', () => {
+                // ── JSON live validation ───────────────────────────────
+                const jsonStatus = document.getElementById('json-status')
+                const jsonChars = document.getElementById('json-chars')
+
+                textarea?.addEventListener('input', () => {
+                    const val = textarea.value.trim()
+                    jsonChars.textContent = `${val.length} chars`
+                    if (!val) { jsonStatus.textContent = ''; jsonStatus.className = 'json-status'; return }
+                    try {
+                        JSON.parse(val)
+                        jsonStatus.textContent = '✓ Valid JSON'
+                        jsonStatus.className = 'json-status valid'
+                    } catch {
+                        jsonStatus.textContent = '✗ Invalid JSON'
+                        jsonStatus.className = 'json-status invalid'
+                    }
+                })
+
+                document.getElementById('btn-format')?.addEventListener('click', () => {
+                    try {
+                        textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 2)
+                        textarea.dispatchEvent(new Event('input'))
+                    } catch {
+                        jsonStatus.textContent = '✗ Cannot format — invalid JSON'
+                        jsonStatus.className = 'json-status invalid'
+                    }
+                })
+
+                document.getElementById('btn-clear')?.addEventListener('click', () => {
+                    textarea.value = ''
+                    textarea.dispatchEvent(new Event('input'))
+                })
+
+                // ── File drop zone ─────────────────────────────────────
+                const dropZone = document.getElementById('drop-zone')
+                const fileInfo = document.getElementById('file-info')
+                const fileName = document.getElementById('file-name')
+                const fileDropContent = dropZone?.querySelector('.file-drop-content')
+
+                const showFile = name => {
+                    fileName.textContent = name
+                    fileInfo.classList.remove('d-none')
+                    fileDropContent.classList.add('d-none')
+                }
+                const clearFile = () => {
+                    fileInput.value = ''
+                    fileInfo.classList.add('d-none')
+                    fileDropContent.classList.remove('d-none')
+                }
+
+                fileInput?.addEventListener('change', () => {
+                    if (fileInput.files[0]) showFile(fileInput.files[0].name)
+                })
+                document.getElementById('btn-remove-file')?.addEventListener('click', clearFile)
+
+                dropZone?.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover') })
+                dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'))
+                dropZone?.addEventListener('drop', e => {
+                    e.preventDefault()
+                    dropZone.classList.remove('dragover')
+                    const f = e.dataTransfer.files[0]
+                    if (f) {
+                        const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files
+                        showFile(f.name)
+                    }
+                })
+
+                // ── Distribution toggles ───────────────────────────────
+                const distributionSelect = document.getElementById('distribution')
+                const sgInput = document.getElementById('sharing_group_id')
+                const clusterDistSelect = document.getElementById('cluster_distribution')
+                const clusterSgInput = document.getElementById('cluster_sharing_group_id')
+
+                const toggleField = (input, enabled) => {
+                    input.disabled = !enabled
+                    if (!enabled) { input.value = ''; input.classList.add('disabled-input'); input.setAttribute('title', 'Enable distribution 4 to edit this field.') }
+                    else { input.classList.remove('disabled-input'); input.removeAttribute('title') }
+                }
+
+                toggleField(sgInput, distributionSelect.value === '4')
+                toggleField(clusterSgInput, clusterDistSelect.value === '4')
+                distributionSelect.addEventListener('change', () => toggleField(sgInput, distributionSelect.value === '4'))
+                clusterDistSelect.addEventListener('change', () => toggleField(clusterSgInput, clusterDistSelect.value === '4'))
+
+                // ── Tooltip on disabled click ──────────────────────────
+                document.querySelectorAll('.disabled-hint').forEach(input => {
+                    input.addEventListener('click', function () {
+                        if (!this.disabled) return
+                        const tip = document.createElement('div')
+                        tip.className = 'tooltip-hint'
+                        tip.innerText = this.dataset.tooltip
+                        document.body.appendChild(tip)
+                        const rect = this.getBoundingClientRect()
+                        tip.style.left = rect.left + 'px'
+                        tip.style.top = (rect.top - 35) + 'px'
+                        requestAnimationFrame(() => tip.style.opacity = 1)
+                        setTimeout(() => { tip.style.opacity = 0; setTimeout(() => tip.remove(), 200) }, 2000)
+                    })
+                })
+
+                // ── Copy / Download ────────────────────────────────────
+                const resultPre = document.getElementById('result-json')
+
+                document.querySelectorAll('.copy-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (!resultPre) return
+                        navigator.clipboard.writeText(resultPre.textContent).then(() => {
+                            const span = btn.querySelector('.btn-text')
+                            const orig = span.textContent
+                            span.textContent = 'Copied'
+                            setTimeout(() => span.textContent = orig, 2000)
+                        })
+                    })
+                })
+
+                document.querySelectorAll('.download-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
                         if (!resultPre) return
                         const blob = new Blob([resultPre.textContent], { type: 'application/json' })
                         const url = URL.createObjectURL(blob)
                         const a = document.createElement('a')
-                        a.href = url
-                        a.download = 'converted_misp.json'
-                        document.body.appendChild(a)
-                        a.click()
-                        document.body.removeChild(a)
-                        URL.revokeObjectURL(url)
-
-                        const textSpan = downloadBtn.querySelector(".btn-text")
-                        const originalText = textSpan.textContent
-                        textSpan.textContent = "Downloaded"
-                        setTimeout(() => {
-                            textSpan.textContent = originalText
-                        }, 2000)
+                        a.href = url; a.download = 'converted_misp.json'
+                        document.body.appendChild(a); a.click()
+                        document.body.removeChild(a); URL.revokeObjectURL(url)
+                        const span = btn.querySelector('.btn-text')
+                        const orig = span.textContent
+                        span.textContent = 'Downloaded'
+                        setTimeout(() => span.textContent = orig, 2000)
                     })
                 })
 
-                const clickableCard = document.querySelector(".clickable-card")
-                if (clickableCard) {
-                    clickableCard.addEventListener("click", () => {
-                        const url = clickableCard.dataset.url
-                        window.location.href = url
-                    })
-                }
-            })
 
-            return { result }
+
+                // ── Transformation du Paste STIX en Fichier au submit ──────────
+                document.querySelector('form').addEventListener('submit', function (e) {
+                    const mode = document.getElementById('input_mode').value;
+                    const textarea = document.getElementById('stix_content');
+                    const fileInput = document.getElementById('file');
+
+                    if (mode === 'paste') {
+                        const content = textarea.value.trim();
+
+                        if (content) {
+                            // Création du fichier virtuel à partir du texte
+                            const blob = new Blob([content], { type: 'application/json' });
+                            const file = new File([blob], 'pasted_stix.json', { type: 'application/json' });
+
+                            // Injection du fichier dans l'input file
+                            const dt = new DataTransfer();
+                            dt.items.add(file);
+                            fileInput.files = dt.files;
+
+                            // Vider le textarea pour ne pas envoyer la donnée en double
+                            // et éviter de dépasser la limite de taille des champs texte
+                            textarea.value = '';
+
+                            // On bascule le mode sur 'file' pour le backend
+                            document.getElementById('input_mode').value = 'file';
+                        }
+                    }
+                });
+            })
+            return {}
         }
     }).mount('#main-container')
 </script>

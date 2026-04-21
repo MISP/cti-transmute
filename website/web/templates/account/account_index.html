@@ -1,77 +1,110 @@
 {% extends "base.html" %}
-
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+{% endblock %}
 {% block content %}
-<div class="container my-5" id="main-container" >
+<div id="main-container">
 
-  <h2 class=" mb-4 ">My Profile</h2>
+  <!-- Header -->
+  <div class="list-header">
+    <div class="home-hero-badge">
+      <i class="fas fa-user"></i> Account
+    </div>
+    <h1 class="list-title">My Profile</h1>
+    <p class="list-subtitle">Manage your account information and API access.</p>
+  </div>
 
-  <div class="custom-card rounded-4 shadow p-4 d-flex flex-column align-items-center">
-    <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
-         alt="Avatar"
-         class="rounded-circle shadow-sm mb-3"
-         style="width: 120px; height: 120px;">
+  <!-- Profile card -->
+  <div class="profile-wrapper">
 
-    <div class="custom-inner-card w-100 p-3 mb-3" style="cursor: pointer;" @click="editProfil()" title="edit the profil">
-      <div class="mb-2 d-flex justify-content-between">
-        <strong >First Name:</strong>
-        <span>{{ user.first_name }}</span>
+    <!-- Avatar + name -->
+    <div class="profile-avatar-block">
+      <div class="profile-avatar">
+        <i class="fas fa-user"></i>
       </div>
-      <div class="mb-2 d-flex justify-content-between">
-        <strong >Last Name:</strong>
-        <span>{{ user.last_name }}</span>
-      </div>
-      <div class="mb-2 d-flex justify-content-between">
-        <strong >Email:</strong>
-        <span>{{ user.email }}</span>
-      </div>
-      <div class="mb-2 d-flex justify-content-between align-items-center">
-        <strong >API Key:</strong>
-        <div class="d-flex align-items-center gap-2">
-          <button class="btn btn-sm" id="copyBtn" @click="copyApiKey()" title="Copy API Key" @click.stop style="color: var( --color-text);">
-            <i class="fa-solid fa-copy"></i>
-          </button>
-          <span class="text-break" id="apiKey">{{ user.api_key }}</span>
-        </div>
+      <div>
+        <div class="profile-fullname">{{ user.first_name }} {{ user.last_name }}</div>
+        <div class="profile-email-sub">{{ user.email }}</div>
       </div>
     </div>
-    <a class="btn btn-primary" href="/account/edit">
-      Edit
-    </a>
+
+    <div class="profile-divider"></div>
+
+    <!-- Info rows -->
+    <div class="profile-fields">
+
+      <div class="profile-field">
+        <span class="profile-field-label">
+          <i class="fas fa-id-badge"></i> First Name
+        </span>
+        <span class="profile-field-value">{{ user.first_name }}</span>
+      </div>
+
+      <div class="profile-field">
+        <span class="profile-field-label">
+          <i class="fas fa-id-card"></i> Last Name
+        </span>
+        <span class="profile-field-value">{{ user.last_name }}</span>
+      </div>
+
+      <div class="profile-field">
+        <span class="profile-field-label">
+          <i class="fas fa-envelope"></i> Email
+        </span>
+        <span class="profile-field-value">{{ user.email }}</span>
+      </div>
+
+      <!-- API Key row -->
+      <div class="profile-field profile-field--apikey">
+        <span class="profile-field-label">
+          <i class="fas fa-key"></i> API Key
+        </span>
+        <div class="profile-apikey-row">
+          <code class="profile-apikey" id="apiKey">{{ user.api_key }}</code>
+          <button class="profile-copy-btn" id="copyBtn" @click="copyApiKey()" title="Copy API Key">
+            <i class="fas fa-copy"></i>
+            <span id="copyLabel">Copy</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="profile-divider"></div>
+
+    <!-- Actions -->
+    <div class="profile-actions">
+      <a href="/account/edit" class="btn-hero-primary">
+        <i class="fas fa-pen me-2"></i> Edit Profile
+      </a>
+    </div>
 
   </div>
 </div>
 {% endblock %}
 
-
 {% block script %}
 <script type="module">
-const { createApp } = Vue
-createApp({
-  delimiters: ['[[', ']]'],
-  setup() {
-    function editProfil(){
-       window.location.href = "/account/edit";
-    }
+  const { createApp } = Vue
+  createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+      function copyApiKey() {
+        const apiKey = document.getElementById('apiKey').innerText
+        navigator.clipboard.writeText(apiKey).then(() => {
+          const btn = document.getElementById('copyBtn')
+          const label = document.getElementById('copyLabel')
+          label.textContent = 'Copied!'
+          btn.classList.add('copied')
+          setTimeout(() => {
+            label.textContent = 'Copy'
+            btn.classList.remove('copied')
+          }, 2000)
+        }).catch(err => console.error('Failed to copy:', err))
+      }
 
-    function copyApiKey() {
-      const apiKey = document.getElementById('apiKey').innerText;
-      navigator.clipboard.writeText(apiKey).then(() => {
-        const btn = document.getElementById('copyBtn');
-        btn.innerHTML = 'Copied';
-        setTimeout(() => {
-          btn.innerHTML = '<i class="fa-solid fa-copy"></i>';
-        }, 2000);
-      }).catch(err => {
-        console.error('Failed to copy: ', err);
-      });
+      return { copyApiKey }
     }
-
-
-    return {
-      copyApiKey,
-      editProfil
-    }
-  }
-}).mount('#main-container')
+  }).mount('#main-container')
 </script>
 {% endblock %}
