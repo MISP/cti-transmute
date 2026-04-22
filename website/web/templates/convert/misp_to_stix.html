@@ -154,7 +154,7 @@
                 <div class="d-flex align-items-center ms-1">
                     <i class="fas fa-file-export text-info me-2" style="font-size: 0.9rem;"></i>
                     <div class="text-light small">
-                        <span class="opacity-50 fw-light">STIX · JSON ·</span>
+                        <span class="opacity-50" style="color: var(--text);">MISP · JSON ·</span>
                         <strong class="ms-1 text-info-emphasis">Conversion Result</strong>
                     </div>
                 </div>
@@ -250,7 +250,20 @@
         delimiters: ['[[', ']]'],
         setup() {
             onMounted(() => {
+                /* ── Scroll to result if present ──────────────────── */
+                if (document.getElementById('pre-result')) {
+                    highlightResult();
 
+                    setTimeout(() => {
+                        const resultCard = document.querySelector('.code-panel-wrapper');
+                        if (resultCard) {
+                            resultCard.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                            });
+                        }
+                    }, 100);
+                }
                 /* ── Highlight result if present ──────────────────── */
                 if (document.getElementById('pre-result')) {
                     highlightResult();
