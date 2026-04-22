@@ -11,7 +11,6 @@ import random
 import string
 
 from website.web.utils import generate_api_key
-
 def create_convert(user_id, input_text, output_text, convert_choice, description, name, public):
     """
     Create a new Convert entry from API response and save history.
@@ -20,27 +19,21 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
     """
     try:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
-
-
         if convert_choice == "MISP_TO_STIX":
             _name = f"STIX_{now.strftime('%Y%m%d%H%M%S')}"
         else:
             _name = f"MISP_{now.strftime('%Y%m%d%H%M%S')}"
 
-
-        final_name = name or _name
-
-        existing = Convert.query.filter_by(name=final_name).first()
-
         MAX_NAME_LEN = 100
-
-        if existing:
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            base_length = MAX_NAME_LEN - (len(suffix) + 1)
-            final_name = f"{final_name[:base_length]}_{suffix}"
+        final_name = name or _name
 
         if len(final_name) > MAX_NAME_LEN:
             final_name = final_name[:MAX_NAME_LEN]
+
+        existing = Convert.query.filter_by(name=final_name).first()
+        if existing:
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            final_name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
 
         convert = Convert(
             user_id=user_id,
@@ -55,14 +48,24 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
             uuid=str(uuid.uuid4()),
             share_key=generate_api_key(36)
         )
-
         db.session.add(convert)
-
         db.session.commit()
-
         return True
 
+    except IntegrityError:
+        db.session.rollback()
+        try:
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            convert.name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
+            db.session.add(convert)
+            db.session.commit()
+            return True
+        except Exception:
+            db.session.rollback()
+            return False
+
     except Exception as e:
+        db.session.rollback()
         print("Exception:", e)
         return False
 
