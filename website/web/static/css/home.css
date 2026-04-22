@@ -263,3 +263,67 @@ html.dark-mode .home-card-icon--slate  { background: rgba(148,163,184,0.10); col
     .home-about-inner   { flex-direction: column; align-items: flex-start; }
     .home-hero          { padding: 2.5rem 1rem 2rem; }
 }
+
+
+.cti-dropdown-menu {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    min-width: 220px;
+}
+
+.cti-dropdown-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    transition: background var(--t);
+}
+.cti-dropdown-item:hover {
+    background: var(--bg-2);
+}
+
+.cti-convert-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cti-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 3px 9px;
+    border-radius: var(--radius-xs);
+    text-transform: uppercase;
+}
+.cti-badge-misp {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid rgba(37,99,235,0.2);
+}
+.cti-badge-stix {
+    background: rgba(16,185,129,0.10);
+    color: var(--success);
+    border: 1px solid rgba(16,185,129,0.2);
+}
+
+.cti-arrow {
+    font-size: 0.7rem;
+    color: var(--text-3);
+}
+
+.cti-convert-hint {
+    font-size: 0.73rem;
+    color: var(--text-3);
+    padding-left: 1px;
+}
+
+.cti-divider {
+    border-color: var(--border);
+    margin: 4px 6px;
+}

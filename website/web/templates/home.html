@@ -17,9 +17,37 @@
         This project is maintained by the MISP Project community and aims to standardize CTI data exchange.
     </p>
     <div class="home-hero-actions">
-        <a href="/convert/misp_to_stix" class="btn-hero-primary">
-            <i class="fas fa-exchange-alt me-2"></i> Start Converting
-        </a>
+
+        <div class="dropdown">
+            <a href="#" class="btn-hero-primary dropdown-toggle" data-bs-toggle="dropdown" role="button">
+                <i class="fas fa-exchange-alt me-2"></i> Start Converting
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end mt-2 cti-dropdown-menu">
+                <li>
+                    <a class="dropdown-item cti-dropdown-item" href="/convert/misp_to_stix">
+                        <div class="cti-convert-row">
+                            <span class="cti-badge cti-badge-misp">MISP</span>
+                            <i class="fas fa-arrow-right cti-arrow"></i>
+                            <span class="cti-badge cti-badge-stix">STIX</span>
+                        </div>
+                        <span class="cti-convert-hint">Convert MISP event to STIX bundle</span>
+                    </a>
+                </li>
+                <li>
+                    <hr class="cti-divider">
+                </li>
+                <li>
+                    <a class="dropdown-item cti-dropdown-item" href="/convert/stix_to_misp">
+                        <div class="cti-convert-row">
+                            <span class="cti-badge cti-badge-stix">STIX</span>
+                            <i class="fas fa-arrow-right cti-arrow"></i>
+                            <span class="cti-badge cti-badge-misp">MISP</span>
+                        </div>
+                        <span class="cti-convert-hint">Convert STIX bundle to MISP event</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
         <a href="https://github.com/MISP/cti-transmute" target="_blank" rel="noopener" class="btn-hero-secondary">
             <i class="fab fa-github me-2"></i> GitHub
         </a>
