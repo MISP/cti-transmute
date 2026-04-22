@@ -1,5 +1,8 @@
 {% extends "base.html" %}
-
+{% block head %}
+<link id="hljs-theme" rel="stylesheet" href="">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/convert_form.css') }}">
+{% endblock %}
 {% block content %}
 <div id="main-container" class="container my-5">
     <h2 class="mb-3">Convert STIX to MISP</h2>
@@ -29,7 +32,7 @@
         </div>
     </div>
 
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" class="mb-4">
         {{ form.hidden_tag() }}
 
         <!-- STIX INPUT TABS -->
@@ -236,235 +239,297 @@
 
     <!-- Result / Error -->
     {% if result %}
-    <div class="card bg-secondary text-light mt-4">
-        <div class="card-body">
-            <div class="mb-3 d-flex gap-2">
-                <button class="btn btn-outline-light btn-sm copy-btn">
-                    <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
-                </button>
-                <button class="btn btn-outline-light btn-sm download-btn">
-                    <i class="fas fa-download me-1"></i> <span class="btn-text">Download</span>
-                </button>
+    <div class="custom-card mb-4">
+        <div class="code-panel-wrapper">
+            <div class="code-panel-toolbar d-flex align-items-center justify-content-between p-2 rounded-top border border-bottom-0"
+                style="background-color: var(--surface-2); border-color: var(--border) !important;">
+
+                <div class="d-flex align-items-center ms-1">
+                    <i class="fas fa-file-export text-info me-2" style="font-size: 0.9rem;"></i>
+                    <div class="text-light small">
+                        <span class="opacity-50 fw-light">STIX · JSON ·</span>
+                        <strong class="ms-1 text-info-emphasis">Conversion Result</strong>
+                    </div>
+                </div>
+
+                <div class="btn-group shadow-sm">
+                    <button class="btn btn-xs btn-custom-action" id="btn-result-format" title="Format JSON">
+                        <i class="fas fa-align-left"></i>
+                    </button>
+                    <button class="btn btn-xs btn-custom-action" id="btn-result-download" title="Download STIX">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-xs btn-custom-action" id="btn-result-copy" title="Copy to Clipboard">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
             </div>
-            <h5>Conversion Result:</h5>
-            <pre id="result-json" class="text-light">{{ result | tojson(indent=2) }}</pre>
-            <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-outline-light btn-sm copy-btn">
-                    <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
-                </button>
-                <button class="btn btn-outline-light btn-sm download-btn">
-                    <i class="fas fa-download me-1"></i> <span class="btn-text">Download</span>
-                </button>
+
+            <div class="code-loading-overlay" id="spinner-result">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Rendering…
+            </div>
+            <pre class="code-panel-pre d-none" id="pre-result">
+                <code class="language-json" id="result-code">{{ result | tojson(indent=2) }}</code>
+            </pre>
+
+            <div class="code-panel-footer">
+                <small style="color:var(--text-3);">
+                    <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>
+                    Conversion successful
+                </small>
+                {% if result is mapping and result.get('id') %}
+                <small style="color:var(--text-3); font-family:var(--font-mono); font-size:0.7rem;">
+                    {{ result.get('id', '') }}
+                </small>
+                {% endif %}
             </div>
         </div>
     </div>
-    {% elif error %}
-    <div class="card bg-danger text-light mt-4">
-        <div class="card-body">
-            <h5>Error:</h5>
-            <pre class="text-light">{{ error }}</pre>
+    {% endif %}
+
+    {% if error %}
+    <div class="custom-card mb-4 cf-error-card">
+        <div class="cf-error-header">
+            <i class="fas fa-circle-xmark me-2"></i> Conversion Error
+        </div>
+        <div class="cf-error-body">
+            <pre class="cf-error-pre">{{ error }}</pre>
         </div>
     </div>
     {% endif %}
 </div>
 {% endblock %}
-
 {% block script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+
 <script type="module">
-    const { createApp, onMounted } = Vue
+    const { createApp, onMounted } = Vue;
+
+    /* ── Gestion dynamique du thème hljs ─────────────────────────── */
+    function applyHljsTheme() {
+        const isDark = document.documentElement.classList.contains('dark-mode');
+        const themeEl = document.getElementById('hljs-theme');
+        if (themeEl) {
+            themeEl.href = isDark
+                ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
+                : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css';
+        }
+    }
+
+    /* ── Rendu du bloc de résultat (Highlight) ───────────────────── */
+    function highlightResult() {
+        const spinner = document.getElementById('spinner-result');
+        const pre = document.getElementById('pre-result');
+        const block = document.getElementById('result-code');
+        if (!pre || !block) return;
+
+        spinner?.classList.remove('d-none');
+        spinner?.classList.add('d-flex');
+        pre.classList.add('d-none');
+
+        setTimeout(() => {
+            block.removeAttribute('data-highlighted');
+            hljs.highlightElement(block);
+            spinner?.classList.add('d-none');
+            spinner?.classList.remove('d-flex');
+            pre.classList.remove('d-none');
+        }, 50);
+    }
+
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
             onMounted(() => {
+                // Initialisation Thème
+                applyHljsTheme();
+                document.getElementById('theme-toggle')?.addEventListener('click', () => setTimeout(applyHljsTheme, 50));
 
-                // ── Tab switching ──────────────────────────────────────
-                const tabBtns = document.querySelectorAll('.input-tab-btn')
-                const tabPanes = document.querySelectorAll('.input-tab-pane')
-                const inputMode = document.getElementById('input_mode')
-                const textarea = document.getElementById('stix_content')
-                const fileInput = document.getElementById('file')
+                /* ── Rendu initial du résultat si présent ─────────── */
+                if (document.getElementById('pre-result')) {
+                    highlightResult();
+                }
+
+                /* ── Toolbar du résultat (Copy, Download, Format) ─── */
+                const resultCode = document.getElementById('result-code');
+
+                document.getElementById('btn-result-copy')?.addEventListener('click', (e) => {
+                    if (!resultCode) return;
+                    const btn = e.currentTarget;
+                    const orig = btn.innerHTML;
+                    navigator.clipboard.writeText(resultCode.textContent).then(() => {
+                        btn.innerHTML = '<i class="fas fa-check"></i>';
+                        setTimeout(() => { btn.innerHTML = orig; }, 1500);
+                    });
+                });
+
+                document.getElementById('btn-result-download')?.addEventListener('click', (e) => {
+                    if (!resultCode) return;
+                    const blob = new Blob([resultCode.textContent], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = Object.assign(document.createElement('a'), {
+                        href: url, download: 'converted_misp.json'
+                    });
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    const btn = e.currentTarget;
+                    const orig = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i>';
+                    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+                });
+
+                document.getElementById('btn-result-format')?.addEventListener('click', (e) => {
+                    if (!resultCode) return;
+                    const btn = e.currentTarget;
+                    try {
+                        const obj = JSON.parse(resultCode.textContent);
+                        resultCode.textContent = JSON.stringify(obj, null, 2);
+                        highlightResult();
+                    } catch (err) {
+                        console.error("Format error", err);
+                    }
+                });
+
+                /* ── Gestion des onglets Input (Paste/File) ────────── */
+                const tabBtns = document.querySelectorAll('.input-tab-btn');
+                const tabPanes = document.querySelectorAll('.input-tab-pane');
+                const inputMode = document.getElementById('input_mode');
+                const textarea = document.getElementById('stix_content');
+                const fileInput = document.getElementById('file');
 
                 tabBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
-                        tabBtns.forEach(b => b.classList.remove('active'))
-                        tabPanes.forEach(p => p.classList.remove('active'))
-                        btn.classList.add('active')
-                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active')
-                        inputMode.value = btn.dataset.tab
+                        tabBtns.forEach(b => b.classList.remove('active'));
+                        tabPanes.forEach(p => p.classList.remove('active'));
+                        btn.classList.add('active');
+                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+                        inputMode.value = btn.dataset.tab;
 
                         if (btn.dataset.tab === 'file') {
-                            textarea.removeAttribute('required')
-                            fileInput.setAttribute('required', '')
+                            textarea.removeAttribute('required');
+                            fileInput.setAttribute('required', '');
                         } else {
-                            fileInput.removeAttribute('required')
+                            fileInput.removeAttribute('required');
                         }
-                    })
-                })
+                    });
+                });
 
-                // ── JSON live validation ───────────────────────────────
-                const jsonStatus = document.getElementById('json-status')
-                const jsonChars = document.getElementById('json-chars')
+                /* ── Validation JSON Live ─────────────────────────── */
+                const jsonStatus = document.getElementById('json-status');
+                const jsonChars = document.getElementById('json-chars');
 
                 textarea?.addEventListener('input', () => {
-                    const val = textarea.value.trim()
-                    jsonChars.textContent = `${val.length} chars`
-                    if (!val) { jsonStatus.textContent = ''; jsonStatus.className = 'json-status'; return }
+                    const val = textarea.value.trim();
+                    if (jsonChars) jsonChars.textContent = `${val.length} chars`;
+                    if (!val) { jsonStatus.textContent = ''; jsonStatus.className = 'json-status'; return; }
                     try {
-                        JSON.parse(val)
-                        jsonStatus.textContent = '✓ Valid JSON'
-                        jsonStatus.className = 'json-status valid'
+                        JSON.parse(val);
+                        jsonStatus.textContent = '✓ Valid JSON';
+                        jsonStatus.className = 'json-status valid';
                     } catch {
-                        jsonStatus.textContent = '✗ Invalid JSON'
-                        jsonStatus.className = 'json-status invalid'
+                        jsonStatus.textContent = '✗ Invalid JSON';
+                        jsonStatus.className = 'json-status invalid';
                     }
-                })
+                });
 
                 document.getElementById('btn-format')?.addEventListener('click', () => {
                     try {
-                        textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 2)
-                        textarea.dispatchEvent(new Event('input'))
+                        textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 2);
+                        textarea.dispatchEvent(new Event('input'));
                     } catch {
-                        jsonStatus.textContent = '✗ Cannot format — invalid JSON'
-                        jsonStatus.className = 'json-status invalid'
+                        if (jsonStatus) {
+                            jsonStatus.textContent = '✗ Cannot format — invalid JSON';
+                            jsonStatus.className = 'json-status invalid';
+                        }
                     }
-                })
+                });
 
                 document.getElementById('btn-clear')?.addEventListener('click', () => {
-                    textarea.value = ''
-                    textarea.dispatchEvent(new Event('input'))
-                })
+                    textarea.value = '';
+                    textarea.dispatchEvent(new Event('input'));
+                });
 
-                // ── File drop zone ─────────────────────────────────────
-                const dropZone = document.getElementById('drop-zone')
-                const fileInfo = document.getElementById('file-info')
-                const fileName = document.getElementById('file-name')
-                const fileDropContent = dropZone?.querySelector('.file-drop-content')
+                /* ── Zone de Drop Fichier ──────────────────────────── */
+                const dropZone = document.getElementById('drop-zone');
+                const fileInfo = document.getElementById('file-info');
+                const fileName = document.getElementById('file-name');
+                const fileDropContent = dropZone?.querySelector('.file-drop-content');
 
                 const showFile = name => {
-                    fileName.textContent = name
-                    fileInfo.classList.remove('d-none')
-                    fileDropContent.classList.add('d-none')
+                    if (fileName) fileName.textContent = name;
+                    fileInfo?.classList.remove('d-none');
+                    fileDropContent?.classList.add('d-none');
                 }
                 const clearFile = () => {
-                    fileInput.value = ''
-                    fileInfo.classList.add('d-none')
-                    fileDropContent.classList.remove('d-none')
+                    if (fileInput) fileInput.value = '';
+                    fileInfo?.classList.add('d-none');
+                    fileDropContent?.classList.remove('d-none');
                 }
 
                 fileInput?.addEventListener('change', () => {
-                    if (fileInput.files[0]) showFile(fileInput.files[0].name)
-                })
-                document.getElementById('btn-remove-file')?.addEventListener('click', clearFile)
+                    if (fileInput.files[0]) showFile(fileInput.files[0].name);
+                });
+                document.getElementById('btn-remove-file')?.addEventListener('click', clearFile);
 
-                dropZone?.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover') })
-                dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'))
+                dropZone?.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+                dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
                 dropZone?.addEventListener('drop', e => {
-                    e.preventDefault()
-                    dropZone.classList.remove('dragover')
-                    const f = e.dataTransfer.files[0]
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                    const f = e.dataTransfer.files[0];
                     if (f) {
-                        const dt = new DataTransfer(); dt.items.add(f); fileInput.files = dt.files
-                        showFile(f.name)
+                        const dt = new DataTransfer(); dt.items.add(f);
+                        fileInput.files = dt.files;
+                        showFile(f.name);
                     }
-                })
+                });
 
-                // ── Distribution toggles ───────────────────────────────
-                const distributionSelect = document.getElementById('distribution')
-                const sgInput = document.getElementById('sharing_group_id')
-                const clusterDistSelect = document.getElementById('cluster_distribution')
-                const clusterSgInput = document.getElementById('cluster_sharing_group_id')
+                /* ── Toggles Distribution (Sharing Groups) ─────────── */
+                const distSelect = document.getElementById('distribution');
+                const sgInput = document.getElementById('sharing_group_id');
+                const cDistSelect = document.getElementById('cluster_distribution');
+                const cSgInput = document.getElementById('cluster_sharing_group_id');
 
                 const toggleField = (input, enabled) => {
-                    input.disabled = !enabled
-                    if (!enabled) { input.value = ''; input.classList.add('disabled-input'); input.setAttribute('title', 'Enable distribution 4 to edit this field.') }
-                    else { input.classList.remove('disabled-input'); input.removeAttribute('title') }
+                    if (!input) return;
+                    input.disabled = !enabled;
+                    if (!enabled) {
+                        input.value = '';
+                        input.classList.add('disabled-input');
+                    } else {
+                        input.classList.remove('disabled-input');
+                    }
                 }
 
-                toggleField(sgInput, distributionSelect.value === '4')
-                toggleField(clusterSgInput, clusterDistSelect.value === '4')
-                distributionSelect.addEventListener('change', () => toggleField(sgInput, distributionSelect.value === '4'))
-                clusterDistSelect.addEventListener('change', () => toggleField(clusterSgInput, clusterDistSelect.value === '4'))
+                if (distSelect && sgInput) {
+                    toggleField(sgInput, distSelect.value === '4');
+                    distSelect.addEventListener('change', () => toggleField(sgInput, distSelect.value === '4'));
+                }
+                if (cDistSelect && cSgInput) {
+                    toggleField(cSgInput, cDistSelect.value === '4');
+                    cDistSelect.addEventListener('change', () => toggleField(cSgInput, cDistSelect.value === '4'));
+                }
 
-                // ── Tooltip on disabled click ──────────────────────────
-                document.querySelectorAll('.disabled-hint').forEach(input => {
-                    input.addEventListener('click', function () {
-                        if (!this.disabled) return
-                        const tip = document.createElement('div')
-                        tip.className = 'tooltip-hint'
-                        tip.innerText = this.dataset.tooltip
-                        document.body.appendChild(tip)
-                        const rect = this.getBoundingClientRect()
-                        tip.style.left = rect.left + 'px'
-                        tip.style.top = (rect.top - 35) + 'px'
-                        requestAnimationFrame(() => tip.style.opacity = 1)
-                        setTimeout(() => { tip.style.opacity = 0; setTimeout(() => tip.remove(), 200) }, 2000)
-                    })
-                })
-
-                // ── Copy / Download ────────────────────────────────────
-                const resultPre = document.getElementById('result-json')
-
-                document.querySelectorAll('.copy-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        if (!resultPre) return
-                        navigator.clipboard.writeText(resultPre.textContent).then(() => {
-                            const span = btn.querySelector('.btn-text')
-                            const orig = span.textContent
-                            span.textContent = 'Copied'
-                            setTimeout(() => span.textContent = orig, 2000)
-                        })
-                    })
-                })
-
-                document.querySelectorAll('.download-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        if (!resultPre) return
-                        const blob = new Blob([resultPre.textContent], { type: 'application/json' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url; a.download = 'converted_misp.json'
-                        document.body.appendChild(a); a.click()
-                        document.body.removeChild(a); URL.revokeObjectURL(url)
-                        const span = btn.querySelector('.btn-text')
-                        const orig = span.textContent
-                        span.textContent = 'Downloaded'
-                        setTimeout(() => span.textContent = orig, 2000)
-                    })
-                })
-
-
-
-                // ── Transformation du Paste STIX en Fichier au submit ──────────
-                document.querySelector('form').addEventListener('submit', function (e) {
+                /* ── Soumission Formulaire (Convert Paste to File) ─── */
+                document.querySelector('form')?.addEventListener('submit', function () {
                     const mode = document.getElementById('input_mode').value;
-                    const textarea = document.getElementById('stix_content');
-                    const fileInput = document.getElementById('file');
-
                     if (mode === 'paste') {
                         const content = textarea.value.trim();
-
                         if (content) {
-                            // Création du fichier virtuel à partir du texte
                             const blob = new Blob([content], { type: 'application/json' });
                             const file = new File([blob], 'pasted_stix.json', { type: 'application/json' });
-
-                            // Injection du fichier dans l'input file
                             const dt = new DataTransfer();
                             dt.items.add(file);
                             fileInput.files = dt.files;
-
-                            // Vider le textarea pour ne pas envoyer la donnée en double
-                            // et éviter de dépasser la limite de taille des champs texte
                             textarea.value = '';
-
-                            // On bascule le mode sur 'file' pour le backend
                             document.getElementById('input_mode').value = 'file';
                         }
                     }
                 });
-            })
-            return {}
+            });
+            return {};
         }
-    }).mount('#main-container')
+    }).mount('#main-container');
 </script>
 {% endblock %}

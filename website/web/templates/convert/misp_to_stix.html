@@ -1,336 +1,419 @@
 {% extends "base.html" %}
 
+{% block head %}
+<link id="hljs-theme" rel="stylesheet" href="">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/convert_form.css') }}">
+{% endblock %}
+
 {% block content %}
-<div id="main-container" class="container my-5">
-    <h2 class="mb-3">Convert MISP to STIX</h2>
+<div class="container my-5" id="main-container">
 
-    <form method="post" enctype="multipart/form-data">
-        {{ form.hidden_tag() }}
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                {{ form.version.label(class_="form-label") }} <span class="text-danger">*</span>
-                {{ form.version(class_="form-select", style="background-color:var(--color-navbar);
-                color:var(--color-text);") }}
-                {% for err in form.version.errors %}
-                <div class="invalid-feedback d-block">{{ err }}</div>
-                {% endfor %}
-            </div>
-            <div class="col-md-6">
-                {{ form.name.label(class_="form-label") }}
-                {{ form.name(class_="form-control", placeholder="Enter a name for the conversion",
-                style="background-color:var(--color-navbar); color:var(--color-text);") }}
-                {% for err in form.name.errors %}
-                <div class="invalid-feedback d-block">{{ err }}</div>
-                {% endfor %}
+    <div class="custom-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h3 class="mb-1" style="font-weight:700; letter-spacing:-0.02em;">
+                    Convert MISP to STIX
+                </h3>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="type-pill type-misp">
+                        MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> STIX
+                    </span>
+                    <span class="author-badge">
+                        <i class="fas fa-code me-1" style="font-size:0.6rem;"></i> JSON conversion
+                    </span>
+                </div>
             </div>
         </div>
+    </div>
 
-        <div class="row mb-3">
-            <div class="col-md-12">
-                {{ form.description.label(class_="form-label") }}
-                {{ form.description(class_="form-control", placeholder="Optional description...",
-                style="background-color:var(--color-navbar); color:var(--color-text);") }}
-                {% for err in form.description.errors %}
-                <div class="invalid-feedback d-block">{{ err }}</div>
-                {% endfor %}
+
+    <div class="custom-card p-4 mb-4">
+        <form method="post" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label cf-label">{{ form.version.label }} <span
+                            class="text-danger">*</span></label>
+                    {{ form.version(class_="form-select") }}
+                    {% for err in form.version.errors %}
+                    <div class="invalid-feedback d-block">{{ err }}</div>
+                    {% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label cf-label">{{ form.name.label }}</label>
+                    {{ form.name(class_="form-control", placeholder="Enter a name for the conversion") }}
+                    {% for err in form.name.errors %}
+                    <div class="invalid-feedback d-block">{{ err }}</div>
+                    {% endfor %}
+                </div>
             </div>
-        </div>
 
-        <!-- INPUT TABS -->
-        <div class="row mb-3">
-            <div class="col-md-12">
-                <label class="form-label">MISP Input <span class="text-danger">*</span></label>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label class="form-label cf-label">{{ form.description.label }}</label>
+                    {{ form.description(class_="form-control", placeholder="Optional description...") }}
+                    {% for err in form.description.errors %}
+                    <div class="invalid-feedback d-block">{{ err }}</div>
+                    {% endfor %}
+                </div>
+            </div>
 
-                <div class="input-tab-container">
-                    <div class="input-tab-header">
-                        <button type="button" class="input-tab-btn active" data-tab="paste">
-                            <i class="fas fa-paste me-1"></i> Paste JSON
-                        </button>
-                        <button type="button" class="input-tab-btn" data-tab="file">
-                            <i class="fas fa-upload me-1"></i> Upload File
-                        </button>
-                    </div>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label class="form-label cf-label">
+                        MISP Input <span class="text-danger">*</span>
+                    </label>
 
-                    <div class="input-tab-body">
-                        <!-- PASTE TAB -->
-                        <div class="input-tab-pane active" id="tab-paste">
-                            <div class="json-editor-wrapper">
-                                <div class="json-editor-toolbar">
-                                    <span class="json-editor-label">
-                                        <i class="fas fa-code me-1"></i> JSON
-                                    </span>
-                                    <div class="json-editor-actions">
-                                        <button type="button" class="json-action-btn" id="btn-format">
-                                            <i class="fas fa-align-left me-1"></i> Format
-                                        </button>
-                                        <button type="button" class="json-action-btn" id="btn-clear">
-                                            <i class="fas fa-times me-1"></i> Clear
+                    <div class="input-tab-container">
+                        <div class="input-tab-header">
+                            <button type="button" class="input-tab-btn active" data-tab="paste">
+                                <i class="fas fa-paste me-1"></i> Paste JSON
+                            </button>
+                            <button type="button" class="input-tab-btn" data-tab="file">
+                                <i class="fas fa-upload me-1"></i> Upload File
+                            </button>
+                        </div>
+
+                        <div class="input-tab-body">
+                            <div class="input-tab-pane active" id="tab-paste">
+                                <div class="json-editor-wrapper">
+                                    <div class="json-editor-toolbar">
+                                        <span class="json-editor-label">
+                                            <i class="fas fa-code me-1"></i> JSON
+                                        </span>
+                                        <div class="json-editor-actions">
+                                            <button type="button" class="json-action-btn" id="btn-format">
+                                                <i class="fas fa-align-left me-1"></i> Format
+                                            </button>
+                                            <button type="button" class="json-action-btn" id="btn-clear">
+                                                <i class="fas fa-times me-1"></i> Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {{ form.misp_content(
+                                    class_="json-editor",
+                                    id="misp_content",
+                                    placeholder='{\n "Event": {\n ...\n }\n}',
+                                    rows="14",
+                                    spellcheck="false"
+                                    ) }}
+                                    <div class="json-editor-footer">
+                                        <span id="json-status" class="json-status"></span>
+                                        <span id="json-chars" class="json-chars">0 chars</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="input-tab-pane" id="tab-file">
+                                <div class="file-drop-zone" id="drop-zone">
+                                    <input type="file" id="file" name="file" accept=".json" class="file-drop-input">
+                                    <div class="file-drop-content">
+                                        <i class="fas fa-cloud-upload-alt file-drop-icon"></i>
+                                        <p class="file-drop-text">Drag & drop your MISP JSON file here</p>
+                                        <p class="file-drop-subtext">or</p>
+                                        <label for="file" class="btn-browse">Browse file</label>
+                                        <p class="file-drop-hint">.json files only</p>
+                                    </div>
+                                    <div class="file-selected-info d-none" id="file-info">
+                                        <i class="fas fa-file-code file-selected-icon"></i>
+                                        <span id="file-name"></span>
+                                        <button type="button" class="file-remove-btn" id="btn-remove-file">
+                                            <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                 </div>
-                                {{ form.misp_content(
-                                class_="json-editor",
-                                id="misp_content",
-                                placeholder='{\n "Event": {\n ...\n }\n}',
-                                rows="14",
-                                spellcheck="false"
-                                ) }}
-                                <div class="json-editor-footer">
-                                    <span id="json-status" class="json-status"></span>
-                                    <span id="json-chars" class="json-chars">0 chars</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- FILE TAB -->
-                        <div class="input-tab-pane" id="tab-file">
-                            <div class="file-drop-zone" id="drop-zone">
-                                <input type="file" id="file" name="file" accept=".json" class="file-drop-input">
-                                <div class="file-drop-content">
-                                    <i class="fas fa-cloud-upload-alt file-drop-icon"></i>
-                                    <p class="file-drop-text">Drag & drop your MISP JSON file here</p>
-                                    <p class="file-drop-subtext">or</p>
-                                    <label for="file" class="btn-browse">Browse file</label>
-                                    <p class="file-drop-hint">.json files only</p>
-                                </div>
-                                <div class="file-selected-info d-none" id="file-info">
-                                    <i class="fas fa-file-code file-selected-icon"></i>
-                                    <span id="file-name"></span>
-                                    <button type="button" class="file-remove-btn" id="btn-remove-file">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <input type="hidden" name="input_mode" id="input_mode" value="paste">
-            </div>
-        </div>
-
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="form-check form-switch">
-                    {{ form.public(class_="form-check-input", id="publicSwitch") }}
-                    {{ form.public.label(class_="form-check-label", for="publicSwitch") }}
+                    <input type="hidden" name="input_mode" id="input_mode" value="paste">
                 </div>
             </div>
-        </div>
 
-        <button type="submit" name="convert" class="btn btn-primary">
-            <i class="fas fa-exchange-alt me-1"></i> {{ form.convert.label }}
-        </button>
-    </form>
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-check form-switch">
+                        {{ form.public(class_="form-check-input", id="publicSwitch") }}
+                        {{ form.public.label(class_="form-check-label", for="publicSwitch") }}
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" name="convert" class="btn btn-primary fw-semibold">
+                <i class="fas fa-exchange-alt me-1"></i> {{ form.convert.label }}
+            </button>
+        </form>
+    </div>
 
     {% if result %}
-    <div class="card bg-secondary text-light mt-4">
-        <div class="card-body">
-            <div class="mb-3 d-flex gap-2">
-                <button class="btn btn-outline-light btn-sm copy-btn">
-                    <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
-                </button>
-                <button class="btn btn-outline-light btn-sm download-btn">
-                    <i class="fas fa-download me-1"></i> Download
-                </button>
+    <div class="custom-card mb-4">
+        <div class="code-panel-wrapper">
+            <div class="code-panel-toolbar d-flex align-items-center justify-content-between p-2 rounded-top border border-bottom-0"
+                style="background-color: var(--surface-2); border-color: var(--border) !important;">
+
+                <div class="d-flex align-items-center ms-1">
+                    <i class="fas fa-file-export text-info me-2" style="font-size: 0.9rem;"></i>
+                    <div class="text-light small">
+                        <span class="opacity-50 fw-light">STIX · JSON ·</span>
+                        <strong class="ms-1 text-info-emphasis">Conversion Result</strong>
+                    </div>
+                </div>
+
+                <div class="btn-group shadow-sm">
+                    <button class="btn btn-xs btn-custom-action" id="btn-result-format" title="Format JSON">
+                        <i class="fas fa-align-left"></i>
+                    </button>
+                    <button class="btn btn-xs btn-custom-action" id="btn-result-download" title="Download STIX">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="btn btn-xs btn-custom-action" id="btn-result-copy" title="Copy to Clipboard">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
             </div>
-            <h5>Conversion Result:</h5>
-            <pre id="result-json" class="text-light">{{ result | tojson(indent=2) }}</pre>
-            <div class="mt-3 d-flex gap-2">
-                <button class="btn btn-outline-light btn-sm copy-btn">
-                    <i class="fas fa-copy me-1"></i> <span class="btn-text">Copy</span>
-                </button>
-                <button class="btn btn-outline-light btn-sm download-btn">
-                    <i class="fas fa-download me-1"></i> Download
-                </button>
+
+            <div class="code-loading-overlay" id="spinner-result">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                Rendering…
             </div>
-        </div>
-    </div>
-    {% elif error %}
-    <div class="card bg-danger text-light mt-4">
-        <div class="card-body">
-            <h5>Error:</h5>
-            <pre class="text-light">{{ error }}</pre>
+            <pre class="code-panel-pre d-none" id="pre-result">
+                <code class="language-json" id="result-code">{{ result | tojson(indent=2) }}</code>
+            </pre>
+
+            <div class="code-panel-footer">
+                <small style="color:var(--text-3);">
+                    <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>
+                    Conversion successful
+                </small>
+                {% if result is mapping and result.get('id') %}
+                <small style="color:var(--text-3); font-family:var(--font-mono); font-size:0.7rem;">
+                    {{ result.get('id', '') }}
+                </small>
+                {% endif %}
+            </div>
         </div>
     </div>
     {% endif %}
+
+    {% if error %}
+    <div class="custom-card mb-4 cf-error-card">
+        <div class="cf-error-header">
+            <i class="fas fa-circle-xmark me-2"></i> Conversion Error
+        </div>
+        <div class="cf-error-body">
+            <pre class="cf-error-pre">{{ error }}</pre>
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}
 
 {% block script %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+
 <script type="module">
-    const { createApp, ref, onMounted } = Vue
+    const { createApp, onMounted } = Vue;
+
+    /* ── hljs theme ───────────────────────────────────────────────── */
+    function applyHljsTheme() {
+        const isDark = document.documentElement.classList.contains('dark-mode');
+        document.getElementById('hljs-theme').href = isDark
+            ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
+            : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css';
+    }
+    applyHljsTheme();
+    document.getElementById('theme-toggle')?.addEventListener('click', () => setTimeout(applyHljsTheme, 50));
+
+    /* ── Highlight result panel (same pattern as detail.html) ─────── */
+    function highlightResult() {
+        const spinner = document.getElementById('spinner-result');
+        const pre = document.getElementById('pre-result');
+        const block = document.getElementById('result-code');
+        if (!pre || !block) return;
+
+        spinner?.classList.remove('d-none');
+        spinner?.classList.add('d-flex');
+        pre.classList.add('d-none');
+
+        setTimeout(() => {
+            block.removeAttribute('data-highlighted');
+            hljs.highlightElement(block);
+            spinner?.classList.add('d-none');
+            spinner?.classList.remove('d-flex');
+            pre.classList.remove('d-none');
+        }, 50);
+    }
+
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
             onMounted(() => {
-                // ── Tab switching ──────────────────────────────────────
-                const tabBtns = document.querySelectorAll('.input-tab-btn')
-                const tabPanes = document.querySelectorAll('.input-tab-pane')
-                const inputMode = document.getElementById('input_mode')
-                const textarea = document.getElementById('misp_content')
-                const fileInput = document.getElementById('file')
+
+                /* ── Highlight result if present ──────────────────── */
+                if (document.getElementById('pre-result')) {
+                    highlightResult();
+                }
+
+                /* ── Result toolbar buttons ───────────────────────── */
+                const resultCode = document.getElementById('result-code');
+
+                document.getElementById('btn-result-copy')?.addEventListener('click', (e) => {
+                    if (!resultCode) return;
+                    const btn = e.currentTarget;
+                    const orig = btn.innerHTML;
+                    navigator.clipboard.writeText(resultCode.textContent).then(() => {
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
+                        setTimeout(() => { btn.innerHTML = orig; }, 1500);
+                    });
+                });
+
+                document.getElementById('btn-result-download')?.addEventListener('click', (e) => {
+                    if (!resultCode) return;
+                    const blob = new Blob([resultCode.textContent], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = Object.assign(document.createElement('a'), {
+                        href: url, download: 'converted_stix.json'
+                    });
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    const btn = e.currentTarget;
+                    const orig = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i> Downloaded!';
+                    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+                });
+
+                document.getElementById('btn-result-format')?.addEventListener('click', (e) => {
+                    if (!resultCode) return;
+                    const btn = e.currentTarget;
+                    const orig = btn.innerHTML;
+                    try {
+                        resultCode.textContent = JSON.stringify(JSON.parse(resultCode.textContent), null, 2);
+                        highlightResult();
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i> Formatted!';
+                    } catch {
+                        btn.innerHTML = '<i class="fas fa-xmark me-1"></i> Invalid JSON';
+                    }
+                    setTimeout(() => { btn.innerHTML = orig; }, 1800);
+                });
+
+                /* ── Tab switching ────────────────────────────────── */
+                const tabBtns = document.querySelectorAll('.input-tab-btn');
+                const tabPanes = document.querySelectorAll('.input-tab-pane');
+                const inputMode = document.getElementById('input_mode');
+                const textarea = document.getElementById('misp_content');
+                const fileInput = document.getElementById('file');
 
                 tabBtns.forEach(btn => {
                     btn.addEventListener('click', () => {
-                        tabBtns.forEach(b => b.classList.remove('active'))
-                        tabPanes.forEach(p => p.classList.remove('active'))
-                        btn.classList.add('active')
-                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active')
-                        inputMode.value = btn.dataset.tab
-
+                        tabBtns.forEach(b => b.classList.remove('active'));
+                        tabPanes.forEach(p => p.classList.remove('active'));
+                        btn.classList.add('active');
+                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+                        inputMode.value = btn.dataset.tab;
                         if (btn.dataset.tab === 'file') {
-                            textarea.removeAttribute('required')
-                            fileInput.setAttribute('required', '')
+                            textarea.removeAttribute('required');
+                            fileInput.setAttribute('required', '');
                         } else {
-                            fileInput.removeAttribute('required')
+                            fileInput.removeAttribute('required');
                         }
-                    })
-                })
+                    });
+                });
 
-                // ── JSON textarea: live validation + char count ────────
-                const jsonStatus = document.getElementById('json-status')
-                const jsonChars = document.getElementById('json-chars')
+                /* ── Live JSON validation ─────────────────────────── */
+                const jsonStatus = document.getElementById('json-status');
+                const jsonChars = document.getElementById('json-chars');
 
                 textarea?.addEventListener('input', () => {
-                    const val = textarea.value.trim()
-                    jsonChars.textContent = `${val.length} chars`
-                    if (!val) {
-                        jsonStatus.textContent = ''
-                        jsonStatus.className = 'json-status'
-                        return
-                    }
+                    const val = textarea.value.trim();
+                    jsonChars.textContent = `${val.length} chars`;
+                    if (!val) { jsonStatus.textContent = ''; jsonStatus.className = 'json-status'; return; }
                     try {
-                        JSON.parse(val)
-                        jsonStatus.textContent = '✓ Valid JSON'
-                        jsonStatus.className = 'json-status valid'
+                        JSON.parse(val);
+                        jsonStatus.textContent = '✓ Valid JSON';
+                        jsonStatus.className = 'json-status valid';
                     } catch {
-                        jsonStatus.textContent = '✗ Invalid JSON'
-                        jsonStatus.className = 'json-status invalid'
+                        jsonStatus.textContent = '✗ Invalid JSON';
+                        jsonStatus.className = 'json-status invalid';
                     }
-                })
+                });
 
-                // ── Format button ──────────────────────────────────────
+                /* ── Format / Clear textarea ──────────────────────── */
                 document.getElementById('btn-format')?.addEventListener('click', () => {
                     try {
-                        const parsed = JSON.parse(textarea.value)
-                        textarea.value = JSON.stringify(parsed, null, 2)
-                        textarea.dispatchEvent(new Event('input'))
+                        textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 2);
+                        textarea.dispatchEvent(new Event('input'));
                     } catch {
-                        jsonStatus.textContent = '✗ Cannot format — invalid JSON'
-                        jsonStatus.className = 'json-status invalid'
+                        jsonStatus.textContent = '✗ Cannot format — invalid JSON';
+                        jsonStatus.className = 'json-status invalid';
                     }
-                })
+                });
 
-                // ── Clear button ───────────────────────────────────────
                 document.getElementById('btn-clear')?.addEventListener('click', () => {
-                    textarea.value = ''
-                    textarea.dispatchEvent(new Event('input'))
-                })
+                    textarea.value = '';
+                    textarea.dispatchEvent(new Event('input'));
+                });
 
-                // ── File drop zone ─────────────────────────────────────
-                const dropZone = document.getElementById('drop-zone')
-                const fileInfo = document.getElementById('file-info')
-                const fileName = document.getElementById('file-name')
-                const fileDropContent = dropZone?.querySelector('.file-drop-content')
+                /* ── File drop zone ───────────────────────────────── */
+                const dropZone = document.getElementById('drop-zone');
+                const fileInfo = document.getElementById('file-info');
+                const fileNameEl = document.getElementById('file-name');
+                const fileDropContent = dropZone?.querySelector('.file-drop-content');
 
                 function showFile(name) {
-                    fileName.textContent = name
-                    fileInfo.classList.remove('d-none')
-                    fileDropContent.classList.add('d-none')
+                    fileNameEl.textContent = name;
+                    fileInfo.classList.remove('d-none');
+                    fileDropContent.classList.add('d-none');
                 }
                 function clearFile() {
-                    fileInput.value = ''
-                    fileInfo.classList.add('d-none')
-                    fileDropContent.classList.remove('d-none')
+                    fileInput.value = '';
+                    fileInfo.classList.add('d-none');
+                    fileDropContent.classList.remove('d-none');
                 }
 
                 fileInput?.addEventListener('change', () => {
-                    if (fileInput.files[0]) showFile(fileInput.files[0].name)
-                })
+                    if (fileInput.files[0]) showFile(fileInput.files[0].name);
+                });
+                document.getElementById('btn-remove-file')?.addEventListener('click', clearFile);
 
-                document.getElementById('btn-remove-file')?.addEventListener('click', clearFile)
-
-                dropZone?.addEventListener('dragover', e => {
-                    e.preventDefault()
-                    dropZone.classList.add('dragover')
-                })
-                dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'))
+                dropZone?.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+                dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
                 dropZone?.addEventListener('drop', e => {
-                    e.preventDefault()
-                    dropZone.classList.remove('dragover')
-                    const f = e.dataTransfer.files[0]
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                    const f = e.dataTransfer.files[0];
                     if (f) {
-                        const dt = new DataTransfer()
-                        dt.items.add(f)
-                        fileInput.files = dt.files
-                        showFile(f.name)
+                        const dt = new DataTransfer();
+                        dt.items.add(f);
+                        fileInput.files = dt.files;
+                        showFile(f.name);
                     }
-                })
+                });
 
-                // ── Copy / Download result ─────────────────────────────
-                const resultPre = document.getElementById('result-json')
-
-                document.querySelectorAll('.copy-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        if (!resultPre) return
-                        navigator.clipboard.writeText(resultPre.textContent).then(() => {
-                            const span = btn.querySelector('.btn-text')
-                            const orig = span.textContent
-                            span.textContent = 'Copied'
-                            setTimeout(() => span.textContent = orig, 2000)
-                        })
-                    })
-                })
-
-                document.querySelectorAll('.download-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        if (!resultPre) return
-                        const blob = new Blob([resultPre.textContent], { type: 'application/json' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = 'converted_stix.json'
-                        document.body.appendChild(a)
-                        a.click()
-                        document.body.removeChild(a)
-                        URL.revokeObjectURL(url)
-                    })
-                })
-
-                // ── Paste → fichier au moment du submit ───────────────
-                // ── Paste → fichier au moment du submit ───────────────
-                document.querySelector('form').addEventListener('submit', (e) => {
-                    const inputMode = document.getElementById('input_mode').value;
-                    const textarea = document.getElementById('misp_content');
-                    const fileInput = document.getElementById('file');
-
-                    if (inputMode === 'paste') {
+                /* ── Submit: paste → file ─────────────────────────── */
+                document.querySelector('form').addEventListener('submit', () => {
+                    const mode = document.getElementById('input_mode').value;
+                    if (mode === 'paste') {
                         const content = textarea.value.trim();
-
                         if (content) {
-                            // 1. Créer un Blob (plus performant pour les gros volumes) puis un File
-                            const blob = new Blob([content], { type: 'application/json' });
-                            const file = new File([blob], 'pasted_misp.json', { type: 'application/json' });
-
-                            // 2. Utiliser DataTransfer pour injecter le fichier dans l'input file
+                            const file = new File(
+                                [new Blob([content], { type: 'application/json' })],
+                                'pasted_misp.json',
+                                { type: 'application/json' }
+                            );
                             const dt = new DataTransfer();
                             dt.items.add(file);
                             fileInput.files = dt.files;
-
-                            // 3. IMPORTANT : Vider le textarea pour éviter de dépasser 
-                            // la limite de taille du corps de la requête HTTP (POST field limit)
-                            textarea.value = "";
-
-                            // On force le mode à 'file' pour que le backend sache où chercher
+                            textarea.value = '';
                             document.getElementById('input_mode').value = 'file';
                         }
                     }
                 });
-            })
+            });
 
-            return {}
+            return {};
         }
-    }).mount('#main-container')
+    }).mount('#main-container');
 </script>
 {% endblock %}

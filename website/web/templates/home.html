@@ -17,7 +17,6 @@
         This project is maintained by the MISP Project community and aims to standardize CTI data exchange.
     </p>
     <div class="home-hero-actions">
-
         <div class="dropdown">
             <a href="#" class="btn-hero-primary dropdown-toggle" data-bs-toggle="dropdown" role="button">
                 <i class="fas fa-exchange-alt me-2"></i> Start Converting
@@ -57,16 +56,94 @@
     </div>
 </section>
 
+<!-- Recent public conversions -->
+<section class="home-recent" id="main-container" v-cloak>
+    <div class="home-recent-header">
+        <span class="home-section-label">
+            <i class="fas fa-clock me-1"></i> Recent Public Conversions
+        </span>
+        <a href="{{ url_for('convert.history') }}" class="home-recent-link">
+            View all <i class="fas fa-arrow-right" style="font-size:0.6rem;"></i>
+        </a>
+    </div>
+
+    <!-- Loading state -->
+    <div v-if="is_loading" class="home-recent-loading">
+        <div class="spinner-border spinner-border-sm me-2" style="color:var(--accent); border-width:2px;" role="status">
+        </div>
+        Loading…
+    </div>
+
+    <!-- Empty state -->
+    <div v-else-if="recent_list.length === 0" class="home-recent-empty">
+        <i class="fas fa-inbox"></i>
+        No public conversions yet.
+    </div>
+
+    <!-- Carousel -->
+    <div v-else class="home-recent-track-wrapper">
+        <div class="home-recent-track" id="recent-track">
+            <a v-for="item in recent_list" :key="item.id" :href="'/convert/detail/' + item.id" class="home-recent-card">
+                <div class="home-recent-card-top">
+                    <span class="type-pill"
+                        :class="item.conversion_type === 'STIX_TO_MISP' ? 'type-stix' : 'type-misp'">
+                        <template v-if="item.conversion_type === 'STIX_TO_MISP'">
+                            <div class="cti-convert-row">
+                                <span class="cti-badge cti-badge-stix">STIX</span>
+                                <i class="fas fa-arrow-right cti-arrow"></i>
+                                <span class="cti-badge cti-badge-misp">MISP</span>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div class="cti-convert-row">
+                                <span class="cti-badge cti-badge-misp">MISP</span>
+                                <i class="fas fa-arrow-right cti-arrow"></i>
+                                <span class="cti-badge cti-badge-stix">STIX</span>
+                            </div>
+                        </template>
+                    </span>
+                    <span class="home-recent-card-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </span>
+                </div>
+                <div class="home-recent-card-name text-truncate" :title="item.name">
+                    [[ item.name ]]
+                </div>
+                <div class="home-recent-card-desc text-truncate" v-if="item.description">
+                    [[ item.description ]]
+                </div>
+                <div class="home-recent-card-desc fst-italic" v-else style="opacity:0.5;">No description</div>
+                <div class="home-recent-card-footer">
+                    <span class="home-recent-card-author">
+                        <i class="fas fa-user" style="font-size:0.6rem;"></i>
+                        [[ item.author || 'Anonymous' ]]
+                    </span>
+                    <span class="home-recent-card-date">
+                        [[ formatDate(item.created_at) ]]
+                    </span>
+                </div>
+            </a>
+        </div>
+
+        <!-- Scroll arrows -->
+        <button class="home-recent-arrow home-recent-arrow--left" @click="scroll(-1)" v-show="canScrollLeft"
+            aria-label="Scroll left">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <button class="home-recent-arrow home-recent-arrow--right" @click="scroll(1)" v-show="canScrollRight"
+            aria-label="Scroll right">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+</section>
+
 <!-- Cards -->
 <section class="home-cards">
     <div class="home-section-label">API Endpoints</div>
     <p class="home-section-desc">
         Click a card to navigate to the corresponding conversion page, or use the endpoints directly via API.
     </p>
-
     <div class="home-grid">
-
-        <!-- MISP → STIX -->
         <a href="/convert/misp_to_stix" class="home-card">
             <div class="home-card-icon home-card-icon--blue">
                 <i class="fas fa-arrow-right-arrow-left"></i>
@@ -81,7 +158,6 @@
             <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
         </a>
 
-        <!-- STIX → MISP -->
         <a href="/convert/stix_to_misp" class="home-card">
             <div class="home-card-icon home-card-icon--indigo">
                 <i class="fas fa-arrow-right-arrow-left fa-flip-horizontal"></i>
@@ -96,7 +172,6 @@
             <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
         </a>
 
-        <!-- List -->
         <a href="/list" class="home-card">
             <div class="home-card-icon home-card-icon--slate">
                 <i class="fas fa-list-ul"></i>
@@ -110,7 +185,6 @@
             </div>
             <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
         </a>
-
     </div>
 </section>
 
@@ -143,4 +217,62 @@
     </div>
 </section>
 
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, onMounted } = Vue;
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const recent_list = ref([]);
+            const is_loading = ref(true);
+            const canScrollLeft = ref(false);
+            const canScrollRight = ref(false);
+
+            async function fetchRecent() {
+                try {
+                    const res = await fetch('/convert/get_convert_page_history?page=1&sort_order=desc');
+                    const data = await res.json();
+                    if (res.ok) recent_list.value = (data.list || []).slice(0, 10);
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    is_loading.value = false;
+                    setTimeout(updateScrollState, 80);
+                }
+            }
+
+            function updateScrollState() {
+                const track = document.getElementById('recent-track');
+                if (!track) return;
+                canScrollLeft.value = track.scrollLeft > 4;
+                canScrollRight.value = track.scrollLeft + track.clientWidth < track.scrollWidth - 4;
+            }
+
+            function scroll(dir) {
+                const track = document.getElementById('recent-track');
+                if (!track) return;
+                track.scrollBy({ left: dir * 320, behavior: 'smooth' });
+                setTimeout(updateScrollState, 350);
+            }
+
+            function formatDate(str) {
+                if (!str) return '';
+                const d = new Date(str.replace(' ', 'T'));
+                if (isNaN(d)) return str;
+                return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+
+            onMounted(() => {
+                fetchRecent();
+                const track = document.getElementById('recent-track');
+                track?.addEventListener('scroll', updateScrollState);
+            });
+
+            return { recent_list, is_loading, canScrollLeft, canScrollRight, scroll, formatDate };
+        }
+    }).mount('#main-container');
+</script>
 {% endblock %}
