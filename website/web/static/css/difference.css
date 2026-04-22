@@ -1,0 +1,259 @@
+/* ═══════════════════════════════════════════════════════════════════
+   difference.css  –  matching detail.css design system
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Toolbar ─────────────────────────────────────────────────────── */
+.diff-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.25rem;
+}
+
+.diff-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.diff-toolbar-sep {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+/* ── Filter buttons ──────────────────────────────────────────────── */
+.filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.13s, color 0.13s, border-color 0.13s;
+    background: var(--bg-2);
+    color: var(--text-2);
+    line-height: 1.6;
+}
+.filter-btn:hover { color: var(--text); border-color: var(--text-3); }
+
+.filter-btn.active-all     { background: rgba(99,102,241,0.12); color: var(--accent);  border-color: var(--accent); }
+.filter-btn.active-add     { background: rgba(16,185,129,0.12); color: var(--success); border-color: var(--success); }
+.filter-btn.active-del     { background: rgba(239,68,68,0.10);  color: var(--danger);  border-color: var(--danger); }
+.filter-btn.active-noempty { background: var(--bg-2);           color: var(--text);    border-color: var(--text-2); }
+
+/* ── Height slider ───────────────────────────────────────────────── */
+.height-range-label {
+    font-size: 0.72rem;
+    color: var(--text-3);
+    white-space: nowrap;
+    font-family: var(--font-mono);
+}
+
+/* ── Stats bar ───────────────────────────────────────────────────── */
+.diff-stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.72rem;
+    color: var(--text-3);
+}
+.diff-stats-add { color: var(--success); font-weight: 700; }
+.diff-stats-del { color: var(--danger);  font-weight: 700; }
+
+/* ── Panel wrapper ───────────────────────────────────────────────── */
+.diff-panel-wrapper {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Panel header ────────────────────────────────────────────────── */
+.diff-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 8px;
+}
+
+.diff-panel-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-2);
+    letter-spacing: 0.05em;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+}
+
+/* ── Panel footer ────────────────────────────────────────────────── */
+.diff-panel-footer {
+    padding: 5px 14px;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    font-size: 0.7rem;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+}
+
+/* ── Diff badge pills ────────────────────────────────────────────── */
+.diff-badge-del {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 0.65rem; font-weight: 700;
+    background: rgba(239,68,68,0.10); color: var(--danger);
+}
+.diff-badge-add {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px;
+    font-size: 0.65rem; font-weight: 700;
+    background: rgba(16,185,129,0.10); color: var(--success);
+}
+
+/* ── Loading overlay ─────────────────────────────────────────────── */
+.diff-loading-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 300px;
+    color: var(--text-2);
+    font-size: 0.85rem;
+}
+.diff-loading-overlay.d-none { display: none !important; }
+
+/* ── Scrollable diff body ────────────────────────────────────────── */
+.diff-panel-body {
+    overflow: auto;
+    position: relative;
+}
+
+/*
+ * The <table> layout is the correct approach for diff rendering:
+ * - Each row = one line (no hljs span bleeding across rows)
+ * - Line gutter sticks on horizontal scroll via position:sticky
+ * - table-layout:fixed + width:100% lets long lines scroll horiz
+ */
+.diff-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 100%;
+    font-size: 0.78rem;
+    line-height: 1.65;
+    font-family: var(--font-mono);
+    white-space: pre;
+    table-layout: fixed;
+}
+
+.diff-table tr { display: table-row; }
+
+/* gutter cell */
+.diff-td-num {
+    width: 50px;
+    min-width: 50px;
+    max-width: 50px;
+    text-align: right;
+    padding: 0 8px;
+    vertical-align: top;
+    user-select: none;
+    font-size: 0.68rem;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-right: 1px solid transparent; /* colour overridden per theme */
+}
+
+/* marker cell (+/-/ ) */
+.diff-td-marker {
+    width: 18px;
+    min-width: 18px;
+    max-width: 18px;
+    text-align: center;
+    padding: 0 2px;
+    vertical-align: top;
+    user-select: none;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+/* code cell */
+.diff-td-code {
+    padding: 0 14px 0 6px;
+    vertical-align: top;
+    white-space: pre;
+    word-break: normal;
+    overflow: visible;
+    width: auto; /* fills remaining space */
+}
+
+/* ── Dark mode ───────────────────────────────────────────────────── */
+html.dark-mode .diff-panel-body  { background: #141820; }
+html.dark-mode .diff-table       { background: #141820; color: #e2e8f0; }
+
+html.dark-mode .diff-td-num {
+    background: #0f1117;
+    color: #3d4a5c;
+    border-right-color: #1e2433;
+}
+
+/* normal */
+html.dark-mode tr.diff-normal .diff-td-marker { color: #2d3748; }
+
+/* removed */
+html.dark-mode tr.diff-removed                          { background: rgba(239,68,68,0.11); }
+html.dark-mode tr.diff-removed .diff-td-num             { background: rgba(239,68,68,0.18); color: #fc8181; border-right-color: rgba(239,68,68,0.3); }
+html.dark-mode tr.diff-removed .diff-td-marker          { color: #f87171; }
+
+/* added */
+html.dark-mode tr.diff-added                            { background: rgba(16,185,129,0.09); }
+html.dark-mode tr.diff-added .diff-td-num               { background: rgba(16,185,129,0.16); color: #68d391; border-right-color: rgba(16,185,129,0.25); }
+html.dark-mode tr.diff-added .diff-td-marker            { color: #6ee7b7; }
+
+/* empty placeholder */
+html.dark-mode tr.diff-empty                            { background: rgba(0,0,0,0.16); }
+html.dark-mode tr.diff-empty .diff-td-num               { background: rgba(0,0,0,0.22); color: #222; border-right-color: #1a1f2e; }
+
+/* ── Light mode ──────────────────────────────────────────────────── */
+html.light-mode .diff-panel-body  { background: #f6f8fc; }
+html.light-mode .diff-table       { background: #f6f8fc; color: #24292e; }
+
+html.light-mode .diff-td-num {
+    background: #eaecf2;
+    color: #9aa3b5;
+    border-right-color: #dde2ec;
+}
+
+html.light-mode tr.diff-normal .diff-td-marker { color: #c8cdd8; }
+
+html.light-mode tr.diff-removed                         { background: #fff0f0; }
+html.light-mode tr.diff-removed .diff-td-num            { background: #ffd7d7; color: #c53030; border-right-color: #f5b8b8; }
+html.light-mode tr.diff-removed .diff-td-marker         { color: #e53e3e; }
+
+html.light-mode tr.diff-added                           { background: #f0faf5; }
+html.light-mode tr.diff-added .diff-td-num              { background: #c6f6de; color: #276749; border-right-color: #9ae6b4; }
+html.light-mode tr.diff-added .diff-td-marker           { color: #38a169; }
+
+html.light-mode tr.diff-empty                           { background: #f0f2f6; }
+html.light-mode tr.diff-empty .diff-td-num              { background: #e8eaf0; border-right-color: #dde2ec; }

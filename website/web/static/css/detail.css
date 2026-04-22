@@ -1,0 +1,188 @@
+ .detail-type-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .detail-type-icon.type-misp {
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--accent);
+    }
+
+    .detail-type-icon.type-stix {
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--success);
+    }
+
+    .type-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .type-misp {
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--accent);
+    }
+
+    .type-stix {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+    }
+
+    .vis-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+    }
+
+    .vis-public {
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--success);
+    }
+
+    .vis-private {
+        background: rgba(239, 68, 68, 0.10);
+        color: var(--danger);
+    }
+
+    .author-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 500;
+        background: var(--bg-2);
+        color: var(--text-2);
+    }
+
+    /* Tabs header */
+    .detail-tabs-header {
+        border-bottom: 1px solid var(--border);
+    }
+
+    /* Code panel */
+    .code-panel-wrapper {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .code-panel-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 14px;
+        background: var(--surface-2);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .code-panel-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--text-3);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-family: var(--font-mono);
+    }
+
+    .code-panel-pre {
+        margin: 0;
+        padding: 0;
+        max-height: 500px;
+        overflow: auto;
+        font-size: 0.8rem;
+        line-height: 1.65;
+    }
+
+    .code-panel-pre code {
+        display: block;
+        padding: 1rem 1.25rem;
+        font-family: var(--font-mono);
+        white-space: pre;
+    }
+
+    .code-panel-footer {
+        padding: 6px 14px;
+        background: var(--surface-2);
+        border-top: 1px solid var(--border);
+        font-size: 0.72rem;
+    }
+
+    /* Light mode code background */
+    html.light-mode .code-panel-pre {
+        background: #f8f9fc;
+    }
+
+    html.light-mode .code-panel-pre code {
+        color: #24292e;
+    }
+
+    /* Dark mode code background */
+    html.dark-mode .code-panel-pre {
+        background: #1a1f2e;
+    }
+
+    html.dark-mode .code-panel-pre code {
+        color: #e2e8f0;
+    }
+
+    /* Table */
+    .table {
+        color: var(--text);
+    }
+
+    .table thead th {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .table tbody tr:hover {
+        background: var(--bg-2);
+    }
+
+    .table td,
+    .table th {
+        border-color: var(--border);
+    }
+
+    .code-panel-wrapper {
+    position: relative;
+}
+
+.code-panel-pre {
+    min-height: 300px;
+    height: 500px;
+    max-height: 80vh;
+    overflow: auto;
+    resize: vertical;
+}
+
+.code-loading-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 500px;
+    color: var(--text-2);
+    font-size: 0.85rem;
+}
+
+.code-loading-overlay.d-none {
+    display: none !important;
+}

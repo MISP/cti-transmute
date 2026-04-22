@@ -1,562 +1,529 @@
 {% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
+<link id="hljs-theme" rel="stylesheet" href="">
+{% endblock %}
 
 {% block content %}
 <div class="container my-5" v-cloak>
-    <div class="custom-card shadow-sm p-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3 class="mb-0 text-truncate p-2" :title="convert.name">
-                <i class="fas fa-exchange-alt me-2 text-truncate"></i> [[ convert.name ]]
-            </h3>
+    <template v-if="is_loading">
+        <div class="d-flex justify-content-center align-items-center" style="min-height:400px;">
+            <div class="text-center">
+                <div class="spinner-border" role="status"
+                    style="width:3rem; height:3rem; color:var(--accent); border-width:3px;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 mb-0" style="color:var(--text-2); font-size:0.875rem;">Loading conversion...</p>
+            </div>
+        </div>
+    </template>
 
-            {% if current_user.is_authenticated %}
-            <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
-                <div class="d-flex align-items-center gap-1">
-                    <!-- Delete button -->
-                    <button class="btn btn-sm text-bg-danger" style="color: var(--color-text);" title="Delete convert"
-                        data-bs-toggle="modal" :data-bs-target="'#delete_convert_modal_'+convert.id">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <!-- Edit Modal -->
-                    <div class="modal fade" :id="'delete_convert_modal_'+convert.id" tabindex="-1"
-                        aria-labelledby="delete_convert_modal" aria-hidden="true">
-                        <div class="modal-dialog modal-lg">
-                            <div style="background-color:var(--color-sidebar);" class="modal-content">
-                                <div class="modal-header">
-                                    <h5 id="delete_convert_modal" style="color: var( --color-text);">
-                                        Delete [[ convert.name ]] ?
-                                    </h5>
-                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary"
-                                        data-bs-dismiss="modal">Close</button>
-                                    <button class="btn btn-danger" @click="deleteConvert()">
-                                        <i class="fa-solid fa-trash"></i> Confirm
-                                    </button>
-                                </div>
-                            </div>
+    <template v-else>
+
+        <div class="custom-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+
+                <div class="d-flex align-items-center gap-3 flex-wrap" style="min-width:0;">
+                    <div style="min-width:0;">
+                        <h3 class="mb-1 text-truncate" :title="convert.name"
+                            style="font-weight:700; letter-spacing:-0.02em;">
+                            [[ convert.name ]]
+                        </h3>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="type-pill"
+                                :class="convert.conversion_type === 'STIX_TO_MISP' ? 'type-stix' : 'type-misp'">
+                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
+                                    STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>
+                                    MISP
+                                </template>
+                                <template v-else>
+                                    MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>
+                                    STIX
+                                </template>
+                            </span>
+                            <span class="vis-badge" :class="convert.public ? 'vis-public' : 'vis-private'">
+                                <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'"
+                                    style="font-size:0.6rem;"></i>
+                                [[ convert.public ? 'Public' : 'Private' ]]
+                            </span>
+                            <span class="author-badge">
+                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
+                                [[ convert.author || 'Anonymous' ]]
+                            </span>
+                            <span class="author-badge">
+                                <i class="fas fa-clock" style="font-size:0.65rem;"></i>
+                                [[ convert.created_at ]]
+                            </span>
                         </div>
                     </div>
-
-                    <!-- Small edit button -->
-                    <a :href="'/convert/edit/'+convert.id" class="btn btn-sm text-bg-secondary"
-                        style="color: var(--color-text);" title="Edit convert">
-                        <i class="fas fa-edit"></i>
-                    </a>
-
-                    <!-- Refresh button -->
-                    <a href="{{ url_for('convert.refresh', uuid=convert.uuid) }}" class="btn btn-sm"
-                        title="Refresh convert" style="background-color:  	#609f77">
-                        <i class="fas fa-sync-alt me-1 text-light"></i>
-                    </a>
-
-
-
-                    <!-- Share button -->
-                    <template v-if="!convert.public">
-                        <button class="btn btn-sm text-bg-primary" style="color: var(--color-text);"
-                            title="Share convert" data-bs-toggle="modal"
-                            :data-bs-target="'#share_convert_modal_' + {{ convert.id }}">
-                            <i class="fa-solid fa-share-nodes"></i>
-                        </button>
-
-                        <div class="modal fade" :id="'share_convert_modal_' + {{ convert.id }}" tabindex="-1"
-                            aria-labelledby="share_convert_modal_label_{{ convert.id }}" aria-hidden="true">
-
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content" style="background-color:var(--color-sidebar);">
-
-                                    <div class="modal-header">
-                                        <h5 id="share_convert_modal_label_{{ convert.id }}"
-                                            style="color: var(--color-text);">
-                                            Share {{ convert.name }}
-                                        </h5>
-                                        <button class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-
-                                    <div class="modal-body">
-                                        <div class="input-group mb-3">
-                                            <input type="text" class="form-control" readonly
-                                                :value="`http://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`"
-                                                :id="`share_link_${convert.id}`">
-                                            <button class="btn btn-primary" type="button"
-                                                @click="copyText('http://cti-transmute.org/convert/share?uuid='+convert.uuid+'&share_key='+share_key, $event)">
-                                                <i class="fas fa-copy"></i> Copy
-                                            </button>
-                                        </div>
-                                    </div>
-
-
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                            Close
-                                        </button>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                        </div>
-                    </template>
-
-                    <!-- Public/Private toggle button -->
-                    <button class="btn btn-sm fw-semibold" :class="convert.public ? 'btn-success' : 'btn-danger'"
-                        :title="convert.public ? 'Change to private' : 'Change to public'" @click="togglePublic()">
-                        <i v-if="convert.public" class="fa-solid fa-lock-open"></i>
-                        <i v-else class="fa-solid fa-lock"></i>
-                    </button>
-
                 </div>
-            </template>
-            <template v-else>
-                <span class="badge" :class="convert.public ? 'bg-success' : 'bg-danger'">
-                    <i v-if="convert.public" class="fa-solid fa-lock-open"></i>
-                    <i v-else class="fa-solid fa-lock"></i>
-                </span>
-            </template>
 
-            {% else %}
-            <span class="badge" :class="convert.public ? 'bg-success' : 'bg-danger'">
-                <i v-if="convert.public" class="fa-solid fa-lock-open"></i>
-                <i v-else class="fa-solid fa-lock"></i>
-            </span>
-            {% endif %}
-
-        </div>
-
-
-        <div class="mb-3 small">
-            <i class="fas fa-user me-1"></i> <strong>Author : </strong>
-            <span v-if="convert.author" class="badge rounded-pill text-bg-primary m-2">
-                [[ convert.author ]]
-            </span>
-            <span v-else class="badge rounded-pill text-bg-primary m-2">Anonymous</span>
-            <br>
-            <i class="fas fa-calendar-alt me-1"></i> <strong>Created on : </strong> [[ convert.created_at ]]
-            <br>
-            <i class="fas fa-key me-1"></i> <strong>Uuid : </strong> [[ convert.uuid ]]
-
-            <template v-if="!convert.public">
-                <br>
+                {% if current_user.is_authenticated %}
                 <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
-                    <div class="d-flex align-items-center flex-wrap">
-                        <i class="fas fa-eye me-1"></i> <strong>Share Key : </strong>
-
-                        <div class="flex-grow-1 text-truncate me-2 p-1" style="max-width: 300px;" :title="share_key">
-                            [[ share_key ]]
-                        </div>
-
-                        <!-- Regenerate button -->
-                        <button class="btn btn-link p-1 text-dark" @click="regenerateShareKey(convert.id)"
-                            title="Regenerate Share Key">
-                            <i class="fa-solid fa-arrows-rotate"></i>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button class="btn btn-sm fw-semibold"
+                            :class="convert.public ? 'btn-outline-success' : 'btn-outline-danger'"
+                            :title="convert.public ? 'Set private' : 'Set public'" @click="togglePublic()">
+                            <i v-if="convert.public" class="fas fa-lock-open me-1"></i>
+                            <i v-else class="fas fa-lock me-1"></i>
+                            [[ convert.public ? 'Public' : 'Private' ]]
                         </button>
-
-                        <!-- Copy button -->
-                        <button class="btn btn-link p-1 text-dark" @click="copyText(share_key, $event)"
-                            title="Copy Share Key">
-                            <i class="fas fa-copy"></i>
+                        <template v-if="!convert.public">
+                            <button class="btn btn-sm btn-outline-primary" title="Share" data-bs-toggle="modal"
+                                :data-bs-target="'#share_modal_' + {{ convert.id }}">
+                                <i class="fas fa-share-nodes me-1"></i> Share
+                            </button>
+                        </template>
+                        <a href="{{ url_for('convert.refresh', uuid=convert.uuid) }}"
+                            class="btn btn-sm btn-outline-secondary" title="Refresh">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh
+                        </a>
+                        <a :href="'/convert/edit/'+convert.id" class="btn btn-sm btn-outline-secondary" title="Edit">
+                            <i class="fas fa-edit me-1"></i> Edit
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal"
+                            :data-bs-target="'#delete_modal_'+convert.id">
+                            <i class="fas fa-trash me-1"></i> Delete
                         </button>
                     </div>
                 </template>
-            </template>
+                {% else %}
+                <span class="vis-badge" :class="convert.public ? 'vis-public' : 'vis-private'">
+                    <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
+                    [[ convert.public ? 'Public' : 'Private' ]]
+                </span>
+                {% endif %}
+            </div>
         </div>
 
-
-        <div class="custom-inner-card p-3 mb-4">
-            <h6 class="fw-bold  text-uppercase mb-2">Description</h6>
-            <p class="mb-0" v-if="convert.description">[[ convert.description ]]</p>
-            <p class="fst-italic text-muted mb-0" v-else>No description provided.</p>
+        <div class="row g-3 mb-4">
+            <div class="col-md-8">
+                <div class="custom-card p-3 h-100">
+                    <p class="form-label mb-2">Description</p>
+                    <p class="mb-0" v-if="convert.description" style="font-size:0.9rem; color:var(--text);">
+                        [[ convert.description ]]
+                    </p>
+                    <p class="mb-0 fst-italic" v-else style="color:var(--text-3); font-size:0.875rem;">
+                        No description provided.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="custom-card p-3 h-100">
+                    <p class="form-label mb-2">Details</p>
+                    <div class="d-flex flex-column gap-2" style="font-size:0.82rem; color:var(--text-2);">
+                        <div>
+                            <i class="fas fa-key me-2" style="color:var(--text-3); width:14px;"></i>
+                            <span style="font-family:var(--font-mono); font-size:0.75rem;">[[ convert.uuid ]]</span>
+                        </div>
+                        <div v-if="!convert.public">
+                            <template
+                                v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
+                                <i class="fas fa-eye me-2" style="color:var(--text-3); width:14px;"></i>
+                                <span style="font-family:var(--font-mono); font-size:0.75rem; max-width:200px;"
+                                    class="text-truncate d-inline-block" :title="share_key">
+                                    [[ share_key ]]
+                                </span>
+                                <button class="btn btn-link p-0 ms-1" @click="regenerateShareKey(convert.id)"
+                                    title="Regenerate" style="font-size:0.75rem; color:var(--text-3);">
+                                    <i class="fas fa-arrows-rotate"></i>
+                                </button>
+                                <button class="btn btn-link p-0 ms-1" @click="copyText(share_key, $event)" title="Copy"
+                                    style="font-size:0.75rem; color:var(--text-3);">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div>
-            <ul class="nav nav-underline mb-3" :id="'convertTabs-' + convert.id" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" :id="'input-tab-' + convert.id" data-bs-toggle="tab"
-                        :href="'#input-pane-' + convert.id" role="tab" aria-current="page"
-                        :aria-controls="'input-pane-' + convert.id" aria-selected="true">
-                        <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
-                            <i class="fa-regular fa-file-code"></i>
-                            STIX Input
-                        </template>
-                        <template v-else>
-                            <i class="fa-regular fa-file-code"></i>
-                            MISP Input
-                        </template>
-                    </a>
-                </li>
-
-                <!-- Onglet OUTPUT -->
-                <li class="nav-item">
-                    <a class="nav-link" :id="'output-tab-' + convert.id" data-bs-toggle="tab"
-                        :href="'#output-pane-' + convert.id" role="tab" :aria-controls="'output-pane-' + convert.id"
-                        aria-selected="false">
-                        <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
-                            <i class="fa-regular fa-file-code"></i>
-                            MISP Output
-                        </template>
-                        <template v-else>
-                            <i class="fa-regular fa-file-code"></i>
-                            STIX Output
-                        </template>
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a class="nav-link" :id="'compare-tab-' + convert.id" data-bs-toggle="tab"
-                        :href="'#compare-pane-' + convert.id" role="tab" :aria-controls="'compare-pane-' + convert.id"
-                        aria-selected="false">
-                        <i class="fas fa-code-compare me-1"></i> Compare Versions
-                        <template v-if="history_list">
-                            <span class="badge bg-primary">[[
-                                history_list.length ]]
+        <div class="custom-card mb-4">
+            <div class="detail-tabs-header">
+                <ul class="nav nav-underline px-3 pt-2" :id="'tabs-'+convert.id" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" :href="'#input-pane-'+convert.id" role="tab">
+                            <i class="fas fa-file-import me-1"></i>
+                            <template v-if="convert.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
+                            <template v-else>MISP Input</template>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#output-pane-'+convert.id" role="tab">
+                            <i class="fas fa-file-export me-1"></i>
+                            <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
+                            <template v-else>STIX Output</template>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#compare-pane-'+convert.id" role="tab">
+                            <i class="fas fa-code-compare me-1"></i> History
+                            <span v-if="history_list && history_list.length > 0" class="badge bg-primary ms-1">
+                                [[ history_list.length ]]
                             </span>
-                        </template>
+                        </a>
+                    </li>
+                </ul>
+            </div>
 
+            <div class="tab-content p-3">
 
-                    </a>
-                </li>
-            </ul>
-
-            <div class="tab-content" :id="'convertTabsContent-' + convert.id">
-                <div class="tab-pane fade show active" :id="'input-pane-' + convert.id" role="tabpanel"
-                    :aria-labelledby="'input-tab-' + convert.id">
-                    <div class="card custom-inner-card">
-                        <div class="card-body custom-card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name, convert.input_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="copyText(convert.input_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
+                <div class="tab-pane fade show active" :id="'input-pane-'+convert.id" role="tabpanel">
+                    <div class="code-panel-wrapper">
+                        <div class="code-panel-toolbar">
+                            <span class="code-panel-label">
+                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">STIX</template>
+                                <template v-else>MISP</template>
+                                · JSON
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" @click="formatJson('input', $event)">
+                                    <i class="fas fa-align-left me-1"></i> Format
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="downloadText(convert.name, convert.input_text, $event)">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="copyText(convert.input_text, $event)">
+                                    <i class="fas fa-copy me-1"></i> Copy
+                                </button>
                             </div>
-                            <pre class="custom-pre mb-2"><code class="json">[[ convert.input_text ]]</code></pre>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <small class="text-small">Updated: [[ convert.updated_at ]]</small>
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name, convert.input_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="copyText(convert.input_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                            </div>
+                        </div>
+                        <div class="code-loading-overlay" id="spinner-input">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Rendering…
+                        </div>
+                        <pre class="code-panel-pre d-none"
+                            id="pre-input"><code class="language-json" id="input-code">[[ convert.input_text ]]</code></pre>
+                        <div class="code-panel-footer">
+                            <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade" :id="'output-pane-' + convert.id" role="tabpanel"
-                    :aria-labelledby="'output-tab-' + convert.id">
-                    <div class="card custom-inner-card">
-                        <div class="card-body custom-card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name, convert.output_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="copyText(convert.output_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
+                <div class="tab-pane fade" :id="'output-pane-'+convert.id" role="tabpanel">
+                    <div class="code-panel-wrapper">
+                        <div class="code-panel-toolbar">
+                            <span class="code-panel-label">
+                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP</template>
+                                <template v-else>STIX</template>
+                                · JSON
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" @click="formatJson('output', $event)">
+                                    <i class="fas fa-align-left me-1"></i> Format
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="downloadText(convert.name, convert.output_text, $event)">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="copyText(convert.output_text, $event)">
+                                    <i class="fas fa-copy me-1"></i> Copy
+                                </button>
                             </div>
-                            <pre class="custom-pre mb-2"><code class="json">[[ convert.output_text ]]</code></pre>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <small class="text-small">Updated: [[ convert.updated_at ]]</small>
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="downloadText(convert.name, convert.output_text, $event)">
-                                        <i class="fas fa-download me-1"></i> Download
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                        @click="copyText(convert.output_text, $event)">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                            </div>
+                        </div>
+                        <div class="code-loading-overlay" id="spinner-output">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Rendering…
+                        </div>
+                        <pre class="code-panel-pre d-none"
+                            id="pre-output"><code class="language-json" id="output-code">[[ convert.output_text ]]</code></pre>
+                        <div class="code-panel-footer">
+                            <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade" :id="'compare-pane-' + convert.id" role="tabpanel"
-                    :aria-labelledby="'compare-tab-' + convert.id">
-                    <div class="card custom-inner-card">
-                        <div class="table-responsive mt-3">
-                            <table class="table table-hover align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Version</th>
-                                        <th>Status</th>
-                                        <th>Created</th>
-                                        <th>Comment</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-if="history_list && history_list.length > 0" @click="goToDiff(h.id)"
-                                        style="cursor:pointer" v-for="h in history_list" :key="h.id">
-                                        <td>[[ h.id ]]</td>
-                                        <td><span class="badge bg-primary">v[[ h.version ]]</span></td>
-                                        <td>
-                                            <span class="badge bg-success ">[[ h.status ]]</span>
-                                        </td>
-                                        <td :title="h.created_at">[[ formatDate(h.created_at)
-                                            ]]</td>
-                                        <td class="text-truncate" style="max-width: 250px;">
-                                            [[ h.comment || 'No comment' ]]
-                                        </td>
-                                    </tr>
-                                    <tr v-else>
-                                        <td colspan="6" class="text-center text-muted">
-                                            No pending history found for this Convert.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="tab-pane fade" :id="'compare-pane-'+convert.id" role="tabpanel">
+                    <div v-if="history_list && history_list.length > 0" class="table-responsive">
+                        <table class="table table-hover align-middle" style="font-size:0.875rem;">
+                            <thead>
+                                <tr
+                                    style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
+                                    <th>ID</th>
+                                    <th>Version</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Comment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="h in history_list" :key="h.id" @click="goToDiff(h.id)"
+                                    style="cursor:pointer;">
+                                    <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">
+                                        #[[ h.id ]]</td>
+                                    <td><span class="badge bg-primary">v[[ h.version ]]</span></td>
+                                    <td>
+                                        <span class="badge"
+                                            :class="{'bg-success': h.status==='accepted', 'bg-danger': h.status==='rejected', 'bg-warning text-dark': h.status==='pending'}">
+                                            [[ h.status ]]
+                                        </span>
+                                    </td>
+                                    <td style="color:var(--text-2);">[[ formatDate(h.created_at) ]]</td>
+                                    <td class="text-truncate" style="max-width:250px; color:var(--text-2);">[[ h.comment
+                                        || '—' ]]</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-
-                <div class="text-center mt-4 mb-5">
-                    <a href="{{ url_for('convert.history') }}"
-                        class="btn btn-light border shadow-sm px-4 py-2 rounded-pill back-btn">
-                        <i class="fas fa-arrow-left me-2"></i>
-                        Back to History
-                    </a>
+                    <div v-else class="text-center py-5">
+                        <i class="fas fa-code-compare fa-2x mb-3" style="color:var(--text-3);"></i>
+                        <p style="color:var(--text-2); font-weight:500;">No version history yet</p>
+                    </div>
                 </div>
 
             </div>
-            <div id="convert_id" data-convert-id="{{ convert.id }}"></div>
         </div>
-        {% endblock %}
 
-        {% block script %}
-        <script type="module">
-            const { createApp, ref, onMounted, watch } = Vue
-            import { create_message, message_list } from '/static/js/toaster.js';
-            const convert_id = document.getElementById('convert_id').dataset.convertId;
-            /////////////////////////////////////////////////////////////////////////////////////////////////
+        <div class="text-center mb-5">
+            <a href="{{ url_for('convert.history') }}"
+                class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
+                <i class="fas fa-arrow-left me-2"></i> Back to History
+            </a>
+        </div>
 
-            // JSON color
+    </template>
 
-            function highlightJSON() {
-                document.querySelectorAll('pre code.json').forEach(block => hljs.highlightElement(block))
+    <div class="modal fade" :id="'delete_modal_'+convert.id" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title">
+                        <i class="fas fa-trash text-danger me-2"></i>Delete conversion
+                    </h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="color:var(--text-2); font-size:0.875rem;">
+                    Are you sure you want to delete
+                    <strong style="color:var(--text);">[[ convert.name ]]</strong> ?
+                    This action cannot be undone.
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-danger" @click="deleteConvert()">
+                        <i class="fas fa-trash me-1"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" :id="'share_modal_' + {{ convert.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title">
+                        <i class="fas fa-share-nodes me-2" style="color:var(--accent);"></i>Share {{ convert.name }}
+                    </h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Share link</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" readonly
+                            :value="`https://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`">
+                        <button class="btn btn-primary" type="button"
+                            @click="copyText('https://cti-transmute.org/convert/share?uuid='+convert.uuid+'&share_key='+share_key, $event)">
+                            <i class="fas fa-copy me-1"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="convert_id" data-convert-id="{{ convert.id }}"></div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, onMounted, watch } = Vue
+    import { create_message, message_list } from '/static/js/toaster.js';
+
+    const convert_id = document.getElementById('convert_id').dataset.convertId;
+
+    function applyHljsTheme() {
+        const isDark = document.documentElement.classList.contains('dark-mode')
+        document.getElementById('hljs-theme').href = isDark
+            ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
+            : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css'
+    }
+
+    applyHljsTheme()
+    document.getElementById('theme-toggle')?.addEventListener('click', () => {
+        setTimeout(() => { applyHljsTheme(); highlightAll() }, 50)
+    })
+
+    function highlightAll() {
+        ['input', 'output'].forEach(side => {
+            const spinner = document.getElementById(`spinner-${side}`)
+            const pre = document.getElementById(`pre-${side}`)
+            if (!pre) return
+
+            spinner?.classList.remove('d-none')
+            spinner?.classList.add('d-flex')
+            pre.classList.add('d-none')
+
+            const block = pre.querySelector('code.language-json')
+            if (!block) return
+
+            setTimeout(() => {
+                block.removeAttribute('data-highlighted')
+                hljs.highlightElement(block)
+                spinner?.classList.add('d-none')
+                spinner?.classList.remove('d-flex')
+                pre.classList.remove('d-none')
+            }, 50)
+        })
+    }
+
+    document.addEventListener('shown.bs.tab', highlightAll)
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const convert = ref({})
+            const share_key = ref('')
+            const history_list = ref([])
+            const is_loading = ref(true)
+            const current_user_is_admin = ref()
+
+            async function getConvert() {
+                const res = await fetch(`/convert/get_convert?id=${convert_id}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    const c = data.convert
+                    // Auto-format au chargement
+                    try { c.input_text = JSON.stringify(JSON.parse(c.input_text), null, 2) } catch { }
+                    try { c.output_text = JSON.stringify(JSON.parse(c.output_text), null, 2) } catch { }
+                    convert.value = c
+                    setTimeout(() => highlightAll(), 100)
+                }
+                is_loading.value = false
             }
 
-            /////////////////////////////////////////////////////////////////////////////////////////////////
-            createApp({
-                delimiters: ['[[', ']]'],
-                setup() {
-                    const convert = ref([])
+            async function fetchCurrentUser() {
+                const res = await fetch('/get_current_user')
+                const data = await res.json()
+                current_user_is_admin.value = data.user
+            }
 
-                    function copyText(text, event) {
-                        const btn = event.target.closest("button")
-                        const originalHTML = btn.innerHTML
-                        navigator.clipboard.writeText(text).then(() => {
-                            btn.innerHTML = '<i class="fas fa-check"></i> Copied!'
-                            setTimeout(() => { btn.innerHTML = originalHTML }, 1500)
-                        }).catch(err => console.error('Copy failed', err))
-                    }
+            async function fetchShareKey() {
+                const currentUserId = parseInt('{{current_user.id}}')
+                const isAdmin = current_user_is_admin?.value || false
+                const convertUserId = convert?.value?.user_id
+                if (!isAdmin && currentUserId !== convertUserId) return
+                if (!convert_id) return
+                const res = await fetch(`/convert/get_share_key?id=${convert_id}`)
+                if (!res.ok) return
+                const data = await res.json()
+                share_key.value = data.share_key
+            }
 
+            async function regenerateShareKey(convertId) {
+                const res = await fetch(`/convert/regenerate_share_key?id=${convertId}`)
+                const data = await res.json()
+                if (res.ok) share_key.value = data.share_key
+                create_message(data.message, data.toast_class)
+            }
 
-                    function downloadText(name, text, event) {
-                        const blob = new Blob([text], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-
-                        const a = document.createElement('a');
-                        a.href = url;
-
-                        a.download = name + ".json";
-
-                        a.click();
-
-                        URL.revokeObjectURL(url);
-
-                        const btn = event.target.closest("button");
-                        const originalHTML = btn.innerHTML;
-                        btn.innerHTML = '<i class="fas fa-check"></i> Downloaded!';
-                        setTimeout(() => { btn.innerHTML = originalHTML }, 1500);
-                    }
-
-
-
-
-                    async function getConvert() {
-                        const params = new URLSearchParams({
-                            id: convert_id
-                        })
-                        const res = await fetch(`/convert/get_convert?` + params.toString());
-                        if (res.ok) {
-                            const data = await res.json();
-                            convert.value = data.convert;
-
-                            setTimeout(highlightJSON, 50)
-                        }
-                    }
+            async function togglePublic() {
+                const res = await fetch(`/convert/edit_public?id=${convert_id}`)
+                const data = await res.json()
+                if (res.ok) {
+                    convert.value.public = data.convert_public
                     getConvert()
-
-
-
-                    async function togglePublic() {
-                        const params = new URLSearchParams({
-                            id: convert_id
-                        })
-                        const res = await fetch(`/convert/edit_public?` + params.toString());
-                        const data = await res.json();
-                        if (res.ok) {
-                            convert.value.public = data.convert_public
-                            getConvert()
-                        }
-
-                        create_message(data.message, data.toast_class);
-
-                    }
-
-                    const current_user_is_admin = ref()
-
-                    async function fetchCurrentUser() {
-                        const res = await fetch('/get_current_user')
-                        const data = await res.json()
-                        current_user_is_admin.value = data.user
-                    }
-                    fetchCurrentUser()
-
-
-                    async function deleteConvert() {
-                        const params = new URLSearchParams({ id: convert_id })
-                        const res = await fetch('/convert/delete_item?' + params.toString())
-
-                        if (res.status === 200) {
-                            const myModalEl = document.getElementById('delete_convert_modal_' + convert_id)
-                            const modal = bootstrap.Modal.getInstance(myModalEl)
-                            modal.hide()
-
-                            window.location.href = '/convert/history'
-                        }
-                        else if (res.status === 403) {
-                            window.location.href = '/account/login'
-                            return
-                        }
-                    }
-
-                    const share_key = ref('')
-
-                    async function fetchShareKey() {
-                        const currentUserId = parseInt('{{current_user.id}}');
-                        const isAdmin = current_user_is_admin?.value || false;
-                        const convertUserId = convert?.value?.user_id;
-
-                        if (!isAdmin && currentUserId !== convertUserId) {
-                            return;
-                        }
-
-                        if (!convert_id) {
-                            return;
-                        }
-
-
-                        const params = new URLSearchParams({ id: convert_id });
-                        const res = await fetch('/convert/get_share_key?' + params.toString());
-                        if (!res.ok) throw new Error("Fetch failed with status " + res.status);
-                        const data = await res.json();
-                        share_key.value = data.share_key;
-                    }
-
-                    async function regenerateShareKey(convertId) {
-                        const currentUserId = parseInt('{{current_user.id}}');
-                        const isAdmin = current_user_is_admin?.value || false;
-                        const convertUserId = convert?.value?.user_id;
-
-                        if (!isAdmin && currentUserId !== convertUserId) {
-                            display_toast({
-                                message: "You do not have permission to regenerate the share key.",
-                                toast_class: "toast-error",
-                                id: Math.random()
-                            });
-                            return;
-                        }
-
-                        const params = new URLSearchParams({ id: convertId });
-                        const res = await fetch('/convert/regenerate_share_key?' + params.toString());
-
-                        const data = await res.json();
-                        if (res.ok) {
-
-                            share_key.value = data.share_key;
-                        }
-
-                        create_message(data.message, data.toast_class);
-                    }
-
-                    const history_list = ref([]);
-
-                    async function getHistory() {
-                        const res = await fetch(`/convert/get_history?id=${convert_id}`);
-                        const data = await res.json()
-
-                        if (res.ok) {
-                            history_list.value = data.history_convert;
-                        } else {
-                            history_list.value = [];
-                        }
-                    }
-
-
-                    function goToDiff(id) {
-                        window.location.href = `/convert/difference/${id}`;
-                    }
-
-                    function formatDate(str) {
-                        if (!str) return "N/A";
-                        const date = new Date(str.replace(" ", "T"));
-                        if (isNaN(date)) return str;
-                        return date.toLocaleString();
-                    }
-
-
-
-                    watch(
-                        [convert, current_user_is_admin],
-                        ([newConvert, newAdmin]) => {
-                            if (newConvert && newConvert.user_id !== undefined) {
-                                fetchShareKey()
-                            }
-                        },
-                        { immediate: true }
-                    )
-
-                    onMounted(() => {
-                        if (convert.value && convert.value.user_id !== undefined) {
-                            fetchShareKey()
-                        }
-                        getHistory();
-                    })
-
-
-                    return {
-                        current_user_is_admin,
-                        message_list,
-                        convert,
-                        copyText,
-                        togglePublic,
-                        deleteConvert,
-                        downloadText,
-                        share_key,
-                        regenerateShareKey,
-                        history_list,
-                        goToDiff,
-                        formatDate
-                    }
                 }
-            }).mount('#main-containers')
-        </script>
-        {% endblock %}
+                create_message(data.message, data.toast_class)
+            }
+
+            async function deleteConvert() {
+                const res = await fetch(`/convert/delete_item?id=${convert_id}`)
+                if (res.status === 200) {
+                    const el = document.getElementById('delete_modal_' + convert_id)
+                    bootstrap.Modal.getInstance(el)?.hide()
+                    window.location.href = '/convert/history'
+                } else if (res.status === 403) {
+                    window.location.href = '/account/login'
+                }
+            }
+
+            async function getHistory() {
+                const res = await fetch(`/convert/get_history?id=${convert_id}`)
+                const data = await res.json()
+                history_list.value = res.ok ? data.history_convert : []
+            }
+
+            function goToDiff(id) { window.location.href = `/convert/difference/${id}` }
+
+            function formatDate(str) {
+                if (!str) return 'N/A'
+                const d = new Date(str.replace(' ', 'T'))
+                return isNaN(d) ? str : d.toLocaleString()
+            }
+
+            function copyText(text, event) {
+                const btn = event.target.closest('button')
+                const orig = btn.innerHTML
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Copied!'
+                    setTimeout(() => { btn.innerHTML = orig }, 1500)
+                })
+            }
+
+            function downloadText(name, text, event) {
+                const a = Object.assign(document.createElement('a'), {
+                    href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })),
+                    download: name + '.json'
+                })
+                a.click()
+                URL.revokeObjectURL(a.href)
+                const btn = event.target.closest('button')
+                const orig = btn.innerHTML
+                btn.innerHTML = '<i class="fas fa-check"></i> Downloaded!'
+                setTimeout(() => { btn.innerHTML = orig }, 1500)
+            }
+
+            function formatJson(side, event) {
+                const btn = event.target.closest('button')
+                const orig = btn.innerHTML
+                const raw = side === 'input' ? convert.value.input_text : convert.value.output_text
+                try {
+                    const pretty = JSON.stringify(JSON.parse(raw), null, 2)
+                    if (side === 'input') convert.value.input_text = pretty
+                    else convert.value.output_text = pretty
+                    setTimeout(() => highlightAll(), 80)
+                    btn.innerHTML = '<i class="fas fa-check"></i> Formatted!'
+                } catch (e) {
+                    btn.innerHTML = '<i class="fas fa-xmark"></i> Invalid JSON'
+                }
+                setTimeout(() => { btn.innerHTML = orig }, 1800)
+            }
+
+            watch([convert, current_user_is_admin], ([c]) => {
+                if (c && c.user_id !== undefined) fetchShareKey()
+            }, { immediate: true })
+
+            onMounted(() => {
+                fetchCurrentUser()
+                getConvert()
+                getHistory()
+            })
+
+            return {
+                convert, share_key, history_list, is_loading,
+                current_user_is_admin, copyText, downloadText,
+                togglePublic, deleteConvert, regenerateShareKey,
+                goToDiff, formatDate, message_list, formatJson
+            }
+        }
+    }).mount('#main-containers')
+</script>
+{% endblock %}

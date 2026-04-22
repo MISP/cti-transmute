@@ -18,43 +18,46 @@
     </div>
 
     <!-- Loaded -->
-    <div v-if="list_feature && Object.keys(list_feature).length > 0" class="list-grid">
-        <div v-for="(feature, path) in list_feature" :key="path" class="list-card" @click="goTo(path)">
-            <!-- Left icon -->
-            <div class="list-card-icon" :class="iconClass(feature.method)">
-                <i :class="iconName(path)"></i>
-            </div>
-
-            <!-- Body -->
-            <div class="list-card-body">
-                <div class="list-card-top">
-                    <span class="list-card-path">[[ path ]]</span>
-                    <span class="home-badge" :class="badgeClass(feature.method)">[[ feature.method ]]</span>
+    <template v-if="is_loading">
+        <div v-if="list_feature && Object.keys(list_feature).length > 0" class="list-grid">
+            <div v-for="(feature, path) in list_feature" :key="path" class="list-card" @click="goTo(path)">
+                <!-- Left icon -->
+                <div class="list-card-icon" :class="iconClass(feature.method)">
+                    <i :class="iconName(path)"></i>
                 </div>
-                <p class="list-card-desc">[[ feature.description ]]</p>
 
-                <!-- Parameters -->
-                <div v-if="feature.parameters && feature.parameters.length > 0" class="list-params">
-                    <div class="list-params-label">Parameters</div>
-                    <div class="list-params-grid">
-                        <div v-for="param in feature.parameters" :key="param.name" class="list-param-chip">
-                            <span class="list-param-name">[[ param.name ]]</span>
-                            <span class="list-param-type">[[ param.type || 'any' ]]</span>
+                <!-- Body -->
+                <div class="list-card-body">
+                    <div class="list-card-top">
+                        <span class="list-card-path">[[ path ]]</span>
+                        <span class="home-badge" :class="badgeClass(feature.method)">[[ feature.method ]]</span>
+                    </div>
+                    <p class="list-card-desc">[[ feature.description ]]</p>
+
+                    <!-- Parameters -->
+                    <div v-if="feature.parameters && feature.parameters.length > 0" class="list-params">
+                        <div class="list-params-label">Parameters</div>
+                        <div class="list-params-grid">
+                            <div v-for="param in feature.parameters" :key="param.name" class="list-param-chip">
+                                <span class="list-param-name">[[ param.name ]]</span>
+                                <span class="list-param-type">[[ param.type || 'any' ]]</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Arrow -->
+                <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
             </div>
-
-            <!-- Arrow -->
-            <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
         </div>
-    </div>
 
-    <!-- Empty / error -->
-    <div v-else class="list-empty">
-        <i class="fas fa-circle-exclamation list-empty-icon"></i>
-        <p class="list-empty-text">No converters available or failed to load.</p>
-    </div>
+        <!-- Empty / error -->
+        <div v-else class="list-empty">
+            <i class="fas fa-circle-exclamation list-empty-icon"></i>
+            <p class="list-empty-text">No converters available or failed to load.</p>
+        </div>
+    </template>
+
 
 </div>
 {% endblock %}
@@ -73,14 +76,17 @@
                 '/api/convert/stix_to_misp': '/convert/stix_to_misp',
             }
 
+            const is_loading = ref(false)
             async function fetch_features() {
                 try {
                     const res = await fetch('/get_features')
                     const data = await res.json()
                     if (data.status === 'success') list_feature.value = data.features
+                    is_loading.value = true
                 } catch (e) {
-                    console.error('Failed to load features', e)
+                    is_loading.value = false
                 }
+
             }
 
             function goTo(path) {
@@ -104,7 +110,7 @@
             }
 
             fetch_features()
-            return { list_feature, goTo, badgeClass, iconClass, iconName }
+            return { list_feature, goTo, badgeClass, iconClass, iconName, is_loading }
         }
     }).mount('#list-container')
 </script>

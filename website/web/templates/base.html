@@ -28,6 +28,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
     <script></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.flash-toast').forEach(el => {
+                setTimeout(() => {
+                    el.classList.remove('show')
+                    el.classList.add('hide')
+                    setTimeout(() => el.remove(), 500)
+                }, 5000)
+            })
+        })
+    </script>
 
     {% block head %}{% endblock %}
 </head>
@@ -136,15 +147,29 @@
     <!-- ── MAIN CONTENT ─────────────────────────────────────────── -->
     <main id="main-containers" class="container my-5">
 
-        <!-- Flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="flash-container">
             {% for category, message in messages %}
-            <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} alert-dismissible fade show"
-                role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="alert alert-dismissible fade show flash-toast flash-{{ category }}" role="alert">
+                <div class="d-flex align-items-center p-3">
+                    <div class="toast-icon-wrapper me-3">
+                        {% if category == 'success' %}
+                        <i class="fas fa-check-circle"></i>
+                        {% elif category == 'danger' or category == 'error' %}
+                        <i class="fas fa-times-circle"></i>
+                        {% elif category == 'warning' %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                        {% else %}
+                        <i class="fas fa-info-circle"></i>
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1" style="font-weight:500;">{{ message }}</div>
+                    <button type="button" class="btn-close-custom" data-bs-dismiss="alert" aria-label="Close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="toast-progress flash-progress-{{ category }}"></div>
             </div>
             {% endfor %}
         </div>
@@ -215,56 +240,56 @@
 
     <script>
 
-        (function () {
-            const html = document.documentElement;
-            const btn = document.getElementById('theme-toggle');
-            const icon = document.getElementById('theme-icon');
-            const saved = localStorage.getItem('theme') ||
-                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            (function () {
+                const html = document.documentElement;
+                const btn = document.getElementById('theme-toggle');
+                const icon = document.getElementById('theme-icon');
+                const saved = localStorage.getItem('theme') ||
+                    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
-            html.classList.remove('light-mode', 'dark-mode');
-            html.classList.add(saved + '-mode');
-            icon.className = saved === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-
-            btn.addEventListener('click', () => {
-                const isDark = html.classList.contains('dark-mode');
-                const newTheme = isDark ? 'light' : 'dark';
                 html.classList.remove('light-mode', 'dark-mode');
-                html.classList.add(newTheme + '-mode');
-                localStorage.setItem('theme', newTheme);
-                icon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-            });
+                html.classList.add(saved + '-mode');
+                icon.className = saved === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
 
-            // Dropdowns
-            document.querySelectorAll('.top-nav-dropdown').forEach(dd => {
-                const btn = dd.querySelector('.top-nav-dropdown-btn');
-                const menu = dd.querySelector('.top-nav-dropdown-menu');
-                if (!btn || !menu) return;
-                btn.addEventListener('click', e => {
-                    e.stopPropagation();
-                    const isOpen = menu.classList.contains('open');
+                btn.addEventListener('click', () => {
+                    const isDark = html.classList.contains('dark-mode');
+                    const newTheme = isDark ? 'light' : 'dark';
+                    html.classList.remove('light-mode', 'dark-mode');
+                    html.classList.add(newTheme + '-mode');
+                    localStorage.setItem('theme', newTheme);
+                    icon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+                });
+
+                // Dropdowns
+                document.querySelectorAll('.top-nav-dropdown').forEach(dd => {
+                    const btn = dd.querySelector('.top-nav-dropdown-btn');
+                    const menu = dd.querySelector('.top-nav-dropdown-menu');
+                    if (!btn || !menu) return;
+                    btn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        const isOpen = menu.classList.contains('open');
+                        document.querySelectorAll('.top-nav-dropdown-menu.open')
+                            .forEach(m => m.classList.remove('open'));
+                        if (!isOpen) menu.classList.add('open');
+                    });
+                });
+                document.addEventListener('click', () => {
                     document.querySelectorAll('.top-nav-dropdown-menu.open')
                         .forEach(m => m.classList.remove('open'));
-                    if (!isOpen) menu.classList.add('open');
                 });
-            });
-            document.addEventListener('click', () => {
-                document.querySelectorAll('.top-nav-dropdown-menu.open')
-                    .forEach(m => m.classList.remove('open'));
-            });
 
-            // Mobile menu
-            document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
-                document.getElementById('topNavLinks').classList.toggle('mobile-open');
-            });
+                // Mobile menu
+                document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
+                    document.getElementById('topNavLinks').classList.toggle('mobile-open');
+                });
 
-            // Back to top
-            const backBtn = document.getElementById('backToTop');
-            window.addEventListener('scroll', () => {
-                backBtn.classList.toggle('show', window.scrollY > 200);
-            }, { passive: true });
-            backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
-        })();
+                // Back to top
+                const backBtn = document.getElementById('backToTop');
+                window.addEventListener('scroll', () => {
+                    backBtn.classList.toggle('show', window.scrollY > 200);
+                }, { passive: true });
+                backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+            })();
     </script>
 
     {% block script %}
