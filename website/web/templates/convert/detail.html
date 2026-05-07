@@ -1,7 +1,60 @@
 {% extends "base.html" %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='pivotick/pivotick.css') }}">
 <link id="hljs-theme" rel="stylesheet" href="">
+<script type="module">
+    import { Pivotick } from '/static/pivotick/pivotick.js'
+    window.Pivotick = Pivotick
+    window.dispatchEvent(new Event('pivotick-ready'))
+</script>
+
+<style>
+    html.light-mode #graph-container,
+    html.light-mode #graph-container-output {
+        --pvt-bg: #ffffff; --pvt-ui-bg: #ffffff;
+        --pvt-bg-color-0: #fff; --pvt-bg-color-1: #fafafa; --pvt-bg-color-2: #f3f3f3;
+        --pvt-bg-color-3: #ededed; --pvt-bg-color-4: #e6e6e6; --pvt-bg-color-5: #e0e0e0;
+        --pvt-bg-color-6: #d6d6d6; --pvt-bg-color-7: #cccccc; --pvt-bg-color-8: #c2c2c2;
+        --pvt-border-color: #cccccc; --pvt-text-color-5: #333; --pvt-text-color-6: #000;
+        --pvt-graph-grid-color: #f5f5f5;
+        --pvt-graph-background-image: repeating-linear-gradient(0deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px);
+        --pvt-edge-label-color: #000; --pvt-edge-label-bg: #e6e6e6;
+        --pvt-menu-bg-color: #fafafa; --pvt-tooltip-floating-bg-color: #d6d6d6; --pvt-sidebar-bg: #fff;
+    }
+    html.dark-mode #graph-container,
+    html.dark-mode #graph-container-output {
+        --pvt-bg: #0F0F10; --pvt-ui-bg: #202023;
+        --pvt-bg-color-0: #0F0F10; --pvt-bg-color-1: #131314; --pvt-bg-color-2: #171719;
+        --pvt-bg-color-3: #1A1A1D; --pvt-bg-color-4: #1D1D20; --pvt-bg-color-5: #202023;
+        --pvt-bg-color-6: #252528; --pvt-bg-color-7: #343437; --pvt-bg-color-8: #464649;
+        --pvt-border-color: #1A1A1D; --pvt-text-color-5: #e0e0e0; --pvt-text-color-6: #fff;
+        --pvt-graph-grid-color: #1D1D20;
+        --pvt-graph-background-image: repeating-linear-gradient(0deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px);
+        --pvt-edge-label-color: #e0e0e0; --pvt-edge-label-bg: #202023;
+        --pvt-menu-bg-color: #343437; --pvt-tooltip-floating-bg-color: #464649; --pvt-sidebar-bg: #0F0F10;
+    }
+    html.dark-mode .pvt-modal__body, html.dark-mode .pvt-searchbox { background: #131314; color: #e0e0e0; }
+    html.dark-mode .pvt-searchbox .search-container { background: #1A1A1D; border-bottom: 1px solid #343437; }
+    html.dark-mode #pvt-search-input { background: transparent; color: #e0e0e0; border: none; outline: none; }
+    html.dark-mode #pvt-search-input::placeholder { color: #464649; }
+    html.dark-mode .pvt-search-results { background: #131314; color: #e0e0e0; }
+    html.dark-mode .pvt-search-hints { background: #0F0F10; border-top: 1px solid #343437; color: #64748b; }
+    html.dark-mode .pvt-search-icon { background: #1D1D20; border: 1px solid #343437; color: #94a3b8; }
+    html.dark-mode .pvt-search-summary { background: #131314; color: #64748b; }
+
+    /* Graph spinner overlay */
+    .graph-spinner-overlay {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        width: 100%;
+        height: 100%;
+        color: var(--text-2);
+        font-size: 0.875rem;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -22,7 +75,6 @@
 
         <div class="custom-card p-4 mb-4">
             <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-
                 <div class="d-flex align-items-center gap-3 flex-wrap" style="min-width:0;">
                     <div style="min-width:0;">
                         <h3 class="mb-1 text-truncate" :title="convert.name"
@@ -33,17 +85,14 @@
                             <span class="type-pill"
                                 :class="convert.conversion_type === 'STIX_TO_MISP' ? 'type-stix' : 'type-misp'">
                                 <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
-                                    STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>
-                                    MISP
+                                    STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> MISP
                                 </template>
                                 <template v-else>
-                                    MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>
-                                    STIX
+                                    MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> STIX
                                 </template>
                             </span>
                             <span class="vis-badge" :class="convert.public ? 'vis-public' : 'vis-private'">
-                                <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'"
-                                    style="font-size:0.6rem;"></i>
+                                <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
                                 [[ convert.public ? 'Public' : 'Private' ]]
                             </span>
                             <span class="author-badge">
@@ -117,8 +166,7 @@
                             <span style="font-family:var(--font-mono); font-size:0.75rem;">[[ convert.uuid ]]</span>
                         </div>
                         <div v-if="!convert.public">
-                            <template
-                                v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
+                            <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
                                 <i class="fas fa-eye me-2" style="color:var(--text-3); width:14px;"></i>
                                 <span style="font-family:var(--font-mono); font-size:0.75rem; max-width:200px;"
                                     class="text-truncate d-inline-block" :title="share_key">
@@ -162,6 +210,13 @@
                             <span v-if="history_list && history_list.length > 0" class="badge bg-primary ms-1">
                                 [[ history_list.length ]]
                             </span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#graph-pane-'+convert.id" role="tab"
+                            onclick="onGraphTabClick()">
+                            <i class="fas fa-diagram-project me-1"></i> Graph
                         </a>
                     </li>
                 </ul>
@@ -241,20 +296,13 @@
                     <div v-if="history_list && history_list.length > 0" class="table-responsive">
                         <table class="table table-hover align-middle" style="font-size:0.875rem;">
                             <thead>
-                                <tr
-                                    style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
-                                    <th>ID</th>
-                                    <th>Version</th>
-                                    <th>Status</th>
-                                    <th>Created</th>
-                                    <th>Comment</th>
+                                <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
+                                    <th>ID</th><th>Version</th><th>Status</th><th>Created</th><th>Comment</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="h in history_list" :key="h.id" @click="goToDiff(h.id)"
-                                    style="cursor:pointer;">
-                                    <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">
-                                        #[[ h.id ]]</td>
+                                <tr v-for="h in history_list" :key="h.id" @click="goToDiff(h.id)" style="cursor:pointer;">
+                                    <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ h.id ]]</td>
                                     <td><span class="badge bg-primary">v[[ h.version ]]</span></td>
                                     <td>
                                         <span class="badge"
@@ -263,8 +311,7 @@
                                         </span>
                                     </td>
                                     <td style="color:var(--text-2);">[[ formatDate(h.created_at) ]]</td>
-                                    <td class="text-truncate" style="max-width:250px; color:var(--text-2);">[[ h.comment
-                                        || '—' ]]</td>
+                                    <td class="text-truncate" style="max-width:250px; color:var(--text-2);">[[ h.comment || '—' ]]</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -272,6 +319,96 @@
                     <div v-else class="text-center py-5">
                         <i class="fas fa-code-compare fa-2x mb-3" style="color:var(--text-3);"></i>
                         <p style="color:var(--text-2); font-weight:500;">No version history yet</p>
+                    </div>
+                </div>
+
+                <!-- Graph pane -->
+                <div class="tab-pane fade" :id="'graph-pane-'+convert.id" role="tabpanel">
+                    <div class="graph-panel-wrapper">
+                        <div class="graph-panel-toolbar">
+                            <span class="code-panel-label">
+                                <i class="fas fa-diagram-project me-1"></i>
+                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
+                                    STIX Input &nbsp;→&nbsp; MISP Output
+                                </template>
+                                <template v-else>
+                                    MISP Input &nbsp;→&nbsp; STIX Output
+                                </template>
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    id="graph-view-input" onclick="showGraphSide('input')">
+                                    <i class="fas fa-file-import me-1"></i>
+                                    <template v-if="convert.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
+                                    <template v-else>MISP Input</template>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    id="graph-view-output" onclick="showGraphSide('output')">
+                                    <i class="fas fa-file-export me-1"></i>
+                                    <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
+                                    <template v-else>STIX Output</template>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- graph-container starts with a spinner, replaced once Pivotick renders -->
+                        <div id="graph-container" style="width:100%;height:560px;">
+                            <div class="graph-spinner-overlay">
+                                <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
+                                <span>Click the Graph tab to load…</span>
+                            </div>
+                        </div>
+                        <div id="graph-container-output" style="width:100%;height:560px;display:none;">
+                            <div class="graph-spinner-overlay">
+                                <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
+                                <span>Loading graph…</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="graph-legend mt-3">
+                        <details>
+                            <summary><i class="fas fa-circle-info me-1"></i> How to read this graph</summary>
+                            <div class="graph-legend-body">
+                                <div class="graph-legend-section">
+                                    <h6>Navigation</h6>
+                                    <p>Drag nodes to reposition. Scroll to zoom. Drag background to pan. Click a node to open its details in the sidebar. Right-click for more actions.</p>
+                                </div>
+                                <div class="graph-legend-section">
+                                    <h6>MISP graph</h6>
+                                    <p>The <strong>Event</strong> is the root. It connects to <strong>Objects</strong> (groups like <em>file</em>, <em>domain-ip</em>) and standalone <strong>Attributes</strong>. Object references (<em>contains</em>, <em>related-to</em>) are shown as labeled arrows.</p>
+                                    <div class="graph-legend-chips">
+                                        <span class="chip" style="--c:#2563eb">■ Event</span>
+                                        <span class="chip" style="--c:#7c3aed">⬡ Object</span>
+                                        <span class="chip" style="--c:#0ea5e9">● Network (IP, domain, URL)</span>
+                                        <span class="chip" style="--c:#f97316">● Payload (hash, file)</span>
+                                        <span class="chip" style="--c:#10b981">● External analysis</span>
+                                        <span class="chip" style="--c:#64748b">● Other</span>
+                                    </div>
+                                </div>
+                                <div class="graph-legend-section">
+                                    <h6>STIX graph</h6>
+                                    <p>The <strong>Report</strong> is the root. Relationships connect indicators, malware, threat-actors and attack-patterns. <code>observed-data</code> wrappers are hidden.</p>
+                                    <div class="graph-legend-chips">
+                                        <span class="chip" style="--c:#1d4ed8">■ Report</span>
+                                        <span class="chip" style="--c:#2563eb">■ Grouping</span>
+                                        <span class="chip" style="--c:#7c3aed">⬡ Indicator</span>
+                                        <span class="chip" style="--c:#ef4444">⬡ Malware</span>
+                                        <span class="chip" style="--c:#f97316">■ Threat Actor</span>
+                                        <span class="chip" style="--c:#eab308">▲ Attack Pattern</span>
+                                        <span class="chip" style="--c:#0ea5e9">● ipv4 / domain / file</span>
+                                        <span class="chip" style="--c:#dc2626">■ TLP marking</span>
+                                    </div>
+                                </div>
+                                <div class="graph-legend-section">
+                                    <h6>Input vs Output</h6>
+                                    <p>Switch between <strong>Input</strong> and <strong>Output</strong> to compare how the conversion reorganized the data.</p>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    <div class="mt-2 text-end" style="font-size:0.72rem; color:var(--text-3);">
+                        Graph powered by <a href="https://pivotick.github.io/Pivotick/" target="_blank" rel="noopener"
+                            style="color:var(--text-3); text-decoration:underline; text-underline-offset:2px;">Pivotick</a>
                     </div>
                 </div>
 
@@ -291,9 +428,7 @@
         <div class="modal-dialog">
             <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
-                    <h5 class="modal-title">
-                        <i class="fas fa-trash text-danger me-2"></i>Delete conversion
-                    </h5>
+                    <h5 class="modal-title"><i class="fas fa-trash text-danger me-2"></i>Delete conversion</h5>
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="color:var(--text-2); font-size:0.875rem;">
@@ -366,14 +501,11 @@
             const spinner = document.getElementById(`spinner-${side}`)
             const pre = document.getElementById(`pre-${side}`)
             if (!pre) return
-
             spinner?.classList.remove('d-none')
             spinner?.classList.add('d-flex')
             pre.classList.add('d-none')
-
             const block = pre.querySelector('code.language-json')
             if (!block) return
-
             setTimeout(() => {
                 block.removeAttribute('data-highlighted')
                 hljs.highlightElement(block)
@@ -400,11 +532,11 @@
                 if (res.ok) {
                     const data = await res.json()
                     const c = data.convert
-                    // Auto-format au chargement
                     try { c.input_text = JSON.stringify(JSON.parse(c.input_text), null, 2) } catch { }
                     try { c.output_text = JSON.stringify(JSON.parse(c.output_text), null, 2) } catch { }
                     convert.value = c
                     setTimeout(() => highlightAll(), 100)
+                    window.__onConvertLoaded?.(c)
                 }
                 is_loading.value = false
             }
@@ -437,10 +569,7 @@
             async function togglePublic() {
                 const res = await fetch(`/convert/edit_public?id=${convert_id}`)
                 const data = await res.json()
-                if (res.ok) {
-                    convert.value.public = data.convert_public
-                    getConvert()
-                }
+                if (res.ok) { convert.value.public = data.convert_public; getConvert() }
                 create_message(data.message, data.toast_class)
             }
 
@@ -525,5 +654,433 @@
             }
         }
     }).mount('#main-containers')
+</script>
+
+<script>
+// ── Graph viewer ──────────────────────────────────────────────────────────────
+
+const STIX_STYLE_MAP = {
+    'report':             { shape: 'square',   color: '#1d4ed8', size: 24 },
+    'grouping':           { shape: 'square',   color: '#2563eb', size: 24 },
+    'indicator':          { shape: 'hexagon',  color: '#7c3aed', size: 18 },
+    'malware':            { shape: 'hexagon',  color: '#ef4444', size: 20 },
+    'threat-actor':       { shape: 'square',   color: '#f97316', size: 22 },
+    'attack-pattern':     { shape: 'triangle', color: '#eab308', size: 18 },
+    'campaign':           { shape: 'square',   color: '#f59e0b', size: 20 },
+    'course-of-action':   { shape: 'circle',   color: '#10b981', size: 16 },
+    'identity':           { shape: 'square',   color: '#8b5cf6', size: 16 },
+    'vulnerability':      { shape: 'hexagon',  color: '#ec4899', size: 17 },
+    'tool':               { shape: 'triangle', color: '#a855f7', size: 16 },
+    'infrastructure':     { shape: 'hexagon',  color: '#6366f1', size: 18 },
+    'intrusion-set':      { shape: 'square',   color: '#14b8a6', size: 20 },
+    'ipv4-addr':          { shape: 'circle',   color: '#0ea5e9', size: 13 },
+    'ipv6-addr':          { shape: 'circle',   color: '#0284c7', size: 13 },
+    'domain-name':        { shape: 'circle',   color: '#06b6d4', size: 13 },
+    'url':                { shape: 'circle',   color: '#22d3ee', size: 12 },
+    'file':               { shape: 'circle',   color: '#f97316', size: 13 },
+    'email-addr':         { shape: 'circle',   color: '#fb923c', size: 12 },
+    'network-traffic':    { shape: 'circle',   color: '#38bdf8', size: 11 },
+    'marking-definition': { shape: 'square',   color: '#dc2626', size: 11 },
+    '_default':           { shape: 'circle',   color: '#64748b', size: 13 },
+}
+
+const MISP_STYLE_MAP = {
+    'Event':         { shape: 'square',   color: '#2563eb', size: 26 },
+    'Object':        { shape: 'hexagon',  color: '#7c3aed', size: 18 },
+    'attr-network':  { shape: 'circle',   color: '#0ea5e9', size: 13 },
+    'attr-payload':  { shape: 'circle',   color: '#f97316', size: 13 },
+    'attr-external': { shape: 'circle',   color: '#10b981', size: 12 },
+    'attr-other':    { shape: 'circle',   color: '#64748b', size: 12 },
+    '_default':      { shape: 'circle',   color: '#64748b', size: 12 },
+}
+
+const MISP_NETWORK = new Set(['ip-src','ip-dst','domain','hostname','url','uri','email-src','email-dst'])
+const MISP_PAYLOAD = new Set(['md5','sha1','sha256','sha512','filename','malware-sample'])
+
+function mispAttrStyle(attr) {
+    if (MISP_NETWORK.has(attr.type)) return 'attr-network'
+    if (MISP_PAYLOAD.has(attr.type)) return 'attr-payload'
+    if (attr.category === 'External analysis') return 'attr-external'
+    return 'attr-other'
+}
+
+function safeId(id) {
+    return String(id).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '_')
+}
+
+function parseMisp(json) {
+    const nodes = [], edges = []
+    let raw = Array.isArray(json) ? json[0] : json
+    const event = raw?.Event ?? raw
+    if (!event) return { nodes, edges }
+
+    const uuidToSafe = {}
+    const evId = safeId(event.uuid || 'event-root')
+    uuidToSafe[event.uuid || 'event-root'] = evId
+    const tlp = (event.Tag || []).find(t => t.name?.startsWith('tlp:'))?.name || ''
+    nodes.push({ id: evId, data: {
+        label: event.info || `Event #${event.id || '?'}`,
+        sublabel: tlp ? 'TLP:' + tlp.split(':')[1].toUpperCase() : 'Event',
+        type: 'Event', raw: event
+    }})
+
+    for (const attr of event.Attribute ?? []) {
+        const nId = safeId(attr.uuid || attr.id)
+        uuidToSafe[attr.uuid || attr.id] = nId
+        nodes.push({ id: nId, data: {
+            label: String(attr.value).slice(0, 60),
+            sublabel: attr.type,
+            type: mispAttrStyle(attr), raw: attr
+        }})
+        edges.push({ from: evId, to: nId, data: { label: attr.category || '' } })
+    }
+
+    const referencedByObject = new Set()
+    for (const obj of event.Object ?? []) {
+        const oId = safeId(obj.uuid || obj.id)
+        uuidToSafe[obj.uuid || obj.id] = oId
+        const childAttrs = (obj.Attribute ?? []).reduce((acc, a) => {
+            if (a.object_relation && a.value) acc[a.object_relation] = a.value
+            return acc
+        }, {})
+        nodes.push({ id: oId, data: {
+            label: obj.name || `Object #${obj.id}`,
+            sublabel: obj['meta-category'] || '',
+            type: 'Object', raw: obj, childAttrs
+        }})
+        edges.push({ from: evId, to: oId, data: { label: '', _default: true } })
+
+        for (const attr of obj.Attribute ?? []) {
+            const aId = safeId(attr.uuid || attr.id)
+            uuidToSafe[attr.uuid || attr.id] = aId
+            nodes.push({ id: aId, data: {
+                label: String(attr.value).slice(0, 60),
+                sublabel: attr.object_relation || attr.type,
+                type: mispAttrStyle(attr), raw: attr
+            }})
+            edges.push({ from: oId, to: aId, data: { label: attr.object_relation || '' } })
+        }
+
+        for (const ref of obj.ObjectReference ?? []) {
+            const srcId = uuidToSafe[ref.object_uuid || obj.uuid]
+            const dstId = uuidToSafe[ref.referenced_uuid]
+            if (!srcId || !dstId) continue
+            edges.push({ from: srcId, to: dstId, data: { label: ref.relationship_type || '' } })
+            referencedByObject.add(dstId)
+        }
+    }
+
+    for (let i = edges.length - 1; i >= 0; i--) {
+        if (edges[i].data?._default && referencedByObject.has(edges[i].to))
+            edges.splice(i, 1)
+    }
+
+    return { nodes, edges }
+}
+
+function parseStix(json) {
+    const bundle = Array.isArray(json) ? json[0] : json
+    const objects = bundle?.objects ?? []
+    const nodes = [], edges = []
+    const SKIP = new Set(['observed-data'])
+    const idMap = {}
+
+    for (const obj of objects) {
+        if (!obj.id || obj.type === 'relationship' || SKIP.has(obj.type)) continue
+        const sid = safeId(obj.id)
+        idMap[obj.id] = sid
+        const label = obj.name || obj.value
+            || (obj.pattern ? obj.pattern.slice(0,55)+'…' : null)
+            || (obj.definition?.tlp ? 'TLP:'+obj.definition.tlp.toUpperCase() : null)
+            || obj.type
+        const mispType = (obj.labels||[]).find(l=>l.startsWith('misp:type='))
+        nodes.push({ id: sid, data: {
+            label: String(label).slice(0, 60),
+            sublabel: mispType ? mispType.replace('misp:type=','').replace(/"/g,'') : obj.type,
+            type: obj.type, raw: obj
+        }})
+    }
+
+    const nodeIds = new Set(nodes.map(n => n.id))
+    const linked  = new Set()
+
+    for (const obj of objects) {
+        if (obj.type !== 'relationship') continue
+        const from = idMap[obj.source_ref]
+        const to   = idMap[obj.target_ref]
+        if (!from || !to || !nodeIds.has(from) || !nodeIds.has(to)) continue
+        edges.push({ from, to, data: { label: obj.relationship_type || '' } })
+        linked.add(from)
+        linked.add(to)
+    }
+
+    for (const obj of objects) {
+        if (obj.type !== 'report') continue
+        const fromId = idMap[obj.id]
+        if (!fromId) continue
+        for (const ref of obj.object_refs ?? []) {
+            const toId = idMap[ref]
+            if (!toId || !nodeIds.has(toId) || linked.has(toId)) continue
+            edges.push({ from: fromId, to: toId, data: { label: '' } })
+        }
+    }
+
+    return { nodes, edges }
+}
+
+function nodeProperties(node) {
+    const d   = node.getData()
+    const raw = d?.raw ?? {}
+    const props = []
+
+    if (d?.childAttrs && Object.keys(d.childAttrs).length) {
+        for (const [key, val] of Object.entries(d.childAttrs))
+            props.push({ name: key, value: String(val) })
+        props.push({ name: '─────', value: '' })
+    }
+
+    if (raw.value)            props.push({ name: 'Value',         value: String(raw.value) })
+    if (raw.type)             props.push({ name: 'Type',          value: raw.type })
+    if (raw.category)         props.push({ name: 'Category',      value: raw.category })
+    if (raw.object_relation)  props.push({ name: 'Relation',      value: raw.object_relation })
+    if (raw.to_ids !== undefined) props.push({ name: 'To IDS',    value: raw.to_ids ? 'Yes' : 'No' })
+    if (raw['meta-category']) props.push({ name: 'Meta-category', value: raw['meta-category'] })
+    if (raw.date)             props.push({ name: 'Date',          value: raw.date })
+    if (raw.name)             props.push({ name: 'Name',          value: raw.name })
+    if (raw.description)      props.push({ name: 'Description',   value: raw.description })
+    if (raw.pattern)          props.push({ name: 'Pattern',       value: raw.pattern })
+    if (raw.created)          props.push({ name: 'Created',       value: raw.created })
+    if (raw.modified)         props.push({ name: 'Modified',      value: raw.modified })
+    if (raw.valid_from)       props.push({ name: 'Valid from',    value: raw.valid_from })
+    if (raw.aliases?.length)  props.push({ name: 'Aliases',       value: raw.aliases.join(', ') })
+    if (raw.labels?.length)   props.push({ name: 'Labels',        value: raw.labels.filter(l=>!l.startsWith('misp:')).join(', ') })
+    if (raw.definition?.tlp)  props.push({ name: 'TLP',           value: raw.definition.tlp.toUpperCase() })
+    if (raw.hashes && typeof raw.hashes === 'object') {
+        for (const [algo, hash] of Object.entries(raw.hashes))
+            props.push({ name: algo, value: String(hash) })
+    }
+
+    return props.filter(p => p.value !== undefined && p.value !== '')
+}
+
+function buildTooltip(node) {
+    const d   = node.getData()
+    const raw = d?.raw ?? {}
+    const wrap = document.createElement('div')
+    wrap.style.cssText = 'font-size:0.78rem;max-width:300px;line-height:1.6;'
+
+    const addRow = (key, val) => {
+        if (!val) return
+        const row = document.createElement('div')
+        row.style.cssText = 'display:flex;gap:6px;padding:1px 0;'
+        const k = document.createElement('span')
+        k.style.cssText = 'color:#94a3b8;min-width:80px;flex-shrink:0;font-size:0.72rem;padding-top:1px;'
+        k.textContent = key
+        const v = document.createElement('span')
+        v.style.cssText = 'word-break:break-all;font-weight:500;'
+        v.textContent = String(val).slice(0, 120) + (String(val).length > 120 ? '…' : '')
+        row.appendChild(k)
+        row.appendChild(v)
+        wrap.appendChild(row)
+    }
+
+    if (d?.childAttrs && Object.keys(d.childAttrs).length) {
+        for (const [key, val] of Object.entries(d.childAttrs)) addRow(key, val)
+        return wrap
+    }
+
+    if (raw.value)           addRow('value',    raw.value)
+    if (raw.category)        addRow('category', raw.category)
+    if (raw.object_relation) addRow('relation', raw.object_relation)
+    if (raw.hashes) {
+        for (const [algo, hash] of Object.entries(raw.hashes)) addRow(algo, hash)
+    }
+    if (raw.pattern)         addRow('pattern',  raw.pattern)
+    if (raw.description)     addRow('desc',     raw.description)
+    if (raw.aliases?.length) addRow('aliases',  raw.aliases.join(', '))
+
+    return wrap.children.length ? wrap : null
+}
+
+function showGraphSpinner(containerId, message) {
+    const container = document.getElementById(containerId)
+    if (!container) return
+    container.innerHTML =
+        `<div class="graph-spinner-overlay">
+            <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
+            <span>${message}</span>
+        </div>`
+}
+
+function initGraphViewer(containerId, jsonText, format) {
+    const container = document.getElementById(containerId)
+    if (!container) return
+
+    if (typeof window.Pivotick !== 'function') {
+        showGraphSpinner(containerId, 'Loading Pivotick…')
+        const retry = () => initGraphViewer(containerId, jsonText, format)
+        window.addEventListener('pivotick-ready', retry, { once: true })
+        let attempts = 0
+        const poll = setInterval(() => {
+            attempts++
+            if (typeof window.Pivotick === 'function') {
+                clearInterval(poll)
+                window.removeEventListener('pivotick-ready', retry)
+                initGraphViewer(containerId, jsonText, format)
+            } else if (attempts > 15) {
+                clearInterval(poll)
+                container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not load Pivotick.</p>'
+            }
+        }, 200)
+        return
+    }
+
+    showGraphSpinner(containerId, 'Parsing data…')
+
+    let parsed
+    try {
+        parsed = format === 'misp' ? parseMisp(JSON.parse(jsonText)) : parseStix(JSON.parse(jsonText))
+    } catch(e) {
+        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not parse JSON.</p>'
+        return
+    }
+
+    if (!parsed.nodes.length) {
+        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">No graph data found.</p>'
+        return
+    }
+
+    const MAX_NODES = 300
+    if (parsed.nodes.length > MAX_NODES) {
+        const degree = {}
+        for (const e of parsed.edges) {
+            degree[e.from] = (degree[e.from] || 0) + 1
+            degree[e.to]   = (degree[e.to]   || 0) + 1
+        }
+        parsed.nodes.sort((a, b) => (degree[b.id]||0) - (degree[a.id]||0))
+        const kept = new Set(parsed.nodes.slice(0, MAX_NODES).map(n => n.id))
+        parsed.nodes = parsed.nodes.filter(n => kept.has(n.id))
+        parsed.edges = parsed.edges.filter(e => kept.has(e.from) && kept.has(e.to))
+        container.insertAdjacentHTML('beforebegin',
+            `<div class="alert alert-warning py-1 px-3 mb-2" style="font-size:0.8rem">
+                <i class="fas fa-triangle-exclamation me-1"></i>
+                Large graph — showing the ${MAX_NODES} most connected nodes.
+            </div>`)
+    }
+
+    showGraphSpinner(containerId, 'Building graph…')
+
+    // Let the spinner paint before Pivotick blocks the thread
+    setTimeout(() => {
+        container.innerHTML = ''
+        const styleMap = format === 'misp' ? MISP_STYLE_MAP : STIX_STYLE_MAP
+
+        new window.Pivotick(container, parsed, {
+            isDirected: true,
+            layout: { type: 'force' },
+            render: {
+                nodeTypeAccessor: (node) => node.getData()?.type ?? '_default',
+                nodeStyleMap:     styleMap,
+                defaultNodeStyle: styleMap['_default'],
+                defaultEdgeStyle: { markerEnd: 'arrow' },
+                nodeHeaderMap: {
+                    title:    (node) => node.getData()?.label    ?? '',
+                    subtitle: (node) => node.getData()?.sublabel ?? '',
+                },
+            },
+            UI: {
+                mode: 'full',
+                sidebar: { collapsed: 'auto' },
+                mainHeader: {
+                    nodeHeaderMap: {
+                        title:    (node) => node.getData()?.label    ?? String(node.id),
+                        subtitle: (node) => node.getData()?.sublabel ?? node.getData()?.type ?? '',
+                    },
+                    edgeHeaderMap: {
+                        title:    (edge) => edge.getData()?.label || 'Relationship',
+                        subtitle: (edge) => `${edge.from} → ${edge.to}`,
+                    },
+                },
+                propertiesPanel: {
+                    nodePropertiesMap: (node) => nodeProperties(node),
+                    edgePropertiesMap: (edge) => [
+                        { name: 'Relationship', value: edge.getData()?.label || '—' },
+                        { name: 'From',         value: String(edge.from) },
+                        { name: 'To',           value: String(edge.to)   },
+                    ],
+                },
+                tooltip: {
+                    nodeHeaderMap: {
+                        title:    (node) => node.getData()?.label    ?? '',
+                        subtitle: (node) => node.getData()?.sublabel ?? '',
+                    },
+                    renderNodeExtra: (node) => buildTooltip(node),
+                },
+                contextMenu: {
+                    menuNode: {
+                        topbar: [
+                            {
+                                text: 'Copy value',
+                                iconClass: 'fas fa-copy',
+                                onclick: (evt, node) => {
+                                    const d = node.getData()
+                                    const raw = d?.raw ?? {}
+                                    let val
+                                    if (d?.childAttrs && Object.keys(d.childAttrs).length) {
+                                        val = Object.entries(d.childAttrs).map(([k,v]) => `${k}: ${v}`).join('\n')
+                                    } else {
+                                        val = raw.value || raw.name || raw.pattern || d?.label || String(node.id)
+                                    }
+                                    navigator.clipboard.writeText(val).catch(() => {})
+                                },
+                            },
+                        ],
+                        menu: [
+                            {
+                                text: 'Open raw JSON',
+                                iconClass: 'fas fa-code',
+                                onclick: (evt, node) => {
+                                    const raw = node.getData()?.raw ?? {}
+                                    const isDark = document.documentElement.classList.contains('dark-mode')
+                                    const win = window.open('', '_blank')
+                                    win.document.write(`<html><body style="margin:0;background:${isDark?'#0f0f10':'#fff'};color:${isDark?'#e0e0e0':'#000'}"><pre style="font-family:monospace;font-size:13px;padding:1.5rem;white-space:pre-wrap;word-break:break-all">${JSON.stringify(raw, null, 2)}</pre></body></html>`)
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
+        })
+    }, 30)
+}
+
+function showGraphSide(side) {
+    const inEl   = document.getElementById('graph-container')
+    const outEl  = document.getElementById('graph-container-output')
+    const btnIn  = document.getElementById('graph-view-input')
+    const btnOut = document.getElementById('graph-view-output')
+    inEl.style.display  = side === 'input'  ? '' : 'none'
+    outEl.style.display = side === 'output' ? '' : 'none'
+    btnIn.className  = 'btn btn-sm ' + (side === 'input'  ? 'btn-primary' : 'btn-outline-secondary')
+    btnOut.className = 'btn btn-sm ' + (side === 'output' ? 'btn-primary' : 'btn-outline-secondary')
+}
+
+let _graphData = null, _graphRendered = false
+
+window.__onConvertLoaded = function(convert) { _graphData = convert }
+
+window.onGraphTabClick = function() {
+    if (!_graphData || _graphRendered) return
+    _graphRendered = true
+    showGraphSpinner('graph-container', 'Building graph…')
+    setTimeout(() => {
+        const isStixToMisp = _graphData.conversion_type === 'STIX_TO_MISP'
+        initGraphViewer('graph-container',        _graphData.input_text,  isStixToMisp ? 'stix' : 'misp')
+        initGraphViewer('graph-container-output', _graphData.output_text, isStixToMisp ? 'misp' : 'stix')
+        showGraphSide('input')
+    }, 50)
+}
+
+window.showGraphSide = showGraphSide
 </script>
 {% endblock %}

@@ -1,0 +1,3 @@
+[submodule "vendor/pivotick"]
+	path = vendor/pivotick
+	url = https://github.com/Pivotick/Pivotick.git
