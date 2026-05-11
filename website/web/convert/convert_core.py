@@ -93,24 +93,52 @@ def list_all():
     return Convert.query.all()
 
 
-def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None):
+def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False):
     """
     Return paginated conversion history with optional filter, sort and ownership filtering.
-    - page: int
-    - filter_type: 'MISP_TO_STIX' | 'STIX_TO_MISP' | ''
-    - sort_order: 'asc' or 'desc'
-    - only_mine: 'true' | 'false' (string)
+    - search_scope: 'all' | 'name' | 'description' | 'content'
+    - exact_match: if True, search for exact phrase instead of contains
     """
 
     query = Convert.query
     if searchQuery:
-        search_lower = f"%{searchQuery.lower()}%"
-        query = query.filter(
-            or_(
-                Convert.name.ilike(search_lower),
-                Convert.description.ilike(search_lower),
+        if exact_match:
+            search_pattern = searchQuery  # exact, case-sensitive via ilike = case-insensitive exact
+            def make_filter(col): return col.ilike(search_pattern)
+        else:
+            search_pattern = f"%{searchQuery}%"
+            def make_filter(col): return col.ilike(search_pattern)
+
+        if search_scope == 'name':
+            query = query.filter(make_filter(Convert.name))
+        elif search_scope == 'description':
+            query = query.filter(make_filter(Convert.description))
+        elif search_scope == 'content':
+            query = query.filter(
+                or_(make_filter(Convert.input_text), make_filter(Convert.output_text))
             )
-        )
+        else:  # 'all'
+            query = query.filter(
+                or_(
+                    make_filter(Convert.name),
+                    make_filter(Convert.description),
+                    make_filter(Convert.input_text),
+                    make_filter(Convert.output_text),
+                )
+            )
+
+    # Date range filter
+    if date_from:
+        try:
+            query = query.filter(Convert.created_at >= datetime.datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.datetime.strptime(date_to, '%Y-%m-%d') + datetime.timedelta(days=1)
+            query = query.filter(Convert.created_at < dt_to)
+        except ValueError:
+            pass
 
     # Filter by conversion type if provided
     if filter_type:
@@ -146,6 +174,62 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
 
     # Pagination
     return query.paginate(page=page, per_page=10)
+
+
+# edit
+
+def search_in_content(query_str, convert_id, scope='all', context_chars=120):
+    """
+    Search for query_str in a single convert's texts and return snippets with match positions.
+    Returns list of { field, snippet, match_start, match_end }
+    """
+    if not query_str:
+        return []
+
+    convert = get_convert(convert_id)
+    if not convert:
+        return []
+
+    results = []
+    q_lower = query_str.lower()
+
+    fields = []
+    if scope in ('all', 'name'):
+        fields.append(('name', convert.name or ''))
+    if scope in ('all', 'description'):
+        fields.append(('description', convert.description or ''))
+    if scope in ('all', 'content'):
+        fields.append(('input', convert.input_text or ''))
+        fields.append(('output', convert.output_text or ''))
+
+    for field_name, text in fields:
+        text_lower = text.lower()
+        start = 0
+        seen_snippets = set()
+        while True:
+            idx = text_lower.find(q_lower, start)
+            if idx == -1:
+                break
+            # Extract context around match
+            snip_start = max(0, idx - context_chars)
+            snip_end   = min(len(text), idx + len(query_str) + context_chars)
+            snippet = ('…' if snip_start > 0 else '') + text[snip_start:snip_end] + ('…' if snip_end < len(text) else '')
+            match_in_snip = idx - snip_start + (3 if snip_start > 0 else 0)  # offset for leading '…'
+
+            key = (field_name, snip_start)
+            if key not in seen_snippets:
+                seen_snippets.add(key)
+                results.append({
+                    'field': field_name,
+                    'snippet': snippet,
+                    'match_start': match_in_snip,
+                    'match_end': match_in_snip + len(query_str),
+                })
+            start = idx + 1
+            if len(results) >= 10:  # cap per convert
+                break
+
+    return results
 
 
 # edit

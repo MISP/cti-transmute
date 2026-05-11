@@ -223,19 +223,59 @@ def history():
 @convert_blueprint.route("/get_convert_page_history", methods=['GET'])
 def get_page_history():
     """History of the last convert, with optional filter and sort"""
-    page = request.args.get('page', 1, type=int)
-    filter_type = request.args.get('filter_type',  type=str)  
-    sort_order = request.args.get('sort_order',  type=str) 
-    only_mine = request.args.get('only_mine', 'false' , type=str)
-    searchQuery = request.args.get('searchQuery',  type=str) 
+    page        = request.args.get('page', 1, type=int)
+    filter_type = request.args.get('filter_type', type=str)
+    sort_order  = request.args.get('sort_order', type=str)
+    only_mine   = request.args.get('only_mine', 'false', type=str)
+    searchQuery = request.args.get('searchQuery', type=str)
+    search_scope = request.args.get('search_scope', 'all', type=str)
+    date_from   = request.args.get('date_from', type=str)
+    date_to     = request.args.get('date_to', type=str)
 
-    pagination = ConvertModel.get_convert_page(page, filter_type=filter_type, sort_order=sort_order, only_mine=only_mine , searchQuery=searchQuery)
+    exact_match  = request.args.get('exact_match', 'false', type=str) == 'true'
+
+    pagination = ConvertModel.get_convert_page(
+        page,
+        filter_type=filter_type,
+        sort_order=sort_order,
+        only_mine=only_mine,
+        searchQuery=searchQuery,
+        search_scope=search_scope,
+        date_from=date_from,
+        date_to=date_to,
+        exact_match=exact_match,
+    )
     convert_list = [item.to_json_list() for item in pagination.items]
 
     return {
         "list": convert_list,
         "total_page": pagination.pages,
     }, 200
+
+
+@convert_blueprint.route("/search_in_content", methods=['GET'])
+def search_in_content():
+    """Return highlighted snippets for a query inside a single convert"""
+    convert_id = request.args.get('convert_id', type=int)
+    query_str  = request.args.get('q', type=str)
+    scope      = request.args.get('scope', 'all', type=str)
+
+    if not convert_id or not query_str:
+        return {"success": False, "message": "Missing convert_id or q"}, 400
+
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Convert not found"}, 404
+
+    # Visibility check
+    if not convert.public:
+        if not current_user.is_authenticated:
+            return {"success": False, "message": "Unauthorized"}, 403
+        if current_user.id != convert.user_id and not current_user.is_admin():
+            return {"success": False, "message": "Forbidden"}, 403
+
+    results = ConvertModel.search_in_content(query_str, convert_id, scope=scope)
+    return {"success": True, "results": results}, 200
 
 @convert_blueprint.route("/delete_item", methods=['GET'])
 @login_required

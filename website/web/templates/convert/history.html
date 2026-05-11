@@ -2,6 +2,7 @@
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
 {% endblock %}
+
 {% block content %}
 <div class="container my-5">
 
@@ -17,18 +18,43 @@
     <div class="p-3 mb-4 rounded-3" style="background: var(--surface); border: 1px solid var(--border);">
         <div class="d-flex align-items-end flex-wrap gap-3">
 
-            <div style="min-width: 220px; flex:2;">
+            <!-- Search with scope selector -->
+            <div style="min-width: 280px; flex:3;">
                 <label class="form-label">Search</label>
-                <div class="position-relative">
-                    <i class="fas fa-search position-absolute"
-                        style="left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.8rem;"></i>
-                    <input type="text" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchInput"
-                        class="form-control form-control-sm" style="padding-left:30px; border-radius:6px;"
-                        placeholder="Search by keywords...">
+                <div class="d-flex gap-2 align-items-center">
+                    <div class="d-flex flex-grow-1">
+                        <select class="form-select form-select-sm search-scope-select" v-model="search_scope" @change="onSearchInput"
+                            title="Search scope" style="min-width:0; width:90px; flex-shrink:0;">
+                            <option value="all">All</option>
+                            <option value="name">Name</option>
+                            <option value="description">Desc</option>
+                            <option value="content">JSON</option>
+                        </select>
+                        <div class="position-relative flex-grow-1">
+                            <i class="fas fa-search position-absolute"
+                                style="left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.8rem; z-index:1;"></i>
+                            <input type="text" v-model="searchQuery"
+                                @input="onSearchInput" @keyup.enter="onSearchInput"
+                                class="form-control form-control-sm search-input-joined"
+                                style="padding-left:30px;"
+                                :placeholder="searchPlaceholder">
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1 flex-shrink-0" style="font-size:0.78rem; color:var(--text-2);" title="Match exact phrase">
+                        <input type="checkbox" id="exactMatch" v-model="exact_match" @change="onSearchInput"
+                            class="form-check-input" style="width:1rem;height:1rem;cursor:pointer;margin:0;">
+                        <label for="exactMatch" style="cursor:pointer; white-space:nowrap;">Exact</label>
+                    </div>
+                </div>
+                <div v-if="searchQuery" class="mt-1" style="font-size:0.72rem; color:var(--text-3);">
+                    <i class="fas fa-info-circle me-1"></i>
+                    <strong>[[ scopeLabel ]]</strong>
+                    <span v-if="exact_match"> · exact phrase</span>
                 </div>
             </div>
 
-            <div style="min-width: 170px; flex:1;">
+            <!-- Type filter -->
+            <div style="min-width: 160px; flex:1;">
                 <label class="form-label">Conversion type</label>
                 <select class="form-select form-select-sm" @change="onSearchInput" v-model="filter_type">
                     <option value="">All types</option>
@@ -37,7 +63,8 @@
                 </select>
             </div>
 
-            <div style="min-width: 160px; flex:1;">
+            <!-- Sort -->
+            <div style="min-width: 150px; flex:1;">
                 <label class="form-label">Sort by date</label>
                 <select class="form-select form-select-sm" v-model="sort_order" @change="onSearchInput">
                     <option value="desc">Newest first</option>
@@ -45,12 +72,32 @@
                 </select>
             </div>
 
+            <!-- Date from -->
+            <div style="min-width: 140px; flex:1;">
+                <label class="form-label">From</label>
+                <input type="date" class="form-control form-control-sm" v-model="date_from" @change="onSearchInput">
+            </div>
+
+            <!-- Date to -->
+            <div style="min-width: 140px; flex:1;">
+                <label class="form-label">To</label>
+                <input type="date" class="form-control form-control-sm" v-model="date_to" @change="onSearchInput">
+            </div>
+
+            <!-- Mine only -->
             <div class="d-flex flex-column justify-content-end" style="padding-bottom: 2px;">
                 <label class="form-label mb-2">Mine only</label>
                 <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="myConvertsOnly" @change="onSearchInput"
                         v-model="only_mine" style="width:2.5rem; height:1.3rem; cursor:pointer;">
                 </div>
+            </div>
+
+            <!-- Reset -->
+            <div class="d-flex flex-column justify-content-end" style="padding-bottom: 2px;">
+                <button class="btn btn-sm btn-outline-secondary" @click="resetFilters">
+                    <i class="fas fa-rotate-left me-1"></i> Reset
+                </button>
             </div>
 
         </div>
@@ -71,10 +118,11 @@
     <div v-else v-cloak>
         <div v-if="convert_history.length > 0">
 
-            <div v-for="item in convert_history" :key="item.id" class="history-card" @click="seeDetails(item.id)">
+            <div v-for="item in convert_history" :key="item.id" class="history-card"
+                @click="seeDetails(item.id)">
                 <div class="history-card-inner">
 
-                    <!-- Left: type indicator -->
+                    <!-- Left: type -->
                     <div class="history-type-badge">
                         <span v-if="item.conversion_type === 'MISP_TO_STIX'" class="type-pill type-misp">
                             MISP<i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>STIX
@@ -85,19 +133,35 @@
                         <span v-else class="type-pill type-default">—</span>
                     </div>
 
-                    <!-- Center: content -->
+                    <!-- Center: content + snippets -->
                     <div class="history-card-content">
                         <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="history-card-title">[[ item.name ]]</span>
+                            <span class="history-card-title" v-html="highlight(item.name)"></span>
                             <span class="vis-badge" :class="item.public ? 'vis-public' : 'vis-private'">
                                 <i :class="item.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
                                 [[ item.public ? 'Public' : 'Private' ]]
                             </span>
                         </div>
-                        <p class="history-card-desc mb-0">[[ item.description || 'No description.' ]]</p>
+                        <p class="history-card-desc mb-0" v-html="highlight(item.description || 'No description.')"></p>
+
+                        <!-- Snippets from JSON content (shown when search_scope includes content) -->
+                        <div v-if="searchQuery && (search_scope === 'content' || search_scope === 'all')"
+                            class="snippet-block" @click.stop>
+                            <div v-if="snippets[item.id] === undefined" class="snippet-loading">
+                                <i class="fas fa-spinner fa-spin me-1"></i> Loading matches…
+                            </div>
+                            <div v-else-if="snippets[item.id].length === 0" class="snippet-loading">
+                                No matches in JSON content.
+                            </div>
+                            <div v-else>
+                                <div v-for="(s, idx) in snippets[item.id]" :key="idx" class="snippet-item">
+                                    <span class="snippet-field-badge">[[ s.field ]]</span><span v-html="highlightSnippet(s)"></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Right: meta + actions -->
+                    <!-- Right: meta -->
                     <div class="history-card-meta">
                         <div class="d-flex align-items-center gap-2 mb-2 justify-content-end">
                             <span class="author-badge">
@@ -122,7 +186,7 @@
                 </div>
             </div>
 
-            <!-- Modals hors cards -->
+            <!-- Modals -->
             <template v-for="item in convert_history" :key="'modal_'+item.id">
                 <div class="modal fade" :id="'del_modal_'+item.id" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog">
@@ -155,8 +219,7 @@
         <div v-else class="text-center py-5">
             <i class="fas fa-inbox fa-3x mb-3" style="color:var(--text-3);"></i>
             <p style="color:var(--text-2); font-weight:500;">No conversions found</p>
-            <p style="color:var(--text-3); font-size:0.85rem;">Try adjusting your filters or create a new conversion.
-            </p>
+            <p style="color:var(--text-3); font-size:0.85rem;">Try adjusting your filters or create a new conversion.</p>
         </div>
 
         <!-- Pagination -->
@@ -169,8 +232,7 @@
                 </li>
                 <li class="page-item" v-for="page in visiblePages" :key="page"
                     :class="{ active: page === current_page, disabled: page === '...' }">
-                    <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">[[ page
-                        ]]</button>
+                    <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">[[ page ]]</button>
                     <span class="page-link" v-else>…</span>
                 </li>
                 <li class="page-item" :class="{ disabled: current_page === total_pages }">
@@ -183,50 +245,128 @@
         </nav>
     </div>
 </div>
-
-<style>
-
-</style>
 {% endblock %}
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, computed } = Vue
+    const { createApp, ref, computed, watch } = Vue
     import { display_toast, message_list } from '/static/js/toaster.js'
+
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const convert_history = ref([])
-            const current_page = ref(1)
-            const total_pages = ref(1)
-            const filter_type = ref('')
-            const sort_order = ref('desc')
-            const searchQuery = ref('')
-            const only_mine = ref(false)
+            const convert_history    = ref([])
+            const current_page       = ref(1)
+            const total_pages        = ref(1)
+            const filter_type        = ref('')
+            const sort_order         = ref('desc')
+            const searchQuery        = ref('')
+            const search_scope       = ref('all')
+            const exact_match        = ref(false)
+            const only_mine          = ref(false)
+            const date_from          = ref('')
+            const date_to            = ref('')
             const current_user_is_admin = ref()
-            const is_loading = ref(false)
+            const is_loading         = ref(false)
+            const snippets           = ref({})   // { convert_id: [ { field, snippet, match_start, match_end } ] }
+            let   searchDebounce     = null
 
-            const currentUserId = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
-            const isAuthenticated = "{{ 'true' if current_user.is_authenticated else 'false' }}";
+            const scopeLabel = computed(() => ({
+                all: 'all fields',
+                name: 'name only',
+                description: 'description only',
+                content: 'JSON content',
+            }[search_scope.value] || 'all fields'))
 
+            const searchPlaceholder = computed(() => ({
+                all: 'Search by name, description, IP, hash, domain…',
+                name: 'Search by name…',
+                description: 'Search in description…',
+                content: 'Search in JSON content (IP, hash, domain…)',
+            }[search_scope.value] || 'Search…'))
+
+            // ── Highlight matching text in name/description ──────────────────
+            function highlight(text) {
+                if (!searchQuery.value || !text) return escapeHtml(text || '')
+                if (search_scope.value === 'content') return escapeHtml(text)  // don't highlight name/desc when scope=content
+                const escaped = escapeHtml(text)
+                const escapedQ = escapeHtml(searchQuery.value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                return escaped.replace(new RegExp(escapedQ, 'gi'), m => `<mark class="search-hl">${m}</mark>`)
+            }
+
+            // ── Highlight snippet from server ────────────────────────────────
+            function highlightSnippet(s) {
+                const text = escapeHtml(s.snippet)
+                const q = escapeHtml(searchQuery.value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                return text.replace(new RegExp(q, 'gi'), m => `<mark class="search-hl">${m}</mark>`)
+            }
+
+            function escapeHtml(str) {
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+            }
+
+            // ── Fetch snippets for visible converts ──────────────────────────
+            async function fetchSnippets(ids) {
+                if (!searchQuery.value) { snippets.value = {}; return }
+                if (search_scope.value !== 'content' && search_scope.value !== 'all') return
+
+                for (const id of ids) {
+                    if (snippets.value[id] !== undefined) continue
+                    snippets.value[id] = undefined  // mark as loading
+
+                    const params = new URLSearchParams({
+                        convert_id: id,
+                        q: searchQuery.value,
+                        scope: search_scope.value === 'all' ? 'content' : search_scope.value,
+                    })
+                    try {
+                        const res = await fetch('/convert/search_in_content?' + params.toString())
+                        if (res.ok) {
+                            const data = await res.json()
+                            snippets.value = { ...snippets.value, [id]: data.results || [] }
+                        } else {
+                            snippets.value = { ...snippets.value, [id]: [] }
+                        }
+                    } catch {
+                        snippets.value = { ...snippets.value, [id]: [] }
+                    }
+                }
+            }
+
+            // ── Fetch convert list ───────────────────────────────────────────
             async function fetchConvertHistory(page) {
                 if (page < 1) return
                 is_loading.value = true
+                snippets.value = {}
+
                 const params = new URLSearchParams({
                     page,
-                    filter_type: filter_type.value || '',
-                    sort_order: sort_order.value || 'desc',
-                    only_mine: only_mine.value,
-                    searchQuery: searchQuery.value || ''
+                    filter_type:  filter_type.value  || '',
+                    sort_order:   sort_order.value   || 'desc',
+                    only_mine:    only_mine.value,
+                    searchQuery:  searchQuery.value  || '',
+                    search_scope: search_scope.value || 'all',
+                    exact_match:  exact_match.value  || false,
+                    date_from:    date_from.value    || '',
+                    date_to:      date_to.value      || '',
                 })
                 const res = await fetch('/convert/get_convert_page_history?' + params.toString())
                 if (res.ok) {
                     const data = await res.json()
                     convert_history.value = data.list
-                    total_pages.value = data.total_page
-                    current_page.value = page
+                    total_pages.value     = data.total_page
+                    current_page.value    = page
                 }
                 is_loading.value = false
+
+                // Fetch snippets for all visible items
+                if (searchQuery.value && (search_scope.value === 'content' || search_scope.value === 'all')) {
+                    fetchSnippets(convert_history.value.map(i => i.id))
+                }
             }
 
             fetchConvertHistory(1)
@@ -252,8 +392,24 @@
             }
             fetchCurrentUser()
 
-            function seeDetails(id) {
-                window.location.href = "/convert/detail/" + id
+            function seeDetails(id) { window.location.href = '/convert/detail/' + id }
+
+            function resetFilters() {
+                exact_match.value  = false
+                searchQuery.value  = ''
+                search_scope.value = 'all'
+                filter_type.value  = ''
+                sort_order.value   = 'desc'
+                only_mine.value    = false
+                date_from.value    = ''
+                date_to.value      = ''
+                snippets.value     = {}
+                fetchConvertHistory(1)
+            }
+
+            function onSearchInput() {
+                clearTimeout(searchDebounce)
+                searchDebounce = setTimeout(() => fetchConvertHistory(1), 350)
             }
 
             const visiblePages = computed(() => {
@@ -265,14 +421,12 @@
                 return pages
             })
 
-            async function onSearchInput() { await fetchConvertHistory(1) }
-            async function onEnterKey() { await fetchConvertHistory(1) }
-
             return {
                 visiblePages, message_list, convert_history, current_page, total_pages,
                 fetchConvertHistory, filter_type, sort_order, deleteItem, current_user_is_admin,
-                only_mine, currentUserId, isAuthenticated, seeDetails, searchQuery,
-                onEnterKey, onSearchInput, is_loading
+                only_mine, seeDetails, searchQuery, search_scope, exact_match, date_from, date_to,
+                onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
+                highlight, highlightSnippet, resetFilters,
             }
         }
     }).mount('#main-containers')
