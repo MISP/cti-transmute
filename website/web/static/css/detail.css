@@ -1,0 +1,374 @@
+ .detail-type-icon {
+     width: 44px;
+     height: 44px;
+     border-radius: 10px;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     font-size: 1.1rem;
+     flex-shrink: 0;
+ }
+
+ .detail-type-icon.type-misp {
+     background: rgba(37, 99, 235, 0.12);
+     color: var(--accent);
+ }
+
+ .detail-type-icon.type-stix {
+     background: rgba(16, 185, 129, 0.12);
+     color: var(--success);
+ }
+
+ .type-pill {
+     display: inline-flex;
+     align-items: center;
+     padding: 3px 10px;
+     border-radius: 6px;
+     font-size: 0.7rem;
+     font-weight: 700;
+     letter-spacing: 0.04em;
+     white-space: nowrap;
+ }
+
+ .type-misp {
+     background: rgba(37, 99, 235, 0.1);
+     color: var(--accent);
+ }
+
+ .type-stix {
+     background: rgba(16, 185, 129, 0.1);
+     color: var(--success);
+ }
+
+ .vis-badge {
+     display: inline-flex;
+     align-items: center;
+     gap: 4px;
+     padding: 2px 8px;
+     border-radius: 999px;
+     font-size: 0.68rem;
+     font-weight: 600;
+     letter-spacing: 0.03em;
+ }
+
+ .vis-public {
+     background: rgba(16, 185, 129, 0.12);
+     color: var(--success);
+ }
+
+ .vis-private {
+     background: rgba(239, 68, 68, 0.10);
+     color: var(--danger);
+ }
+
+ .author-badge {
+     display: inline-flex;
+     align-items: center;
+     gap: 5px;
+     padding: 2px 8px;
+     border-radius: 999px;
+     font-size: 0.72rem;
+     font-weight: 500;
+     background: var(--bg-2);
+     color: var(--text-2);
+ }
+
+ /* Tabs header */
+ .detail-tabs-header {
+     border-bottom: 1px solid var(--border);
+ }
+
+ /* Code panel */
+ .code-panel-wrapper {
+     border: 1px solid var(--border);
+     border-radius: var(--radius-md);
+     overflow: hidden;
+ }
+
+ .code-panel-toolbar {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 8px 14px;
+     background: var(--surface-2);
+     border-bottom: 1px solid var(--border);
+ }
+
+ .code-panel-label {
+     font-size: 0.72rem;
+     font-weight: 700;
+     color: var(--text-3);
+     text-transform: uppercase;
+     letter-spacing: 0.1em;
+     font-family: var(--font-mono);
+ }
+
+ .code-panel-pre {
+     margin: 0;
+     padding: 0;
+     max-height: 500px;
+     overflow: auto;
+     font-size: 0.8rem;
+     line-height: 1.65;
+ }
+
+ .code-panel-pre code {
+     display: block;
+     padding: 1rem 1.25rem;
+     font-family: var(--font-mono);
+     white-space: pre;
+ }
+
+ .code-panel-footer {
+     padding: 6px 14px;
+     background: var(--surface-2);
+     border-top: 1px solid var(--border);
+     font-size: 0.72rem;
+ }
+
+ /* Light mode code background */
+ html.light-mode .code-panel-pre {
+     background: #f8f9fc;
+ }
+
+ html.light-mode .code-panel-pre code {
+     color: #24292e;
+ }
+
+ /* Dark mode code background */
+ html.dark-mode .code-panel-pre {
+     background: #1a1f2e;
+ }
+
+ html.dark-mode .code-panel-pre code {
+     color: #e2e8f0;
+ }
+
+ /* Table */
+ .table {
+     color: var(--text);
+ }
+
+ .table thead th {
+     border-bottom: 1px solid var(--border);
+ }
+
+ .table tbody tr:hover {
+     background: var(--bg-2);
+ }
+
+ .table td,
+ .table th {
+     border-color: var(--border);
+ }
+
+ .code-panel-wrapper {
+     position: relative;
+ }
+
+ .code-panel-pre {
+     min-height: 300px;
+     height: 500px;
+     max-height: 80vh;
+     overflow: auto;
+     resize: vertical;
+ }
+
+ .code-loading-overlay {
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     min-height: 500px;
+     color: var(--text-2);
+     font-size: 0.85rem;
+ }
+
+ .code-loading-overlay.d-none {
+     display: none !important;
+ }
+
+
+ /* ── Graph viewer ──────────────────────────────────────────── */
+ .graph-panel-wrapper {
+     border: 1px solid var(--border);
+     border-radius: var(--radius-md);
+     overflow: hidden;
+ }
+
+ .graph-panel-toolbar {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     padding: 8px 14px;
+     background: var(--surface-2);
+     border-bottom: 1px solid var(--border);
+ }
+
+ .graph-legend {
+     border: 1px solid var(--border);
+     border-radius: var(--radius-md);
+     overflow: hidden;
+ }
+
+ .graph-legend summary {
+     padding: 10px 14px;
+     cursor: pointer;
+     font-size: 0.85rem;
+     font-weight: 500;
+     background: var(--surface-2);
+     color: var(--text-2);
+     user-select: none;
+     list-style: none;
+ }
+
+ .graph-legend summary::-webkit-details-marker {
+     display: none;
+ }
+
+ .graph-legend[open] summary {
+     border-bottom: 1px solid var(--border);
+ }
+
+ .graph-legend-body {
+     display: grid;
+     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+     gap: 1px;
+     background: var(--border);
+ }
+
+ .graph-legend-section {
+     padding: 14px 16px;
+     background: var(--surface-1);
+ }
+
+ .graph-legend-section h6 {
+     font-size: 0.78rem;
+     font-weight: 600;
+     text-transform: uppercase;
+     letter-spacing: 0.05em;
+     color: var(--text-3);
+     margin-bottom: 6px;
+ }
+
+ .graph-legend-section p {
+     font-size: 0.82rem;
+     color: var(--text-2);
+     line-height: 1.55;
+     margin: 0 0 6px;
+ }
+
+ .graph-legend-chips {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 6px;
+     margin-top: 8px;
+ }
+
+ .chip {
+     font-size: 0.75rem;
+     padding: 2px 8px;
+     border-radius: 999px;
+     border: 1px solid var(--c, #64748b);
+     color: var(--c, #64748b);
+     white-space: nowrap;
+ }
+
+ .pvt-modal .modal-content {
+     max-width: 90vw;
+     width: 800px;
+     max-height: 80vh;
+     overflow: auto;
+     background-color: var(--bg-2) !important;
+ }
+
+ /* ── Pivotick search modal dark/light ────────────────────────────────────── */
+
+ html.dark-mode .pvt-modal__body,
+ html.dark-mode .pvt-searchbox {
+     background: #131314;
+     color: #e0e0e0;
+ }
+
+ html.dark-mode .pvt-searchbox .search-container {
+     background: #1A1A1D;
+     border-bottom: 1px solid #343437;
+ }
+
+ html.dark-mode .pvt-searchbox .input-container {
+     background: #1A1A1D;
+ }
+
+ html.dark-mode .pvt-searchbox .icon-container {
+     color: #64748b;
+ }
+
+ html.dark-mode #pvt-search-input {
+     background: transparent;
+     color: #e0e0e0;
+     border: none;
+     outline: none;
+ }
+
+ html.dark-mode #pvt-search-input::placeholder {
+     color: #464649;
+ }
+
+ html.dark-mode .pvt-search-results {
+     background: #131314;
+     color: #e0e0e0;
+ }
+
+ html.dark-mode .pvt-search-results .pvt-search-result-item:hover {
+     background: #1D1D20;
+ }
+
+ html.dark-mode .pvt-search-hints {
+     background: #0F0F10;
+     border-top: 1px solid #343437;
+     color: #64748b;
+ }
+
+ html.dark-mode .pvt-search-icon {
+     background: #1D1D20;
+     border: 1px solid #343437;
+     color: #94a3b8;
+ }
+
+ html.dark-mode .pvt-search-summary {
+     background: #131314;
+     color: #64748b;
+     border-bottom: 1px solid #1A1A1D;
+ }
+
+ /* Light mode (explicit, in case Pivotick defaults drift) */
+ html.light-mode .pvt-modal__body,
+ html.light-mode .pvt-searchbox {
+     background: #ffffff;
+     color: #111;
+ }
+
+ html.light-mode .pvt-searchbox .search-container {
+     background: #f3f3f3;
+     border-bottom: 1px solid #e0e0e0;
+ }
+
+ html.light-mode #pvt-search-input {
+     background: transparent;
+     color: #111;
+ }
+
+ html.light-mode #pvt-search-input::placeholder {
+     color: #aaa;
+ }
+
+ html.light-mode .pvt-search-hints {
+     background: #fafafa;
+     border-top: 1px solid #e0e0e0;
+     color: #888;
+ }
+
+ html.light-mode .pvt-search-icon {
+     background: #f3f3f3;
+     border: 1px solid #ddd;
+     color: #555;
+ }

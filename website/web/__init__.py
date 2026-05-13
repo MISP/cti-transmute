@@ -20,6 +20,7 @@ application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 application.config['SESSION_TYPE'] = 'filesystem'  
 
 csrf = CSRFProtect(application)
+
 db = SQLAlchemy()
 sess = Session()
 login_manager = LoginManager()

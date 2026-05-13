@@ -1,0 +1,121 @@
+    .history-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+        cursor: pointer;
+        transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+    }
+
+    .history-card:hover {
+        border-color: var(--accent);
+        box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+        transform: translateY(-1px);
+    }
+
+    .history-card-inner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+    }
+
+    .history-type-badge {
+        flex-shrink: 0;
+    }
+
+    .type-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .type-misp {
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--accent);
+    }
+
+    .type-stix {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+    }
+
+    .type-default {
+        background: var(--bg-2);
+        color: var(--text-3);
+    }
+
+    .history-card-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .history-card-title {
+        font-weight: 600;
+        font-size: 0.925rem;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 400px;
+    }
+
+    .history-card-desc {
+        font-size: 0.8rem;
+        color: var(--text-2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 500px;
+    }
+
+    .history-card-meta {
+        flex-shrink: 0;
+        text-align: right;
+        min-width: 160px;
+    }
+
+    .history-card-date {
+        font-size: 0.75rem;
+        color: var(--text-3);
+        font-family: var(--font-mono);
+    }
+
+    .vis-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        flex-shrink: 0;
+    }
+
+    .vis-public {
+        background: rgba(16, 185, 129, 0.12);
+        color: var(--success);
+    }
+
+    .vis-private {
+        background: rgba(239, 68, 68, 0.10);
+        color: var(--danger);
+    }
+
+    .author-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 500;
+        background: var(--bg-2);
+        color: var(--text-2);
+    }

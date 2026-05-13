@@ -11,7 +11,6 @@ import random
 import string
 
 from website.web.utils import generate_api_key
-
 def create_convert(user_id, input_text, output_text, convert_choice, description, name, public):
     """
     Create a new Convert entry from API response and save history.
@@ -20,27 +19,21 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
     """
     try:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
-
-
         if convert_choice == "MISP_TO_STIX":
             _name = f"STIX_{now.strftime('%Y%m%d%H%M%S')}"
         else:
             _name = f"MISP_{now.strftime('%Y%m%d%H%M%S')}"
 
-
-        final_name = name or _name
-
-        existing = Convert.query.filter_by(name=final_name).first()
-
         MAX_NAME_LEN = 100
-
-        if existing:
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            base_length = MAX_NAME_LEN - (len(suffix) + 1)
-            final_name = f"{final_name[:base_length]}_{suffix}"
+        final_name = name or _name
 
         if len(final_name) > MAX_NAME_LEN:
             final_name = final_name[:MAX_NAME_LEN]
+
+        existing = Convert.query.filter_by(name=final_name).first()
+        if existing:
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            final_name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
 
         convert = Convert(
             user_id=user_id,
@@ -55,14 +48,24 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
             uuid=str(uuid.uuid4()),
             share_key=generate_api_key(36)
         )
-
         db.session.add(convert)
-
         db.session.commit()
-
         return True
 
+    except IntegrityError:
+        db.session.rollback()
+        try:
+            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            convert.name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
+            db.session.add(convert)
+            db.session.commit()
+            return True
+        except Exception:
+            db.session.rollback()
+            return False
+
     except Exception as e:
+        db.session.rollback()
         print("Exception:", e)
         return False
 
@@ -90,24 +93,52 @@ def list_all():
     return Convert.query.all()
 
 
-def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None):
+def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False):
     """
     Return paginated conversion history with optional filter, sort and ownership filtering.
-    - page: int
-    - filter_type: 'MISP_TO_STIX' | 'STIX_TO_MISP' | ''
-    - sort_order: 'asc' or 'desc'
-    - only_mine: 'true' | 'false' (string)
+    - search_scope: 'all' | 'name' | 'description' | 'content'
+    - exact_match: if True, search for exact phrase instead of contains
     """
 
     query = Convert.query
     if searchQuery:
-        search_lower = f"%{searchQuery.lower()}%"
-        query = query.filter(
-            or_(
-                Convert.name.ilike(search_lower),
-                Convert.description.ilike(search_lower),
+        if exact_match:
+            search_pattern = searchQuery  # exact, case-sensitive via ilike = case-insensitive exact
+            def make_filter(col): return col.ilike(search_pattern)
+        else:
+            search_pattern = f"%{searchQuery}%"
+            def make_filter(col): return col.ilike(search_pattern)
+
+        if search_scope == 'name':
+            query = query.filter(make_filter(Convert.name))
+        elif search_scope == 'description':
+            query = query.filter(make_filter(Convert.description))
+        elif search_scope == 'content':
+            query = query.filter(
+                or_(make_filter(Convert.input_text), make_filter(Convert.output_text))
             )
-        )
+        else:  # 'all'
+            query = query.filter(
+                or_(
+                    make_filter(Convert.name),
+                    make_filter(Convert.description),
+                    make_filter(Convert.input_text),
+                    make_filter(Convert.output_text),
+                )
+            )
+
+    # Date range filter
+    if date_from:
+        try:
+            query = query.filter(Convert.created_at >= datetime.datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.datetime.strptime(date_to, '%Y-%m-%d') + datetime.timedelta(days=1)
+            query = query.filter(Convert.created_at < dt_to)
+        except ValueError:
+            pass
 
     # Filter by conversion type if provided
     if filter_type:
@@ -143,6 +174,62 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
 
     # Pagination
     return query.paginate(page=page, per_page=10)
+
+
+# edit
+
+def search_in_content(query_str, convert_id, scope='all', context_chars=120):
+    """
+    Search for query_str in a single convert's texts and return snippets with match positions.
+    Returns list of { field, snippet, match_start, match_end }
+    """
+    if not query_str:
+        return []
+
+    convert = get_convert(convert_id)
+    if not convert:
+        return []
+
+    results = []
+    q_lower = query_str.lower()
+
+    fields = []
+    if scope in ('all', 'name'):
+        fields.append(('name', convert.name or ''))
+    if scope in ('all', 'description'):
+        fields.append(('description', convert.description or ''))
+    if scope in ('all', 'content'):
+        fields.append(('input', convert.input_text or ''))
+        fields.append(('output', convert.output_text or ''))
+
+    for field_name, text in fields:
+        text_lower = text.lower()
+        start = 0
+        seen_snippets = set()
+        while True:
+            idx = text_lower.find(q_lower, start)
+            if idx == -1:
+                break
+            # Extract context around match
+            snip_start = max(0, idx - context_chars)
+            snip_end   = min(len(text), idx + len(query_str) + context_chars)
+            snippet = ('…' if snip_start > 0 else '') + text[snip_start:snip_end] + ('…' if snip_end < len(text) else '')
+            match_in_snip = idx - snip_start + (3 if snip_start > 0 else 0)  # offset for leading '…'
+
+            key = (field_name, snip_start)
+            if key not in seen_snippets:
+                seen_snippets.add(key)
+                results.append({
+                    'field': field_name,
+                    'snippet': snippet,
+                    'match_start': match_in_snip,
+                    'match_end': match_in_snip + len(query_str),
+                })
+            start = idx + 1
+            if len(results) >= 10:  # cap per convert
+                break
+
+    return results
 
 
 # edit

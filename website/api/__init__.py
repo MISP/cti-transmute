@@ -29,12 +29,10 @@ def setup_api(application) -> Api:
 
     @api.documentation
     def custom_ui() -> str:
-        http_schema = 'http' if application.debug else 'https'
-        url = get_config('generic')
         return render_template(
             'swagger-ui.html',
             title=api.title,
-            specs_url=f"{http_schema}://{url}/api/swagger.json"
+            specs_url="/api/swagger.json"   # ← relatif, toujours correct
         )
     
     from .convert import convert_ns

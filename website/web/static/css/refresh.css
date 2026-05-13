@@ -1,0 +1,120 @@
+/* ═══════════════════════════════════════════════════════════════════
+   refresh.css  –  matching detail.css / difference.css design system
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Section title ───────────────────────────────────────────────── */
+.refresh-section-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+    margin-bottom: 0.75rem;
+}
+
+/* ── Conversion meta block ───────────────────────────────────────── */
+.refresh-meta-block {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+}
+
+.refresh-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--text-2);
+}
+
+.refresh-meta-item i {
+    color: var(--text-3);
+    width: 14px;
+    font-size: 0.75rem;
+}
+
+.refresh-meta-item code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text);
+}
+
+/* ── Options heading ─────────────────────────────────────────────── */
+.refresh-options-heading {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* ── History tabs header (reuse detail-tabs-header pattern) ──────── */
+.refresh-tabs-header {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+}
+
+/* ── Table styles (mirrors detail.css) ───────────────────────────── */
+.refresh-table {
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+.refresh-table thead th {
+    border-bottom: 1px solid var(--border);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-2);
+    padding: 10px 12px;
+}
+
+.refresh-table tbody tr {
+    transition: background 0.1s;
+}
+
+.refresh-table tbody tr:hover {
+    background: var(--bg-2);
+}
+
+.refresh-table td {
+    border-color: var(--border);
+    padding: 10px 12px;
+    vertical-align: middle;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.refresh-empty {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-3);
+    font-size: 0.875rem;
+}
+
+.refresh-empty i {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+/* ── Pending row highlight ───────────────────────────────────────── */
+.refresh-table tbody tr.row-pending {
+    background: rgba(234, 179, 8, 0.05);
+}
+
+.refresh-table tbody tr.row-pending:hover {
+    background: rgba(234, 179, 8, 0.10);
+}
