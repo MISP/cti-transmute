@@ -87,8 +87,7 @@ def cmd_help() -> None:
   {G}start{R}     {D}Start the website{R}
               {D}→ Use this every time you want to run the app{R}
 
-  {G}update{R}    {D}Pull latest code from git + rebuild Pivotick{R}
-              {D}  assets only if the submodule changed{R}
+  {G}update{R}    {D}Pull latest code from git + sync dependencies{R}
               {D}→ Use this after someone pushed new code{R}
 
   {G}backup{R}    {D}Backup the PostgreSQL database to backups/{R}
@@ -158,41 +157,14 @@ def cmd_backup() -> None:
 def cmd_update() -> None:
     header("Updating CTI-Transmute")
 
-    # ── 1. Remember Pivotick commit before pull ───────────────────────────────
-    pivotick_dir = ROOT / "vendor" / "pivotick"
-    pivotick_before = run_capture(
-        ["git", "rev-parse", "HEAD"], cwd=pivotick_dir
-    ) if (pivotick_dir / ".git").exists() else ""
-
-    # ── 2. Pull latest code ───────────────────────────────────────────────────
     info("Pulling latest code…")
     run(["git", "pull"])
     ok("Code updated")
 
-    # ── 3. Update submodules ──────────────────────────────────────────────────
     info("Updating submodules…")
     run(["git", "submodule", "update", "--init", "--recursive"])
     ok("Submodules updated")
 
-    # ── 4. Rebuild assets only if Pivotick changed ────────────────────────────
-    pivotick_after  = run_capture(
-        ["git", "rev-parse", "HEAD"], cwd=pivotick_dir
-    ) if (pivotick_dir / ".git").exists() else ""
-
-    pivotick_static = ROOT / "website" / "web" / "static" / "pivotick"
-    needs_build = (
-        pivotick_before != pivotick_after
-        or not pivotick_static.exists()
-    )
-
-    if needs_build:
-        info("Pivotick changed or missing — rebuilding assets…")
-        run([*VENV_UV, "build_assets"])
-        ok("Assets rebuilt")
-    else:
-        ok("Pivotick unchanged — skipping asset build")
-
-    # ── 5. Sync Python dependencies ───────────────────────────────────────────
     info("Syncing Python dependencies…")
     run(["uv", "sync"])
     ok("Dependencies up to date")
