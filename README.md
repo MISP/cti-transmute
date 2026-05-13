@@ -17,7 +17,7 @@ An **online service for converting cyber threat intelligence format** ([CTI-Tran
 
 A video walkthrough of CTI-Transmute is available on YouTube. It covers the main features and usage of the service.
 
-[![CTI-Transmute Demo](https://img.youtube.com/vi/-9GbyvoktXc/maxresdefault.jpg)](https://www.youtube.com/watch?v=-9GbyvoktXc&t=915s)
+[![CTI-Transmute Demo](https://img.youtube.com/vi/-9GbyvoktXc/maxresdefault.jpg)](https://www.youtube.com/watch?v=-9GbyvoktXc&t=7973s)
 
 ## Screenshots
 
