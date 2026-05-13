@@ -732,7 +732,7 @@ function parseMisp(json) {
             sublabel: attr.type,
             type: mispAttrStyle(attr), raw: attr
         }})
-        edges.push({ from: evId, to: nId, data: { label: attr.category || '' } })
+        edges.push({ from: evId, to: nId, data: { label: attr.type || '' } })
     }
 
     const referencedByObject = new Set()
@@ -950,7 +950,7 @@ function initGraphViewer(containerId, jsonText, format) {
         return
     }
 
-    const MAX_NODES = 300
+    const MAX_NODES = 1000
     if (parsed.nodes.length > MAX_NODES) {
         const degree = {}
         for (const e of parsed.edges) {
