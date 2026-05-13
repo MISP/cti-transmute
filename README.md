@@ -13,6 +13,12 @@ An **online service for converting cyber threat intelligence format** ([CTI-Tran
 * **Share**: A **Share link** to allow users to share conversions with private groups.
 * **Live Conversion**: Users can directly convert **rules** in the **UI or via the API**.
 
+## Demo
+
+A video walkthrough of CTI-Transmute is available on YouTube. It covers the main features and usage of the service.
+
+[![CTI-Transmute Demo](https://img.youtube.com/vi/-9GbyvoktXc/maxresdefault.jpg)](https://www.youtube.com/watch?v=-9GbyvoktXc&t=915s)
+
 ## Screenshots
 
 ## Installation
