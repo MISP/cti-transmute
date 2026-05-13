@@ -76,7 +76,7 @@ def misp_to_stix():
                     output_text = json.dumps(data, indent=2)
                     _user_id = None if current_user.is_anonymous() else current_user.id
 
-                    success = ConvertModel.create_convert(
+                    saved = ConvertModel.create_convert(
                         user_id=_user_id,
                         input_text=file_content,
                         output_text=output_text,
@@ -85,8 +85,9 @@ def misp_to_stix():
                         description=form.description.data or f"MISP to STIX conversion, version {form.version.data}",
                         public=form.public.data
                     )
-                    if success:
+                    if saved:
                         flash("Convert registered successfully!", "success")
+                        return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering the convert!", "danger")
 
@@ -189,7 +190,7 @@ def stix_to_misp():
                     output_text = json.dumps(data, indent=2)
                     _user_id = None if current_user.is_anonymous() else current_user.id
 
-                    success = ConvertModel.create_convert(
+                    saved = ConvertModel.create_convert(
                         user_id=_user_id,
                         input_text=file_content,
                         output_text=output_text,
@@ -198,9 +199,10 @@ def stix_to_misp():
                         description=description_to_use,
                         public=form.public.data
                     )
-                    
-                    if success:
+
+                    if saved:
                         flash("Convert registered successfully!", "success")
+                        return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering in database", "danger")
 

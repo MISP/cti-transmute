@@ -50,7 +50,7 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
         )
         db.session.add(convert)
         db.session.commit()
-        return True
+        return convert
 
     except IntegrityError:
         db.session.rollback()
@@ -59,15 +59,15 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
             convert.name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
             db.session.add(convert)
             db.session.commit()
-            return True
+            return convert
         except Exception:
             db.session.rollback()
-            return False
+            return None
 
     except Exception as e:
         db.session.rollback()
         print("Exception:", e)
-        return False
+        return None
 
 
 

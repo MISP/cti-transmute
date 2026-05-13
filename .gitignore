@@ -196,5 +196,4 @@ cython_debug/
 
 website/db_class/backups/*
 
-website/web/static/pivotick/
 vendor/pivotick/node_modules/
