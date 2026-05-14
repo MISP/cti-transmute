@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='pivotick/pivotick.css') }}">
 <link id="hljs-theme" rel="stylesheet" href="">
 <script src="/static/pivotick/pivotick.iife.js"></script>
@@ -39,6 +40,18 @@
     html.dark-mode .pvt-search-hints { background: #0F0F10; border-top: 1px solid #343437; color: #64748b; }
     html.dark-mode .pvt-search-icon { background: #1D1D20; border: 1px solid #343437; color: #94a3b8; }
     html.dark-mode .pvt-search-summary { background: #131314; color: #64748b; }
+
+    /* Large-file notice (shown instead of syntax highlighting) */
+    .hljs-size-notice {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+        color: var(--text-3);
+        background: var(--surface-2);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
 
     /* Graph spinner overlay */
     .graph-spinner-overlay {
@@ -96,6 +109,14 @@
                                 <i class="fas fa-user" style="font-size:0.65rem;"></i>
                                 [[ convert.author || 'Anonymous' ]]
                             </span>
+                            {% if current_user.is_authenticated %}
+                            <template v-if="convert.user_id && convert.user_id !== {{ current_user.id }}">
+                                <button class="follow-btn" :class="{following: is_following_author}" @click="toggleFollow()" style="font-size:0.68rem; padding:3px 10px;">
+                                    <i :class="is_following_author ? 'fas fa-user-check' : 'fas fa-user-plus'"></i>
+                                    [[ is_following_author ? 'Following' : 'Follow' ]]
+                                </button>
+                            </template>
+                            {% endif %}
                             <span class="author-badge">
                                 <i class="fas fa-clock" style="font-size:0.65rem;"></i>
                                 [[ convert.created_at ]]
@@ -216,6 +237,12 @@
                             <i class="fas fa-diagram-project me-1"></i> Graph
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+convert.id" role="tab" @click="loadComments()">
+                            <i class="fas fa-comments me-1"></i> Comments
+                            <span v-if="comments_total > 0" class="badge bg-secondary ms-1">[[ comments_total ]]</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -234,11 +261,11 @@
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    @click="downloadText(convert.name, convert.input_text, $event)">
+                                    @click="downloadText(convert.name, getRawInput(), $event)">
                                     <i class="fas fa-download me-1"></i> Download
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    @click="copyText(convert.input_text, $event)">
+                                    @click="copyText(getRawInput(), $event)">
                                     <i class="fas fa-copy me-1"></i> Copy
                                 </button>
                             </div>
@@ -248,7 +275,7 @@
                             Rendering…
                         </div>
                         <pre class="code-panel-pre d-none"
-                            id="pre-input"><code class="language-json" id="input-code">[[ convert.input_text ]]</code></pre>
+                            id="pre-input"><code class="language-json" id="input-code"></code></pre>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
@@ -268,11 +295,11 @@
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    @click="downloadText(convert.name, convert.output_text, $event)">
+                                    @click="downloadText(convert.name, getRawOutput(), $event)">
                                     <i class="fas fa-download me-1"></i> Download
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    @click="copyText(convert.output_text, $event)">
+                                    @click="copyText(getRawOutput(), $event)">
                                     <i class="fas fa-copy me-1"></i> Copy
                                 </button>
                             </div>
@@ -282,7 +309,7 @@
                             Rendering…
                         </div>
                         <pre class="code-panel-pre d-none"
-                            id="pre-output"><code class="language-json" id="output-code">[[ convert.output_text ]]</code></pre>
+                            id="pre-output"><code class="language-json" id="output-code"></code></pre>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
@@ -409,8 +436,140 @@
                     </div>
                 </div>
 
+                <!-- Comments pane -->
+                <div class="tab-pane fade" :id="'comments-pane-'+convert.id" role="tabpanel">
+                    <div class="comments-section">
+
+                        <!-- Visibility banner when convert is private -->
+                        <div v-if="!convert.public" class="visibility-info-banner private-banner">
+                            <i class="fas fa-lock mt-1"></i>
+                            <span>This convert is <strong>private</strong>. Only you and admins can see the comments below, regardless of their individual visibility.</span>
+                        </div>
+
+                        <!-- Write comment (logged-in only) -->
+                        {% if current_user.is_authenticated %}
+                        <div class="comment-form-wrapper">
+                            <textarea class="comment-textarea" v-model="new_comment_text" placeholder="Write a comment…" maxlength="2000" rows="2"></textarea>
+                            <div class="comment-form-footer">
+                                <label class="comment-privacy-toggle">
+                                    <input type="checkbox" v-model="new_comment_private">
+                                    <i class="fas fa-lock" style="font-size:0.75rem;"></i>
+                                    Private (only visible to you and the convert owner)
+                                </label>
+                                <button class="btn btn-sm btn-primary" @click="postComment()" :disabled="!new_comment_text.trim()">
+                                    <i class="fas fa-paper-plane me-1"></i> Post
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-3 mb-3" style="font-size:0.85rem; color:var(--text-3);">
+                            <a href="/account/login" style="color:var(--accent); font-weight:600;">Log in</a> to leave a comment.
+                        </div>
+                        {% endif %}
+
+                        <!-- Comments list -->
+                        <div v-if="comments_loading" class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+                        </div>
+
+                        <div v-else-if="comments.length === 0" class="comments-empty">
+                            <i class="fas fa-comments"></i>
+                            <p class="mb-0" style="font-weight:500;">No comments yet</p>
+                            <p style="font-size:0.8rem;">Be the first to share your thoughts.</p>
+                        </div>
+
+                        <template v-else>
+                            <div v-for="comment in comments" :key="comment.id" class="comment-card">
+
+                                <!-- Comment header -->
+                                <div class="comment-header">
+                                    <div class="comment-avatar">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                    <span class="comment-author">[[ comment.author ]]</span>
+                                    <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
+                                    <span v-if="comment.is_private" class="comment-private-badge">
+                                        <i class="fas fa-lock"></i> Private
+                                    </span>
+                                </div>
+
+                                <!-- Content -->
+                                <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">
+                                    [[ comment.content ]]
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="comment-actions" v-if="!comment.is_deleted">
+                                    {% if current_user.is_authenticated %}
+                                    <button class="comment-action-btn" @click="toggleReplyForm(comment.id)">
+                                        <i class="fas fa-reply"></i> Reply
+                                    </button>
+                                    <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
+                                        <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                        [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
+                                    </button>
+                                    <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Reply form -->
+                                {% if current_user.is_authenticated %}
+                                <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
+                                    <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
+                                    <div class="d-flex justify-content-end gap-2 mt-2">
+                                        <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
+                                        <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()">
+                                            <i class="fas fa-paper-plane me-1"></i> Reply
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <!-- Replies -->
+                                <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
+                                    <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                            <span class="comment-author">[[ reply.author ]]</span>
+                                            <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
+                                            <span v-if="reply.is_private" class="comment-private-badge">
+                                                <i class="fas fa-lock"></i> Private
+                                            </span>
+                                        </div>
+                                        <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">
+                                            [[ reply.content ]]
+                                        </div>
+                                        <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
+                                            {% if current_user.is_authenticated %}
+                                            <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
+                                                <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
+                                            </button>
+                                            <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </template>
+
+                    </div>
+                </div>
+
             </div>
         </div>
+
+        <!-- Report convert button -->
+        {% if current_user.is_authenticated %}
+        <div class="text-end mb-2" style="font-size:0.78rem;">
+            <button class="comment-action-btn danger" data-bs-toggle="modal" data-bs-target="#report_modal">
+                <i class="fas fa-flag me-1"></i> Report this convert
+            </button>
+        </div>
+        {% endif %}
 
         <div class="text-center mb-5">
             <a href="{{ url_for('convert.history') }}"
@@ -470,16 +629,81 @@
         </div>
     </div>
 
+    <!-- Report convert modal -->
+    {% if current_user.is_authenticated %}
+    <div class="modal fade" id="report_modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title"><i class="fas fa-flag text-danger me-2"></i>Report this convert</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size:0.85rem; color:var(--text-2); margin-bottom:0.75rem;">
+                        Select the reason for your report:
+                    </p>
+                    <div class="report-reason-grid">
+                        <button v-for="r in report_reasons" :key="r" class="report-reason-btn" :class="{selected: report_reason === r}" @click="report_reason = r">
+                            [[ r.charAt(0).toUpperCase() + r.slice(1) ]]
+                        </button>
+                    </div>
+                    <textarea class="comment-textarea" v-model="report_description" placeholder="Additional details (optional)…" rows="3" maxlength="500"></textarea>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-danger" @click="submitReport()" :disabled="!report_reason">
+                        <i class="fas fa-flag me-1"></i> Submit Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Visibility change warning modal -->
+    <div class="modal fade" id="visibility_warning_modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title">
+                        <i class="fas fa-comment-dots me-2" style="color:var(--accent);"></i>Comments visibility
+                    </h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="font-size:0.875rem; color:var(--text-2);">
+                    <div v-if="pending_visibility_action === 'private'" class="visibility-info-banner private-banner mb-3">
+                        <i class="fas fa-lock mt-1"></i>
+                        <span>Making this convert <strong>private</strong> will hide <strong>[[ pending_comment_count ]] comment(s)</strong> from the public. Only you and admins will be able to see them until you make the convert public again.</span>
+                    </div>
+                    <div v-else class="visibility-info-banner public-banner mb-3">
+                        <i class="fas fa-globe mt-1"></i>
+                        <span>Making this convert <strong>public</strong> will restore visibility for all comments. Public comments will be visible to everyone; private comments will remain visible only to their authors, you, and admins.</span>
+                    </div>
+                    <p class="mb-0">Do you want to proceed?</p>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-primary" @click="confirmTogglePublic()">
+                        <i class="fas fa-check me-1"></i> Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="convert_id" data-convert-id="{{ convert.id }}"></div>
 </div>
 {% endblock %}
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, onMounted, watch } = Vue
+    const { createApp, ref, onMounted, watch, nextTick } = Vue
     import { create_message, message_list } from '/static/js/toaster.js';
 
     const convert_id = document.getElementById('convert_id').dataset.convertId;
+    const IS_AUTH = {{ 'true' if current_user.is_authenticated else 'false' }};
+    const CURRENT_USER_ID = {{ current_user.id if current_user.is_authenticated else 'null' }};
+    const IS_ADMIN = {{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }};
 
     function applyHljsTheme() {
         const isDark = document.documentElement.classList.contains('dark-mode')
@@ -493,24 +717,50 @@
         setTimeout(() => { applyHljsTheme(); highlightAll() }, 50)
     })
 
+    // Raw text lives outside Vue to avoid reactivity overhead on large strings
+    let rawInput = '', rawOutput = ''
+
+    const HLJS_LIMIT = 200 * 1024   // 200 KB — skip highlighting above this
+
+    function highlightSide(side) {
+        const spinner = document.getElementById(`spinner-${side}`)
+        const pre     = document.getElementById(`pre-${side}`)
+        if (!pre) return
+        const block = pre.querySelector('code.language-json')
+        if (!block) return
+
+        const size = block.textContent.length
+
+        // Remove any previous size warning
+        pre.parentElement.querySelector('.hljs-size-notice')?.remove()
+
+        if (size > HLJS_LIMIT) {
+            // File too large — skip hljs, show plain text immediately
+            spinner?.classList.add('d-none')
+            spinner?.classList.remove('d-flex')
+            pre.classList.remove('d-none')
+            const notice = document.createElement('div')
+            notice.className = 'hljs-size-notice'
+            notice.innerHTML = '<i class="fas fa-info-circle me-1"></i>Syntax highlighting disabled for large files (' + Math.round(size / 1024) + ' KB)'
+            pre.parentElement.insertBefore(notice, pre)
+            return
+        }
+
+        spinner?.classList.remove('d-none')
+        spinner?.classList.add('d-flex')
+        pre.classList.add('d-none')
+        setTimeout(() => {
+            block.removeAttribute('data-highlighted')
+            hljs.highlightElement(block)
+            spinner?.classList.add('d-none')
+            spinner?.classList.remove('d-flex')
+            pre.classList.remove('d-none')
+        }, 50)
+    }
+
     function highlightAll() {
-        ['input', 'output'].forEach(side => {
-            const spinner = document.getElementById(`spinner-${side}`)
-            const pre = document.getElementById(`pre-${side}`)
-            if (!pre) return
-            spinner?.classList.remove('d-none')
-            spinner?.classList.add('d-flex')
-            pre.classList.add('d-none')
-            const block = pre.querySelector('code.language-json')
-            if (!block) return
-            setTimeout(() => {
-                block.removeAttribute('data-highlighted')
-                hljs.highlightElement(block)
-                spinner?.classList.add('d-none')
-                spinner?.classList.remove('d-flex')
-                pre.classList.remove('d-none')
-            }, 50)
-        })
+        highlightSide('input')
+        highlightSide('output')
     }
 
     document.addEventListener('shown.bs.tab', highlightAll)
@@ -524,18 +774,58 @@
             const is_loading = ref(true)
             const current_user_is_admin = ref()
 
+            // Comments state
+            const comments = ref([])
+            const comments_total = ref(0)
+            const comments_loading = ref(false)
+            const comments_loaded = ref(false)
+            const new_comment_text = ref('')
+            const new_comment_private = ref(false)
+            const reply_open_for = ref(null)
+            const reply_texts = ref({})
+            const is_following_author = ref(false)
+
+            // Report state
+            const report_reason = ref('')
+            const report_description = ref('')
+            const report_reasons = ['spam', 'inappropriate', 'inaccurate', 'other']
+
+            // Visibility warning state
+            const pending_visibility_action = ref(null)
+            const pending_comment_count = ref(0)
+
             async function getConvert() {
                 const res = await fetch(`/convert/get_convert?id=${convert_id}`)
                 if (res.ok) {
                     const data = await res.json()
                     const c = data.convert
-                    try { c.input_text = JSON.stringify(JSON.parse(c.input_text), null, 2) } catch { }
-                    try { c.output_text = JSON.stringify(JSON.parse(c.output_text), null, 2) } catch { }
+
+                    // Keep text in c for the graph viewer, but also store in plain vars
+                    // so Vue template never binds to these large strings
+                    rawInput  = c.input_text  || ''
+                    rawOutput = c.output_text || ''
+
                     convert.value = c
-                    setTimeout(() => highlightAll(), 100)
-                    window.__onConvertLoaded?.(c)
+                    is_loading.value = false
+
+                    // Wait for Vue to render the v-else block before touching the DOM
+                    await nextTick()
+
+                    const elIn  = document.getElementById('input-code')
+                    const elOut = document.getElementById('output-code')
+                    if (elIn)  elIn.textContent = rawInput
+                    if (elOut) elOut.textContent = rawOutput
+
+                    // Pretty-print + highlight deferred so the page stays responsive
+                    setTimeout(() => {
+                        try { rawInput = JSON.stringify(JSON.parse(rawInput), null, 2); if (elIn) elIn.textContent = rawInput } catch {}
+                        try { rawOutput = JSON.stringify(JSON.parse(rawOutput), null, 2); if (elOut) elOut.textContent = rawOutput } catch {}
+                        highlightAll()
+                        window.__onConvertLoaded?.(c)
+                    }, 0)
+                } else {
+                    is_loading.value = false
                 }
-                is_loading.value = false
             }
 
             async function fetchCurrentUser() {
@@ -564,6 +854,23 @@
             }
 
             async function togglePublic() {
+                const count = comments.value.filter(c => !c.is_deleted).length
+                if (count > 0) {
+                    pending_comment_count.value = count
+                    pending_visibility_action.value = convert.value.public ? 'private' : 'public'
+                    new bootstrap.Modal(document.getElementById('visibility_warning_modal')).show()
+                    return
+                }
+                await doTogglePublic()
+            }
+
+            async function confirmTogglePublic() {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('visibility_warning_modal'))
+                if (modal) modal.hide()
+                await doTogglePublic()
+            }
+
+            async function doTogglePublic() {
                 const res = await fetch(`/convert/edit_public?id=${convert_id}`)
                 const data = await res.json()
                 if (res.ok) { convert.value.public = data.convert_public; getConvert() }
@@ -595,6 +902,9 @@
                 return isNaN(d) ? str : d.toLocaleString()
             }
 
+            const getRawInput  = () => rawInput
+            const getRawOutput = () => rawOutput
+
             function copyText(text, event) {
                 const btn = event.target.closest('button')
                 const orig = btn.innerHTML
@@ -620,12 +930,14 @@
             function formatJson(side, event) {
                 const btn = event.target.closest('button')
                 const orig = btn.innerHTML
-                const raw = side === 'input' ? convert.value.input_text : convert.value.output_text
+                const raw = side === 'input' ? rawInput : rawOutput
                 try {
                     const pretty = JSON.stringify(JSON.parse(raw), null, 2)
-                    if (side === 'input') convert.value.input_text = pretty
-                    else convert.value.output_text = pretty
-                    setTimeout(() => highlightAll(), 80)
+                    const el = document.getElementById(side === 'input' ? 'input-code' : 'output-code')
+                    if (side === 'input') rawInput = pretty
+                    else rawOutput = pretty
+                    if (el) el.textContent = pretty
+                    setTimeout(() => highlightSide(side), 80)
                     btn.innerHTML = '<i class="fas fa-check"></i> Formatted!'
                 } catch (e) {
                     btn.innerHTML = '<i class="fas fa-xmark"></i> Invalid JSON'
@@ -633,21 +945,165 @@
                 setTimeout(() => { btn.innerHTML = orig }, 1800)
             }
 
+            // ── Comment functions ────────────────────────────
+
+            async function loadComments() {
+                if (comments_loaded.value) return
+                comments_loading.value = true
+                try {
+                    const res = await fetch(`/convert/get_comments?convert_id=${convert_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        comments.value = data.comments || []
+                        comments_total.value = comments.value.length
+                        comments_loaded.value = true
+                    }
+                } catch {}
+                comments_loading.value = false
+            }
+
+            async function refreshComments() {
+                const res = await fetch(`/convert/get_comments?convert_id=${convert_id}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    comments.value = data.comments || []
+                    comments_total.value = comments.value.length
+                }
+            }
+
+            async function postComment() {
+                const content = new_comment_text.value.trim()
+                if (!content) return
+                const res = await fetch('/convert/comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({convert_id: parseInt(convert_id), content, is_private: new_comment_private.value})
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (res.status === 201) {
+                    new_comment_text.value = ''
+                    new_comment_private.value = false
+                    await refreshComments()
+                    window.__refreshNotifCount?.()
+                }
+            }
+
+            async function postReply(parent_id) {
+                const content = (reply_texts.value[parent_id] || '').trim()
+                if (!content) return
+                const res = await fetch('/convert/comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({convert_id: parseInt(convert_id), content, parent_id})
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (res.status === 201) {
+                    reply_texts.value[parent_id] = ''
+                    reply_open_for.value = null
+                    await refreshComments()
+                }
+            }
+
+            async function deleteComment(comment_id) {
+                const res = await fetch(`/convert/delete_comment?comment_id=${comment_id}`)
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) await refreshComments()
+            }
+
+            async function toggleCommentPrivate(comment_id) {
+                const res = await fetch(`/convert/toggle_comment_private?comment_id=${comment_id}`)
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) await refreshComments()
+            }
+
+            function toggleReplyForm(comment_id) {
+                reply_open_for.value = reply_open_for.value === comment_id ? null : comment_id
+            }
+
+            // ── Follow functions ─────────────────────────────
+
+            async function checkFollowStatus() {
+                if (!IS_AUTH || !convert.value.user_id || convert.value.user_id === CURRENT_USER_ID) return
+                const res = await fetch(`/account/is_following?user_id=${convert.value.user_id}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    is_following_author.value = data.following
+                }
+            }
+
+            async function toggleFollow() {
+                const res = await fetch(`/account/follow?user_id=${convert.value.user_id}`)
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) {
+                    is_following_author.value = data.following
+                    window.__refreshNotifCount?.()
+                }
+            }
+
+            // ── Report functions ─────────────────────────────
+
+            async function submitReport() {
+                const res = await fetch('/convert/report', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({convert_id: parseInt(convert_id), reason: report_reason.value, description: report_description.value})
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) {
+                    report_reason.value = ''
+                    report_description.value = ''
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('report_modal'))
+                    if (modal) modal.hide()
+                }
+            }
+
             watch([convert, current_user_is_admin], ([c]) => {
-                if (c && c.user_id !== undefined) fetchShareKey()
+                if (c && c.user_id !== undefined) {
+                    fetchShareKey()
+                    checkFollowStatus()
+                }
             }, { immediate: true })
 
             onMounted(() => {
                 fetchCurrentUser()
                 getConvert()
                 getHistory()
+                // Pre-load comment count without full content
+                fetch(`/convert/get_comments?convert_id=${convert_id}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            comments.value = d.comments || []
+                            comments_total.value = comments.value.length
+                            comments_loaded.value = true
+                        }
+                    }).catch(() => {})
             })
 
             return {
                 convert, share_key, history_list, is_loading,
                 current_user_is_admin, copyText, downloadText,
                 togglePublic, deleteConvert, regenerateShareKey,
-                goToDiff, formatDate, message_list, formatJson
+                goToDiff, formatDate, message_list, formatJson,
+                getRawInput, getRawOutput,
+                // Comments
+                comments, comments_total, comments_loading,
+                new_comment_text, new_comment_private,
+                reply_open_for, reply_texts,
+                loadComments, postComment, postReply, deleteComment,
+                toggleCommentPrivate, toggleReplyForm,
+                // Follow
+                is_following_author, toggleFollow,
+                // Report
+                report_reason, report_description, report_reasons, submitReport,
+                // Visibility modal
+                pending_visibility_action, pending_comment_count, confirmTogglePublic,
             }
         }
     }).mount('#main-containers')
