@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/solid.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/brands.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/core.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/jquery-ui.css') }}">
@@ -90,6 +91,21 @@
                 </div>
             </div>
 
+            <!-- Navbar search -->
+            <form class="top-nav-search" id="top-nav-search-form" action="/convert/history" method="get">
+                <div class="top-nav-search-wrap">
+                    <i class="fas fa-search top-nav-search-icon"></i>
+                    <input
+                        id="navbar-search-input"
+                        name="search"
+                        class="top-nav-search-input"
+                        type="text"
+                        placeholder="Search converts…"
+                        autocomplete="off">
+                    <div class="nav-search-dropdown" id="navbar-search-dropdown" style="display:none;"></div>
+                </div>
+            </form>
+
             <!-- Right controls -->
             <div class="top-nav-controls">
                 <!-- User dropdown -->
@@ -111,6 +127,15 @@
                         <a href="/account/manage_user" class="top-nav-dropdown-item">
                             <i class="fas fa-users me-2"></i> Manage Users
                         </a>
+                        <a href="/account/admin/comments" class="top-nav-dropdown-item">
+                            <i class="fas fa-comments me-2"></i> All Comments
+                        </a>
+                        <a href="/account/admin/reports" class="top-nav-dropdown-item">
+                            <i class="fas fa-flag me-2"></i> Reports
+                        </a>
+                        <a href="/account/admin/logs" class="top-nav-dropdown-item">
+                            <i class="fas fa-bell me-2"></i> Activity Logs
+                        </a>
                         <div class="top-nav-dropdown-divider"></div>
                         {% endif %}
                         <a href="/account/" class="top-nav-dropdown-item">
@@ -131,6 +156,26 @@
                     </div>
                 </div>
 
+                {% if current_user.is_authenticated %}
+                <!-- Notification bell dropdown -->
+                <div class="notif-dropdown-wrapper" id="notif-wrapper">
+                    <button class="top-nav-icon-btn notif-bell-wrapper" id="notif-bell-btn" aria-label="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge" id="notif-count" style="display:none;">0</span>
+                    </button>
+                    <div class="notif-dropdown-panel" id="notif-panel" style="display:none;">
+                        <div class="notif-panel-header">
+                            <span class="notif-panel-title">Notifications</span>
+                            <button class="notif-panel-mark-all" id="notif-mark-all">Mark all read</button>
+                        </div>
+                        <div class="notif-panel-list" id="notif-panel-list">
+                            <div class="notif-panel-loading"><div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div></div>
+                        </div>
+                        <a href="/account/notifications" class="notif-panel-footer">See all notifications <i class="fas fa-arrow-right ms-1"></i></a>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Theme toggle -->
                 <button class="top-nav-icon-btn" id="theme-toggle" aria-label="Toggle theme">
                     <i id="theme-icon" class="fas fa-sun"></i>
@@ -145,7 +190,7 @@
     </nav>
 
     <!-- ── MAIN CONTENT ─────────────────────────────────────────── -->
-    <main id="main-containers" class="container my-5">
+    <main id="main-containers" class="container">
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -287,6 +332,78 @@
                     document.getElementById('topNavLinks').classList.toggle('mobile-open');
                 });
 
+                // Navbar search dropdown
+                ;(function () {
+                    const input    = document.getElementById('navbar-search-input')
+                    const dropdown = document.getElementById('navbar-search-dropdown')
+                    const form     = document.getElementById('top-nav-search-form')
+                    if (!input || !dropdown) return
+
+                    // Pre-fill when on history page
+                    const _sq = new URLSearchParams(window.location.search).get('search')
+                    if (_sq) input.value = _sq
+
+                    let debounce = null
+
+                    function esc(str) {
+                        return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+                    }
+
+                    function typeLabel(t) {
+                        return t === 'MISP_TO_STIX' ? 'MISP→STIX' : t === 'STIX_TO_MISP' ? 'STIX→MISP' : t || '—'
+                    }
+                    function typeClass(t) {
+                        return t === 'MISP_TO_STIX' ? 'nav-sd-misp' : t === 'STIX_TO_MISP' ? 'nav-sd-stix' : ''
+                    }
+
+                    async function search(q) {
+                        if (!q.trim()) { dropdown.style.display = 'none'; return }
+                        try {
+                            const res = await fetch('/convert/get_convert_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
+                            if (!res.ok) return
+                            const data = await res.json()
+                            const items = (data.list || []).slice(0, 8)
+                            if (items.length === 0) {
+                                dropdown.innerHTML = '<div class="nav-sd-empty"><i class="fas fa-inbox me-1"></i>No results</div>'
+                            } else {
+                                dropdown.innerHTML =
+                                    items.map(item => `
+                                        <a class="nav-sd-item" href="/convert/detail/${item.id}">
+                                            <span class="nav-sd-badge ${typeClass(item.conversion_type)}">${typeLabel(item.conversion_type)}</span>
+                                            <span class="nav-sd-name">${esc(item.name)}</span>
+                                        </a>
+                                    `).join('') +
+                                    `<a class="nav-sd-footer" href="/convert/history?search=${encodeURIComponent(q)}">
+                                        <i class="fas fa-search me-1"></i>See all results
+                                    </a>`
+                            }
+                            dropdown.style.display = 'block'
+                        } catch {}
+                    }
+
+                    input.addEventListener('input', () => {
+                        clearTimeout(debounce)
+                        const q = input.value
+                        if (!q.trim()) { dropdown.style.display = 'none'; return }
+                        debounce = setTimeout(() => search(q), 250)
+                    })
+
+                    input.addEventListener('focus', () => {
+                        if (input.value.trim()) search(input.value)
+                    })
+
+                    input.addEventListener('keydown', e => {
+                        if (e.key === 'Escape') dropdown.style.display = 'none'
+                    })
+
+                    // prevent form submit from closing dropdown items via navigation race
+                    form.addEventListener('submit', () => { dropdown.style.display = 'none' })
+
+                    document.addEventListener('click', e => {
+                        if (!form.contains(e.target)) dropdown.style.display = 'none'
+                    })
+                })()
+
                 // Back to top
                 const backBtn = document.getElementById('backToTop');
                 window.addEventListener('scroll', () => {
@@ -295,6 +412,128 @@
                 backBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
             })();
     </script>
+
+    {% if current_user.is_authenticated %}
+    <script>
+        (function () {
+            const btn    = document.getElementById('notif-bell-btn')
+            const panel  = document.getElementById('notif-panel')
+            const list   = document.getElementById('notif-panel-list')
+            const badge  = document.getElementById('notif-count')
+            const markAll = document.getElementById('notif-mark-all')
+            let panelOpen = false
+            let loaded = false
+
+            function updateBadge(count) {
+                if (!badge) return
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count
+                    badge.style.display = 'flex'
+                } else {
+                    badge.style.display = 'none'
+                }
+            }
+
+            async function refreshNotifCount() {
+                try {
+                    const res = await fetch('/account/get_notification_count')
+                    if (!res.ok) return
+                    const d = await res.json()
+                    updateBadge(d.count || 0)
+                } catch {}
+            }
+
+            function notifIcon(type) {
+                if (type === 'comment_reply') return 'fa-reply'
+                if (type === 'new_follow_convert') return 'fa-bolt'
+                return 'fa-flag'
+            }
+            function notifColor(type) {
+                if (type === 'comment_reply') return 'type-reply'
+                if (type === 'new_follow_convert') return 'type-convert'
+                return 'type-report'
+            }
+
+            async function loadPanelNotifs() {
+                list.innerHTML = '<div class="notif-panel-loading"><div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div></div>'
+                try {
+                    const res = await fetch('/account/get_notifications?page=1')
+                    if (!res.ok) return
+                    const data = await res.json()
+                    const items = (data.list || []).slice(0, 6)
+                    if (items.length === 0) {
+                        list.innerHTML = '<div class="notif-panel-empty"><i class="fas fa-bell-slash"></i> No notifications yet.</div>'
+                        return
+                    }
+                    list.innerHTML = items.map(n => `
+                        <div class="notif-panel-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-related="${n.related_id || ''}" data-type="${n.related_type || ''}">
+                            <div class="notif-icon ${notifColor(n.type)}"><i class="fas ${notifIcon(n.type)}"></i></div>
+                            <div class="notif-panel-item-body">
+                                <div class="notif-panel-item-msg">${n.message}</div>
+                                <div class="notif-panel-item-date">${n.created_at}</div>
+                            </div>
+                            ${!n.is_read ? '<div class="unread-dot"></div>' : ''}
+                        </div>
+                    `).join('')
+                    list.querySelectorAll('.notif-panel-item').forEach(el => {
+                        el.addEventListener('click', async () => {
+                            const id = el.dataset.id
+                            const related = el.dataset.related
+                            if (!el.classList.contains('unread')) {
+                                if (related) window.location.href = '/convert/detail/' + related
+                                return
+                            }
+                            await fetch(`/account/mark_notification_read?notification_id=${id}`)
+                            el.classList.remove('unread')
+                            el.querySelector('.unread-dot')?.remove()
+                            const currentCount = parseInt(badge?.textContent || '0') || 0
+                            updateBadge(Math.max(0, currentCount - 1))
+                            if (related) window.location.href = '/convert/detail/' + related
+                        })
+                    })
+                    loaded = true
+                } catch (e) {
+                    list.innerHTML = '<div class="notif-panel-empty">Error loading notifications.</div>'
+                }
+            }
+
+            function openPanel() {
+                panel.style.display = 'block'
+                panelOpen = true
+                loadPanelNotifs()
+            }
+
+            function closePanel() {
+                panel.style.display = 'none'
+                panelOpen = false
+                loaded = false
+            }
+
+            btn?.addEventListener('click', (e) => {
+                e.stopPropagation()
+                panelOpen ? closePanel() : openPanel()
+            })
+
+            document.addEventListener('click', (e) => {
+                if (panelOpen && !document.getElementById('notif-wrapper')?.contains(e.target)) closePanel()
+            })
+
+            markAll?.addEventListener('click', async (e) => {
+                e.stopPropagation()
+                await fetch('/account/mark_all_read')
+                list.querySelectorAll('.notif-panel-item.unread').forEach(el => {
+                    el.classList.remove('unread')
+                    el.querySelector('.unread-dot')?.remove()
+                })
+                updateBadge(0)
+            })
+
+            refreshNotifCount()
+            setInterval(refreshNotifCount, 60000)
+            window.__refreshNotifCount = refreshNotifCount
+        })()
+    </script>
+    {% endif %}
 
     {% block script %}
     <script type="module">

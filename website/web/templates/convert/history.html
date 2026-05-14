@@ -4,7 +4,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container my-5">
+<div>
 
     <!-- Header -->
     <div class="d-flex align-items-center justify-content-between mb-4">
@@ -369,6 +369,10 @@
                 }
             }
 
+            // Pre-fill search from navbar redirect (?search=...)
+            const _urlSearch = new URLSearchParams(window.location.search).get('search')
+            if (_urlSearch) searchQuery.value = _urlSearch
+
             fetchConvertHistory(1)
 
             async function deleteItem(id) {
@@ -412,6 +416,7 @@
                 searchDebounce = setTimeout(() => fetchConvertHistory(1), 350)
             }
 
+
             const visiblePages = computed(() => {
                 const pages = [], total = total_pages.value, current = current_page.value
                 if (total <= 7) { for (let i = 1; i <= total; i++) pages.push(i) }
@@ -427,6 +432,7 @@
                 only_mine, seeDetails, searchQuery, search_scope, exact_match, date_from, date_to,
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters,
+
             }
         }
     }).mount('#main-containers')

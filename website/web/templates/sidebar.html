@@ -1,96 +1,87 @@
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-header d-flex align-items-center px-3 py-2">
-        <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Logo"
-            style="height:30px; margin-right:8px;">
-        <span class="fs-5">CTI Transmutes</span>
+<div class="conv-sidebar" id="conv-sidebar">
+
+  <!-- Quick search -->
+  <div class="conv-sidebar-search">
+    <div class="conv-sidebar-search-label">Search Converts</div>
+    <div class="conv-sidebar-search-box">
+      <i class="fas fa-search conv-sidebar-search-icon"></i>
+      <input
+        id="sidebar-search-input"
+        class="conv-sidebar-search-input"
+        type="text"
+        placeholder="Name, description, content…"
+        @input="onSidebarSearch"
+        v-model="sidebarQuery"
+        @keyup.enter="onSidebarSearch">
+      <button v-if="sidebarQuery" class="conv-sidebar-search-clear" @click="clearSidebarSearch" title="Clear">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
+    <div v-if="sidebarQuery" class="conv-sidebar-search-hint">
+      <i class="fas fa-info-circle me-1"></i>
+      Press <kbd>↵</kbd> or wait to search
+    </div>
+  </div>
 
-    <ul class="nav nav-pills flex-column mb-auto">
-        <li class="nav-item">
-            <a href="/" class="nav-link">
-                <i class="fas fa-home me-2"></i>Home
-            </a>
-        </li>
+  <div class="conv-sidebar-divider"></div>
 
-        <li>
-            <a class="nav-link" data-bs-toggle="collapse" href="#userMenu" role="button" aria-expanded="false"
-                aria-controls="userMenu">
-                <i class="fa-solid fa-user me-2"></i>
-                {% if current_user.is_authenticated %}
-                {{ current_user.get_first_name() }}
-                {% else %}
-                User
-                {% endif %}
-                <i class="fa-solid fa-caret-down"></i>
-            </a>
-            <div class="collapse ps-3" id="userMenu">
-                <ul class="nav flex-column">
-                    {% if current_user.is_authenticated %}
-                    {% if current_user.is_admin() %}
-                    <li>
-                        <a href="/account/manage_user" class="nav-link">
-                            <i class="fa-solid fa-users fa-fw me-2"></i> Manage users
-                        </a>
-                    </li>
-                    {% endif %}
-                    <li>
-                        <a href="/account/" class="nav-link">
-                            <i class="fa-solid fa-user fa-fw me-2"></i> Profil
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/account/logout" class="nav-link">
-                            <i class="fa-solid fa-right-from-bracket fa-fw me-2"></i> Logout
-                        </a>
-                    </li>
-                    {% else %}
-                    <li>
-                        <a href="/account/register" class="nav-link">
-                            <i class="fa-solid fa-user-plus fa-fw me-2"></i> Register
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/account/login" class="nav-link">
-                            <i class="fa-solid fa-right-to-bracket fa-fw me-2"></i> Login
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </div>
-        </li>
+  <!-- Active filters summary -->
+  <div class="conv-sidebar-section">
+    <div class="conv-sidebar-section-label">Active Filters</div>
+    <div v-if="!filter_type && !searchQuery && !date_from && !date_to" class="conv-sidebar-empty">
+      No filters applied
+    </div>
+    <div v-else class="conv-sidebar-chips">
+      <span v-if="searchQuery" class="conv-sidebar-chip">
+        <i class="fas fa-search me-1"></i>[[ searchQuery ]]
+        <button @click="searchQuery=''; onSearchInput()"><i class="fas fa-times"></i></button>
+      </span>
+      <span v-if="filter_type" class="conv-sidebar-chip">
+        <i class="fas fa-exchange-alt me-1"></i>[[ filter_type.replace('_',' → ') ]]
+        <button @click="filter_type=''; onSearchInput()"><i class="fas fa-times"></i></button>
+      </span>
+      <span v-if="date_from" class="conv-sidebar-chip">
+        <i class="fas fa-calendar me-1"></i>From [[ date_from ]]
+        <button @click="date_from=''; onSearchInput()"><i class="fas fa-times"></i></button>
+      </span>
+      <span v-if="date_to" class="conv-sidebar-chip">
+        <i class="fas fa-calendar me-1"></i>To [[ date_to ]]
+        <button @click="date_to=''; onSearchInput()"><i class="fas fa-times"></i></button>
+      </span>
+    </div>
+  </div>
 
-        <li>
-            <a href="/list" class="nav-link">
-                <i class="fas fa-file-upload me-2"></i>API endpoints
-            </a>
-        </li>
-        <li>
-            <a href="/convert/history" class="nav-link">
-                <i class="fas fa-solid fa-book me-2"></i>History
-            </a>
-        </li>
-        <li>
-            <a class="nav-link" data-bs-toggle="collapse" href="#convertMenu" role="button" aria-expanded="false"
-                aria-controls="convertMenu">
-                <i class="fas fa-exchange-alt me-2"></i>Convert <i class="fa-solid fa-caret-down"></i>
-            </a>
-            <div class="collapse ps-3" id="convertMenu">
-                <ul class="nav flex-column">
-                    <li>
-                        <a href="/convert/misp_to_stix" class="nav-link">
-                            MISP to STIX
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/convert/stix_to_misp" class="nav-link">
-                            STIX to MISP
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </li>
-    </ul>
+  <div class="conv-sidebar-divider"></div>
 
+  <!-- Type filter -->
+  <div class="conv-sidebar-section">
+    <div class="conv-sidebar-section-label">Type</div>
+    <div class="conv-sidebar-options">
+      <button class="conv-sidebar-opt" :class="{active: filter_type===''}" @click="filter_type=''; onSearchInput()">
+        <i class="fas fa-layer-group me-2"></i>All
+      </button>
+      <button class="conv-sidebar-opt" :class="{active: filter_type==='MISP_TO_STIX'}" @click="filter_type='MISP_TO_STIX'; onSearchInput()">
+        <i class="fas fa-arrow-right me-2"></i>MISP → STIX
+      </button>
+      <button class="conv-sidebar-opt" :class="{active: filter_type==='STIX_TO_MISP'}" @click="filter_type='STIX_TO_MISP'; onSearchInput()">
+        <i class="fas fa-arrow-left me-2"></i>STIX → MISP
+      </button>
+    </div>
+  </div>
 
+  <div class="conv-sidebar-divider"></div>
+
+  <!-- Sort -->
+  <div class="conv-sidebar-section">
+    <div class="conv-sidebar-section-label">Sort</div>
+    <div class="conv-sidebar-options">
+      <button class="conv-sidebar-opt" :class="{active: sort_order==='desc'}" @click="sort_order='desc'; onSearchInput()">
+        <i class="fas fa-sort-amount-down me-2"></i>Newest first
+      </button>
+      <button class="conv-sidebar-opt" :class="{active: sort_order==='asc'}" @click="sort_order='asc'; onSearchInput()">
+        <i class="fas fa-sort-amount-up me-2"></i>Oldest first
+      </button>
+    </div>
+  </div>
 
 </div>
