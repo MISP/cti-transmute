@@ -7,6 +7,7 @@ from website.web.convert.convert_form import  editConvertForm, mispToStixParamFo
 from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
 import requests
 from ..convert import convert_core as ConvertModel
+from ..account import account_core as AccountModel
 
 convert_blueprint = Blueprint(
     "convert",
@@ -87,6 +88,10 @@ def misp_to_stix():
                     )
                     if saved:
                         flash("Convert registered successfully!", "success")
+                        _actor_name = current_user.first_name if not current_user.is_anonymous() else "Anonymous"
+                        AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: MISP→STIX, Public: {saved.public}")
+                        if saved.public and not current_user.is_anonymous():
+                            AccountModel.notify_followers_new_convert(saved, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering the convert!", "danger")
@@ -202,6 +207,10 @@ def stix_to_misp():
 
                     if saved:
                         flash("Convert registered successfully!", "success")
+                        _actor_name = current_user.first_name if not current_user.is_anonymous() else "Anonymous"
+                        AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: STIX→MISP, Public: {saved.public}")
+                        if saved.public and not current_user.is_anonymous():
+                            AccountModel.notify_followers_new_convert(saved, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering in database", "danger")
@@ -287,8 +296,10 @@ def delete_rule() -> jsonify:
     convert = ConvertModel.get_convert(item_id) 
     if convert:
         if current_user.id == convert.user_id or current_user.is_admin():
+            _convert_name = convert.name
             success = ConvertModel.delete_convert(item_id)
             if success:
+                AccountModel.create_system_log("convert_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(item_id), target_name=_convert_name)
                 return {"success": True, "message": "Conversion history deleted!" , "toast_class" : "success"}, 200
             else:
                 return {"success": False, "message": "Error during deleting the item !" , "toast_class" : "danger"}, 500
@@ -384,16 +395,18 @@ def edit_public():
         convert = ConvertModel.get_convert(id)
         if convert:
             if convert.user_id == current_user.id or current_user.is_admin():
+                comment_count = len([c for c in convert.comments if not c.is_deleted])
                 success , _bool = ConvertModel.edit_public(id)
                 if success:
                     if _bool == True:
-                        message="This convert are public now"
+                        message="This convert is now public"
                     else:
-                        message="This convert are private now"
+                        message="This convert is now private"
                     return {
-                        "success": True, 
-                        "convert_public": convert.public,
-                        "message": message, 
+                        "success": True,
+                        "convert_public": _bool,
+                        "message": message,
+                        "comment_count": comment_count,
                         "toast_class" : "success"
                         }, 200
                 return {
@@ -741,7 +754,238 @@ def get_history_details():
             "toast_class" : "danger"
             }, 500
     return {
-        "success": False, 
-        "message": "No history_id provided", 
+        "success": False,
+        "message": "No history_id provided",
         "toast_class" : "danger"
         }, 500
+
+
+###########################
+#   Comments & Reactions  #
+###########################
+
+@convert_blueprint.route("/get_comments", methods=['GET'])
+def get_comments():
+    """Return visible comments for a convert."""
+    convert_id = request.args.get('convert_id', type=int)
+    if not convert_id:
+        return {"success": False, "message": "Missing convert_id", "toast_class": "danger"}, 400
+
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Convert not found", "toast_class": "danger"}, 404
+
+    uid = current_user.id if current_user.is_authenticated else None
+    is_admin = current_user.is_admin() if current_user.is_authenticated else False
+
+    comments = ConvertModel.get_comments(
+        convert_id=convert_id,
+        current_user_id=uid,
+        is_admin=is_admin,
+        convert_owner_id=convert.user_id
+    )
+    return {"success": True, "comments": comments}, 200
+
+
+@convert_blueprint.route("/comment", methods=['POST'])
+@login_required
+def add_comment():
+    """Create a comment or reply on a convert."""
+    data = request.get_json(silent=True) or {}
+    convert_id = data.get('convert_id')
+    content = (data.get('content') or '').strip()
+    is_private = bool(data.get('is_private', False))
+    parent_id = data.get('parent_id')
+
+    if not convert_id or not content:
+        return {"success": False, "message": "Missing content or convert_id", "toast_class": "danger"}, 400
+
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Convert not found", "toast_class": "danger"}, 404
+
+    if not convert.public and not current_user.is_admin() and current_user.id != convert.user_id:
+        return {"success": False, "message": "You cannot comment on a private convert", "toast_class": "danger"}, 403
+
+    comment = ConvertModel.create_comment(
+        convert_id=convert_id,
+        user_id=current_user.id,
+        content=content,
+        is_private=is_private,
+        parent_id=parent_id if parent_id else None
+    )
+    if not comment:
+        return {"success": False, "message": "Failed to save comment", "toast_class": "danger"}, 500
+
+    if parent_id:
+        parent = ConvertModel.get_comment(parent_id)
+        if parent:
+            AccountModel.notify_comment_reply(parent, comment, current_user.id)
+
+    return {
+        "success": True,
+        "message": "Comment posted",
+        "toast_class": "success",
+        "comment": comment.to_json(
+            current_user_id=current_user.id,
+            is_admin=current_user.is_admin(),
+            convert_owner_id=convert.user_id
+        )
+    }, 201
+
+
+@convert_blueprint.route("/delete_comment", methods=['GET'])
+@login_required
+def delete_comment():
+    """Soft-delete a comment."""
+    comment_id = request.args.get('comment_id', type=int)
+    if not comment_id:
+        return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
+
+    comment = ConvertModel.get_comment(comment_id)
+    success, message = ConvertModel.delete_comment(
+        comment_id=comment_id,
+        requesting_user_id=current_user.id,
+        is_admin=current_user.is_admin()
+    )
+    if success and comment:
+        AccountModel.create_system_log("comment_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="comment", target_id=comment_id, target_name=f"On convert #{comment.convert_id}", details=comment.content[:120] if comment.content else None)
+    return {
+        "success": success,
+        "message": message,
+        "toast_class": "success" if success else "danger"
+    }, 200 if success else 403
+
+
+@convert_blueprint.route("/toggle_comment_private", methods=['GET'])
+@login_required
+def toggle_comment_private():
+    """Toggle the private/public visibility of a comment."""
+    comment_id = request.args.get('comment_id', type=int)
+    if not comment_id:
+        return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
+
+    success, message, new_private = ConvertModel.toggle_comment_private(
+        comment_id=comment_id,
+        requesting_user_id=current_user.id,
+        is_admin=current_user.is_admin()
+    )
+    return {
+        "success": success,
+        "message": message,
+        "is_private": new_private,
+        "toast_class": "success" if success else "danger"
+    }, 200 if success else 403
+
+
+@convert_blueprint.route("/react", methods=['POST'])
+@login_required
+def react():
+    """Toggle an emoji reaction on a comment."""
+    data = request.get_json(silent=True) or {}
+    comment_id = data.get('comment_id')
+    emoji = data.get('emoji', '').strip()
+
+    allowed_emojis = ['👍', '😊', '❤️', '🎯', '⚠️']
+    if not comment_id or emoji not in allowed_emojis:
+        return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
+
+    success, added = ConvertModel.react_to_comment(comment_id, current_user.id, emoji)
+    if not success:
+        return {"success": False, "message": "Failed to update reaction", "toast_class": "danger"}, 500
+
+    return {
+        "success": True,
+        "added": added,
+        "message": "Reaction added" if added else "Reaction removed",
+        "toast_class": "success"
+    }, 200
+
+
+###########################
+#   Report a Convert      #
+###########################
+
+@convert_blueprint.route("/report", methods=['POST'])
+@login_required
+def report_convert():
+    """Submit a report on a convert."""
+    data = request.get_json(silent=True) or {}
+    convert_id = data.get('convert_id')
+    reason = data.get('reason', '').strip()
+    description = (data.get('description') or '').strip() or None
+
+    if not convert_id or reason not in ConvertModel.REPORT_REASONS:
+        return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
+
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Convert not found", "toast_class": "danger"}, 404
+
+    report = ConvertModel.create_report(
+        convert_id=convert_id,
+        user_id=current_user.id,
+        reason=reason,
+        description=description
+    )
+    if not report:
+        return {"success": False, "message": "Failed to submit report", "toast_class": "danger"}, 500
+
+    AccountModel.notify_admins_new_report(convert, current_user.id)
+    return {"success": True, "message": "Report submitted. Thank you.", "toast_class": "success"}, 201
+
+
+@convert_blueprint.route("/admin/get_reports", methods=['GET'])
+@login_required
+def admin_get_reports():
+    """Admin: get paginated reports."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    page = request.args.get('page', 1, type=int)
+    status = request.args.get('status', type=str)
+    search = request.args.get('search', '', type=str) or None
+    pagination = ConvertModel.get_reports(page=page, status=status, search=search)
+    return {
+        "success": True,
+        "list": [r.to_json() for r in pagination.items],
+        "total_page": pagination.pages
+    }, 200
+
+
+@convert_blueprint.route("/admin/review_report", methods=['GET'])
+@login_required
+def admin_review_report():
+    """Admin: mark a report as reviewed or dismissed."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    report_id = request.args.get('report_id', type=int)
+    new_status = request.args.get('status', type=str)
+    if not report_id or new_status not in ('reviewed', 'dismissed'):
+        return {"success": False, "message": "Invalid params", "toast_class": "danger"}, 400
+    success = ConvertModel.review_report(report_id, new_status, current_user.id)
+    return {
+        "success": success,
+        "message": f"Report marked as {new_status}" if success else "Failed",
+        "toast_class": "success" if success else "danger"
+    }, 200 if success else 500
+
+
+@convert_blueprint.route("/admin/get_all_comments", methods=['GET'])
+@login_required
+def admin_get_comments():
+    """Admin: get all comments across all converts."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '', type=str) or None
+    pagination = ConvertModel.get_all_comments_admin(page=page, search=search)
+    items = []
+    for c in pagination.items:
+        d = c.to_json(current_user_id=current_user.id, is_admin=True)
+        d["replies"] = []
+        items.append(d)
+    return {
+        "success": True,
+        "list": items,
+        "total_page": pagination.pages
+    }, 200

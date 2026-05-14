@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
+{% endblock %}
+{% block content %}
+<div>
+
+  <div class="list-header">
+    <div class="home-hero-badge"><i class="fas fa-stream"></i> Admin</div>
+    <h1 class="list-title">Activity Logs</h1>
+    <p class="list-subtitle">System events, notifications, and all activity across the platform.</p>
+  </div>
+
+  <div class="custom-card p-3">
+
+    <!-- Toolbar -->
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+      <div class="search-bar-wrapper flex-grow-1">
+        <i class="fas fa-search search-bar-icon"></i>
+        <input class="search-bar-input" type="text" v-model="search" @input="debounceSearch" placeholder="Search logs…">
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm" :class="log_type==='all'           ? 'btn-primary'          : 'btn-outline-secondary'" @click="log_type='all';           page=1; load()">All</button>
+        <button class="btn btn-sm" :class="log_type==='system'        ? 'btn-dark'             : 'btn-outline-secondary'" @click="log_type='system';        page=1; load()"><i class="fas fa-cogs me-1"></i>System</button>
+        <button class="btn btn-sm" :class="log_type==='notifications' ? 'btn-outline-primary'  : 'btn-outline-secondary'" @click="log_type='notifications'; page=1; load()"><i class="fas fa-bell me-1"></i>Notifs</button>
+      </div>
+    </div>
+
+    <div v-if="loading" class="text-center py-5">
+      <div class="spinner-border" style="color:var(--accent);"></div>
+    </div>
+
+    <div v-else-if="logs.length === 0" class="text-center py-5" style="color:var(--text-3);">
+      <i class="fas fa-stream fa-2x mb-2 d-block"></i>
+      No logs found.
+    </div>
+
+    <div v-else>
+      <table class="table table-hover align-middle" style="font-size:0.875rem;">
+        <thead>
+          <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
+            <th>ID</th><th>Source</th><th>Type / Event</th><th>Actor</th><th>Target / Message</th><th>Date</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="l in logs" :key="l.source+l.id" style="cursor:pointer;" @click="goToLog(l)">
+            <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ l.id ]]</td>
+            <td>
+              <span v-if="l.source==='system'" class="admin-status-badge" style="background:rgba(100,116,139,0.12);color:var(--text-2);">
+                <i class="fas fa-cog me-1"></i>System
+              </span>
+              <span v-else class="admin-status-badge" style="background:rgba(37,99,235,0.10);color:var(--accent);">
+                <i class="fas fa-bell me-1"></i>Notif
+              </span>
+            </td>
+            <td>
+              <!-- System log event type -->
+              <span v-if="l.source==='system'" class="admin-status-badge" :style="{
+                background: l.event_type==='convert_created' ? 'rgba(16,185,129,0.12)' : l.event_type==='convert_deleted' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
+                color: l.event_type==='convert_created' ? 'var(--success)' : l.event_type==='convert_deleted' ? 'var(--danger)' : 'var(--warning)'
+              }">
+                <i class="me-1" :class="l.event_type==='convert_created' ? 'fas fa-plus-circle' : l.event_type==='convert_deleted' ? 'fas fa-trash' : 'fas fa-comment-slash'"></i>
+                [[ l.event_type.replace(/_/g,' ') ]]
+              </span>
+              <!-- Notification type -->
+              <span v-else class="admin-status-badge" :style="{
+                background: l.type==='new_follow_convert' ? 'rgba(16,185,129,0.12)' : l.type==='comment_reply' ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)',
+                color: l.type==='new_follow_convert' ? 'var(--success)' : l.type==='comment_reply' ? 'var(--accent)' : 'var(--danger)'
+              }">
+                <i class="me-1" :class="l.type==='new_follow_convert' ? 'fas fa-bolt' : l.type==='comment_reply' ? 'fas fa-reply' : 'fas fa-flag'"></i>
+                [[ (l.type || '').replace(/_/g,' ') ]]
+              </span>
+            </td>
+            <td style="font-size:0.82rem;">[[ l.actor_name || '—' ]]</td>
+            <td class="text-truncate" style="max-width:280px; color:var(--text-2); font-size:0.82rem;">
+              <span v-if="l.source==='system'">[[ l.target_name || '' ]] <span v-if="l.details" style="color:var(--text-3);">· [[ l.details ]]</span></span>
+              <span v-else>[[ l.message ]]</span>
+            </td>
+            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ l.created_at ]]</td>
+            <td @click.stop>
+              <button class="btn btn-sm btn-outline-danger" @click="deleteLog(l)" title="Delete">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="d-flex justify-content-center gap-2 mt-3">
+        <button class="btn btn-sm btn-outline-secondary" :disabled="page <= 1" @click="page--; load()">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ page ]] / [[ total_page ]]</span>
+        <button class="btn btn-sm btn-outline-secondary" :disabled="page >= total_page" @click="page++; load()">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+  const { createApp, ref, onMounted } = Vue
+  import { create_message, message_list } from '/static/js/toaster.js';
+
+  createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+      const logs = ref([])
+      const loading = ref(true)
+      const page = ref(1)
+      const total_page = ref(1)
+      const search = ref('')
+      const log_type = ref('all')
+      let debounceTimer = null
+
+      async function load() {
+        loading.value = true
+        try {
+          const params = new URLSearchParams({ page: page.value, log_type: log_type.value })
+          if (search.value) params.set('search', search.value)
+          const res = await fetch(`/account/admin/get_all_notifications?${params}`)
+          if (res.ok) {
+            const data = await res.json()
+            logs.value = data.list || []
+            total_page.value = data.total_page || 1
+          }
+        } catch {}
+        loading.value = false
+      }
+
+      function debounceSearch() {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => { page.value = 1; load() }, 350)
+      }
+
+      function goToLog(l) {
+        const rid = l.related_id || l.target_id
+        if (rid && (l.related_type === 'convert' || l.target_type === 'convert')) {
+          window.location.href = '/convert/detail/' + rid
+        }
+      }
+
+      async function deleteLog(l) {
+        const res = await fetch(`/account/admin/delete_log?log_id=${l.id}&source=${l.source}`)
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.success) logs.value = logs.value.filter(x => !(x.id === l.id && x.source === l.source))
+      }
+
+      onMounted(load)
+      return { logs, loading, page, total_page, search, log_type, load, debounceSearch, goToLog, deleteLog, message_list }
+    }
+  }).mount('#main-containers')
+</script>
+{% endblock %}

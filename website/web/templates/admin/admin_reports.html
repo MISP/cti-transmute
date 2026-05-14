@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
+{% endblock %}
+{% block content %}
+<div id="main-container">
+
+  <div class="list-header">
+    <div class="home-hero-badge"><i class="fas fa-flag"></i> Admin</div>
+    <h1 class="list-title">Convert Reports</h1>
+    <p class="list-subtitle">Review and act on user-submitted reports.</p>
+  </div>
+
+  <div class="custom-card p-3">
+
+    <!-- Search + Filter bar -->
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+      <div class="search-bar-wrapper flex-grow-1" style="max-width:280px;">
+        <i class="fas fa-search search-bar-icon"></i>
+        <input class="search-bar-input" type="text" v-model="search" @input="debounceSearch" placeholder="Search by reason or description…">
+      </div>
+    </div>
+    <div class="d-flex gap-2 mb-3 flex-wrap">
+      <button class="btn btn-sm" :class="status_filter === '' ? 'btn-primary' : 'btn-outline-secondary'" @click="status_filter=''; page=1; load()">All</button>
+      <button class="btn btn-sm" :class="status_filter === 'pending' ? 'btn-warning' : 'btn-outline-secondary'" @click="status_filter='pending'; page=1; load()">Pending</button>
+      <button class="btn btn-sm" :class="status_filter === 'reviewed' ? 'btn-success' : 'btn-outline-secondary'" @click="status_filter='reviewed'; page=1; load()">Reviewed</button>
+      <button class="btn btn-sm" :class="status_filter === 'dismissed' ? 'btn-secondary' : 'btn-outline-secondary'" @click="status_filter='dismissed'; page=1; load()">Dismissed</button>
+    </div>
+
+    <div v-if="loading" class="text-center py-5">
+      <div class="spinner-border" style="color:var(--accent);"></div>
+    </div>
+
+    <div v-else-if="reports.length === 0" class="text-center py-5" style="color:var(--text-3);">
+      <i class="fas fa-flag fa-2x mb-2 d-block"></i>
+      No reports found.
+    </div>
+
+    <div v-else>
+      <table class="table table-hover align-middle" style="font-size:0.875rem;">
+        <thead>
+          <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
+            <th>ID</th><th>Convert</th><th>Reporter</th><th>Reason</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="r in reports" :key="r.id">
+            <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ r.id ]]</td>
+            <td>
+              <a :href="'/convert/detail/'+r.convert_id" style="color:var(--accent); font-size:0.82rem;" :title="r.convert_name">
+                [[ (r.convert_name || '').slice(0,20) + (r.convert_name?.length > 20 ? '…' : '') ]]
+              </a>
+            </td>
+            <td style="font-size:0.82rem;">[[ r.reporter ]]</td>
+            <td>
+              <span class="admin-status-badge status-pending" style="text-transform:capitalize;">[[ r.reason ]]</span>
+            </td>
+            <td class="text-truncate" style="max-width:200px; color:var(--text-2); font-size:0.8rem;">[[ r.description || '—' ]]</td>
+            <td>
+              <span class="admin-status-badge" :class="'status-'+r.status">[[ r.status ]]</span>
+            </td>
+            <td style="color:var(--text-3); font-size:0.78rem;">[[ r.created_at ]]</td>
+            <td>
+              <div class="d-flex gap-1">
+                <button v-if="r.status === 'pending'" class="btn btn-sm btn-outline-success" @click="reviewReport(r.id, 'reviewed')" title="Mark reviewed">
+                  <i class="fas fa-check"></i>
+                </button>
+                <button v-if="r.status === 'pending'" class="btn btn-sm btn-outline-secondary" @click="reviewReport(r.id, 'dismissed')" title="Dismiss">
+                  <i class="fas fa-ban"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="d-flex justify-content-center gap-2 mt-3">
+        <button class="btn btn-sm btn-outline-secondary" :disabled="page <= 1" @click="page--; load()">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ page ]] / [[ total_page ]]</span>
+        <button class="btn btn-sm btn-outline-secondary" :disabled="page >= total_page" @click="page++; load()">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+  const { createApp, ref, onMounted } = Vue
+  import { create_message, message_list } from '/static/js/toaster.js';
+
+  createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+      const reports = ref([])
+      const loading = ref(true)
+      const page = ref(1)
+      const total_page = ref(1)
+      const status_filter = ref('')
+      const search = ref('')
+      let debounceTimer = null
+
+      async function load() {
+        loading.value = true
+        try {
+          const params = new URLSearchParams({ page: page.value })
+          if (status_filter.value) params.set('status', status_filter.value)
+          if (search.value) params.set('search', search.value)
+          const res = await fetch(`/convert/admin/get_reports?${params}`)
+          if (res.ok) {
+            const data = await res.json()
+            reports.value = data.list || []
+            total_page.value = data.total_page || 1
+          }
+        } catch {}
+        loading.value = false
+      }
+
+      function debounceSearch() {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => { page.value = 1; load() }, 350)
+      }
+
+      async function reviewReport(report_id, status) {
+        const res = await fetch(`/convert/admin/review_report?report_id=${report_id}&status=${status}`)
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.success) await load()
+      }
+
+      onMounted(load)
+      return { reports, loading, page, total_page, status_filter, search, load, debounceSearch, reviewReport, message_list }
+    }
+  }).mount('#main-containers')
+</script>
+{% endblock %}

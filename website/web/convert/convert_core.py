@@ -3,7 +3,7 @@ import json
 from sqlite3 import IntegrityError
 import uuid
 from flask_login import AnonymousUserMixin, current_user
-from website.db_class.db import Convert, ConvertHistory
+from website.db_class.db import Comment, CommentReaction, Convert, ConvertHistory, ConvertReport
 from website.web import db
 from sqlalchemy import desc, asc, or_
 import datetime
@@ -611,3 +611,203 @@ def get_convert_history_by_id(convert_history_id):
         .order_by(ConvertHistory.version.desc())
         .first()
     )
+
+
+###################################
+#   Comment service functions     #
+###################################
+
+def _can_see_comment(comment, convert_is_public, current_user_id, is_admin, convert_owner_id):
+    """Determine if a user can see a specific comment."""
+    if is_admin:
+        return True
+    if not convert_is_public:
+        # Private convert: only its owner can see
+        return current_user_id is not None and current_user_id == convert_owner_id
+    if not comment.is_private:
+        return True
+    # Private comment on public convert: owner or comment author only
+    if current_user_id is None:
+        return False
+    return current_user_id == convert_owner_id or current_user_id == comment.user_id
+
+
+def create_comment(convert_id, user_id, content, is_private=False, parent_id=None):
+    """Create a new comment or reply on a convert."""
+    try:
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        comment = Comment(
+            convert_id=convert_id,
+            user_id=user_id,
+            content=content.strip(),
+            is_private=is_private,
+            parent_id=parent_id,
+            created_at=now,
+            is_deleted=False
+        )
+        db.session.add(comment)
+        db.session.commit()
+        return comment
+    except Exception as e:
+        db.session.rollback()
+        print("create_comment error:", e)
+        return None
+
+
+def get_comments(convert_id, current_user_id=None, is_admin=False, convert_owner_id=None):
+    """Return visible top-level comments and their visible replies for a convert."""
+    convert = get_convert(convert_id)
+    if not convert:
+        return []
+
+    convert_is_public = convert.public
+
+    top_level = (
+        Comment.query
+        .filter_by(convert_id=convert_id, parent_id=None)
+        .filter_by(is_deleted=False)
+        .order_by(Comment.created_at.asc())
+        .all()
+    )
+
+    result = []
+    for c in top_level:
+        if not _can_see_comment(c, convert_is_public, current_user_id, is_admin, convert_owner_id):
+            continue
+        comment_data = c.to_json(current_user_id=current_user_id, is_admin=is_admin, convert_owner_id=convert_owner_id)
+        replies = (
+            Comment.query
+            .filter_by(convert_id=convert_id, parent_id=c.id)
+            .filter_by(is_deleted=False)
+            .order_by(Comment.created_at.asc())
+            .all()
+        )
+        comment_data["replies"] = [
+            r.to_json(current_user_id=current_user_id, is_admin=is_admin, convert_owner_id=convert_owner_id)
+            for r in replies
+            if _can_see_comment(r, convert_is_public, current_user_id, is_admin, convert_owner_id)
+        ]
+        result.append(comment_data)
+    return result
+
+
+def delete_comment(comment_id, requesting_user_id, is_admin=False):
+    """Soft-delete a comment. Only author, convert owner, or admin can delete."""
+    comment = Comment.query.get(comment_id)
+    if not comment:
+        return False, "Comment not found"
+    convert = get_convert(comment.convert_id)
+    if not convert:
+        return False, "Convert not found"
+    allowed = (
+        is_admin or
+        requesting_user_id == comment.user_id or
+        requesting_user_id == convert.user_id
+    )
+    if not allowed:
+        return False, "Permission denied"
+    comment.is_deleted = True
+    comment.content = "[deleted]"
+    db.session.commit()
+    return True, "Comment deleted"
+
+
+def toggle_comment_private(comment_id, requesting_user_id, is_admin=False):
+    """Toggle the private/public flag of a comment. Only author or admin."""
+    comment = Comment.query.get(comment_id)
+    if not comment:
+        return False, "Comment not found", None
+    if not is_admin and requesting_user_id != comment.user_id:
+        return False, "Permission denied", None
+    comment.is_private = not comment.is_private
+    db.session.commit()
+    return True, "Visibility updated", comment.is_private
+
+
+def react_to_comment(comment_id, user_id, emoji):
+    """Toggle an emoji reaction on a comment. Returns (added: bool)."""
+    try:
+        existing = CommentReaction.query.filter_by(
+            comment_id=comment_id, user_id=user_id, emoji=emoji
+        ).first()
+        if existing:
+            db.session.delete(existing)
+            db.session.commit()
+            return True, False  # success, added=False (removed)
+        reaction = CommentReaction(
+            comment_id=comment_id,
+            user_id=user_id,
+            emoji=emoji,
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(reaction)
+        db.session.commit()
+        return True, True  # success, added=True
+    except Exception as e:
+        db.session.rollback()
+        print("react_to_comment error:", e)
+        return False, False
+
+
+def get_comment(comment_id):
+    return Comment.query.get(comment_id)
+
+
+def get_all_comments_admin(page=1, search=None):
+    """Admin: paginated list of all non-deleted comments across all converts."""
+    query = Comment.query.filter_by(is_deleted=False)
+    if search:
+        query = query.filter(Comment.content.ilike(f"%{search}%"))
+    return query.order_by(Comment.created_at.desc()).paginate(page=page, per_page=20)
+
+
+###################################
+#   Report service functions      #
+###################################
+
+REPORT_REASONS = ["spam", "inappropriate", "inaccurate", "other"]
+
+
+def create_report(convert_id, user_id, reason, description=None):
+    """Submit a report on a convert."""
+    try:
+        report = ConvertReport(
+            convert_id=convert_id,
+            user_id=user_id,
+            reason=reason,
+            description=description,
+            status="pending",
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(report)
+        db.session.commit()
+        return report
+    except Exception as e:
+        db.session.rollback()
+        print("create_report error:", e)
+        return None
+
+
+def get_reports(page=1, status=None, search=None):
+    """Admin: paginated list of reports."""
+    query = ConvertReport.query
+    if status:
+        query = query.filter_by(status=status)
+    if search:
+        query = query.filter(
+            ConvertReport.reason.ilike(f"%{search}%") |
+            ConvertReport.description.ilike(f"%{search}%")
+        )
+    return query.order_by(ConvertReport.created_at.desc()).paginate(page=page, per_page=20)
+
+
+def review_report(report_id, new_status, reviewed_by_id):
+    """Admin: update report status (reviewed / dismissed)."""
+    report = ConvertReport.query.get(report_id)
+    if not report:
+        return False
+    report.status = new_status
+    report.reviewed_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    report.reviewed_by = reviewed_by_id
+    db.session.commit()
+    return True

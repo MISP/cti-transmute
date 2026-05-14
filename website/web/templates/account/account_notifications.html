@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
+{% endblock %}
+{% block content %}
+<div>
+
+  <div class="list-header">
+    <div class="home-hero-badge"><i class="fas fa-bell"></i> Notifications</div>
+    <h1 class="list-title">My Notifications</h1>
+    <p class="list-subtitle">Stay up to date with replies, follows, and alerts.</p>
+  </div>
+
+  <div class="custom-card p-3">
+
+    <!-- Toolbar -->
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+      <div class="search-bar-wrapper flex-grow-1">
+        <i class="fas fa-search search-bar-icon"></i>
+        <input class="search-bar-input" type="text" v-model="search" @input="debounceSearch" placeholder="Search notifications…">
+      </div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm" :class="only_unread ? 'btn-warning' : 'btn-outline-secondary'" @click="only_unread=!only_unread; page=1; load()">
+          <i class="fas fa-circle me-1" style="font-size:0.6rem;"></i> Unread only
+        </button>
+        <button v-if="unread_count > 0" class="btn btn-sm btn-outline-secondary" @click="markAllRead()">
+          <i class="fas fa-check-double me-1"></i> Mark all read
+        </button>
+      </div>
+    </div>
+
+    <div v-if="loading" class="text-center py-5">
+      <div class="spinner-border" style="color:var(--accent);"></div>
+    </div>
+
+    <div v-else-if="notifications.length === 0" class="text-center py-5" style="color:var(--text-3);">
+      <i class="fas fa-bell-slash fa-2x mb-2 d-block"></i>
+      No notifications yet.
+    </div>
+
+    <div v-else class="notif-list custom-card">
+      <div v-for="n in notifications" :key="n.id"
+           class="notif-item"
+           :class="{unread: !n.is_read}"
+           style="cursor:pointer;">
+        <div class="notif-icon"
+             :class="{'type-reply': n.type==='comment_reply', 'type-convert': n.type==='new_follow_convert', 'type-report': n.type==='report_submitted'}"
+             @click="clickNotif(n)">
+          <i :class="n.type==='comment_reply' ? 'fas fa-reply' : n.type==='new_follow_convert' ? 'fas fa-bolt' : 'fas fa-flag'"></i>
+        </div>
+        <div class="notif-message" @click="clickNotif(n)">[[ n.message ]]</div>
+        <div class="notif-date" @click="clickNotif(n)">[[ n.created_at ]]</div>
+        <div v-if="!n.is_read" class="unread-dot" @click="clickNotif(n)"></div>
+        <button class="notif-delete-btn" @click.stop="deleteNotif(n)" title="Delete">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <div v-if="total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
+      <button class="btn btn-sm btn-outline-secondary" :disabled="page <= 1" @click="page--; load()">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ page ]] / [[ total_page ]]</span>
+      <button class="btn btn-sm btn-outline-secondary" :disabled="page >= total_page" @click="page++; load()">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+  const { createApp, ref, onMounted } = Vue
+  import { create_message, message_list } from '/static/js/toaster.js';
+
+  createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+      const notifications = ref([])
+      const loading = ref(true)
+      const page = ref(1)
+      const total_page = ref(1)
+      const only_unread = ref(false)
+      const search = ref('')
+      const unread_count = ref(0)
+      let debounceTimer = null
+
+      async function load() {
+        loading.value = true
+        try {
+          const params = new URLSearchParams({ page: page.value })
+          if (only_unread.value) params.set('only_unread', 'true')
+          if (search.value) params.set('search', search.value)
+          const res = await fetch(`/account/get_notifications?${params}`)
+          if (res.ok) {
+            const data = await res.json()
+            notifications.value = data.list || []
+            total_page.value = data.total_page || 1
+          }
+          const cr = await fetch('/account/get_notification_count')
+          if (cr.ok) {
+            const d = await cr.json()
+            unread_count.value = d.count || 0
+          }
+        } catch {}
+        loading.value = false
+      }
+
+      function debounceSearch() {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => { page.value = 1; load() }, 350)
+      }
+
+      async function markAllRead() {
+        const res = await fetch('/account/mark_all_read')
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        notifications.value.forEach(n => n.is_read = true)
+        unread_count.value = 0
+        window.__refreshNotifCount?.()
+      }
+
+      async function clickNotif(n) {
+        if (!n.is_read) {
+          await fetch(`/account/mark_notification_read?notification_id=${n.id}`)
+          n.is_read = true
+          unread_count.value = Math.max(0, unread_count.value - 1)
+          window.__refreshNotifCount?.()
+        }
+        if (n.related_id) {
+          window.location.href = `/convert/detail/${n.related_id}`
+        }
+      }
+
+      async function deleteNotif(n) {
+        const res = await fetch(`/account/delete_notification?notification_id=${n.id}`)
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.success) {
+          notifications.value = notifications.value.filter(x => x.id !== n.id)
+          if (!n.is_read) {
+            unread_count.value = Math.max(0, unread_count.value - 1)
+            window.__refreshNotifCount?.()
+          }
+        }
+      }
+
+      onMounted(load)
+      return { notifications, loading, page, total_page, only_unread, search, unread_count, load, debounceSearch, markAllRead, clickNotif, deleteNotif, message_list }
+    }
+  }).mount('#main-containers')
+</script>
+{% endblock %}
