@@ -1,91 +1,174 @@
 {% extends "base.html" %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
 {% endblock %}
 {% block content %}
-<div id="main-container">
+<div>
 
-  <!-- Header -->
-  <div class="list-header">
-    <div class="home-hero-badge">
-      <i class="fas fa-user"></i> Account
+  <!-- Profile hero -->
+  <div class="profile-hero">
+    <div class="profile-hero-avatar">{{ user.first_name[0] | upper }}{{ user.last_name[0] | upper }}</div>
+    <div class="profile-hero-info">
+      <h1 class="profile-hero-name">{{ user.first_name }} {{ user.last_name }}</h1>
+      <div class="profile-hero-email"><i class="fas fa-envelope me-1"></i>{{ user.email }}</div>
+      {% if user.is_admin() %}
+      <span class="profile-hero-badge"><i class="fas fa-shield-halved me-1"></i>Admin</span>
+      {% endif %}
     </div>
-    <h1 class="list-title">My Profile</h1>
-    <p class="list-subtitle">Manage your account information and API access.</p>
+    <div class="profile-hero-actions">
+      <a href="/account/edit" class="btn-hero-primary"><i class="fas fa-pen me-2"></i>Edit Profile</a>
+    </div>
   </div>
 
-  <!-- Profile card -->
-  <div class="profile-wrapper">
+  <!-- Two-column content -->
+  <div class="profile-grid">
 
-    <!-- Avatar + name -->
-    <div class="profile-avatar-block">
-      <div class="profile-avatar">
-        <i class="fas fa-user"></i>
-      </div>
-      <div>
-        <div class="profile-fullname">{{ user.first_name }} {{ user.last_name }}</div>
-        <div class="profile-email-sub">{{ user.email }}</div>
-      </div>
-    </div>
+    <!-- Left: account info + API key -->
+    <div class="d-flex flex-column gap-3">
 
-    <div class="profile-divider"></div>
-
-    <!-- Info rows -->
-    <div class="profile-fields">
-
-      <div class="profile-field">
-        <span class="profile-field-label">
-          <i class="fas fa-id-badge"></i> First Name
-        </span>
-        <span class="profile-field-value">{{ user.first_name }}</span>
+      <div class="custom-card p-0 overflow-hidden">
+        <div class="profile-section-header"><i class="fas fa-id-card me-2"></i>Account Info</div>
+        <div class="profile-field">
+          <span class="profile-field-label"><i class="fas fa-user"></i> First Name</span>
+          <span class="profile-field-value">{{ user.first_name }}</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-label"><i class="fas fa-user"></i> Last Name</span>
+          <span class="profile-field-value">{{ user.last_name }}</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-label"><i class="fas fa-envelope"></i> Email</span>
+          <span class="profile-field-value">{{ user.email }}</span>
+        </div>
       </div>
 
-      <div class="profile-field">
-        <span class="profile-field-label">
-          <i class="fas fa-id-card"></i> Last Name
-        </span>
-        <span class="profile-field-value">{{ user.last_name }}</span>
-      </div>
-
-      <div class="profile-field">
-        <span class="profile-field-label">
-          <i class="fas fa-envelope"></i> Email
-        </span>
-        <span class="profile-field-value">{{ user.email }}</span>
-      </div>
-
-      <!-- API Key row -->
-      <div class="profile-field profile-field--apikey">
-        <span class="profile-field-label">
-          <i class="fas fa-key"></i> API Key
-        </span>
-        <div class="profile-apikey-row">
-          <code class="profile-apikey" id="apiKey">{{ user.api_key }}</code>
-          <button class="profile-copy-btn" id="copyBtn" @click="copyApiKey()" title="Copy API Key">
-            <i class="fas fa-copy"></i>
-            <span id="copyLabel">Copy</span>
-          </button>
+      <div class="custom-card p-0 overflow-hidden">
+        <div class="profile-section-header"><i class="fas fa-key me-2"></i>API Key</div>
+        <div style="padding:1rem;">
+          <div class="profile-apikey-row">
+            <code class="profile-apikey" id="apiKey">{{ user.api_key }}</code>
+            <button class="profile-copy-btn" id="copyBtn" @click="copyApiKey()" title="Copy API Key">
+              <i class="fas fa-copy"></i>
+              <span id="copyLabel">Copy</span>
+            </button>
+          </div>
         </div>
       </div>
 
     </div>
 
-    <div class="profile-divider"></div>
+    <!-- Right: activity tabs -->
+    <div class="custom-card p-0 overflow-hidden">
+      <div class="detail-tabs-header">
+        <ul class="nav nav-underline px-3 pt-2" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tab-comments" role="tab" @click="loadMyComments()">
+              <i class="fas fa-comments me-1"></i> My Comments
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tab-following" role="tab" @click="loadFollowing()">
+              <i class="fas fa-user-check me-1"></i> Following
+            </a>
+          </li>
+        </ul>
+      </div>
 
-    <!-- Actions -->
-    <div class="profile-actions">
-      <a href="/account/edit" class="btn-hero-primary">
-        <i class="fas fa-pen me-2"></i> Edit Profile
-      </a>
+      <div class="tab-content p-3">
+
+        <!-- My Comments -->
+        <div class="tab-pane fade show active" id="tab-comments" role="tabpanel">
+          <div class="mb-3">
+            <div class="search-bar-wrapper">
+              <i class="fas fa-search search-bar-icon"></i>
+              <input class="search-bar-input" type="text" v-model="comments_search" @input="debounceComments" placeholder="Search your comments…">
+            </div>
+          </div>
+          <div v-if="comments_loading" class="text-center py-4">
+            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+          </div>
+          <div v-else-if="my_comments.length === 0" class="text-center py-4" style="color:var(--text-3);">
+            <i class="fas fa-comments fa-2x mb-2 d-block"></i>
+            No comments found.
+          </div>
+          <div v-else>
+            <div v-for="c in my_comments" :key="c.id" class="my-comment-item">
+              <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                <a :href="'/convert/detail/'+c.convert_id" class="my-comment-convert-link">
+                  <i class="fas fa-external-link-alt me-1"></i>[[ c.convert_name ]]
+                </a>
+                <span class="comment-date">[[ c.created_at ]]</span>
+                <span v-if="c.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                <span v-if="c.has_replies" class="has-reply-badge"><i class="fas fa-reply"></i> Has replies</span>
+              </div>
+              <div style="font-size:0.875rem; color:var(--text); line-height:1.5;">[[ c.content ]]</div>
+            </div>
+          </div>
+          <div v-if="comments_total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
+            <button class="btn btn-sm btn-outline-secondary" :disabled="comments_page <= 1" @click="comments_page--; loadMyComments(true)">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ comments_page ]] / [[ comments_total_page ]]</span>
+            <button class="btn btn-sm btn-outline-secondary" :disabled="comments_page >= comments_total_page" @click="comments_page++; loadMyComments(true)">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Following -->
+        <div class="tab-pane fade" id="tab-following" role="tabpanel">
+          <div class="mb-3">
+            <div class="search-bar-wrapper">
+              <i class="fas fa-search search-bar-icon"></i>
+              <input class="search-bar-input" type="text" v-model="following_search" @input="debounceFollowing" placeholder="Search people you follow…">
+            </div>
+          </div>
+          <div v-if="following_loading" class="text-center py-4">
+            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+          </div>
+          <div v-else-if="following_list.length === 0" class="text-center py-4" style="color:var(--text-3);">
+            <i class="fas fa-user-slash fa-2x mb-2 d-block"></i>
+            No users found.
+          </div>
+          <div v-else>
+            <div v-for="f in following_list" :key="f.user_id" class="following-item">
+              <div class="d-flex align-items-center gap-2">
+                <div class="following-avatar">[[ (f.name || 'A').charAt(0).toUpperCase() ]]</div>
+                <div>
+                  <div style="font-weight:600; font-size:0.875rem;">[[ f.name ]]</div>
+                  <div style="font-size:0.72rem; color:var(--text-3);">Following since [[ f.since ]]</div>
+                </div>
+              </div>
+              <button class="follow-btn following" @click="unfollow(f.user_id)">
+                <i class="fas fa-user-minus"></i> Unfollow
+              </button>
+            </div>
+          </div>
+          <div v-if="following_total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
+            <button class="btn btn-sm btn-outline-secondary" :disabled="following_page <= 1" @click="following_page--; loadFollowing(true)">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ following_page ]] / [[ following_total_page ]]</span>
+            <button class="btn btn-sm btn-outline-secondary" :disabled="following_page >= following_total_page" @click="following_page++; loadFollowing(true)">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
 
   </div>
+
 </div>
 {% endblock %}
 
 {% block script %}
 <script type="module">
-  const { createApp } = Vue
+  const { createApp, ref, onMounted } = Vue
+  import { create_message, message_list } from '/static/js/toaster.js';
+
   createApp({
     delimiters: ['[[', ']]'],
     setup() {
@@ -96,15 +179,89 @@
           const label = document.getElementById('copyLabel')
           label.textContent = 'Copied!'
           btn.classList.add('copied')
-          setTimeout(() => {
-            label.textContent = 'Copy'
-            btn.classList.remove('copied')
-          }, 2000)
+          setTimeout(() => { label.textContent = 'Copy'; btn.classList.remove('copied') }, 2000)
         }).catch(err => console.error('Failed to copy:', err))
       }
 
-      return { copyApiKey }
+      // ── My Comments ──────────────────────────────────
+      const my_comments = ref([])
+      const comments_loading = ref(false)
+      const comments_loaded = ref(false)
+      const comments_page = ref(1)
+      const comments_total_page = ref(1)
+      const comments_search = ref('')
+      let commentsTimer = null
+
+      function debounceComments() {
+        clearTimeout(commentsTimer)
+        commentsTimer = setTimeout(() => { comments_page.value = 1; comments_loaded.value = false; loadMyComments(true) }, 350)
+      }
+
+      async function loadMyComments(force = false) {
+        if (comments_loaded.value && !force) return
+        comments_loading.value = true
+        try {
+          const params = new URLSearchParams({ page: comments_page.value })
+          if (comments_search.value) params.set('search', comments_search.value)
+          const res = await fetch(`/account/my_comments?${params}`)
+          if (res.ok) {
+            const data = await res.json()
+            my_comments.value = data.list || []
+            comments_total_page.value = data.total_page || 1
+            comments_loaded.value = true
+          }
+        } catch {}
+        comments_loading.value = false
+      }
+
+      // ── Following ─────────────────────────────────────
+      const following_list = ref([])
+      const following_loading = ref(false)
+      const following_loaded = ref(false)
+      const following_page = ref(1)
+      const following_total_page = ref(1)
+      const following_search = ref('')
+      let followingTimer = null
+
+      function debounceFollowing() {
+        clearTimeout(followingTimer)
+        followingTimer = setTimeout(() => { following_page.value = 1; following_loaded.value = false; loadFollowing(true) }, 350)
+      }
+
+      async function loadFollowing(force = false) {
+        if (following_loaded.value && !force) return
+        following_loading.value = true
+        try {
+          const params = new URLSearchParams({ page: following_page.value })
+          if (following_search.value) params.set('search', following_search.value)
+          const res = await fetch(`/account/get_following?${params}`)
+          if (res.ok) {
+            const data = await res.json()
+            following_list.value = data.list || []
+            following_total_page.value = data.total_page || 1
+            following_loaded.value = true
+          }
+        } catch {}
+        following_loading.value = false
+      }
+
+      async function unfollow(user_id) {
+        const res = await fetch(`/account/follow?user_id=${user_id}`)
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.success) following_list.value = following_list.value.filter(f => f.user_id !== user_id)
+      }
+
+      onMounted(() => { loadMyComments() })
+
+      return {
+        copyApiKey, message_list,
+        my_comments, comments_loading, comments_page, comments_total_page,
+        comments_search, debounceComments, loadMyComments,
+        following_list, following_loading, following_page, following_total_page,
+        following_search, debounceFollowing, loadFollowing, unfollow,
+      }
     }
-  }).mount('#main-container')
+  }).mount('#main-containers')
 </script>
 {% endblock %}
