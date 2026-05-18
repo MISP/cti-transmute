@@ -251,9 +251,11 @@ def follow_user():
     already = AccountModel.is_following(current_user.id, user_id)
     if already:
         AccountModel.unfollow_user(current_user.id, user_id)
+        AccountModel.create_system_log("user_unfollowed", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user_id, target_name=target.first_name)
         return {"success": True, "following": False, "message": f"You unfollowed {target.first_name}", "toast_class": "info"}, 200
     else:
         AccountModel.follow_user(current_user.id, user_id)
+        AccountModel.create_system_log("user_followed", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user_id, target_name=target.first_name)
         return {"success": True, "following": True, "message": f"You are now following {target.first_name}", "toast_class": "success"}, 200
 
 
@@ -348,7 +350,7 @@ def mark_all_read():
 def my_comments():
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '', type=str) or None
-    pagination = AccountModel.get_user_comments(current_user.id, page=page, search=search)
+    pagination = AccountModel.get_user_comments(current_user.id, page=page, search=search, is_admin=current_user.is_admin())
     from website.db_class.db import Convert
     items = []
     for c in pagination.items:
@@ -356,6 +358,7 @@ def my_comments():
         item = c.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())
         item["convert_name"] = convert.name if convert else "Unknown"
         item["convert_id"] = c.convert_id
+        item["convert_active"] = bool(convert and convert.is_active)
         item["has_replies"] = c.replies.count() > 0
         items.append(item)
     return {"success": True, "list": items, "total_page": pagination.pages}, 200
@@ -387,6 +390,14 @@ def admin_logs():
     if not current_user.is_admin():
         return render_template("access_denied.html")
     return render_template("admin/admin_logs.html")
+
+
+@account_blueprint.route("/admin/deleted_converts", methods=['GET'])
+@login_required
+def admin_deleted_converts():
+    if not current_user.is_admin():
+        return render_template("access_denied.html")
+    return render_template("admin/deleted_converts.html")
 
 
 @account_blueprint.route("/admin/get_all_notifications", methods=['GET'])

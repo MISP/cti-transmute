@@ -39,20 +39,29 @@
           <tr v-for="c in comments" :key="c.id">
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ c.id ]]</td>
             <td style="font-weight:600;">[[ c.author ]]</td>
-            <td>
-              <a :href="'/convert/detail/'+c.convert_id" style="color:var(--accent); font-size:0.8rem;">
-                #[[ c.convert_id ]]
+            <td style="font-size:0.8rem;">
+              <a v-if="c.convert_active" :href="'/convert/detail/'+c.convert_id" style="color:var(--accent);">
+                [[ c.convert_name ]]
               </a>
+              <span v-else style="color:var(--text-3);">[[ c.convert_name ]]</span>
+              <div v-if="!c.convert_active" class="d-flex align-items-center gap-1 mt-1"
+                style="font-size:0.72rem; color:var(--danger);">
+                <i class="fas fa-triangle-exclamation"></i>
+                Deactivated —
+                <a :href="'/account/admin/deleted_converts?highlight='+c.convert_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
+                  View in Trash <i class="fas fa-arrow-right" style="font-size:0.65rem;"></i>
+                </a>
+              </div>
             </td>
-            <td class="text-truncate" style="max-width:300px; color:var(--text-2);">[[ c.content ]]</td>
+            <td class="text-truncate" style="max-width:280px; color:var(--text-2);">[[ c.content ]]</td>
             <td>
               <span class="admin-status-badge" :class="c.is_private ? 'status-pending' : 'status-reviewed'">
                 [[ c.is_private ? 'Private' : 'Public' ]]
               </span>
             </td>
-            <td style="color:var(--text-3); font-size:0.78rem;">[[ c.created_at ]]</td>
+            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ c.created_at ]]</td>
             <td>
-              <button class="btn btn-sm btn-outline-danger" @click="deleteComment(c.id)">
+              <button class="btn btn-sm btn-outline-danger" @click="deleteComment(c)">
                 <i class="fas fa-trash"></i>
               </button>
             </td>
@@ -109,11 +118,12 @@
         debounceTimer = setTimeout(() => { page.value = 1; load() }, 350)
       }
 
-      async function deleteComment(comment_id) {
-        const res = await fetch(`/convert/delete_comment?comment_id=${comment_id}`)
+      async function deleteComment(c) {
+        if (!confirm(`Delete comment #${c.id}?`)) return
+        const res = await fetch(`/convert/delete_comment?comment_id=${c.id}`)
         const data = await res.json()
         create_message(data.message, data.toast_class)
-        if (data.success) await load()
+        if (data.success) comments.value = comments.value.filter(x => x.id !== c.id)
       }
 
       onMounted(load)

@@ -95,12 +95,24 @@
           <div v-else>
             <div v-for="c in my_comments" :key="c.id" class="my-comment-item">
               <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                <a :href="'/convert/detail/'+c.convert_id" class="my-comment-convert-link">
+                <a v-if="c.convert_active" :href="'/convert/detail/'+c.convert_id" class="my-comment-convert-link">
                   <i class="fas fa-external-link-alt me-1"></i>[[ c.convert_name ]]
                 </a>
+                <span v-else class="my-comment-convert-link" style="cursor:default; opacity:0.6;">[[ c.convert_name ]]</span>
                 <span class="comment-date">[[ c.created_at ]]</span>
                 <span v-if="c.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                 <span v-if="c.has_replies" class="has-reply-badge"><i class="fas fa-reply"></i> Has replies</span>
+                <button class="btn btn-sm btn-outline-danger ms-auto py-0 px-2" style="font-size:0.75rem;" @click="deleteMyComment(c)">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+              <div v-if="!c.convert_active" class="d-flex align-items-center gap-2 mb-1 px-2 py-1 rounded-2"
+                style="background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.18); font-size:0.78rem; color:var(--danger);">
+                <i class="fas fa-triangle-exclamation"></i>
+                This convert has been deactivated.
+                <a :href="'/account/admin/deleted_converts?highlight='+c.convert_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
+                  View in Trash <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i>
+                </a>
               </div>
               <div style="font-size:0.875rem; color:var(--text); line-height:1.5;">[[ c.content ]]</div>
             </div>
@@ -197,6 +209,14 @@
         commentsTimer = setTimeout(() => { comments_page.value = 1; comments_loaded.value = false; loadMyComments(true) }, 350)
       }
 
+      async function deleteMyComment(c) {
+        if (!confirm('Delete this comment permanently?')) return
+        const res = await fetch(`/convert/delete_comment?comment_id=${c.id}`)
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.success) my_comments.value = my_comments.value.filter(x => x.id !== c.id)
+      }
+
       async function loadMyComments(force = false) {
         if (comments_loaded.value && !force) return
         comments_loading.value = true
@@ -257,7 +277,7 @@
       return {
         copyApiKey, message_list,
         my_comments, comments_loading, comments_page, comments_total_page,
-        comments_search, debounceComments, loadMyComments,
+        comments_search, debounceComments, loadMyComments, deleteMyComment,
         following_list, following_loading, following_page, following_total_page,
         following_search, debounceFollowing, loadFollowing, unfollow,
       }

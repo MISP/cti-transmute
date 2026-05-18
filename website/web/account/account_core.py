@@ -347,9 +347,24 @@ def notify_comment_reply(parent_comment, reply_comment, actor_id):
 #   User comments for profile     #
 ###################################
 
-def get_user_comments(user_id, page=1, search=None):
-    """Return paginated comments made by a user, with their convert info."""
-    query = Comment.query.filter_by(user_id=user_id, is_deleted=False)
+def get_user_comments(user_id, page=1, search=None, is_admin=False):
+    """Return paginated comments made by a user.
+    Excludes comments on converts that are deleted, private (unless owned by the user), or inactive.
+    Admins bypass all visibility filters.
+    """
+    if is_admin:
+        query = Comment.query.filter(Comment.user_id == user_id, Comment.is_deleted == False)
+    else:
+        query = (
+            Comment.query
+            .join(Convert, Comment.convert_id == Convert.id)
+            .filter(
+                Comment.user_id == user_id,
+                Comment.is_deleted == False,
+                Convert.is_active == True,
+                or_(Convert.public == True, Convert.user_id == user_id),
+            )
+        )
     if search:
         query = query.filter(Comment.content.ilike(f"%{search}%"))
     return query.order_by(Comment.created_at.desc()).paginate(page=page, per_page=20)
