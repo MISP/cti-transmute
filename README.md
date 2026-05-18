@@ -27,6 +27,7 @@ To run your own CTI-Transmute service, you will need:
 
 - Python 3.10 or higher
 - A recent version of `uv` - Installation instruction available [here](https://docs.astral.sh/uv/getting-started/installation/)
+- PostgreSQL (for the database)
 
 Then the process is straight-forward:
 
@@ -35,7 +36,40 @@ git clone https://github.com/MISP/cti-transmute.git
 cd cti-transmute
 
 uv sync
-uv run start_website
+```
+
+### Managing the service
+
+CTI-Transmute ships with a `manage` script that covers day-to-day operations:
+
+```bash
+# Start the website
+uv run manage start
+
+# Pull latest code and sync dependencies
+uv run manage update
+
+# Backup the PostgreSQL database
+uv run manage backup
+
+# Full production deployment (backup + update + start)
+uv run manage deploy
+
+# Show all available commands
+uv run manage help
+```
+
+**Daily use** — just start the app:
+
+```bash
+uv run manage start
+```
+
+**After pulling new code:**
+
+```bash
+uv run manage update
+uv run manage start
 ```
 
 ## Query Examples
