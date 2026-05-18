@@ -83,6 +83,8 @@ class Convert(db.Model):
     updated_at = db.Column(db.DateTime, index=True)
     public = db.Column(db.Boolean, default=True, index=True) #able to share with the community
     share_key = db.Column(db.String(36), index=True, nullable=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
 
     def get_user_name_by_id(self):
         user = User.query.get(self.user_id)  
@@ -116,7 +118,9 @@ class Convert(db.Model):
             "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
             "public": self.public,
             "uuid": self.uuid,
-            "author": self.get_user_name_by_id()
+            "author": self.get_user_name_by_id(),
+            "is_active": self.is_active,
+            "deleted_at": self.deleted_at.strftime('%Y-%m-%d %H:%M') if self.deleted_at else None,
         }
     def to_share(self):
         return {
