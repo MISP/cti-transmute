@@ -3,61 +3,77 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/list.css') }}">
 {% endblock %}
 {% block content %}
-<div id="list-container" v-cloak>
+<div id="api-page" v-cloak>
 
     <!-- Header -->
     <div class="list-header">
         <div class="home-hero-badge">
             <i class="fas fa-plug"></i> REST API
         </div>
-        <h1 class="list-title">Available Converters</h1>
+        <h1 class="list-title">API Endpoints</h1>
         <p class="list-subtitle">
             Browse all conversion endpoints and their accepted parameters.
-            Use them directly via HTTP or through the UI.
+            Use them directly via HTTP or explore the interactive documentation.
         </p>
+        <a href="/api" target="_blank" rel="noopener" class="api-swagger-link">
+            <i class="fas fa-book-open"></i>
+            Interactive API Docs
+            <span class="api-swagger-badge">Swagger</span>
+            <i class="fas fa-arrow-up-right-from-square api-swagger-ext"></i>
+        </a>
     </div>
 
-    <!-- Loaded -->
-    <template v-if="is_loading">
-        <div v-if="list_feature && Object.keys(list_feature).length > 0" class="list-grid">
-            <div v-for="(feature, path) in list_feature" :key="path" class="list-card" @click="goTo(path)">
-                <!-- Left icon -->
-                <div class="list-card-icon" :class="iconClass(feature.method)">
-                    <i :class="iconName(path)"></i>
-                </div>
+    <!-- Loading -->
+    <div v-if="!loaded" class="text-center py-5" style="color:var(--text-3);">
+        <div class="spinner-border spinner-border-sm me-2" style="color:var(--accent);"></div>
+        Loading endpoints…
+    </div>
 
-                <!-- Body -->
-                <div class="list-card-body">
-                    <div class="list-card-top">
-                        <span class="list-card-path">[[ path ]]</span>
-                        <span class="home-badge" :class="badgeClass(feature.method)">[[ feature.method ]]</span>
-                    </div>
-                    <p class="list-card-desc">[[ feature.description ]]</p>
+    <!-- Empty/error -->
+    <div v-else-if="Object.keys(endpoints).length === 0" class="list-empty">
+        <i class="fas fa-circle-exclamation list-empty-icon"></i>
+        <p class="list-empty-text">No endpoints available or failed to load.</p>
+    </div>
 
-                    <!-- Parameters -->
-                    <div v-if="feature.parameters && feature.parameters.length > 0" class="list-params">
-                        <div class="list-params-label">Parameters</div>
-                        <div class="list-params-grid">
-                            <div v-for="param in feature.parameters" :key="param.name" class="list-param-chip">
-                                <span class="list-param-name">[[ param.name ]]</span>
-                                <span class="list-param-type">[[ param.type || 'any' ]]</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Endpoint list -->
+    <div v-else class="api-endpoint-list">
+        <div v-for="(feature, path) in endpoints" :key="path"
+            class="api-endpoint-card"
+            :class="feature.method === 'POST' ? 'method-post' : 'method-get'">
 
-                <!-- Arrow -->
-                <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
+            <!-- Head: method + path + copy + try -->
+            <div class="api-endpoint-head">
+                <span class="api-method-badge" :class="feature.method === 'POST' ? 'badge-post' : 'badge-get'">
+                    [[ feature.method ]]
+                </span>
+                <code class="api-endpoint-path">[[ path ]]</code>
+                <button class="api-copy-btn" @click="copyPath(path)" :title="'Copy path'">
+                    <i class="fas" :class="copied === path ? 'fa-check' : 'fa-copy'"></i>
+                    <span>[[ copied === path ? 'Copied' : 'Copy' ]]</span>
+                </button>
+                <div style="flex:1;"></div>
+                <a v-if="UI_MAP[path]" :href="UI_MAP[path]" class="api-try-btn">
+                    <i class="fas fa-play" style="font-size:0.65rem;"></i> Try in UI
+                </a>
             </div>
-        </div>
 
-        <!-- Empty / error -->
-        <div v-else class="list-empty">
-            <i class="fas fa-circle-exclamation list-empty-icon"></i>
-            <p class="list-empty-text">No converters available or failed to load.</p>
-        </div>
-    </template>
+            <!-- Description -->
+            <p class="api-endpoint-desc">[[ feature.description ]]</p>
 
+            <!-- Parameters -->
+            <div v-if="feature.parameters && feature.parameters.length" class="api-params">
+                <span class="api-params-label"><i class="fas fa-sliders me-1"></i>Parameters</span>
+                <div class="api-params-list">
+                    <span v-for="p in feature.parameters" :key="p.name" class="api-param-tag">
+                        <span class="api-param-name">[[ p.name ]]</span>
+                        <span class="api-param-sep">·</span>
+                        <span class="api-param-type">[[ p.type || 'any' ]]</span>
+                    </span>
+                </div>
+            </div>
+
+        </div>
+    </div>
 
 </div>
 {% endblock %}
@@ -65,53 +81,37 @@
 {% block script %}
 <script type="module">
     const { createApp, ref } = Vue
+
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const list_feature = ref({})
+            const endpoints = ref({})
+            const loaded    = ref(false)
+            const copied    = ref(null)
 
-            const URL_MAP = {
-                '/api/convert/list': '/list',
+            const UI_MAP = {
                 '/api/convert/misp_to_stix': '/convert/misp_to_stix',
                 '/api/convert/stix_to_misp': '/convert/stix_to_misp',
             }
 
-            const is_loading = ref(false)
-            async function fetch_features() {
+            async function fetchEndpoints() {
                 try {
-                    const res = await fetch('/get_features')
+                    const res  = await fetch('/get_features')
                     const data = await res.json()
-                    if (data.status === 'success') list_feature.value = data.features
-                    is_loading.value = true
-                } catch (e) {
-                    is_loading.value = false
-                }
-
+                    if (data.status === 'success') endpoints.value = data.features
+                } catch {}
+                loaded.value = true
             }
 
-            function goTo(path) {
-                const url = URL_MAP[path]
-                if (url) window.location.href = url
-                else console.warn('No URL mapped for', path)
+            function copyPath(path) {
+                navigator.clipboard.writeText(path).catch(() => {})
+                copied.value = path
+                setTimeout(() => { if (copied.value === path) copied.value = null }, 1500)
             }
 
-            function badgeClass(method) {
-                return method === 'GET' ? 'home-badge--get' : 'home-badge--post'
-            }
-
-            function iconClass(method) {
-                return method === 'GET' ? 'list-card-icon--slate' : 'list-card-icon--blue'
-            }
-
-            function iconName(path) {
-                if (path.includes('misp_to_stix')) return 'fas fa-arrow-right-arrow-left'
-                if (path.includes('stix_to_misp')) return 'fas fa-arrow-right-arrow-left fa-flip-horizontal'
-                return 'fas fa-list-ul'
-            }
-
-            fetch_features()
-            return { list_feature, goTo, badgeClass, iconClass, iconName, is_loading }
+            fetchEndpoints()
+            return { endpoints, loaded, copied, UI_MAP, copyPath }
         }
-    }).mount('#list-container')
+    }).mount('#main-containers')
 </script>
 {% endblock %}
