@@ -97,6 +97,11 @@ def cmd_help() -> None:
               {D}  backup → update → start{R}
               {D}→ Use this on your production server{R}
 
+  {G}db{R}        {D}Run Flask-Migrate commands (defaults to 'upgrade'){R}
+              {D}→ uv run manage db          # same as flask db upgrade{R}
+              {D}→ uv run manage db migrate  # generate a new migration{R}
+              {D}→ uv run manage db downgrade{R}
+
   {G}help{R}      {D}Show this message{R}
 
 {W}Examples:{R}
@@ -179,6 +184,24 @@ def cmd_deploy() -> None:
     cmd_start()
 
 
+def cmd_db() -> None:
+    """Run flask db commands with the correct app context.
+    Usage: uv run manage db [upgrade|downgrade|migrate|...]
+    Defaults to 'upgrade' if no sub-command is given.
+    """
+    sub = sys.argv[2:] if len(sys.argv) > 2 else ["upgrade"]
+    env = os.environ.copy()
+    env["TRANSMUTE_HOME"] = str(ROOT)
+    env["FLASK_APP"] = "website.web"
+    cmd = ["uv", "run", "flask", "--app", "website.web", "db"] + sub
+    info(f"$ {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=ROOT, env=env)
+    if result.returncode != 0:
+        error(f"flask db {' '.join(sub)} failed")
+        sys.exit(result.returncode)
+    ok(f"flask db {' '.join(sub)} done")
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 COMMANDS = {
@@ -186,6 +209,7 @@ COMMANDS = {
     "backup": cmd_backup,
     "update": cmd_update,
     "deploy": cmd_deploy,
+    "db":     cmd_db,
     "help":   cmd_help,
 }
 
