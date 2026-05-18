@@ -1,87 +1,145 @@
-<div class="conv-sidebar" id="conv-sidebar">
+<!-- ── TOP NAVBAR ───────────────────────────────────────────── -->
+<nav class="top-navbar" id="topNavbar">
+    <div class="top-navbar-inner">
 
-  <!-- Quick search -->
-  <div class="conv-sidebar-search">
-    <div class="conv-sidebar-search-label">Search Converts</div>
-    <div class="conv-sidebar-search-box">
-      <i class="fas fa-search conv-sidebar-search-icon"></i>
-      <input
-        id="sidebar-search-input"
-        class="conv-sidebar-search-input"
-        type="text"
-        placeholder="Name, description, content…"
-        @input="onSidebarSearch"
-        v-model="sidebarQuery"
-        @keyup.enter="onSidebarSearch">
-      <button v-if="sidebarQuery" class="conv-sidebar-search-clear" @click="clearSidebarSearch" title="Clear">
-        <i class="fas fa-times"></i>
-      </button>
+        <!-- Brand -->
+        <a href="/" class="top-brand">
+            <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Logo">
+            <span>CTI Transmute</span>
+        </a>
+
+        <!-- Nav links (desktop) -->
+        <div class="top-nav-links" id="topNavLinks">
+            <a href="/" class="top-nav-link {% if request.path == '/' %}active{% endif %}">
+                <i class="fas fa-home"></i> Home
+            </a>
+            <a href="/list" class="top-nav-link {% if request.path == '/list' %}active{% endif %}">
+                <i class="fas fa-plug"></i> API Endpoints
+            </a>
+            <a href="/convert/history"
+                class="top-nav-link {% if '/convert/history' in request.path %}active{% endif %}">
+                <i class="fas fa-book"></i> History
+            </a>
+
+            <!-- Convert dropdown -->
+            <div class="top-nav-dropdown">
+                <button
+                    class="top-nav-link top-nav-dropdown-btn {% if '/convert/' in request.path and 'history' not in request.path %}active{% endif %}">
+                    <i class="fas fa-exchange-alt"></i> Convert
+                    <i class="fas fa-chevron-down top-nav-caret"></i>
+                </button>
+                <div class="top-nav-dropdown-menu">
+                    <a href="/convert/misp_to_stix"
+                        class="top-nav-dropdown-item {% if request.path == '/convert/misp_to_stix' %}active{% endif %}">
+                        <i class="fas fa-arrow-right-arrow-left me-2"></i>
+                        MISP <span class="convert-arrow">→</span> STIX
+                    </a>
+                    <a href="/convert/stix_to_misp"
+                        class="top-nav-dropdown-item {% if request.path == '/convert/stix_to_misp' %}active{% endif %}">
+                        <i class="fas fa-arrow-right-arrow-left me-2"></i>
+                        STIX <span class="convert-arrow">→</span> MISP
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navbar search -->
+        <form class="top-nav-search" id="top-nav-search-form" action="/convert/history" method="get">
+            <div class="top-nav-search-wrap">
+                <i class="fas fa-search top-nav-search-icon"></i>
+                <input
+                    id="navbar-search-input"
+                    name="search"
+                    class="top-nav-search-input"
+                    type="text"
+                    placeholder="Search converts…"
+                    autocomplete="off">
+                <div class="nav-search-dropdown" id="navbar-search-dropdown" style="display:none;"></div>
+            </div>
+        </form>
+
+        <!-- Right controls -->
+        <div class="top-nav-controls">
+            <!-- User dropdown -->
+            <div class="top-nav-dropdown">
+                <button class="top-nav-link top-nav-dropdown-btn top-user-btn">
+                    <i class="fas fa-circle-user"></i>
+                    <span class="top-user-name">
+                        {% if current_user.is_authenticated %}
+                        {{ current_user.get_first_name() }}
+                        {% else %}
+                        Account
+                        {% endif %}
+                    </span>
+                    <i class="fas fa-chevron-down top-nav-caret"></i>
+                </button>
+                <div class="top-nav-dropdown-menu top-nav-dropdown-menu-right">
+                    {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin() %}
+                    <a href="/account/manage_user" class="top-nav-dropdown-item">
+                        <i class="fas fa-users me-2"></i> Manage Users
+                    </a>
+                    <a href="/account/admin/comments" class="top-nav-dropdown-item">
+                        <i class="fas fa-comments me-2"></i> All Comments
+                    </a>
+                    <a href="/account/admin/reports" class="top-nav-dropdown-item">
+                        <i class="fas fa-flag me-2"></i> Reports
+                    </a>
+                    <a href="/account/admin/deleted_converts" class="top-nav-dropdown-item">
+                        <i class="fas fa-trash-alt me-2"></i> Deleted Converts
+                    </a>
+                    <a href="/account/admin/logs" class="top-nav-dropdown-item">
+                        <i class="fas fa-stream me-2"></i> Activity Logs
+                    </a>
+                    <div class="top-nav-dropdown-divider"></div>
+                    {% endif %}
+                    <a href="/account/" class="top-nav-dropdown-item">
+                        <i class="fas fa-user me-2"></i> Profile
+                    </a>
+                    <div class="top-nav-dropdown-divider"></div>
+                    <a href="/account/logout" class="top-nav-dropdown-item top-nav-dropdown-danger">
+                        <i class="fas fa-right-from-bracket me-2"></i> Logout
+                    </a>
+                    {% else %}
+                    <a href="/account/register" class="top-nav-dropdown-item">
+                        <i class="fas fa-user-plus me-2"></i> Register
+                    </a>
+                    <a href="/account/login" class="top-nav-dropdown-item">
+                        <i class="fas fa-right-to-bracket me-2"></i> Login
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <!-- Notification bell dropdown -->
+            <div class="notif-dropdown-wrapper" id="notif-wrapper">
+                <button class="top-nav-icon-btn notif-bell-wrapper" id="notif-bell-btn" aria-label="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span class="notif-badge" id="notif-count" style="display:none;">0</span>
+                </button>
+                <div class="notif-dropdown-panel" id="notif-panel" style="display:none;">
+                    <div class="notif-panel-header">
+                        <span class="notif-panel-title">Notifications</span>
+                        <button class="notif-panel-mark-all" id="notif-mark-all">Mark all read</button>
+                    </div>
+                    <div class="notif-panel-list" id="notif-panel-list">
+                        <div class="notif-panel-loading"><div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div></div>
+                    </div>
+                    <a href="/account/notifications" class="notif-panel-footer">See all notifications <i class="fas fa-arrow-right ms-1"></i></a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Theme toggle -->
+            <button class="top-nav-icon-btn" id="theme-toggle" aria-label="Toggle theme">
+                <i id="theme-icon" class="fas fa-sun"></i>
+            </button>
+
+            <!-- Mobile burger -->
+            <button class="top-nav-icon-btn top-burger" id="mobileMenuBtn" aria-label="Menu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
     </div>
-    <div v-if="sidebarQuery" class="conv-sidebar-search-hint">
-      <i class="fas fa-info-circle me-1"></i>
-      Press <kbd>↵</kbd> or wait to search
-    </div>
-  </div>
-
-  <div class="conv-sidebar-divider"></div>
-
-  <!-- Active filters summary -->
-  <div class="conv-sidebar-section">
-    <div class="conv-sidebar-section-label">Active Filters</div>
-    <div v-if="!filter_type && !searchQuery && !date_from && !date_to" class="conv-sidebar-empty">
-      No filters applied
-    </div>
-    <div v-else class="conv-sidebar-chips">
-      <span v-if="searchQuery" class="conv-sidebar-chip">
-        <i class="fas fa-search me-1"></i>[[ searchQuery ]]
-        <button @click="searchQuery=''; onSearchInput()"><i class="fas fa-times"></i></button>
-      </span>
-      <span v-if="filter_type" class="conv-sidebar-chip">
-        <i class="fas fa-exchange-alt me-1"></i>[[ filter_type.replace('_',' → ') ]]
-        <button @click="filter_type=''; onSearchInput()"><i class="fas fa-times"></i></button>
-      </span>
-      <span v-if="date_from" class="conv-sidebar-chip">
-        <i class="fas fa-calendar me-1"></i>From [[ date_from ]]
-        <button @click="date_from=''; onSearchInput()"><i class="fas fa-times"></i></button>
-      </span>
-      <span v-if="date_to" class="conv-sidebar-chip">
-        <i class="fas fa-calendar me-1"></i>To [[ date_to ]]
-        <button @click="date_to=''; onSearchInput()"><i class="fas fa-times"></i></button>
-      </span>
-    </div>
-  </div>
-
-  <div class="conv-sidebar-divider"></div>
-
-  <!-- Type filter -->
-  <div class="conv-sidebar-section">
-    <div class="conv-sidebar-section-label">Type</div>
-    <div class="conv-sidebar-options">
-      <button class="conv-sidebar-opt" :class="{active: filter_type===''}" @click="filter_type=''; onSearchInput()">
-        <i class="fas fa-layer-group me-2"></i>All
-      </button>
-      <button class="conv-sidebar-opt" :class="{active: filter_type==='MISP_TO_STIX'}" @click="filter_type='MISP_TO_STIX'; onSearchInput()">
-        <i class="fas fa-arrow-right me-2"></i>MISP → STIX
-      </button>
-      <button class="conv-sidebar-opt" :class="{active: filter_type==='STIX_TO_MISP'}" @click="filter_type='STIX_TO_MISP'; onSearchInput()">
-        <i class="fas fa-arrow-left me-2"></i>STIX → MISP
-      </button>
-    </div>
-  </div>
-
-  <div class="conv-sidebar-divider"></div>
-
-  <!-- Sort -->
-  <div class="conv-sidebar-section">
-    <div class="conv-sidebar-section-label">Sort</div>
-    <div class="conv-sidebar-options">
-      <button class="conv-sidebar-opt" :class="{active: sort_order==='desc'}" @click="sort_order='desc'; onSearchInput()">
-        <i class="fas fa-sort-amount-down me-2"></i>Newest first
-      </button>
-      <button class="conv-sidebar-opt" :class="{active: sort_order==='asc'}" @click="sort_order='asc'; onSearchInput()">
-        <i class="fas fa-sort-amount-up me-2"></i>Oldest first
-      </button>
-    </div>
-  </div>
-
-</div>
+</nav>

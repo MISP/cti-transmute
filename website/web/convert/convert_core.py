@@ -74,13 +74,46 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
 
 
 def delete_convert(convert_id):
-    """Delete a Convert entry"""
+    """Soft-delete a Convert entry (sets is_active=False)."""
+    convert = Convert.query.get(convert_id)
+    if not convert:
+        return False
+    convert.is_active = False
+    convert.deleted_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    db.session.commit()
+    return True
+
+
+def restore_convert(convert_id):
+    """Restore a soft-deleted convert."""
+    convert = Convert.query.get(convert_id)
+    if not convert or convert.is_active:
+        return False
+    convert.is_active = True
+    convert.deleted_at = None
+    db.session.commit()
+    return True
+
+
+def hard_delete_convert(convert_id):
+    """Permanently remove a convert from the database."""
     convert = Convert.query.get(convert_id)
     if not convert:
         return False
     db.session.delete(convert)
     db.session.commit()
     return True
+
+
+def get_deleted_converts(page, user_id=None, search=None):
+    """Return paginated soft-deleted converts. Scoped to user_id when provided."""
+    query = Convert.query.filter(Convert.is_active == False)
+    if user_id:
+        query = query.filter(Convert.user_id == user_id)
+    if search:
+        query = query.filter(Convert.name.ilike(f"%{search}%"))
+    query = query.order_by(desc(Convert.deleted_at))
+    return query.paginate(page=page, per_page=15)
 
 
 def get_convert(convert_id):
@@ -100,7 +133,7 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
     - exact_match: if True, search for exact phrase instead of contains
     """
 
-    query = Convert.query
+    query = Convert.query.filter(Convert.is_active == True)
     if searchQuery:
         if exact_match:
             search_pattern = searchQuery  # exact, case-sensitive via ilike = case-insensitive exact
@@ -277,7 +310,7 @@ def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', sear
     if not user_id:
         return None
 
-    query = Convert.query.filter_by(user_id=user_id)
+    query = Convert.query.filter(Convert.user_id == user_id, Convert.is_active == True)
 
     if searchQuery:
         search_lower = f"%{searchQuery.lower()}%"
@@ -811,3 +844,14 @@ def review_report(report_id, new_status, reviewed_by_id):
     report.reviewed_by = reviewed_by_id
     db.session.commit()
     return True
+
+
+def get_report(report_id):
+    return ConvertReport.query.get(report_id)
+
+
+def delete_report(report_id):
+    report = ConvertReport.query.get(report_id)
+    if report:
+        db.session.delete(report)
+        db.session.commit()

@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/history.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="trash-container" v-cloak>
+
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="mb-1" style="font-weight:700; letter-spacing:-0.02em;">
+                <i class="fas fa-trash-alt me-2" style="color:var(--danger);"></i>Trash
+            </h2>
+            <p class="mb-0" style="color:var(--text-2); font-size:0.85rem;">
+                Your deleted converts. Restore them or delete them permanently.
+            </p>
+        </div>
+        <a href="/convert/history" class="btn btn-sm back-btn"
+            style="background:var(--surface); border:1px solid var(--border); color:var(--text-2);">
+            <i class="fas fa-arrow-left me-1"></i> Back to History
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="p-3 mb-4 rounded-3" style="background:var(--surface); border:1px solid var(--border);">
+        <div class="d-flex gap-3 align-items-center flex-wrap">
+            <div class="position-relative flex-grow-1" style="min-width:220px;">
+                <i class="fas fa-search position-absolute"
+                    style="left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.8rem; z-index:1;"></i>
+                <input type="text" v-model="search" @input="debounceSearch"
+                    class="form-control form-control-sm" style="padding-left:30px;"
+                    placeholder="Search deleted converts…">
+            </div>
+            <span style="color:var(--text-3); font-size:0.8rem;">
+                <i class="fas fa-circle-info me-1"></i>
+                [[ total_count ]] deleted convert[[ total_count !== 1 ? 's' : '' ]]
+            </span>
+        </div>
+    </div>
+
+    <!-- Bulk action bar -->
+    <div v-if="selected.length > 0" class="d-flex align-items-center gap-2 mb-3 px-3 py-2 rounded-2"
+        style="background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);">
+        <span style="font-size:0.82rem; color:var(--text-2);">
+            <strong style="color:var(--accent);">[[ selected.length ]]</strong>
+            convert[[ selected.length !== 1 ? 's' : '' ]] selected
+        </span>
+        <button class="btn btn-sm btn-primary ms-2" @click="bulkAction('restore')">
+            <i class="fas fa-rotate-left me-1"></i>Restore
+        </button>
+        <button class="btn btn-sm btn-outline-danger" @click="bulkAction('hard_delete')">
+            <i class="fas fa-trash me-1"></i>Delete permanently
+        </button>
+        <button class="btn btn-sm btn-link ms-auto p-0 text-decoration-none"
+            style="color:var(--text-3); font-size:0.8rem;" @click="clearSelection">
+            <i class="fas fa-times me-1"></i>Deselect all
+        </button>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="text-center py-5">
+        <div class="spinner-border" style="color:var(--accent);"></div>
+    </div>
+
+    <!-- Empty -->
+    <div v-else-if="list.length === 0" class="text-center py-5" style="color:var(--text-3);">
+        <i class="fas fa-trash-alt fa-2x mb-3 d-block" style="opacity:0.3;"></i>
+        <p class="mb-0" style="font-size:0.9rem;">Your trash is empty.</p>
+    </div>
+
+    <!-- Table -->
+    <div v-else class="custom-card p-0 overflow-hidden mb-3">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+            <thead>
+                <tr style="color:var(--text-2); font-size:0.72rem; text-transform:uppercase;
+                            letter-spacing:0.05em; background:var(--surface-2); border-bottom:1px solid var(--border);">
+                    <th class="ps-3 py-2" style="width:36px;">
+                        <input type="checkbox" :checked="allSelected" @change="toggleSelectAll"
+                            style="cursor:pointer; accent-color:var(--accent);">
+                    </th>
+                    <th class="py-2">Name</th>
+                    <th class="py-2">Type</th>
+                    <th class="py-2">Deleted on</th>
+                    <th class="py-2" style="width:220px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="c in list" :key="c.id" :style="selected.includes(c.id) ? 'background:rgba(37,99,235,0.05)' : ''">
+                    <td class="ps-3 py-3">
+                        <input type="checkbox" :checked="selected.includes(c.id)" @change="toggleSelect(c.id)"
+                            style="cursor:pointer; accent-color:var(--accent);">
+                    </td>
+                    <td class="py-3">
+                        <div style="font-weight:600; color:var(--text);">[[ c.name ]]</div>
+                        <div v-if="c.description" style="color:var(--text-3); font-size:0.75rem; margin-top:2px;">
+                            [[ c.description.length > 70 ? c.description.slice(0,70)+'…' : c.description ]]
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge"
+                            :style="c.conversion_type === 'MISP_TO_STIX'
+                                ? 'background:rgba(37,99,235,0.10);color:var(--accent);'
+                                : 'background:rgba(139,92,246,0.10);color:#8b5cf6;'">
+                            [[ c.conversion_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
+                        </span>
+                    </td>
+                    <td style="color:var(--text-3); font-size:0.8rem; white-space:nowrap;">
+                        <i class="fas fa-clock me-1" style="opacity:0.5;"></i>[[ c.deleted_at || '—' ]]
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2 align-items-center">
+                            <select v-model="c._action" class="form-select form-select-sm"
+                                style="width:auto; min-width:160px; font-size:0.8rem;">
+                                <option value="">Choose action…</option>
+                                <option value="restore">↩ Restore</option>
+                                <option value="hard_delete">🗑 Delete permanently</option>
+                            </select>
+                            <button class="btn btn-sm"
+                                :class="c._action === 'hard_delete' ? 'btn-outline-danger' : 'btn-primary'"
+                                :disabled="!c._action"
+                                @click="doAction(c)">
+                                <i class="fas" :class="c._action === 'hard_delete' ? 'fa-trash' : 'fa-check'"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div v-if="total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
+        <button class="btn btn-sm btn-outline-secondary" :disabled="page <= 1" @click="page--; load()">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">
+            Page [[ page ]] / [[ total_page ]]
+        </span>
+        <button class="btn btn-sm btn-outline-secondary" :disabled="page >= total_page" @click="page++; load()">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, computed, onMounted } = Vue
+    import { create_message, message_list } from '/static/js/toaster.js';
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const list        = ref([])
+            const loading     = ref(true)
+            const page        = ref(1)
+            const total_page  = ref(1)
+            const total_count = ref(0)
+            const search      = ref('')
+            const selected    = ref([])
+            let debounceTimer = null
+
+            const allSelected = computed(() =>
+                list.value.length > 0 && list.value.every(c => selected.value.includes(c.id))
+            )
+
+            async function load() {
+                loading.value = true
+                selected.value = []
+                try {
+                    const params = new URLSearchParams({ page: page.value })
+                    if (search.value) params.set('search', search.value)
+                    const res = await fetch(`/convert/get_trash?${params}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        list.value       = (data.list || []).map(c => ({ ...c, _action: '' }))
+                        total_page.value = data.total_page || 1
+                        total_count.value = data.total_count || list.value.length
+                    }
+                } catch {}
+                loading.value = false
+            }
+
+            function debounceSearch() {
+                clearTimeout(debounceTimer)
+                debounceTimer = setTimeout(() => { page.value = 1; load() }, 350)
+            }
+
+            function toggleSelect(id) {
+                const idx = selected.value.indexOf(id)
+                if (idx === -1) selected.value.push(id)
+                else selected.value.splice(idx, 1)
+            }
+
+            function toggleSelectAll() {
+                if (allSelected.value) selected.value = []
+                else selected.value = list.value.map(c => c.id)
+            }
+
+            function clearSelection() { selected.value = [] }
+
+            async function doAction(c) {
+                if (!c._action) return
+                if (c._action === 'hard_delete' && !confirm(`Permanently delete "${c.name}"? This cannot be undone.`)) return
+                const url = c._action === 'restore'
+                    ? `/convert/restore?id=${c.id}`
+                    : `/convert/hard_delete?id=${c.id}`
+                const res  = await fetch(url)
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) {
+                    list.value = list.value.filter(x => x.id !== c.id)
+                    selected.value = selected.value.filter(id => id !== c.id)
+                    total_count.value = Math.max(0, total_count.value - 1)
+                }
+            }
+
+            async function bulkAction(action) {
+                if (!selected.value.length) return
+                if (action === 'hard_delete' && !confirm(`Permanently delete ${selected.value.length} convert(s)? This cannot be undone.`)) return
+                const res = await fetch('/convert/bulk_action', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
+                    },
+                    body: JSON.stringify({ action, ids: selected.value })
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) {
+                    const removed = new Set(selected.value)
+                    list.value = list.value.filter(c => !removed.has(c.id))
+                    total_count.value = Math.max(0, total_count.value - (data.done || 0))
+                    selected.value = []
+                }
+            }
+
+            onMounted(load)
+            return { list, loading, page, total_page, total_count, search, selected, allSelected,
+                     load, debounceSearch, toggleSelect, toggleSelectAll, clearSelection, doAction, bulkAction, message_list }
+        }
+    }).mount('#main-containers')
+</script>
+{% endblock %}

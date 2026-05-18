@@ -316,6 +316,10 @@ def detail(id):
         flash("The convert id is unknown", "danger")
         return redirect(url_for("convert.history"))
 
+    if not convert.is_active:
+        flash("This convert has been deleted.", "warning")
+        return redirect(url_for("convert.history"))
+
     if convert.public:
         return render_template("convert/detail.html", convert=convert)
 
@@ -342,6 +346,7 @@ def edit(id):
             
             success, message = ConvertModel.edit_convert(id, form_dict)
             if success:
+                AccountModel.create_system_log("convert_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(id), target_name=form_dict.get("name", convert.name))
                 flash(f"{convert.name} edit successfully","success")
                 return redirect(f"/convert/detail/{id}")
             else:
@@ -402,6 +407,7 @@ def edit_public():
                         message="This convert is now public"
                     else:
                         message="This convert is now private"
+                    AccountModel.create_system_log("convert_visibility_changed", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=id, target_name=convert.name, details="public" if _bool else "private")
                     return {
                         "success": True,
                         "convert_public": _bool,
@@ -970,6 +976,114 @@ def admin_review_report():
     }, 200 if success else 500
 
 
+@convert_blueprint.route("/admin/delete_report", methods=['GET'])
+@login_required
+def admin_delete_report():
+    """Admin: permanently delete a report."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    report_id = request.args.get('report_id', type=int)
+    if not report_id:
+        return {"success": False, "message": "Invalid params", "toast_class": "danger"}, 400
+    report = ConvertModel.get_report(report_id)
+    if not report:
+        return {"success": False, "message": "Report not found", "toast_class": "danger"}, 404
+    ConvertModel.delete_report(report_id)
+    return {"success": True, "message": "Report deleted", "toast_class": "success"}, 200
+
+
+##################################
+#   Trash (soft-delete) routes   #
+##################################
+
+@convert_blueprint.route("/trash", methods=['GET'])
+@login_required
+def trash():
+    if not current_user.is_admin():
+        return redirect(url_for("convert.history"))
+    return render_template("convert/trash.html")
+
+
+@convert_blueprint.route("/get_trash", methods=['GET'])
+@login_required
+def get_trash():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '', type=str) or None
+    pagination = ConvertModel.get_deleted_converts(page, search=search)
+    return {
+        "success": True,
+        "list": [c.to_json_list() for c in pagination.items],
+        "total_page": pagination.pages,
+        "total_count": pagination.total,
+        "page": page,
+    }, 200
+
+
+@convert_blueprint.route("/restore", methods=['GET'])
+@login_required
+def restore():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    convert_id = request.args.get('id', type=int)
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Convert not found", "toast_class": "danger"}, 404
+    if ConvertModel.restore_convert(convert_id):
+        AccountModel.create_system_log("convert_restored", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=convert_id, target_name=convert.name)
+        return {"success": True, "message": f"'{convert.name}' restored successfully", "toast_class": "success"}, 200
+    return {"success": False, "message": "Error restoring convert", "toast_class": "danger"}, 500
+
+
+@convert_blueprint.route("/hard_delete", methods=['GET'])
+@login_required
+def hard_delete():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    convert_id = request.args.get('id', type=int)
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Convert not found", "toast_class": "danger"}, 404
+    _name = convert.name
+    if ConvertModel.hard_delete_convert(convert_id):
+        AccountModel.create_system_log("convert_hard_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=convert_id, target_name=_name)
+        return {"success": True, "message": f"'{_name}' permanently deleted", "toast_class": "success"}, 200
+    return {"success": False, "message": "Error deleting convert", "toast_class": "danger"}, 500
+
+
+@convert_blueprint.route("/bulk_action", methods=['POST'])
+@login_required
+def bulk_action():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    data = request.get_json(silent=True) or {}
+    action = data.get('action')
+    ids = data.get('ids', [])
+    if not ids or action not in ('restore', 'hard_delete'):
+        return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
+    done = 0
+    for convert_id in ids:
+        convert = ConvertModel.get_convert(convert_id)
+        if not convert:
+            continue
+        if action == 'restore':
+            if ConvertModel.restore_convert(convert_id):
+                AccountModel.create_system_log("convert_restored", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=convert_id, target_name=convert.name)
+                done += 1
+        else:
+            _name = convert.name
+            if ConvertModel.hard_delete_convert(convert_id):
+                AccountModel.create_system_log("convert_hard_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=convert_id, target_name=_name)
+                done += 1
+    label = "convert" if done == 1 else "converts"
+    if action == 'restore':
+        msg = f"{done} {label} restored"
+    else:
+        msg = f"{done} {label} permanently deleted"
+    return {"success": True, "message": msg, "toast_class": "success" if done > 0 else "warning", "done": done}, 200
+
+
 @convert_blueprint.route("/admin/get_all_comments", methods=['GET'])
 @login_required
 def admin_get_comments():
@@ -983,6 +1097,9 @@ def admin_get_comments():
     for c in pagination.items:
         d = c.to_json(current_user_id=current_user.id, is_admin=True)
         d["replies"] = []
+        convert = ConvertModel.get_convert(c.convert_id)
+        d["convert_name"] = convert.name if convert else "Unknown"
+        d["convert_active"] = bool(convert and convert.is_active)
         items.append(d)
     return {
         "success": True,
