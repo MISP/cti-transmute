@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/solid.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/brands.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/core.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
@@ -46,148 +47,7 @@
 
 <body>
 
-    <!-- ── TOP NAVBAR ───────────────────────────────────────────── -->
-    <nav class="top-navbar" id="topNavbar">
-        <div class="top-navbar-inner">
-
-            <!-- Brand -->
-            <a href="/" class="top-brand">
-                <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Logo">
-                <span>CTI Transmute</span>
-            </a>
-
-            <!-- Nav links (desktop) -->
-            <div class="top-nav-links" id="topNavLinks">
-                <a href="/" class="top-nav-link {% if request.path == '/' %}active{% endif %}">
-                    <i class="fas fa-home"></i> Home
-                </a>
-                <a href="/list" class="top-nav-link {% if request.path == '/list' %}active{% endif %}">
-                    <i class="fas fa-plug"></i> API Endpoints
-                </a>
-                <a href="/convert/history"
-                    class="top-nav-link {% if '/convert/history' in request.path %}active{% endif %}">
-                    <i class="fas fa-book"></i> History
-                </a>
-
-                <!-- Convert dropdown -->
-                <div class="top-nav-dropdown">
-                    <button
-                        class="top-nav-link top-nav-dropdown-btn {% if '/convert/' in request.path and 'history' not in request.path %}active{% endif %}">
-                        <i class="fas fa-exchange-alt"></i> Convert
-                        <i class="fas fa-chevron-down top-nav-caret"></i>
-                    </button>
-                    <div class="top-nav-dropdown-menu">
-                        <a href="/convert/misp_to_stix"
-                            class="top-nav-dropdown-item {% if request.path == '/convert/misp_to_stix' %}active{% endif %}">
-                            <i class="fas fa-arrow-right-arrow-left me-2"></i>
-                            MISP <span class="convert-arrow">→</span> STIX
-                        </a>
-                        <a href="/convert/stix_to_misp"
-                            class="top-nav-dropdown-item {% if request.path == '/convert/stix_to_misp' %}active{% endif %}">
-                            <i class="fas fa-arrow-right-arrow-left me-2"></i>
-                            STIX <span class="convert-arrow">→</span> MISP
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Navbar search -->
-            <form class="top-nav-search" id="top-nav-search-form" action="/convert/history" method="get">
-                <div class="top-nav-search-wrap">
-                    <i class="fas fa-search top-nav-search-icon"></i>
-                    <input
-                        id="navbar-search-input"
-                        name="search"
-                        class="top-nav-search-input"
-                        type="text"
-                        placeholder="Search converts…"
-                        autocomplete="off">
-                    <div class="nav-search-dropdown" id="navbar-search-dropdown" style="display:none;"></div>
-                </div>
-            </form>
-
-            <!-- Right controls -->
-            <div class="top-nav-controls">
-                <!-- User dropdown -->
-                <div class="top-nav-dropdown">
-                    <button class="top-nav-link top-nav-dropdown-btn top-user-btn">
-                        <i class="fas fa-circle-user"></i>
-                        <span class="top-user-name">
-                            {% if current_user.is_authenticated %}
-                            {{ current_user.get_first_name() }}
-                            {% else %}
-                            Account
-                            {% endif %}
-                        </span>
-                        <i class="fas fa-chevron-down top-nav-caret"></i>
-                    </button>
-                    <div class="top-nav-dropdown-menu top-nav-dropdown-menu-right">
-                        {% if current_user.is_authenticated %}
-                        {% if current_user.is_admin() %}
-                        <a href="/account/manage_user" class="top-nav-dropdown-item">
-                            <i class="fas fa-users me-2"></i> Manage Users
-                        </a>
-                        <a href="/account/admin/comments" class="top-nav-dropdown-item">
-                            <i class="fas fa-comments me-2"></i> All Comments
-                        </a>
-                        <a href="/account/admin/reports" class="top-nav-dropdown-item">
-                            <i class="fas fa-flag me-2"></i> Reports
-                        </a>
-                        <a href="/account/admin/logs" class="top-nav-dropdown-item">
-                            <i class="fas fa-bell me-2"></i> Activity Logs
-                        </a>
-                        <div class="top-nav-dropdown-divider"></div>
-                        {% endif %}
-                        <a href="/account/" class="top-nav-dropdown-item">
-                            <i class="fas fa-user me-2"></i> Profile
-                        </a>
-                        <div class="top-nav-dropdown-divider"></div>
-                        <a href="/account/logout" class="top-nav-dropdown-item top-nav-dropdown-danger">
-                            <i class="fas fa-right-from-bracket me-2"></i> Logout
-                        </a>
-                        {% else %}
-                        <a href="/account/register" class="top-nav-dropdown-item">
-                            <i class="fas fa-user-plus me-2"></i> Register
-                        </a>
-                        <a href="/account/login" class="top-nav-dropdown-item">
-                            <i class="fas fa-right-to-bracket me-2"></i> Login
-                        </a>
-                        {% endif %}
-                    </div>
-                </div>
-
-                {% if current_user.is_authenticated %}
-                <!-- Notification bell dropdown -->
-                <div class="notif-dropdown-wrapper" id="notif-wrapper">
-                    <button class="top-nav-icon-btn notif-bell-wrapper" id="notif-bell-btn" aria-label="Notifications">
-                        <i class="fas fa-bell"></i>
-                        <span class="notif-badge" id="notif-count" style="display:none;">0</span>
-                    </button>
-                    <div class="notif-dropdown-panel" id="notif-panel" style="display:none;">
-                        <div class="notif-panel-header">
-                            <span class="notif-panel-title">Notifications</span>
-                            <button class="notif-panel-mark-all" id="notif-mark-all">Mark all read</button>
-                        </div>
-                        <div class="notif-panel-list" id="notif-panel-list">
-                            <div class="notif-panel-loading"><div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div></div>
-                        </div>
-                        <a href="/account/notifications" class="notif-panel-footer">See all notifications <i class="fas fa-arrow-right ms-1"></i></a>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Theme toggle -->
-                <button class="top-nav-icon-btn" id="theme-toggle" aria-label="Toggle theme">
-                    <i id="theme-icon" class="fas fa-sun"></i>
-                </button>
-
-                <!-- Mobile burger -->
-                <button class="top-nav-icon-btn top-burger" id="mobileMenuBtn" aria-label="Menu">
-                    <i class="fas fa-bars"></i>
-                </button>
-            </div>
-        </div>
-    </nav>
+    {% include 'sidebar.html' %}
 
     <!-- ── MAIN CONTENT ─────────────────────────────────────────── -->
     <main id="main-containers" class="container">
@@ -334,71 +194,142 @@
 
                 // Navbar search dropdown
                 ;(function () {
+                    const IS_ADMIN = {{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}
+                    const IS_AUTH  = {{ 'true' if current_user.is_authenticated else 'false' }}
+
                     const input    = document.getElementById('navbar-search-input')
                     const dropdown = document.getElementById('navbar-search-dropdown')
                     const form     = document.getElementById('top-nav-search-form')
                     if (!input || !dropdown) return
 
-                    // Pre-fill when on history page
                     const _sq = new URLSearchParams(window.location.search).get('search')
                     if (_sq) input.value = _sq
 
                     let debounce = null
+                    let activeIdx = -1
 
-                    function esc(str) {
-                        return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+                    const SECTIONS = [
+                        { icon: 'fa-home',                 label: 'Home',              url: '/' },
+                        { icon: 'fa-book',                 label: 'History',           url: '/convert/history' },
+                        { icon: 'fa-arrow-right-arrow-left', label: 'MISP → STIX',    url: '/convert/misp_to_stix' },
+                        { icon: 'fa-arrow-right-arrow-left', label: 'STIX → MISP',    url: '/convert/stix_to_misp' },
+                        { icon: 'fa-plug',                 label: 'API Endpoints',     url: '/list' },
+                        ...(IS_AUTH ? [{ icon: 'fa-user', label: 'Profile', url: '/account/' }] : []),
+                        ...(IS_ADMIN ? [
+                            { icon: 'fa-users',      label: 'Manage Users',      url: '/account/manage_user',            admin: true },
+                            { icon: 'fa-comments',   label: 'All Comments',      url: '/account/admin/comments',         admin: true },
+                            { icon: 'fa-flag',       label: 'Reports',           url: '/account/admin/reports',          admin: true },
+                            { icon: 'fa-trash-alt',  label: 'Deleted Converts',  url: '/account/admin/deleted_converts', admin: true },
+                            { icon: 'fa-stream',     label: 'Activity Logs',     url: '/account/admin/logs',             admin: true },
+                        ] : []),
+                    ]
+
+                    function esc(s) {
+                        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+                    }
+                    function typeLabel(t) { return t==='MISP_TO_STIX'?'MISP→STIX':t==='STIX_TO_MISP'?'STIX→MISP':t||'—' }
+                    function typeClass(t)  { return t==='MISP_TO_STIX'?'nav-sd-misp':t==='STIX_TO_MISP'?'nav-sd-stix':'' }
+
+                    function sectionHtml(sections) {
+                        return sections.map(s =>
+                            `<a class="nav-sd-section-item nav-sd-focusable" href="${s.url}">
+                                <span class="nav-sd-section-icon${s.admin?' nav-sd-admin-icon':''}"><i class="fas ${s.icon}"></i></span>
+                                <span class="nav-sd-name">${esc(s.label)}</span>
+                                ${s.admin ? '<span class="nav-sd-admin-tag">Admin</span>' : ''}
+                            </a>`
+                        ).join('')
                     }
 
-                    function typeLabel(t) {
-                        return t === 'MISP_TO_STIX' ? 'MISP→STIX' : t === 'STIX_TO_MISP' ? 'STIX→MISP' : t || '—'
-                    }
-                    function typeClass(t) {
-                        return t === 'MISP_TO_STIX' ? 'nav-sd-misp' : t === 'STIX_TO_MISP' ? 'nav-sd-stix' : ''
+                    function showQuickAccess() {
+                        const user  = SECTIONS.filter(s => !s.admin)
+                        const admin = SECTIONS.filter(s =>  s.admin)
+                        let html = ''
+                        if (user.length)  html += `<div class="nav-sd-group-header"><i class="fas fa-layer-group me-1"></i>Quick Access</div>` + sectionHtml(user)
+                        if (admin.length) html += `<div class="nav-sd-group-header"><i class="fas fa-shield-halved me-1"></i>Admin</div>` + sectionHtml(admin)
+                        dropdown.innerHTML = html
+                        dropdown.style.display = 'block'
+                        activeIdx = -1
                     }
 
                     async function search(q) {
-                        if (!q.trim()) { dropdown.style.display = 'none'; return }
+                        if (!q.trim()) { showQuickAccess(); return }
                         try {
-                            const res = await fetch('/convert/get_convert_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
-                            if (!res.ok) return
-                            const data = await res.json()
-                            const items = (data.list || []).slice(0, 8)
-                            if (items.length === 0) {
-                                dropdown.innerHTML = '<div class="nav-sd-empty"><i class="fas fa-inbox me-1"></i>No results</div>'
-                            } else {
-                                dropdown.innerHTML =
-                                    items.map(item => `
-                                        <a class="nav-sd-item" href="/convert/detail/${item.id}">
-                                            <span class="nav-sd-badge ${typeClass(item.conversion_type)}">${typeLabel(item.conversion_type)}</span>
-                                            <span class="nav-sd-name">${esc(item.name)}</span>
-                                        </a>
-                                    `).join('') +
-                                    `<a class="nav-sd-footer" href="/convert/history?search=${encodeURIComponent(q)}">
-                                        <i class="fas fa-search me-1"></i>See all results
+                            const matchUser  = SECTIONS.filter(s => !s.admin && s.label.toLowerCase().includes(q.toLowerCase()))
+                            const matchAdmin = SECTIONS.filter(s =>  s.admin && s.label.toLowerCase().includes(q.toLowerCase()))
+
+                            let html = ''
+                            if (matchUser.length)  html += `<div class="nav-sd-group-header"><i class="fas fa-layer-group me-1"></i>Sections</div>` + sectionHtml(matchUser)
+                            if (matchAdmin.length) html += `<div class="nav-sd-group-header"><i class="fas fa-shield-halved me-1"></i>Admin</div>` + sectionHtml(matchAdmin)
+
+                            const res  = await fetch('/convert/get_convert_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
+                            const data = res.ok ? await res.json() : { list: [] }
+                            const items = (data.list || []).slice(0, 5)
+
+                            if (items.length) {
+                                html += `<div class="nav-sd-group-header"><i class="fas fa-exchange-alt me-1"></i>Converts</div>`
+                                html += items.map(item =>
+                                    `<a class="nav-sd-item nav-sd-focusable" href="/convert/detail/${item.id}">
+                                        <span class="nav-sd-badge ${typeClass(item.conversion_type)}">${typeLabel(item.conversion_type)}</span>
+                                        <span class="nav-sd-name">${esc(item.name)}</span>
                                     </a>`
+                                ).join('')
+                                html += `<a class="nav-sd-footer nav-sd-focusable" href="/convert/history?search=${encodeURIComponent(q)}">
+                                    <i class="fas fa-search me-1"></i>See all results for &ldquo;${esc(q)}&rdquo;
+                                </a>`
+                            } else if (!matchUser.length && !matchAdmin.length) {
+                                html = `<div class="nav-sd-empty"><i class="fas fa-inbox me-1"></i>No results</div>`
                             }
+
+                            dropdown.innerHTML = html
                             dropdown.style.display = 'block'
+                            activeIdx = -1
                         } catch {}
                     }
+
+                    function getFocusable() { return Array.from(dropdown.querySelectorAll('.nav-sd-focusable')) }
+
+                    input.addEventListener('keydown', e => {
+                        const items = getFocusable()
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault()
+                            activeIdx = Math.min(activeIdx + 1, items.length - 1)
+                            items[activeIdx]?.focus()
+                        } else if (e.key === 'Escape') {
+                            dropdown.style.display = 'none'
+                        }
+                    })
+
+                    dropdown.addEventListener('keydown', e => {
+                        const items = getFocusable()
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault()
+                            activeIdx = Math.min(activeIdx + 1, items.length - 1)
+                            items[activeIdx]?.focus()
+                        } else if (e.key === 'ArrowUp') {
+                            e.preventDefault()
+                            if (activeIdx <= 0) { activeIdx = -1; input.focus(); return }
+                            activeIdx = Math.max(0, activeIdx - 1)
+                            items[activeIdx]?.focus()
+                        } else if (e.key === 'Escape') {
+                            dropdown.style.display = 'none'
+                            input.focus()
+                        }
+                    })
 
                     input.addEventListener('input', () => {
                         clearTimeout(debounce)
                         const q = input.value
-                        if (!q.trim()) { dropdown.style.display = 'none'; return }
+                        if (!q.trim()) { showQuickAccess(); return }
                         debounce = setTimeout(() => search(q), 250)
                     })
 
                     input.addEventListener('focus', () => {
-                        if (input.value.trim()) search(input.value)
+                        const q = input.value
+                        if (!q.trim()) showQuickAccess()
+                        else search(q)
                     })
 
-                    input.addEventListener('keydown', e => {
-                        if (e.key === 'Escape') dropdown.style.display = 'none'
-                    })
-
-                    // prevent form submit from closing dropdown items via navigation race
                     form.addEventListener('submit', () => { dropdown.style.display = 'none' })
-
                     document.addEventListener('click', e => {
                         if (!form.contains(e.target)) dropdown.style.display = 'none'
                     })
@@ -457,7 +388,7 @@
             async function loadPanelNotifs() {
                 list.innerHTML = '<div class="notif-panel-loading"><div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div></div>'
                 try {
-                    const res = await fetch('/account/get_notifications?page=1')
+                    const res = await fetch('/account/get_notifications?page=1&only_unread=true')
                     if (!res.ok) return
                     const data = await res.json()
                     const items = (data.list || []).slice(0, 6)
@@ -465,31 +396,53 @@
                         list.innerHTML = '<div class="notif-panel-empty"><i class="fas fa-bell-slash"></i> No notifications yet.</div>'
                         return
                     }
-                    list.innerHTML = items.map(n => `
-                        <div class="notif-panel-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-related="${n.related_id || ''}" data-type="${n.related_type || ''}">
-                            <div class="notif-icon ${notifColor(n.type)}"><i class="fas ${notifIcon(n.type)}"></i></div>
-                            <div class="notif-panel-item-body">
-                                <div class="notif-panel-item-msg">${n.message}</div>
-                                <div class="notif-panel-item-date">${n.created_at}</div>
-                            </div>
-                            ${!n.is_read ? '<div class="unread-dot"></div>' : ''}
-                        </div>
-                    `).join('')
-                    list.querySelectorAll('.notif-panel-item').forEach(el => {
-                        el.addEventListener('click', async () => {
-                            const id = el.dataset.id
-                            const related = el.dataset.related
-                            if (!el.classList.contains('unread')) {
-                                if (related) window.location.href = '/convert/detail/' + related
-                                return
+                    list.innerHTML = ''
+                    items.forEach(n => {
+                        const item = document.createElement('div')
+                        item.className = 'notif-panel-item' + (n.is_read ? '' : ' unread')
+                        item.dataset.id      = n.id
+                        item.dataset.related = n.related_id || ''
+                        item.dataset.type    = n.related_type || ''
+
+                        const icon = document.createElement('div')
+                        icon.className = 'notif-icon ' + notifColor(n.type)
+                        icon.innerHTML = `<i class="fas ${notifIcon(n.type)}"></i>`
+
+                        const body = document.createElement('div')
+                        body.className = 'notif-panel-item-body'
+
+                        const msg = document.createElement('div')
+                        msg.className = 'notif-panel-item-msg'
+                        msg.textContent = n.message
+
+                        const date = document.createElement('div')
+                        date.className = 'notif-panel-item-date'
+                        date.textContent = n.created_at
+
+                        body.append(msg, date)
+                        item.append(icon, body)
+
+                        if (!n.is_read) {
+                            const dot = document.createElement('div')
+                            dot.className = 'unread-dot'
+                            item.appendChild(dot)
+                        }
+
+                        item.addEventListener('click', async () => {
+                            const related = item.dataset.related
+                            if (item.classList.contains('unread')) {
+                                await fetch(`/account/mark_notification_read?notification_id=${item.dataset.id}`)
+                                const currentCount = parseInt(badge?.textContent || '0') || 0
+                                updateBadge(Math.max(0, currentCount - 1))
                             }
-                            await fetch(`/account/mark_notification_read?notification_id=${id}`)
-                            el.classList.remove('unread')
-                            el.querySelector('.unread-dot')?.remove()
-                            const currentCount = parseInt(badge?.textContent || '0') || 0
-                            updateBadge(Math.max(0, currentCount - 1))
+                            item.remove()
+                            if (!list.querySelector('.notif-panel-item')) {
+                                list.innerHTML = '<div class="notif-panel-empty"><i class="fas fa-bell-slash"></i> No notifications yet.</div>'
+                            }
                             if (related) window.location.href = '/convert/detail/' + related
                         })
+
+                        list.appendChild(item)
                     })
                     loaded = true
                 } catch (e) {
