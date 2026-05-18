@@ -361,8 +361,6 @@
 /* ── Notification bell badge ─────────────────────── */
 .notif-bell-wrapper {
     position: relative;
-    display: inline-flex;
-    align-items: center;
 }
 .notif-badge {
     position: absolute;
@@ -497,7 +495,7 @@
 /* ── Notification bell dropdown panel ───────────── */
 .notif-dropdown-wrapper {
     position: relative;
-    display: inline-flex;
+    display: flex;
     align-items: center;
 }
 .notif-dropdown-panel {

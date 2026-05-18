@@ -879,12 +879,16 @@
 
             async function deleteConvert() {
                 const res = await fetch(`/convert/delete_item?id=${convert_id}`)
+                const data = await res.json()
                 if (res.status === 200) {
                     const el = document.getElementById('delete_modal_' + convert_id)
                     bootstrap.Modal.getInstance(el)?.hide()
-                    window.location.href = '/convert/history'
+                    create_message(data.message, data.toast_class)
+                    setTimeout(() => { window.location.href = '/convert/history' }, 1200)
                 } else if (res.status === 403) {
                     window.location.href = '/account/login'
+                } else {
+                    create_message(data.message, data.toast_class)
                 }
             }
 
