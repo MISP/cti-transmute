@@ -351,15 +351,24 @@ def my_comments():
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '', type=str) or None
     pagination = AccountModel.get_user_comments(current_user.id, page=page, search=search, is_admin=current_user.is_admin())
-    from website.db_class.db import Convert
+    from website.db_class.db import Convert, Comment as CommentModel
     items = []
     for c in pagination.items:
-        convert = Convert.query.get(c.convert_id)
+        convert = ConvertModel.get_convert(c.convert_id, include_deleted=True)
         item = c.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())
         item["convert_name"] = convert.name if convert else "Unknown"
         item["convert_id"] = c.convert_id
         item["convert_active"] = bool(convert and convert.is_active)
         item["has_replies"] = c.replies.count() > 0
+        item["is_reply"] = bool(c.parent_id)
+        if c.parent_id:
+            parent = CommentModel.query.get(c.parent_id)
+            if parent:
+                item["parent_author"] = parent.get_author_name()
+                item["parent_preview"] = (parent.content[:120] + "…" if len(parent.content) > 120 else parent.content) if not parent.is_deleted else "[deleted]"
+            else:
+                item["parent_author"] = "Unknown"
+                item["parent_preview"] = "[deleted]"
         items.append(item)
     return {"success": True, "list": items, "total_page": pagination.pages}, 200
 

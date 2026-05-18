@@ -94,27 +94,71 @@
           </div>
           <div v-else>
             <div v-for="c in my_comments" :key="c.id" class="my-comment-item">
-              <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                <a v-if="c.convert_active" :href="'/convert/detail/'+c.convert_id" class="my-comment-convert-link">
-                  <i class="fas fa-external-link-alt me-1"></i>[[ c.convert_name ]]
-                </a>
-                <span v-else class="my-comment-convert-link" style="cursor:default; opacity:0.6;">[[ c.convert_name ]]</span>
-                <span class="comment-date">[[ c.created_at ]]</span>
-                <span v-if="c.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
-                <span v-if="c.has_replies" class="has-reply-badge"><i class="fas fa-reply"></i> Has replies</span>
-                <button class="btn btn-sm btn-outline-danger ms-auto py-0 px-2" style="font-size:0.75rem;" @click="deleteMyComment(c)">
-                  <i class="fas fa-trash"></i>
+
+              <!-- Parent comment block (replies only) — collapsible -->
+              <div v-if="c.is_reply" class="mb-0">
+                <button @click="c._expanded = !c._expanded"
+                  class="d-flex align-items-center gap-2 w-100 px-3 py-2"
+                  style="background:var(--surface-2); border:1px solid var(--border);
+                         border-radius:0.4rem 0.4rem 0 0; font-size:0.82rem; color:var(--text-2);
+                         text-align:left; cursor:pointer; transition:background 0.12s;">
+                  <i class="fas fa-reply" style="color:var(--accent); flex-shrink:0;"></i>
+                  <strong style="flex-shrink:0; color:var(--text);">[[ c.parent_author ]]</strong>
+                  <span v-if="!c._expanded"
+                    style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:italic; opacity:0.55;">
+                    — [[ c.parent_preview ]]
+                  </span>
+                  <i class="fas ms-auto" style="font-size:0.65rem; opacity:0.45; flex-shrink:0;"
+                    :class="c._expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                 </button>
+                <div v-if="c._expanded"
+                  style="background:var(--surface-2); border:1px solid var(--border); border-top:none;
+                         border-radius:0 0 0.4rem 0.4rem; padding:0.6rem 1rem;
+                         font-size:0.85rem; color:var(--text-2); font-style:italic; line-height:1.6;">
+                  [[ c.parent_preview ]]
+                </div>
               </div>
-              <div v-if="!c.convert_active" class="d-flex align-items-center gap-2 mb-1 px-2 py-1 rounded-2"
-                style="background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.18); font-size:0.78rem; color:var(--danger);">
-                <i class="fas fa-triangle-exclamation"></i>
-                This convert has been deactivated.
-                <a :href="'/account/admin/deleted_converts?highlight='+c.convert_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
-                  View in Trash <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i>
-                </a>
+
+              <!-- Comment body — indented when reply -->
+              <div :class="c.is_reply ? 'ms-4 pt-2 ps-3' : ''"
+                :style="c.is_reply ? 'border-left:2px solid var(--border);' : ''">
+
+                <!-- Header row -->
+                <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                  <a v-if="c.convert_active" :href="'/convert/detail/'+c.convert_id" class="my-comment-convert-link">
+                    <i class="fas fa-external-link-alt me-1"></i>[[ c.convert_name ]]
+                  </a>
+                  <span v-else class="my-comment-convert-link" style="cursor:default; opacity:0.6;">[[ c.convert_name ]]</span>
+                  <span class="comment-date">[[ c.created_at ]]</span>
+                  <span v-if="c.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                  <span v-if="c.has_replies" class="has-reply-badge"><i class="fas fa-reply"></i> Has replies</span>
+                  <div class="d-flex gap-1 ms-auto">
+                    <a v-if="c.is_reply && c.convert_active"
+                      :href="'/convert/detail/'+c.convert_id+'#comment-'+c.id"
+                      class="btn btn-sm btn-outline-secondary py-0 px-2"
+                      style="font-size:0.72rem; color:var(--text-3);"
+                      title="View in context">
+                      <i class="fas fa-arrow-up-right-from-square"></i>
+                    </a>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.72rem;" @click="deleteMyComment(c)" title="Delete">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Deactivated convert warning -->
+                <div v-if="!c.convert_active" class="d-flex align-items-center gap-2 mb-1 px-2 py-1 rounded-2"
+                  style="background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.18); font-size:0.78rem; color:var(--danger);">
+                  <i class="fas fa-triangle-exclamation"></i>
+                  This convert has been deactivated.
+                  <a :href="'/account/admin/deleted_converts?highlight='+c.convert_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
+                    View in Trash <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i>
+                  </a>
+                </div>
+
+                <!-- Comment content -->
+                <div style="font-size:0.875rem; color:var(--text); line-height:1.5;">[[ c.content ]]</div>
               </div>
-              <div style="font-size:0.875rem; color:var(--text); line-height:1.5;">[[ c.content ]]</div>
             </div>
           </div>
           <div v-if="comments_total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
@@ -226,7 +270,7 @@
           const res = await fetch(`/account/my_comments?${params}`)
           if (res.ok) {
             const data = await res.json()
-            my_comments.value = data.list || []
+            my_comments.value = (data.list || []).map(c => ({ ...c, _expanded: false }))
             comments_total_page.value = data.total_page || 1
             comments_loaded.value = true
           }

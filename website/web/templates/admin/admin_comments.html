@@ -53,7 +53,36 @@
                 </a>
               </div>
             </td>
-            <td class="text-truncate" style="max-width:280px; color:var(--text-2);">[[ c.content ]]</td>
+            <td style="min-width:260px; color:var(--text-2);">
+              <!-- Parent block (replies only) — collapsible -->
+              <div v-if="c.is_reply" class="mb-1">
+                <button @click="c._expanded = !c._expanded"
+                  class="d-flex align-items-center gap-2 w-100 px-2 py-1"
+                  style="background:var(--surface-2); border:1px solid var(--border);
+                         border-radius:0.35rem 0.35rem 0 0; font-size:0.78rem; color:var(--text-2);
+                         text-align:left; cursor:pointer; transition:background 0.12s;">
+                  <i class="fas fa-reply" style="color:var(--accent); flex-shrink:0; font-size:0.68rem;"></i>
+                  <strong style="flex-shrink:0; color:var(--text); font-size:0.78rem;">[[ c.parent_author ]]</strong>
+                  <span v-if="!c._expanded"
+                    style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:italic; opacity:0.55; font-size:0.75rem;">
+                    — [[ c.parent_preview ]]
+                  </span>
+                  <i class="fas ms-auto" style="font-size:0.6rem; opacity:0.45; flex-shrink:0;"
+                    :class="c._expanded ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                </button>
+                <div v-if="c._expanded"
+                  style="background:var(--surface-2); border:1px solid var(--border); border-top:none;
+                         border-radius:0 0 0.35rem 0.35rem; padding:0.4rem 0.75rem;
+                         font-size:0.8rem; color:var(--text-2); font-style:italic; line-height:1.5;">
+                  [[ c.parent_preview ]]
+                </div>
+              </div>
+              <!-- Comment content — indented when reply -->
+              <div :class="c.is_reply ? 'ms-3 ps-2 pt-1' : 'text-truncate'"
+                :style="c.is_reply ? 'border-left:2px solid var(--border); font-size:0.85rem;' : ''">
+                [[ c.content ]]
+              </div>
+            </td>
             <td>
               <span class="admin-status-badge" :class="c.is_private ? 'status-pending' : 'status-reviewed'">
                 [[ c.is_private ? 'Private' : 'Public' ]]
@@ -61,9 +90,18 @@
             </td>
             <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ c.created_at ]]</td>
             <td>
-              <button class="btn btn-sm btn-outline-danger" @click="deleteComment(c)">
-                <i class="fas fa-trash"></i>
-              </button>
+              <div class="d-flex gap-1">
+                <a v-if="c.is_reply && c.convert_active"
+                  :href="'/convert/detail/'+c.convert_id+'#comment-'+c.id"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2"
+                  style="font-size:0.72rem; color:var(--text-3);"
+                  title="View in context">
+                  <i class="fas fa-arrow-up-right-from-square"></i>
+                </a>
+                <button class="btn btn-sm btn-outline-danger py-0 px-2" @click="deleteComment(c)" title="Delete">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -106,7 +144,7 @@
           const res = await fetch(`/convert/admin/get_all_comments?${params}`)
           if (res.ok) {
             const data = await res.json()
-            comments.value = data.list || []
+            comments.value = (data.list || []).map(c => ({ ...c, _expanded: false }))
             total_page.value = data.total_page || 1
           }
         } catch {}

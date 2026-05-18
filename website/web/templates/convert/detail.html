@@ -238,7 +238,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+convert.id" role="tab" @click="loadComments()">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="comments">
                             <i class="fas fa-comments me-1"></i> Comments
                             <span v-if="comments_total > 0" class="badge bg-secondary ms-1">[[ comments_total ]]</span>
                         </a>
@@ -479,7 +479,7 @@
                         </div>
 
                         <template v-else>
-                            <div v-for="comment in comments" :key="comment.id" class="comment-card">
+                            <div v-for="comment in comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card">
 
                                 <!-- Comment header -->
                                 <div class="comment-header">
@@ -1085,7 +1085,6 @@
                 fetchCurrentUser()
                 getConvert()
                 getHistory()
-                // Pre-load comment count without full content
                 fetch(`/convert/get_comments?convert_id=${convert_id}`)
                     .then(r => r.json())
                     .then(d => {
@@ -1093,6 +1092,20 @@
                             comments.value = d.comments || []
                             comments_total.value = comments.value.length
                             comments_loaded.value = true
+                        }
+                        const hash = window.location.hash
+                        if (hash && hash.startsWith('#comment-')) {
+                            const tabEl = document.querySelector('[data-tab="comments"]')
+                            if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show()
+                            const tryScroll = (attempts = 0) => {
+                                const el = document.querySelector(hash)
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                } else if (attempts < 10) {
+                                    setTimeout(() => tryScroll(attempts + 1), 150)
+                                }
+                            }
+                            setTimeout(tryScroll, 200)
                         }
                     }).catch(() => {})
             })

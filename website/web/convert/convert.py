@@ -288,7 +288,7 @@ def search_in_content():
     results = ConvertModel.search_in_content(query_str, convert_id, scope=scope)
     return {"success": True, "results": results}, 200
 
-@convert_blueprint.route("/delete_item", methods=['POST'])
+@convert_blueprint.route("/delete_item", methods=['POST', 'DELETE', 'GET'])
 @login_required
 def delete_rule() -> jsonify:
     """Delete an item"""
@@ -848,6 +848,17 @@ def add_comment():
     if not comment:
         return {"success": False, "message": "Failed to save comment", "toast_class": "danger"}, 500
 
+    action = "reply" if parent_id else "comment"
+    AccountModel.create_system_log(
+        "comment_created",
+        actor_id=current_user.id,
+        actor_name=current_user.first_name,
+        target_type="comment",
+        target_id=comment.id,
+        target_name=f"On convert: {convert.name}",
+        details=f"{action.capitalize()} — {content[:120]}{'…' if len(content) > 120 else ''}"
+    )
+
     if parent_id:
         parent = ConvertModel.get_comment(parent_id)
         if parent:
@@ -1127,12 +1138,21 @@ def admin_get_comments():
     search = request.args.get('search', '', type=str) or None
     pagination = ConvertModel.get_all_comments_admin(page=page, search=search)
     items = []
+    from website.db_class.db import Comment as CommentModel
     for c in pagination.items:
         d = c.to_json(current_user_id=current_user.id, is_admin=True)
-        d["replies"] = []
-        convert = ConvertModel.get_convert(c.convert_id)
+        convert = ConvertModel.get_convert(c.convert_id, include_deleted=True)
         d["convert_name"] = convert.name if convert else "Unknown"
         d["convert_active"] = bool(convert and convert.is_active)
+        d["is_reply"] = bool(c.parent_id)
+        if c.parent_id:
+            parent = CommentModel.query.get(c.parent_id)
+            if parent:
+                d["parent_author"] = parent.get_author_name()
+                d["parent_preview"] = (parent.content[:120] + "…" if len(parent.content) > 120 else parent.content) if not parent.is_deleted else "[deleted]"
+            else:
+                d["parent_author"] = "Unknown"
+                d["parent_preview"] = "[deleted]"
         items.append(d)
     return {
         "success": True,
