@@ -68,6 +68,9 @@
                 <button v-if="r.status === 'pending'" class="btn btn-sm btn-outline-secondary" @click="reviewReport(r.id, 'dismissed')" title="Dismiss">
                   <i class="fas fa-ban"></i>
                 </button>
+                <button class="btn btn-sm btn-outline-danger" @click="deleteReport(r.id)" title="Delete permanently">
+                  <i class="fas fa-trash"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -132,8 +135,16 @@
         if (data.success) await load()
       }
 
+      async function deleteReport(report_id) {
+        if (!confirm('Delete this report permanently? This cannot be undone.')) return
+        const res = await fetch(`/convert/admin/delete_report?report_id=${report_id}`)
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.success) reports.value = reports.value.filter(r => r.id !== report_id)
+      }
+
       onMounted(load)
-      return { reports, loading, page, total_page, status_filter, search, load, debounceSearch, reviewReport, message_list }
+      return { reports, loading, page, total_page, status_filter, search, load, debounceSearch, reviewReport, deleteReport, message_list }
     }
   }).mount('#main-containers')
 </script>
