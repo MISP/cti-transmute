@@ -288,24 +288,25 @@ def search_in_content():
     results = ConvertModel.search_in_content(query_str, convert_id, scope=scope)
     return {"success": True, "results": results}, 200
 
-@convert_blueprint.route("/delete_item", methods=['GET'])
+@convert_blueprint.route("/delete_item", methods=['POST'])
 @login_required
 def delete_rule() -> jsonify:
     """Delete an item"""
-    item_id  = request.args.get("id")
-    convert = ConvertModel.get_convert(item_id) 
+    item_id = request.get_json(silent=True, force=True) or {}
+    item_id = item_id.get("id") or request.args.get("id")
+    convert = ConvertModel.get_convert(item_id)
     if convert:
         if current_user.id == convert.user_id or current_user.is_admin():
             _convert_name = convert.name
             success = ConvertModel.delete_convert(item_id)
             if success:
                 AccountModel.create_system_log("convert_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(item_id), target_name=_convert_name)
-                return {"success": True, "message": "Conversion history deleted!" , "toast_class" : "success"}, 200
+                return {"success": True, "message": "Conversion history deleted!", "toast_class": "success"}, 200
             else:
-                return {"success": False, "message": "Error during deleting the item !" , "toast_class" : "danger"}, 500
-        return render_template("access_denied.html")
+                return {"success": False, "message": "Error during deleting the item!", "toast_class": "danger"}, 500
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
     else:
-        return {"success": False, "message": "No item found !" , "toast_class" : "danger"}, 500
+        return {"success": False, "message": "No item found!", "toast_class": "danger"}, 404
 
 
 @convert_blueprint.route("/detail/<int:id>", methods=['GET'])
@@ -374,22 +375,28 @@ def get_convert():
     if id:
         convert = ConvertModel.get_convert(id)
         if convert:
+            # Visibility check: private converts only visible to owner and admins
+            if not convert.public:
+                if not current_user.is_authenticated:
+                    return {"success": False, "message": "Unauthorized", "toast_class": "danger"}, 403
+                if current_user.id != convert.user_id and not current_user.is_admin():
+                    return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
-                "success": True, 
+                "success": True,
                 "convert": convert.to_json(),
-                "message": "Convert found", 
+                "message": "Convert found",
                 "toast_class" : "success"
                 }, 200
         return {
-            "success": False, 
-            "message": "No convert history for this id", 
+            "success": False,
+            "message": "No convert history for this id",
             "toast_class" : "danger"
-            }, 500
+            }, 404
     return {
-        "success": False, 
-        "message": "No id provided", 
+        "success": False,
+        "message": "No id provided",
         "toast_class" : "danger"
-        }, 500
+        }, 400
 
 @convert_blueprint.route("/edit_public", methods=['GET'])
 @login_required
@@ -588,71 +595,78 @@ def refresh(uuid):
 # get_history
 
 @convert_blueprint.route("/get_history", methods=['GET'])
+@login_required
 def get_history():
     id = request.args.get('id', 1, type=int)
     if id:
         convert_obj = ConvertModel.get_convert(id)
         if convert_obj:
+            if not convert_obj.public and current_user.id != convert_obj.user_id and not current_user.is_admin():
+                return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             latest_history = ConvertModel.get_history_list(convert_obj.id)
             if latest_history:
                 return {
-                    "success": True, 
+                    "success": True,
                     "history_convert": [h.to_json() for h in latest_history],
-                    "message": "New convert found", 
+                    "message": "New convert found",
                     "toast_class" : "success"
                     }, 200
             return {
-                "success": True, 
-                "message": "No conversion history found for this convert", 
+                "success": True,
+                "message": "No conversion history found for this convert",
                 "toast_class" : "danger"
                 }, 200
         return {
-            "success": False, 
-            "message": "No convert found for this id", 
+            "success": False,
+            "message": "No convert found for this id",
             "toast_class" : "danger"
-            }, 500
+            }, 404
     return {
-        "success": False, 
-        "message": "No id provided", 
+        "success": False,
+        "message": "No id provided",
         "toast_class" : "danger"
-        }, 500
+        }, 400
 
 
 
 
 @convert_blueprint.route("/get_new_convert", methods=['GET'])
+@login_required
 def get_new_convert():
     """Get the new convert after a refresh to show the difference"""
     id = request.args.get('id', 1, type=int)
     if id:
         convert_obj = ConvertModel.get_convert(id)
         if convert_obj:
+            if not convert_obj.public and current_user.id != convert_obj.user_id and not current_user.is_admin():
+                return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             latest_history = ConvertModel.get_latest_history_list(convert_obj.id)
             if latest_history:
                 return {
-                    "success": True, 
+                    "success": True,
                     "history_convert": [h.to_json() for h in latest_history],
-                    "message": "New convert found", 
+                    "message": "New convert found",
                     "toast_class" : "success"
                     }, 200
             return {
-                "success": True, 
-                "message": "No conversion history found for this convert", 
+                "success": True,
+                "message": "No conversion history found for this convert",
                 "toast_class" : "danger"
                 }, 200
         return {
-            "success": False, 
-            "message": "No convert found for this id", 
+            "success": False,
+            "message": "No convert found for this id",
             "toast_class" : "danger"
-            }, 500
+            }, 404
     return {
-        "success": False, 
-        "message": "No id provided", 
+        "success": False,
+        "message": "No id provided",
         "toast_class" : "danger"
-        }, 500
+        }, 400
 
 
 @convert_blueprint.route("/history_action", methods=['GET'])
+@login_required
 def history_action():
     """Handle actions related to conversion history"""
     action = request.args.get('action')
@@ -742,28 +756,33 @@ def difference(id):
 
 # get_history_details
 @convert_blueprint.route("/get_history_details", methods=['GET'])
+@login_required
 def get_history_details():
     """Get the details of a convert history entry"""
     history_id = request.args.get('history_id', type=int)
     if history_id:
         convert_history = ConvertModel.get_convert_history_by_id(history_id)
         if convert_history:
+            convert_obj = ConvertModel.get_convert(convert_history.convert_id)
+            if convert_obj and not convert_obj.public:
+                if current_user.id != convert_obj.user_id and not current_user.is_admin():
+                    return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
-                "success": True, 
+                "success": True,
                 "history": convert_history.to_json(),
-                "message": "Convert history found", 
+                "message": "Convert history found",
                 "toast_class" : "success"
                 }, 200
         return {
-            "success": False, 
-            "message": "No convert history found for this id", 
+            "success": False,
+            "message": "No convert history found for this id",
             "toast_class" : "danger"
-            }, 500
+            }, 404
     return {
         "success": False,
         "message": "No history_id provided",
         "toast_class" : "danger"
-        }, 500
+        }, 400
 
 
 ###########################
@@ -805,6 +824,8 @@ def add_comment():
 
     if not convert_id or not content:
         return {"success": False, "message": "Missing content or convert_id", "toast_class": "danger"}, 400
+    if len(content) > 2000:
+        return {"success": False, "message": "Comment is too long (max 2000 characters)", "toast_class": "danger"}, 400
 
     convert = ConvertModel.get_convert(convert_id)
     if not convert:
@@ -923,6 +944,8 @@ def report_convert():
 
     if not convert_id or reason not in ConvertModel.REPORT_REASONS:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
+    if description and len(description) > 1000:
+        return {"success": False, "message": "Description is too long (max 1000 characters)", "toast_class": "danger"}, 400
 
     convert = ConvertModel.get_convert(convert_id)
     if not convert:
@@ -1021,13 +1044,16 @@ def get_trash():
     }, 200
 
 
-@convert_blueprint.route("/restore", methods=['GET'])
+@convert_blueprint.route("/restore", methods=['POST'])
 @login_required
 def restore():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
-    convert_id = request.args.get('id', type=int)
-    convert = ConvertModel.get_convert(convert_id)
+    data = request.get_json(silent=True) or {}
+    convert_id = data.get('id') or request.args.get('id', type=int)
+    if convert_id:
+        convert_id = int(convert_id)
+    convert = ConvertModel.get_convert(convert_id, include_deleted=True)
     if not convert:
         return {"success": False, "message": "Convert not found", "toast_class": "danger"}, 404
     if ConvertModel.restore_convert(convert_id):
@@ -1036,13 +1062,16 @@ def restore():
     return {"success": False, "message": "Error restoring convert", "toast_class": "danger"}, 500
 
 
-@convert_blueprint.route("/hard_delete", methods=['GET'])
+@convert_blueprint.route("/hard_delete", methods=['POST'])
 @login_required
 def hard_delete():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
-    convert_id = request.args.get('id', type=int)
-    convert = ConvertModel.get_convert(convert_id)
+    data = request.get_json(silent=True) or {}
+    convert_id = data.get('id') or request.args.get('id', type=int)
+    if convert_id:
+        convert_id = int(convert_id)
+    convert = ConvertModel.get_convert(convert_id, include_deleted=True)
     if not convert:
         return {"success": False, "message": "Convert not found", "toast_class": "danger"}, 404
     _name = convert.name
@@ -1064,7 +1093,7 @@ def bulk_action():
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
     done = 0
     for convert_id in ids:
-        convert = ConvertModel.get_convert(convert_id)
+        convert = ConvertModel.get_convert(convert_id, include_deleted=True)
         if not convert:
             continue
         if action == 'restore':

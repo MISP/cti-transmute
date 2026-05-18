@@ -135,8 +135,8 @@ class Convert(db.Model):
             "author": self.get_user_name_by_id(),
             "input_text": self.input_text,
             "output_text": self.output_text,
-            "share_url": f"http://cti-transmute.org/convert/share/{self.uuid}",
-            "detail_url": f"http://cti-transmute.org/convert/detail/{self.id}"
+            "share_url": f"https://cti-transmute.org/convert/share/{self.uuid}",
+            "detail_url": f"https://cti-transmute.org/convert/detail/{self.id}"
         }
 
 class Comment(db.Model):

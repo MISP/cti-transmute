@@ -89,6 +89,7 @@ def restore_convert(convert_id):
     convert = Convert.query.get(convert_id)
     if not convert or convert.is_active:
         return False
+
     convert.is_active = True
     convert.deleted_at = None
     db.session.commit()
@@ -116,9 +117,12 @@ def get_deleted_converts(page, user_id=None, search=None):
     return query.paginate(page=page, per_page=15)
 
 
-def get_convert(convert_id):
-    """Get a Convert entry by id"""
-    return Convert.query.get(convert_id)
+def get_convert(convert_id, include_deleted=False):
+    """Get a Convert entry by id. Soft-deleted converts are excluded by default."""
+    convert = Convert.query.get(convert_id)
+    if convert and not include_deleted and not convert.is_active:
+        return None
+    return convert
 
 
 def list_all():

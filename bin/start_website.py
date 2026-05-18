@@ -27,7 +27,9 @@ def main():
         application.register_blueprint(api_blueprint)
         # db.drop_all()
         # db.create_all()
-    application.run(host=ip, port=port, debug=True)
+    import os
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    application.run(host=ip, port=port, debug=debug)
 
 
 

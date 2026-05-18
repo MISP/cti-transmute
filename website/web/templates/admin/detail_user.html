@@ -281,10 +281,14 @@
                 }
 
                 async function changeAdminRight() {
-                    const params = new URLSearchParams({
-                        id:user_id
-                    })
-                    const res = await fetch(`/account/edit_admin?`+ params.toString());
+                    const res = await fetch('/account/edit_admin', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
+                        },
+                        body: JSON.stringify({ id: user_id })
+                    });
                     const data = await res.json();
                     if(res.ok){
                         user.value.admin = data.admin

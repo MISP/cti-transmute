@@ -204,10 +204,15 @@
             async function doAction(c) {
                 if (!c._action) return
                 if (c._action === 'hard_delete' && !confirm(`Permanently delete "${c.name}"? This cannot be undone.`)) return
-                const url = c._action === 'restore'
-                    ? `/convert/restore?id=${c.id}`
-                    : `/convert/hard_delete?id=${c.id}`
-                const res  = await fetch(url)
+                const url = c._action === 'restore' ? '/convert/restore' : '/convert/hard_delete'
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
+                    },
+                    body: JSON.stringify({ id: c.id })
+                })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (data.success) {

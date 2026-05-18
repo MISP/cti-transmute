@@ -459,12 +459,14 @@ def admin_delete_log():
     return {"success": False, "message": "Not found", "toast_class": "danger"}, 404
 
 
-@account_blueprint.route("/edit_admin", methods=['GET'])
+@account_blueprint.route("/edit_admin", methods=['POST'])
 @login_required
 def edit_admin():
     """Manage admin right for user"""
     if current_user.is_admin():
-        id = request.args.get('id', 1, type=int)
+        id = (request.get_json(silent=True) or {}).get('id') or request.args.get('id', type=int)
+        if id:
+            id = int(id)
         if id:
             user = AccountModel.get_user(id)
             if user:

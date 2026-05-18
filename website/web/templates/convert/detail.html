@@ -878,7 +878,14 @@
             }
 
             async function deleteConvert() {
-                const res = await fetch(`/convert/delete_item?id=${convert_id}`)
+                const res = await fetch('/convert/delete_item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
+                    },
+                    body: JSON.stringify({ id: convert_id })
+                })
                 const data = await res.json()
                 if (res.status === 200) {
                     const el = document.getElementById('delete_modal_' + convert_id)
