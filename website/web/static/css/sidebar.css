@@ -1,2 +1,488 @@
+/* ═══════════════════════════════════════════════════════════════
+   TOP NAVBAR
+   Single source of truth for all navbar styles.
+   Design tokens are defined in core.css.
+═══════════════════════════════════════════════════════════════ */
 
+/* ── Shell ─────────────────────────────────────────────────── */
+.top-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+  transition: background var(--t), border-color var(--t);
+}
 
+.top-navbar-inner {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 1.5rem;
+  gap: 0;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ── Brand ─────────────────────────────────────────────────── */
+.top-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 4px;
+  margin-right: 2rem;
+  flex-shrink: 0;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: color var(--t);
+}
+
+.top-brand img {
+  height: 26px;
+  width: auto;
+}
+
+.top-brand span {
+  color: var(--text);
+  transition: color var(--t);
+}
+
+.top-brand:hover,
+.top-brand:hover span {
+  color: var(--accent);
+}
+
+/* ── Nav links (center) ────────────────────────────────────── */
+.top-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+}
+
+/* ── Base interactive element: links AND buttons ───────────── */
+.top-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: color var(--t), background var(--t);
+}
+
+.top-nav-link:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+
+.top-nav-link.active {
+  color: var(--accent);
+  background: var(--accent-light);
+  font-weight: 600;
+}
+
+/* ── Icon-only buttons (bell, theme, burger) ───────────────── */
+.top-nav-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: color var(--t), background var(--t);
+}
+
+.top-nav-icon-btn:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+
+/* ── Caret inside dropdown buttons ────────────────────────── */
+.top-nav-caret {
+  font-size: 0.6rem;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+/* ── User name (truncated) ─────────────────────────────────── */
+.top-user-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Dropdown container ────────────────────────────────────── */
+.top-nav-dropdown {
+  position: relative;
+}
+
+.top-nav-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1200;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+}
+
+.top-nav-dropdown-menu.top-nav-dropdown-menu-right {
+  left: auto;
+  right: 0;
+}
+
+.top-nav-dropdown-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.top-nav-dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--t), background var(--t);
+}
+
+.top-nav-dropdown-item:hover {
+  color: var(--text);
+  background: var(--bg-2);
+}
+
+.top-nav-dropdown-item.active {
+  color: var(--accent);
+  background: var(--accent-light);
+  font-weight: 600;
+}
+
+.top-nav-dropdown-item.top-nav-dropdown-danger:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.top-nav-dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+.convert-arrow {
+  opacity: 0.4;
+  margin: 0 2px;
+}
+
+/* ── Right controls wrapper ────────────────────────────────── */
+.top-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Search bar ────────────────────────────────────────────── */
+.top-nav-search {
+  flex-shrink: 0;
+  width: 220px;
+  margin: 0 12px 0 8px;
+}
+
+.top-nav-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.top-nav-search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--text-3);
+  font-size: 0.72rem;
+  pointer-events: none;
+}
+
+.top-nav-search-input {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px 0 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: 0.81rem;
+  font-family: var(--font-ui);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color var(--t), background var(--t), box-shadow var(--t);
+}
+
+.top-nav-search-input::placeholder {
+  color: var(--text-3);
+}
+
+.top-nav-search-input:focus {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.10);
+}
+
+/* ── Search autocomplete dropdown ──────────────────────────── */
+.nav-search-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: 1200;
+  overflow: hidden;
+}
+
+.nav-sd-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  text-decoration: none;
+  color: var(--text);
+  font-size: 0.81rem;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--t);
+}
+
+.nav-sd-item:last-child {
+  border-bottom: none;
+}
+
+.nav-sd-item:hover {
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+.nav-sd-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-sd-misp {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+}
+
+.nav-sd-stix {
+  background: rgba(139, 92, 246, 0.12);
+  color: #8b5cf6;
+}
+
+.nav-sd-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.nav-sd-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 0.81rem;
+}
+
+.nav-sd-footer {
+  display: block;
+  padding: 8px 11px;
+  font-size: 0.78rem;
+  color: var(--accent);
+  text-align: center;
+  text-decoration: none;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  transition: background var(--t);
+}
+
+.nav-sd-footer:hover {
+  background: var(--accent-light);
+}
+
+/* Group headers */
+.nav-sd-group-header {
+  padding: 5px 11px 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+}
+
+.nav-sd-group-header:first-child {
+  border-top: none;
+}
+
+/* Section items (navigation links) */
+.nav-sd-section-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 11px;
+  text-decoration: none;
+  color: var(--text-2);
+  font-size: 0.81rem;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--t), color var(--t);
+}
+
+.nav-sd-section-item:hover,
+.nav-sd-section-item:focus {
+  background: var(--bg-2);
+  color: var(--text);
+  outline: none;
+}
+
+.nav-sd-section-icon {
+  width: 16px;
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.nav-sd-admin-icon {
+  color: var(--accent);
+}
+
+.nav-sd-admin-tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(37, 99, 235, 0.10);
+  color: var(--accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+html.dark-mode .nav-sd-admin-tag {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Keyboard focus on convert items */
+.nav-sd-item:focus,
+.nav-sd-footer:focus {
+  outline: none;
+  background: var(--bg-2);
+}
+
+/* ── Mobile burger (hidden on desktop) ─────────────────────── */
+.top-burger {
+  display: none;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .top-nav-search {
+    display: none;
+  }
+
+  .top-burger {
+    display: flex;
+  }
+
+  .top-nav-links {
+    display: none;
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px;
+    gap: 2px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    z-index: 1099;
+  }
+
+  .top-nav-links.mobile-open {
+    display: flex;
+  }
+
+  .top-nav-link {
+    justify-content: flex-start;
+  }
+
+  .top-nav-dropdown-menu {
+    position: static;
+    box-shadow: none;
+    border: none;
+    padding-left: 1rem;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    display: none;
+  }
+
+  .top-nav-dropdown-menu.open {
+    display: block;
+  }
+}
