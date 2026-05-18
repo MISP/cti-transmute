@@ -55,11 +55,8 @@
             </td>
             <td>
               <!-- System log event type -->
-              <span v-if="l.source==='system'" class="admin-status-badge" :style="{
-                background: l.event_type==='convert_created' ? 'rgba(16,185,129,0.12)' : l.event_type==='convert_deleted' ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)',
-                color: l.event_type==='convert_created' ? 'var(--success)' : l.event_type==='convert_deleted' ? 'var(--danger)' : 'var(--warning)'
-              }">
-                <i class="me-1" :class="l.event_type==='convert_created' ? 'fas fa-plus-circle' : l.event_type==='convert_deleted' ? 'fas fa-trash' : 'fas fa-comment-slash'"></i>
+              <span v-if="l.source==='system'" class="admin-status-badge" :style="eventStyle(l.event_type)">
+                <i class="me-1" :class="eventIcon(l.event_type)"></i>
                 [[ l.event_type.replace(/_/g,' ') ]]
               </span>
               <!-- Notification type -->
@@ -150,8 +147,29 @@
         if (data.success) logs.value = logs.value.filter(x => !(x.id === l.id && x.source === l.source))
       }
 
+      const EVENT_META = {
+        convert_created:           { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-plus-circle' },
+        convert_deleted:           { bg: 'rgba(239,68,68,0.12)',   color: 'var(--danger)',  icon: 'fas fa-trash' },
+        convert_restored:          { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-rotate-left' },
+        convert_hard_deleted:      { bg: 'rgba(127,29,29,0.15)',   color: '#dc2626',        icon: 'fas fa-skull' },
+        convert_edited:            { bg: 'rgba(37,99,235,0.12)',   color: 'var(--accent)',  icon: 'fas fa-pen' },
+        convert_visibility_changed:{ bg: 'rgba(245,158,11,0.12)', color: 'var(--warning)', icon: 'fas fa-eye' },
+        user_followed:             { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-user-plus' },
+        user_unfollowed:           { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-2)',  icon: 'fas fa-user-minus' },
+        comment_deleted:           { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-comment-slash' },
+      }
+      const DEFAULT_META = { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-2)', icon: 'fas fa-circle-info' }
+
+      function eventStyle(type) {
+        const m = EVENT_META[type] || DEFAULT_META
+        return { background: m.bg, color: m.color }
+      }
+      function eventIcon(type) {
+        return (EVENT_META[type] || DEFAULT_META).icon
+      }
+
       onMounted(load)
-      return { logs, loading, page, total_page, search, log_type, load, debounceSearch, goToLog, deleteLog, message_list }
+      return { logs, loading, page, total_page, search, log_type, load, debounceSearch, goToLog, deleteLog, message_list, eventStyle, eventIcon }
     }
   }).mount('#main-containers')
 </script>
