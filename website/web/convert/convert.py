@@ -309,30 +309,34 @@ def delete_rule() -> jsonify:
         return {"success": False, "message": "No item found!", "toast_class": "danger"}, 404
 
 
-@convert_blueprint.route("/detail/<int:id>", methods=['GET'])
-def detail(id):
-    """Detail page of the convert"""
-    convert = ConvertModel.get_convert(id)
+def _render_detail(convert):
+    """Shared visibility logic for the detail page."""
     if not convert:
         flash("The convert id is unknown", "danger")
-        return redirect(url_for("convert.history"))
-
-    if not convert.is_active:
-        flash("This convert has been deleted.", "warning")
         return redirect(url_for("convert.history"))
 
     if convert.public:
         return render_template("convert/detail.html", convert=convert)
 
     if not current_user.is_authenticated:
-        flash("You must be logged in to view this convert if you are the owner of this convert.", "warning")
-        return redirect(url_for("account.login"))  
+        flash("You must be logged in to view this convert.", "warning")
+        return redirect(url_for("account.login"))
 
     if current_user.id == convert.user_id or current_user.is_admin():
         return render_template("convert/detail.html", convert=convert)
 
     flash("You do not have permission to view this convert.", "danger")
     return redirect(url_for("convert.history"))
+
+
+@convert_blueprint.route("/detail/<id>", methods=['GET'])
+def detail(id):
+    """Detail page — accepts numeric ID or UUID string."""
+    try:
+        convert = ConvertModel.get_convert(int(id))
+    except (ValueError, TypeError):
+        convert = ConvertModel.get_convert_by_uuid(id)
+    return _render_detail(convert)
 
 @convert_blueprint.route("/edit/<int:id>", methods=['GET', 'POST'])
 @login_required

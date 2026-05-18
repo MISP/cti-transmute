@@ -117,7 +117,10 @@ def cmd_help() -> None:
 
 def cmd_start() -> None:
     header("Starting CTI-Transmute")
-    run([*VENV_UV, "start_website"])
+    try:
+        run([*VENV_UV, "start_website"])
+    except KeyboardInterrupt:
+        print("\n\033[0;37m  · Server stopped.\033[0m")
 
 
 def cmd_backup() -> None:
