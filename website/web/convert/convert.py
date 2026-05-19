@@ -1,6 +1,8 @@
 # website/web/convert/views.py
 import io
+import ipaddress
 import json
+from urllib.parse import urlparse
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
@@ -8,6 +10,26 @@ from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_s
 import requests
 from ..convert import convert_core as ConvertModel
 from ..account import account_core as AccountModel
+
+
+def _validate_misp_url(misp_url: str) -> str | None:
+    """Return an error string if the URL is invalid/unsafe, None if OK."""
+    try:
+        parsed = urlparse(misp_url)
+    except Exception:
+        return "Invalid URL"
+    if parsed.scheme != "https":
+        return "MISP URL must use HTTPS"
+    hostname = parsed.hostname
+    if not hostname:
+        return "Invalid MISP URL (missing host)"
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return "Private/loopback/reserved IP addresses are not allowed"
+    except ValueError:
+        pass  # it's a domain name — OK
+    return None
 
 convert_blueprint = Blueprint(
     "convert",
@@ -106,6 +128,150 @@ def misp_to_stix():
                 flash(error, "danger")
 
     return render_template("convert/misp_to_stix.html", form=form, result=result, error=error)
+
+
+@convert_blueprint.route("/fetch_misp_event", methods=['POST'])
+def fetch_misp_event():
+    """Fetch a single MISP event from an external instance.
+    The API key never leaves the server — only the raw event JSON is returned.
+    """
+    data = request.get_json(silent=True) or {}
+    misp_url = data.get("misp_url", "").strip().rstrip("/")
+    api_key  = data.get("api_key",  "").strip()
+    event_id = data.get("event_id", "").strip()
+
+    if not event_id.isdigit():
+        return jsonify({"error": "Event ID must be a positive integer"}), 400
+    if not api_key:
+        return jsonify({"error": "API key is required"}), 400
+
+    url_error = _validate_misp_url(misp_url)
+    if url_error:
+        return jsonify({"error": url_error}), 400
+
+    fetch_url = f"{misp_url}/events/view/{event_id}"
+    try:
+        resp = requests.get(
+            fetch_url,
+            headers={
+                "Authorization": api_key,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            timeout=15,
+            verify=True,
+            allow_redirects=False,
+        )
+    except requests.exceptions.SSLError:
+        return jsonify({"error": "SSL certificate verification failed for that MISP instance"}), 400
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Could not reach the MISP instance — check the URL"}), 400
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "MISP instance did not respond in time (timeout 15 s)"}), 408
+    except requests.exceptions.RequestException as exc:
+        return jsonify({"error": f"Request failed: {exc}"}), 400
+
+    if resp.status_code == 401 or resp.status_code == 403:
+        return jsonify({"error": "Authentication failed — check your API key"}), 403
+    if resp.status_code == 404:
+        return jsonify({"error": f"Event {event_id} not found on that instance"}), 404
+    if resp.status_code != 200:
+        return jsonify({"error": f"MISP returned HTTP {resp.status_code}"}), 400
+
+    try:
+        resp.json()  # just validate it's valid JSON
+    except Exception:
+        return jsonify({"error": "MISP returned a non-JSON response"}), 400
+
+    return jsonify({"content": resp.text, "event_id": event_id}), 200
+
+
+@convert_blueprint.route("/misp_search_events", methods=['POST'])
+def misp_search_events():
+    """Search events on an external MISP instance using /events/index."""
+    data = request.get_json(silent=True) or {}
+    misp_url = data.get("misp_url", "").strip().rstrip("/")
+    api_key  = data.get("api_key",  "").strip()
+
+    if not api_key:
+        return jsonify({"error": "API key required"}), 400
+    url_error = _validate_misp_url(misp_url)
+    if url_error:
+        return jsonify({"error": url_error}), 400
+
+    try:
+        limit = min(int(data.get("limit", 25)), 100)
+        page  = max(int(data.get("page",  1)),  1)
+    except (TypeError, ValueError):
+        return jsonify({"error": "limit and page must be integers"}), 400
+
+    search_body = {"limit": limit, "page": page}
+    if data.get("search"):    search_body["searchinfo"]     = data["search"].strip()
+    if data.get("tag"):       search_body["searchtag"]      = data["tag"].strip()
+    if data.get("date_from"): search_body["searchdatefrom"] = data["date_from"].strip()
+    if data.get("date_to"):   search_body["searchdateto"]   = data["date_to"].strip()
+
+    try:
+        resp = requests.post(
+            f"{misp_url}/events/index",
+            headers={"Authorization": api_key, "Accept": "application/json",
+                     "Content-Type": "application/json"},
+            json=search_body,
+            timeout=15,
+            verify=True,
+            allow_redirects=False,
+        )
+    except requests.exceptions.SSLError:
+        return jsonify({"error": "SSL certificate verification failed"}), 400
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Cannot reach the MISP instance — check the URL"}), 400
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "MISP instance timed out (15 s)"}), 408
+    except requests.exceptions.RequestException as exc:
+        return jsonify({"error": f"Request failed: {exc}"}), 400
+
+    if resp.status_code in (401, 403):
+        return jsonify({"error": "Authentication failed — check your API key"}), 403
+    if resp.status_code != 200:
+        return jsonify({"error": f"MISP returned HTTP {resp.status_code}"}), 400
+
+    try:
+        raw = resp.json()
+    except Exception:
+        return jsonify({"error": "MISP returned a non-JSON response"}), 400
+
+    # Normalise the various response shapes MISP can return
+    if isinstance(raw, dict):
+        raw = raw.get("response", [])
+    if not isinstance(raw, list):
+        raw = []
+
+    THREAT = {"1": "High", "2": "Medium", "3": "Low", "4": "Undefined"}
+
+    events = []
+    for ev in raw:
+        raw_tags = ev.get("Tag") or []
+        if not raw_tags:
+            raw_tags = [et.get("Tag", {}) for et in ev.get("EventTag", []) if et.get("Tag")]
+        visible_tags = [
+            {"name": t.get("name", ""), "colour": t.get("colour", "#888888")}
+            for t in raw_tags
+            if not t.get("hide_tag", False)
+        ]
+        events.append({
+            "id":              ev.get("id"),
+            "info":            ev.get("info", ""),
+            "date":            ev.get("date", ""),
+            "attribute_count": ev.get("attribute_count", 0),
+            "org":             (ev.get("Orgc") or {}).get("name") or str(ev.get("org_id", "")),
+            "threat_level":    THREAT.get(str(ev.get("threat_level_id", "")), ""),
+            "published":       ev.get("published", False),
+            "tags":            visible_tags,
+        })
+
+    return jsonify({"events": events, "count": len(events), "page": page, "limit": limit}), 200
+
+
 @convert_blueprint.route("/stix_to_misp", methods=['GET', 'POST'])
 def stix_to_misp():
     form = stixToMispParamForm()

@@ -17,7 +17,12 @@ application.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key-
 application.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://cti_user:cti_pass@localhost:5432/cti_db"
 
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-application.config['SESSION_TYPE'] = 'filesystem'  
+application.config['SESSION_TYPE'] = 'filesystem'
+
+# Flask 3.x defaults MAX_FORM_MEMORY_SIZE to 500 KB which rejects large MISP JSON payloads.
+# Set both limits to 50 MB to accommodate large events.
+application.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024   # 50 MB — total request size
+application.config["MAX_FORM_MEMORY_SIZE"] = 50 * 1024 * 1024  # 50 MB — non-file form fields
 
 csrf = CSRFProtect(application)
 

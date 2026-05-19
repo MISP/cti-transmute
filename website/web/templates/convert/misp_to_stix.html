@@ -73,6 +73,9 @@
                             <button type="button" class="input-tab-btn" data-tab="file">
                                 <i class="fas fa-upload me-1"></i> Upload File
                             </button>
+                            <button type="button" class="input-tab-btn" data-tab="misp">
+                                <i class="fas fa-server me-1"></i> From MISP Instance
+                            </button>
                         </div>
 
                         <div class="input-tab-body">
@@ -124,6 +127,140 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="input-tab-pane" id="tab-misp">
+
+                              <!-- ── Phase 1: Connection ──────────────────────────────── -->
+                              <div id="mi-phase-connect" class="p-3" style="background:var(--surface-2);border-radius:0 0 6px 6px;">
+                                <p class="text-muted small mb-3">
+                                  Connect to your MISP instance to browse and import events directly.
+                                  The API key is transmitted server-side only and is never stored.
+                                </p>
+                                <div class="row g-3">
+                                  <div class="col-md-6">
+                                    <label class="form-label cf-label" for="mi-url">
+                                      <i class="fas fa-link me-1"></i> MISP Instance URL
+                                    </label>
+                                    <input type="url" class="form-control" id="mi-url"
+                                      placeholder="https://misp.example.org" autocomplete="off" spellcheck="false">
+                                    <div class="form-text">HTTPS only.</div>
+                                  </div>
+                                  <div class="col-md-6">
+                                    <label class="form-label cf-label" for="mi-apikey">
+                                      <i class="fas fa-key me-1"></i> API Key
+                                    </label>
+                                    <div class="input-group">
+                                      <input type="password" class="form-control font-monospace" id="mi-apikey"
+                                        placeholder="Your automation key" autocomplete="off" spellcheck="false">
+                                      <button class="btn btn-outline-secondary" type="button" id="mi-toggle-key" title="Show/hide">
+                                        <i class="fas fa-eye" id="mi-eye"></i>
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div class="col-12">
+                                    <button class="btn btn-primary" type="button" id="mi-btn-connect">
+                                      <i class="fas fa-plug me-1"></i> Connect &amp; Browse Events
+                                    </button>
+                                    <span id="mi-connect-status" class="ms-3 small"></span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- ── Phase 2: Browser ────────────────────────────────── -->
+                              <div id="mi-phase-browse" style="display:none;border-radius:0 0 6px 6px;overflow:hidden;background:var(--surface);border-top:1px solid var(--border)">
+
+                                <!-- Connected banner -->
+                                <div class="d-flex align-items-center justify-content-between px-3 py-2"
+                                     style="background:var(--surface-2);border-bottom:1px solid var(--border);font-size:0.82rem;">
+                                  <span>
+                                    <i class="fas fa-circle" style="color:var(--success);font-size:0.5rem;vertical-align:middle;"></i>
+                                    <span class="ms-1">Connected to <strong id="mi-banner-url"></strong></span>
+                                  </span>
+                                  <button type="button" class="btn btn-xs btn-outline-secondary" id="mi-btn-disconnect">
+                                    <i class="fas fa-times me-1"></i> Disconnect
+                                  </button>
+                                </div>
+
+                                <!-- Filters -->
+                                <div class="px-3 pt-3 pb-2" style="border-bottom:1px solid var(--border)">
+                                  <div class="row g-2 align-items-end">
+                                    <div class="col-md-4">
+                                      <label class="form-label cf-label mb-1" style="font-size:0.75rem">
+                                        <i class="fas fa-search me-1"></i>Search
+                                      </label>
+                                      <input type="text" class="form-control form-control-sm" id="mi-filter-search"
+                                        placeholder="Keyword in title…">
+                                    </div>
+                                    <div class="col-md-3">
+                                      <label class="form-label cf-label mb-1" style="font-size:0.75rem">
+                                        <i class="fas fa-tag me-1"></i>Tag
+                                      </label>
+                                      <input type="text" class="form-control form-control-sm" id="mi-filter-tag"
+                                        placeholder="tlp:amber">
+                                    </div>
+                                    <div class="col-md-2">
+                                      <label class="form-label cf-label mb-1" style="font-size:0.75rem">From</label>
+                                      <input type="date" class="form-control form-control-sm" id="mi-filter-from">
+                                    </div>
+                                    <div class="col-md-2">
+                                      <label class="form-label cf-label mb-1" style="font-size:0.75rem">To</label>
+                                      <input type="date" class="form-control form-control-sm" id="mi-filter-to">
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-end">
+                                      <button class="btn btn-sm btn-primary w-100" type="button" id="mi-btn-search" title="Search">
+                                        <i class="fas fa-search"></i>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <!-- Results -->
+                                <div id="mi-table-wrap" style="max-height:340px;overflow-y:auto">
+                                  <div id="mi-loading" class="d-none text-center py-4">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status" style="color:var(--accent)"></div>
+                                    <span class="text-muted small">Loading events…</span>
+                                  </div>
+                                  <div id="mi-empty" class="d-none text-center py-4">
+                                    <span class="text-muted small">No events found for these filters.</span>
+                                  </div>
+                                  <div id="mi-error-box" class="d-none px-3 pt-3">
+                                    <div class="alert alert-danger py-2 px-3 mb-2 small" id="mi-error-msg"></div>
+                                  </div>
+                                  <table class="table table-sm table-hover mb-0" id="mi-table" style="display:none;font-size:0.82rem">
+                                    <thead style="position:sticky;top:0;background:var(--surface-2);z-index:1">
+                                      <tr>
+                                        <th style="width:55px">ID</th>
+                                        <th>Title</th>
+                                        <th style="width:88px">Date</th>
+                                        <th style="width:100px">Org</th>
+                                        <th style="width:50px" class="text-center">Attrs</th>
+                                        <th style="width:65px" class="text-center">Level</th>
+                                        <th>Tags</th>
+                                        <th style="width:85px"></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody id="mi-tbody"></tbody>
+                                  </table>
+                                </div>
+
+                                <!-- Pagination -->
+                                <div id="mi-pagination"
+                                     class="d-flex align-items-center justify-content-between px-3 py-2 border-top"
+                                     style="font-size:0.8rem;background:var(--surface-2);display:none!important">
+                                  <span id="mi-page-info" class="text-muted"></span>
+                                  <div class="d-flex gap-2">
+                                    <button class="btn btn-xs btn-outline-secondary" type="button" id="mi-btn-prev">
+                                      <i class="fas fa-chevron-left"></i> Prev
+                                    </button>
+                                    <button class="btn btn-xs btn-outline-secondary" type="button" id="mi-btn-next">
+                                      Next <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                  </div>
+                                </div>
+
+                              </div><!-- /mi-phase-browse -->
+
+                            </div><!-- /tab-misp -->
                         </div>
                     </div>
                     <input type="hidden" name="input_mode" id="input_mode" value="paste">
@@ -207,6 +344,8 @@
     {% endif %}
 
 </div>
+
+
 {% endblock %}
 
 {% block script %}
@@ -318,21 +457,357 @@
                 const textarea = document.getElementById('misp_content');
                 const fileInput = document.getElementById('file');
 
+                function switchTab(tabName) {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabPanes.forEach(p => p.classList.remove('active'));
+                    const btn = document.querySelector(`.input-tab-btn[data-tab="${tabName}"]`);
+                    if (btn) btn.classList.add('active');
+                    const pane = document.getElementById(`tab-${tabName}`);
+                    if (pane) pane.classList.add('active');
+                    // misp tab is not a real form input — treat it as paste for validation
+                    if (tabName === 'misp' || tabName === 'paste') {
+                        inputMode.value = 'paste';
+                        fileInput.removeAttribute('required');
+                    } else if (tabName === 'file') {
+                        inputMode.value = 'file';
+                        textarea.removeAttribute('required');
+                        fileInput.setAttribute('required', '');
+                    }
+                }
+
                 tabBtns.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        tabBtns.forEach(b => b.classList.remove('active'));
-                        tabPanes.forEach(p => p.classList.remove('active'));
-                        btn.classList.add('active');
-                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-                        inputMode.value = btn.dataset.tab;
-                        if (btn.dataset.tab === 'file') {
-                            textarea.removeAttribute('required');
-                            fileInput.setAttribute('required', '');
-                        } else {
-                            fileInput.removeAttribute('required');
+                    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+                });
+
+                /* ── MISP Instance — Inline Browser ─────────────────── */
+                const CSRF = () => document.querySelector('input[name="csrf_token"]')?.value || '';
+                const miSt = { url: '', apiKey: '', page: 1, limit: 25, filters: {}, events: [] };
+
+                function showFlash(msg, type) {
+                    const iconMap = { success: 'fa-check-circle', danger: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+                    const icon = iconMap[type] || 'fa-info-circle';
+                    let container = document.querySelector('.flash-container');
+                    if (!container) {
+                        container = document.createElement('div');
+                        container.className = 'flash-container';
+                        document.body.prepend(container);
+                    }
+                    const div = document.createElement('div');
+                    div.className = `alert alert-dismissible fade show flash-toast flash-${type}`;
+                    div.setAttribute('role', 'alert');
+                    div.innerHTML = `
+                        <div class="d-flex align-items-center p-3">
+                            <div class="toast-icon-wrapper me-3"><i class="fas ${icon}"></i></div>
+                            <div class="flex-grow-1" style="font-weight:500;">${msg}</div>
+                            <button type="button" class="btn-close-custom" data-bs-dismiss="alert" aria-label="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="toast-progress flash-progress-${type}"></div>`;
+                    container.appendChild(div);
+                    setTimeout(() => div.classList.remove('show'), 5000);
+                    setTimeout(() => div.remove(), 5500);
+                }
+
+                function checkSensitiveTags(tags) {
+                    const restricted = ['tlp:red', 'tlp:amber', 'tlp:amber+strict', 'tlp:ex:chr', 'tlp:green', 'tlp:unclear' ];
+                    return tags.filter(t => {
+                        const name = (t.name || '').toLowerCase();
+                        return restricted.some(p => name === p || name.startsWith(p + ':'));
+                    });
+                }
+
+                function showTlpWarning(sensitiveTags, onPrivate, onContinue, onDismiss) {
+                    const overlay = document.createElement('div');
+                    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center';
+
+                    const tagBadgesHtml = sensitiveTags.map(t => {
+                        const bg = t.colour || '#cc2200';
+                        const lum = parseInt(bg.replace('#', ''), 16);
+                        const fg = isNaN(lum) || lum < 0x888888 ? '#fff' : '#111';
+                        return `<span class="badge" style="background:${bg};color:${fg};font-size:0.78rem;padding:0.3em 0.65em;font-weight:600">${t.name}</span>`;
+                    }).join(' ');
+
+                    overlay.innerHTML = `
+                        <div style="background:var(--surface);border-radius:12px;max-width:460px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,0.45);border:1px solid var(--border)">
+                            <div style="padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+                                <div style="display:flex;align-items:center;gap:0.7rem">
+                                    <div style="width:36px;height:36px;border-radius:50%;background:rgba(220,53,69,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                        <i class="fas fa-exclamation-triangle" style="color:#dc3545;font-size:0.95rem"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight:700;font-size:0.92rem;color:var(--text)">Sensitive Tags Detected</div>
+                                        <div style="font-size:0.72rem;color:var(--text-3);margin-top:1px">This event contains restricted TLP classification</div>
+                                    </div>
+                                </div>
+                                <button id="tlp-dismiss-btn" style="background:none;border:none;color:var(--text-3);cursor:pointer;padding:4px;line-height:1;border-radius:4px">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div style="padding:1.1rem 1.4rem">
+                                <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:0.8rem;line-height:1.55">
+                                    The selected event carries tags that indicate <strong>restricted or confidential information</strong>.
+                                    Making this conversion public could result in a <strong style="color:#dc3545">data leak</strong>.
+                                </p>
+                                <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:1rem">${tagBadgesHtml}</div>
+                                <div style="background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.78rem;color:var(--text-2);line-height:1.45">
+                                    <i class="fas fa-lightbulb me-1" style="color:#ffc107"></i>
+                                    Recommended: set the conversion to <strong>private</strong> before continuing to avoid information leakage.
+                                </div>
+                            </div>
+                            <div style="padding:0.85rem 1.4rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;justify-content:flex-end">
+                                <button id="tlp-continue-btn" class="btn btn-sm btn-outline-secondary" style="font-size:0.8rem">
+                                    Continue anyway
+                                </button>
+                                <button id="tlp-private-btn" class="btn btn-sm btn-danger" style="font-size:0.8rem;font-weight:600">
+                                    <i class="fas fa-lock me-1"></i>Make Private &amp; Continue
+                                </button>
+                            </div>
+                        </div>`;
+
+                    document.body.appendChild(overlay);
+
+                    function close() { overlay.remove(); }
+
+                    overlay.querySelector('#tlp-dismiss-btn').addEventListener('click', () => {
+                        close(); onDismiss?.();
+                    });
+                    overlay.querySelector('#tlp-continue-btn').addEventListener('click', () => {
+                        close(); onContinue();
+                    });
+                    overlay.querySelector('#tlp-private-btn').addEventListener('click', () => {
+                        close(); onPrivate();
+                    });
+                }
+
+                function miShowPhase(phase) {
+                    document.getElementById('mi-phase-connect').style.display = phase === 'connect' ? '' : 'none';
+                    document.getElementById('mi-phase-browse').style.display  = phase === 'browse'  ? '' : 'none';
+                }
+
+                function miShowTableState(state) {
+                    document.getElementById('mi-loading').classList.toggle('d-none', state !== 'loading');
+                    document.getElementById('mi-empty').classList.toggle('d-none',   state !== 'empty');
+                    document.getElementById('mi-error-box').classList.toggle('d-none', state !== 'error');
+                    document.getElementById('mi-table').style.display = state === 'results' ? '' : 'none';
+                    document.getElementById('mi-pagination').style.setProperty('display', state === 'results' ? 'flex' : 'none', 'important');
+                }
+
+                function miThreatBadge(level) {
+                    const map = { High: 'danger', Medium: 'warning', Low: 'success', Undefined: 'secondary' };
+                    const cls = map[level] || 'secondary';
+                    return level ? `<span class="badge bg-${cls}" style="font-size:0.65rem">${level}</span>` : '';
+                }
+
+                function miTagBadges(tags) {
+                    if (!tags || !tags.length) return '<span class="text-muted" style="font-size:0.72rem">—</span>';
+                    const max = 3;
+                    const visible = tags.slice(0, max);
+                    const extra   = tags.length - max;
+                    let html = visible.map(t => {
+                        const bg  = t.colour || '#888';
+                        const lum = parseInt(bg.replace('#', ''), 16);
+                        const fg  = isNaN(lum) || lum < 0x888888 ? '#fff' : '#111';
+                        const name = t.name.length > 28 ? t.name.slice(0, 25) + '…' : t.name;
+                        return `<span class="badge me-1" style="background:${bg};color:${fg};font-size:0.62rem;font-weight:500" title="${t.name}">${name}</span>`;
+                    }).join('');
+                    if (extra > 0) html += `<span class="text-muted" style="font-size:0.7rem">+${extra}</span>`;
+                    return html;
+                }
+
+                function miRenderRows(events) {
+                    const tbody = document.getElementById('mi-tbody');
+                    tbody.innerHTML = '';
+                    events.forEach(ev => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><span class="badge bg-secondary" style="font-size:0.68rem">#${ev.id}</span></td>
+                            <td style="max-width:250px"><span title="${ev.info||''}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.info || '—'}</span></td>
+                            <td class="text-nowrap">${ev.date || ''}</td>
+                            <td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${ev.org||''}">${ev.org || ''}</td>
+                            <td class="text-center">${ev.attribute_count || 0}</td>
+                            <td class="text-center">${miThreatBadge(ev.threat_level)}</td>
+                            <td>${miTagBadges(ev.tags)}</td>
+                            <td>
+                                <button class="btn btn-xs btn-primary mi-select-btn" data-id="${ev.id}" style="white-space:nowrap">
+                                    <i class="fas fa-check me-1"></i>Select
+                                </button>
+                            </td>`;
+                        tbody.appendChild(tr);
+                    });
+                    tbody.querySelectorAll('.mi-select-btn').forEach(btn => {
+                        btn.addEventListener('click', () => miSelectEvent(btn.dataset.id, btn));
+                    });
+                }
+
+                async function miDoSearch(page) {
+                    miSt.page = page || 1;
+                    miShowTableState('loading');
+                    const body = { misp_url: miSt.url, api_key: miSt.apiKey, limit: miSt.limit, page: miSt.page, ...miSt.filters };
+                    try {
+                        const resp = await fetch('/convert/misp_search_events', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF() },
+                            body: JSON.stringify(body),
+                        });
+                        const data = await resp.json();
+                        if (!resp.ok || data.error) {
+                            const msg = data.error || `HTTP ${resp.status}`;
+                            document.getElementById('mi-error-msg').textContent = msg;
+                            miShowTableState('error');
+                            showFlash(msg, 'danger');
+                            return false;
+                        }
+                        const count = data.count || 0;
+                        if (!count) { miSt.events = []; miShowTableState('empty'); return true; }
+                        miSt.events = data.events;
+                        miRenderRows(data.events);
+                        miShowTableState('results');
+                        document.getElementById('mi-page-info').textContent = `Page ${miSt.page} · ${count} event${count !== 1 ? 's' : ''}`;
+                        document.getElementById('mi-btn-prev').disabled = miSt.page <= 1;
+                        document.getElementById('mi-btn-next').disabled = count < miSt.limit;
+                        return true;
+                    } catch (err) {
+                        const msg = `Network error: ${err.message}`;
+                        document.getElementById('mi-error-msg').textContent = msg;
+                        miShowTableState('error');
+                        showFlash(msg, 'danger');
+                        return false;
+                    }
+                }
+
+                async function miFetchAndLoad(id, btn, orig) {
+                    try {
+                        const resp = await fetch('/convert/fetch_misp_event', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF() },
+                            body: JSON.stringify({ misp_url: miSt.url, api_key: miSt.apiKey, event_id: String(id) }),
+                        });
+                        const data = await resp.json();
+                        if (!resp.ok || data.error) {
+                            showFlash(data.error || `HTTP ${resp.status}`, 'danger');
+                            btn.innerHTML = `<i class="fas fa-times me-1"></i>Error`;
+                            setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+                            return;
+                        }
+                        try { textarea.value = JSON.stringify(JSON.parse(data.content), null, 2); }
+                        catch { textarea.value = data.content; }
+                        textarea.dispatchEvent(new Event('input'));
+                        switchTab('paste');
+                        showFlash(`Event #${id} loaded — click <strong>Convert</strong> to proceed.`, 'success');
+                        textarea.style.borderColor = 'var(--success)';
+                        setTimeout(() => { textarea.style.borderColor = ''; }, 2000);
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i>Loaded';
+                    } catch (err) {
+                        showFlash(`Network error: ${err.message}`, 'danger');
+                        btn.innerHTML = orig;
+                        btn.disabled = false;
+                    }
+                }
+
+                function miSelectEvent(id, btn) {
+                    const orig = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+                    const evData = miSt.events.find(e => String(e.id) === String(id));
+                    const sensitiveTags = checkSensitiveTags(evData?.tags || []);
+
+                    if (sensitiveTags.length === 0) {
+                        miFetchAndLoad(id, btn, orig);
+                        return;
+                    }
+
+                    const convertBtn = document.querySelector('[name="convert"]');
+                    if (convertBtn) convertBtn.disabled = true;
+
+                    showTlpWarning(
+                        sensitiveTags,
+                        () => {
+                            // Make Private & Continue
+                            const pub = document.getElementById('publicSwitch');
+                            if (pub) { pub.checked = false; pub.dispatchEvent(new Event('change')); }
+                            if (convertBtn) convertBtn.disabled = false;
+                            miFetchAndLoad(id, btn, orig);
+                        },
+                        () => {
+                            // Continue anyway
+                            if (convertBtn) convertBtn.disabled = false;
+                            miFetchAndLoad(id, btn, orig);
+                        },
+                        () => {
+                            // Dismissed — restore button
+                            if (convertBtn) convertBtn.disabled = false;
+                            btn.innerHTML = orig;
+                            btn.disabled = false;
+                        }
+                    );
+                }
+
+                document.getElementById('mi-toggle-key')?.addEventListener('click', () => {
+                    const inp = document.getElementById('mi-apikey');
+                    const hidden = inp.type === 'password';
+                    inp.type = hidden ? 'text' : 'password';
+                    document.getElementById('mi-eye').className = hidden ? 'fas fa-eye-slash' : 'fas fa-eye';
+                });
+
+                document.getElementById('mi-btn-connect')?.addEventListener('click', async () => {
+                    const url    = document.getElementById('mi-url').value.trim();
+                    const apiKey = document.getElementById('mi-apikey').value.trim();
+                    const status = document.getElementById('mi-connect-status');
+                    if (!url)    { status.textContent = 'Enter a MISP URL'; status.className = 'ms-3 small text-danger'; return; }
+                    if (!apiKey) { status.textContent = 'Enter your API key'; status.className = 'ms-3 small text-danger'; return; }
+                    miSt.url = url; miSt.apiKey = apiKey; miSt.filters = {}; miSt.page = 1;
+                    const btn = document.getElementById('mi-btn-connect');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Connecting…';
+                    status.textContent = '';
+                    const ok = await miDoSearch(1);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-plug me-1"></i> Connect &amp; Browse Events';
+                    if (!ok || !document.getElementById('mi-error-box').classList.contains('d-none')) {
+                        const errMsg = document.getElementById('mi-error-msg').textContent;
+                        status.textContent = errMsg || 'Connection failed';
+                        status.className = 'ms-3 small text-danger';
+                        showFlash(errMsg || 'MISP connection failed', 'danger');
+                        return;
+                    }
+                    document.getElementById('mi-banner-url').textContent = url;
+                    miShowPhase('browse');
+                });
+
+                document.getElementById('mi-btn-disconnect')?.addEventListener('click', () => {
+                    miShowPhase('connect');
+                    miShowTableState('loading');
+                    document.getElementById('mi-tbody').innerHTML = '';
+                    ['mi-filter-search','mi-filter-tag','mi-filter-from','mi-filter-to'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.value = '';
+                    });
+                });
+
+                document.getElementById('mi-btn-search')?.addEventListener('click', () => {
+                    miSt.filters = {
+                        search:    document.getElementById('mi-filter-search').value.trim(),
+                        tag:       document.getElementById('mi-filter-tag').value.trim(),
+                        date_from: document.getElementById('mi-filter-from').value,
+                        date_to:   document.getElementById('mi-filter-to').value,
+                    };
+                    miDoSearch(1);
+                });
+
+                ['mi-filter-search','mi-filter-tag','mi-filter-from','mi-filter-to'].forEach(id => {
+                    document.getElementById(id)?.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            document.getElementById('mi-btn-search')?.click();
                         }
                     });
                 });
+
+                document.getElementById('mi-btn-prev')?.addEventListener('click', () => { if (miSt.page > 1) miDoSearch(miSt.page - 1); });
+                document.getElementById('mi-btn-next')?.addEventListener('click', () => miDoSearch(miSt.page + 1));
 
                 /* ── Live JSON validation ─────────────────────────── */
                 const jsonStatus = document.getElementById('json-status');
@@ -429,4 +904,5 @@
         }
     }).mount('#main-container');
 </script>
+
 {% endblock %}
