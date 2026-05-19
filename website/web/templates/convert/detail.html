@@ -399,12 +399,14 @@
                                 </div>
                                 <div class="graph-legend-section">
                                     <h6>MISP graph</h6>
-                                    <p>The <strong>Event</strong> is the root. It connects to <strong>Objects</strong> (groups like <em>file</em>, <em>domain-ip</em>) and standalone <strong>Attributes</strong>. Object references (<em>contains</em>, <em>related-to</em>) are shown as labeled arrows.</p>
+                                    <p>The <strong>Event</strong> is the root. It connects to <strong>Objects</strong> (groups like <em>file</em>, <em>domain-ip</em>) and standalone <strong>Attributes</strong>. When 3 or more attributes share the same type, they are collapsed under a <strong>type group node</strong> (hexagon) for readability. Object references (<em>contains</em>, <em>related-to</em>) are shown as labeled arrows.</p>
                                     <div class="graph-legend-chips">
                                         <span class="chip" style="--c:#2563eb">■ Event</span>
                                         <span class="chip" style="--c:#7c3aed">⬡ Object</span>
-                                        <span class="chip" style="--c:#0ea5e9">● Network (IP, domain, URL)</span>
-                                        <span class="chip" style="--c:#f97316">● Payload (hash, file)</span>
+                                        <span class="chip" style="--c:#0ea5e9">⬡ Network group</span>
+                                        <span class="chip" style="--c:#0ea5e9">● Network attr (IP, domain, URL)</span>
+                                        <span class="chip" style="--c:#f97316">⬡ Payload group</span>
+                                        <span class="chip" style="--c:#f97316">● Payload attr (hash, file)</span>
                                         <span class="chip" style="--c:#10b981">● External analysis</span>
                                         <span class="chip" style="--c:#64748b">● Other</span>
                                     </div>
@@ -1162,13 +1164,17 @@ const STIX_STYLE_MAP = {
 }
 
 const MISP_STYLE_MAP = {
-    'Event':         { shape: 'square',   color: '#2563eb', size: 26 },
-    'Object':        { shape: 'hexagon',  color: '#7c3aed', size: 18 },
-    'attr-network':  { shape: 'circle',   color: '#0ea5e9', size: 13 },
-    'attr-payload':  { shape: 'circle',   color: '#f97316', size: 13 },
-    'attr-external': { shape: 'circle',   color: '#10b981', size: 12 },
-    'attr-other':    { shape: 'circle',   color: '#64748b', size: 12 },
-    '_default':      { shape: 'circle',   color: '#64748b', size: 12 },
+    'Event':              { shape: 'square',   color: '#2563eb', size: 26 },
+    'Object':             { shape: 'hexagon',  color: '#7c3aed', size: 18 },
+    'attr-network':       { shape: 'circle',   color: '#0ea5e9', size: 13 },
+    'attr-payload':       { shape: 'circle',   color: '#f97316', size: 13 },
+    'attr-external':      { shape: 'circle',   color: '#10b981', size: 12 },
+    'attr-other':         { shape: 'circle',   color: '#64748b', size: 12 },
+    'group-network':      { shape: 'hexagon',  color: '#0ea5e9', size: 18 },
+    'group-payload':      { shape: 'hexagon',  color: '#f97316', size: 18 },
+    'group-external':     { shape: 'hexagon',  color: '#10b981', size: 17 },
+    'group-other':        { shape: 'hexagon',  color: '#64748b', size: 17 },
+    '_default':           { shape: 'circle',   color: '#64748b', size: 12 },
 }
 
 const MISP_NETWORK = new Set(['ip-src','ip-dst','domain','hostname','url','uri','email-src','email-dst'])
@@ -1181,6 +1187,13 @@ function mispAttrStyle(attr) {
     return 'attr-other'
 }
 
+function mispGroupStyle(attrType, category) {
+    if (MISP_NETWORK.has(attrType)) return 'group-network'
+    if (MISP_PAYLOAD.has(attrType)) return 'group-payload'
+    if (category === 'External analysis') return 'group-external'
+    return 'group-other'
+}
+
 function safeId(id) {
     return String(id).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '_')
 }
@@ -1188,10 +1201,20 @@ function safeId(id) {
 function parseMisp(json) {
     const nodes = [], edges = []
     let raw = Array.isArray(json) ? json[0] : json
+
+    // Handle {"response": [{"Event": {...}}]} MISP export wrapper
+    if (raw && !raw.Event && Array.isArray(raw.response)) {
+        raw = raw.response[0] ?? raw
+    }
+
     const event = raw?.Event ?? raw
     if (!event) return { nodes, edges }
 
     const uuidToSafe = {}
+    // Track attribute IDs already added to avoid duplicate nodes when an attribute
+    // appears in both event.Attribute (flat list) and event.Object[n].Attribute
+    const addedAttrIds = new Set()
+
     const evId = safeId(event.uuid || 'event-root')
     uuidToSafe[event.uuid || 'event-root'] = evId
     const tlp = (event.Tag || []).find(t => t.name?.startsWith('tlp:'))?.name || ''
@@ -1201,17 +1224,62 @@ function parseMisp(json) {
         type: 'Event', raw: event
     }})
 
-    for (const attr of event.Attribute ?? []) {
-        const nId = safeId(attr.uuid || attr.id)
-        uuidToSafe[attr.uuid || attr.id] = nId
-        nodes.push({ id: nId, data: {
-            label: String(attr.value).slice(0, 60),
-            sublabel: attr.type,
-            type: mispAttrStyle(attr), raw: attr
-        }})
-        edges.push({ from: evId, to: nId, data: { label: attr.type || '' } })
+    // Only standalone attributes (not inside a MISP Object) — object_id "0" or absent
+    const standaloneAttrs = (event.Attribute ?? []).filter(
+        a => !a.object_id || String(a.object_id) === '0'
+    )
+
+    // Group standalone attrs by type. When a type has 3+ occurrences, add an
+    // intermediate group node so the graph doesn't collapse into an unreadable star.
+    const typeGroups = {}
+    for (const attr of standaloneAttrs) {
+        const t = attr.type || '_unknown'
+        if (!typeGroups[t]) typeGroups[t] = []
+        typeGroups[t].push(attr)
     }
 
+    for (const [type, attrs] of Object.entries(typeGroups)) {
+        if (attrs.length >= 3) {
+            // Intermediate group node for this type
+            const clusterId = safeId(`grp-${evId}-${type}`)
+            const sampleAttr = attrs[0]
+            nodes.push({ id: clusterId, data: {
+                label: `${type} (${attrs.length})`,
+                sublabel: 'group',
+                type: mispGroupStyle(type, sampleAttr.category),
+                raw: null
+            }})
+            edges.push({ from: evId, to: clusterId, data: { label: type } })
+            for (const attr of attrs) {
+                const nId = safeId(attr.uuid || attr.id)
+                if (addedAttrIds.has(nId)) continue
+                addedAttrIds.add(nId)
+                uuidToSafe[attr.uuid || attr.id] = nId
+                nodes.push({ id: nId, data: {
+                    label: String(attr.value).slice(0, 60),
+                    sublabel: attr.type,
+                    type: mispAttrStyle(attr), raw: attr
+                }})
+                edges.push({ from: clusterId, to: nId, data: { label: '' } })
+            }
+        } else {
+            // Few of this type — connect directly to event
+            for (const attr of attrs) {
+                const nId = safeId(attr.uuid || attr.id)
+                if (addedAttrIds.has(nId)) continue
+                addedAttrIds.add(nId)
+                uuidToSafe[attr.uuid || attr.id] = nId
+                nodes.push({ id: nId, data: {
+                    label: String(attr.value).slice(0, 60),
+                    sublabel: attr.type,
+                    type: mispAttrStyle(attr), raw: attr
+                }})
+                edges.push({ from: evId, to: nId, data: { label: attr.type || '' } })
+            }
+        }
+    }
+
+    // MISP Objects
     const referencedByObject = new Set()
     for (const obj of event.Object ?? []) {
         const oId = safeId(obj.uuid || obj.id)
@@ -1229,6 +1297,12 @@ function parseMisp(json) {
 
         for (const attr of obj.Attribute ?? []) {
             const aId = safeId(attr.uuid || attr.id)
+            if (addedAttrIds.has(aId)) {
+                // Node already exists (from event.Attribute flat list) — only add the edge
+                edges.push({ from: oId, to: aId, data: { label: attr.object_relation || '' } })
+                continue
+            }
+            addedAttrIds.add(aId)
             uuidToSafe[attr.uuid || attr.id] = aId
             nodes.push({ id: aId, data: {
                 label: String(attr.value).slice(0, 60),
