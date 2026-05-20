@@ -257,6 +257,9 @@
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-input" onclick="toggleTree('input')">
+                                    <i class="fas fa-sitemap me-1"></i> Tree
+                                </button>
                                 <button class="btn btn-sm btn-outline-secondary" @click="formatJson('input', $event)">
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
@@ -276,6 +279,7 @@
                         </div>
                         <pre class="code-panel-pre d-none"
                             id="pre-input"><code class="language-json" id="input-code"></code></pre>
+                        <div class="jt-root d-none" id="tree-input"></div>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
@@ -291,6 +295,9 @@
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-output" onclick="toggleTree('output')">
+                                    <i class="fas fa-sitemap me-1"></i> Tree
+                                </button>
                                 <button class="btn btn-sm btn-outline-secondary" @click="formatJson('output', $event)">
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
@@ -310,6 +317,7 @@
                         </div>
                         <pre class="code-panel-pre d-none"
                             id="pre-output"><code class="language-json" id="output-code"></code></pre>
+                        <div class="jt-root d-none" id="tree-output"></div>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
@@ -724,6 +732,110 @@
 
     const HLJS_LIMIT = 200 * 1024   // 200 KB — skip highlighting above this
 
+    // ── JSON Tree viewer ──────────────────────────────────────────────────────
+    const treeState = {}
+
+    function jtEl(tag, cls, text) {
+        const e = document.createElement(tag)
+        if (cls) e.className = cls
+        if (text !== undefined) e.textContent = text
+        return e
+    }
+
+    function jtPrimitive(val) {
+        if (val === null)              return jtEl('span', 'jt-null',  'null')
+        if (typeof val === 'boolean')  return jtEl('span', 'jt-bool',  String(val))
+        if (typeof val === 'number')   return jtEl('span', 'jt-num',   String(val))
+        return jtEl('span', 'jt-str', JSON.stringify(val))
+    }
+
+    function jtBuildNode(val, key, isLast, depth) {
+        const isPrim = val === null || typeof val !== 'object'
+        const isArr  = !isPrim && Array.isArray(val)
+        const open   = isArr ? '[' : '{'
+        const close  = isArr ? ']' : '}'
+        const entries = isPrim ? null : (isArr ? val.map((v, i) => [null, v]) : Object.entries(val))
+
+        // Empty collection or primitive — render as a single row
+        if (isPrim || !entries.length) {
+            const row = document.createElement('div')
+            row.className = 'jt-row'
+            if (key !== null) {
+                row.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
+                row.appendChild(jtEl('span', 'jt-punct', ': '))
+            }
+            row.appendChild(isPrim ? jtPrimitive(val) : jtEl('span', 'jt-punct', open + close))
+            if (!isLast) row.appendChild(jtEl('span', 'jt-punct', ','))
+            return row
+        }
+
+        // Collapsible object / array
+        const n   = entries.length
+        const lbl = isArr ? `${n} item${n !== 1 ? 's' : ''}` : `${n} key${n !== 1 ? 's' : ''}`
+        const det = document.createElement('details')
+        if (depth < 2) det.open = true
+
+        const sum = document.createElement('summary')
+        sum.appendChild(jtEl('span', 'jt-toggle', '▶'))
+        if (key !== null) {
+            sum.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
+            sum.appendChild(jtEl('span', 'jt-punct', ': '))
+        }
+        sum.appendChild(jtEl('span', 'jt-punct', open))
+        sum.appendChild(jtEl('span', 'jt-preview', ` ${lbl} ${close}`))
+        det.appendChild(sum)
+
+        const body = document.createElement('div')
+        body.className = 'jt-body'
+        entries.forEach(([k, v], i) => body.appendChild(jtBuildNode(v, k, i === n - 1, depth + 1)))
+        det.appendChild(body)
+
+        const footer = jtEl('div', 'jt-footer')
+        footer.appendChild(jtEl('span', 'jt-punct', close))
+        if (!isLast) footer.appendChild(jtEl('span', 'jt-punct', ','))
+        det.appendChild(footer)
+        return det
+    }
+
+    function jtRender(jsonText, container) {
+        container.innerHTML = ''
+        if (jsonText.length > 800 * 1024) {
+            container.innerHTML = `<p style="padding:2rem;text-align:center;color:var(--text-3)"><i class="fas fa-info-circle me-2"></i>File too large for tree view (${Math.round(jsonText.length / 1024)} KB)</p>`
+            return
+        }
+        try {
+            const wrap = document.createElement('div')
+            wrap.appendChild(jtBuildNode(JSON.parse(jsonText), null, true, 0))
+            container.appendChild(wrap)
+        } catch {
+            container.innerHTML = '<p style="padding:1.5rem;color:var(--danger)"><i class="fas fa-xmark me-2"></i>Invalid JSON</p>'
+        }
+    }
+
+    function toggleTree(side) {
+        const pre     = document.getElementById(`pre-${side}`)
+        const treeDiv = document.getElementById(`tree-${side}`)
+        const btn     = document.getElementById(`tree-btn-${side}`)
+        if (!pre || !treeDiv || !btn) return
+        const active = !treeState[side]
+        treeState[side] = active
+        if (active) {
+            jtRender(side === 'input' ? rawInput : rawOutput, treeDiv)
+            pre.classList.add('d-none')
+            treeDiv.classList.remove('d-none')
+            btn.classList.replace('btn-outline-secondary', 'btn-primary')
+            btn.innerHTML = '<i class="fas fa-align-left me-1"></i> Raw'
+        } else {
+            treeDiv.classList.add('d-none')
+            pre.classList.remove('d-none')
+            btn.classList.replace('btn-primary', 'btn-outline-secondary')
+            btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Tree'
+        }
+    }
+    window.toggleTree = toggleTree
+
+    // ─────────────────────────────────────────────────────────────────────────
+
     function highlightSide(side) {
         const spinner = document.getElementById(`spinner-${side}`)
         const pre     = document.getElementById(`pre-${side}`)
@@ -740,11 +852,15 @@
             // File too large — skip hljs, show plain text immediately
             spinner?.classList.add('d-none')
             spinner?.classList.remove('d-flex')
-            pre.classList.remove('d-none')
+            if (!treeState[side]) pre.classList.remove('d-none')
             const notice = document.createElement('div')
             notice.className = 'hljs-size-notice'
             notice.innerHTML = '<i class="fas fa-info-circle me-1"></i>Syntax highlighting disabled for large files (' + Math.round(size / 1024) + ' KB)'
             pre.parentElement.insertBefore(notice, pre)
+            if (treeState[side]) {
+                const td = document.getElementById(`tree-${side}`)
+                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
+            }
             return
         }
 
@@ -756,7 +872,11 @@
             hljs.highlightElement(block)
             spinner?.classList.add('d-none')
             spinner?.classList.remove('d-flex')
-            pre.classList.remove('d-none')
+            if (!treeState[side]) pre.classList.remove('d-none')
+            if (treeState[side]) {
+                const td = document.getElementById(`tree-${side}`)
+                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
+            }
         }, 50)
     }
 
@@ -1198,18 +1318,7 @@ function safeId(id) {
     return String(id).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '_')
 }
 
-function parseMisp(json) {
-    const nodes = [], edges = []
-    let raw = Array.isArray(json) ? json[0] : json
-
-    // Handle {"response": [{"Event": {...}}]} MISP export wrapper
-    if (raw && !raw.Event && Array.isArray(raw.response)) {
-        raw = raw.response[0] ?? raw
-    }
-
-    const event = raw?.Event ?? raw
-    if (!event) return { nodes, edges }
-
+function parseMispEvent(event, nodes, edges) {
     const uuidToSafe = {}
     // Track attribute IDs already added to avoid duplicate nodes when an attribute
     // appears in both event.Attribute (flat list) and event.Object[n].Attribute
@@ -1325,7 +1434,23 @@ function parseMisp(json) {
         if (edges[i].data?._default && referencedByObject.has(edges[i].to))
             edges.splice(i, 1)
     }
+}
 
+function parseMisp(json) {
+    const nodes = [], edges = []
+    let raw = Array.isArray(json) ? json[0] : json
+
+    // Handle {"response": [{"Event": {...}}]} — single or multiple events
+    if (raw && !raw.Event && Array.isArray(raw.response)) {
+        for (const item of raw.response) {
+            const event = item?.Event ?? item
+            if (event && typeof event === 'object') parseMispEvent(event, nodes, edges)
+        }
+        return { nodes, edges }
+    }
+
+    const event = raw?.Event ?? raw
+    if (event && typeof event === 'object') parseMispEvent(event, nodes, edges)
     return { nodes, edges }
 }
 

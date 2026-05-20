@@ -132,16 +132,29 @@ def misp_to_stix():
 
 @convert_blueprint.route("/fetch_misp_event", methods=['POST'])
 def fetch_misp_event():
-    """Fetch a single MISP event from an external instance.
-    The API key never leaves the server — only the raw event JSON is returned.
+    """Fetch one or more MISP events via restSearch.
+    Accepts event_ids (list) or event_id (string). Supports optional restSearch params.
+    Returns {"content": json_string, "count": N, "event_ids": [...]}
     """
     data = request.get_json(silent=True) or {}
     misp_url = data.get("misp_url", "").strip().rstrip("/")
     api_key  = data.get("api_key",  "").strip()
-    event_id = data.get("event_id", "").strip()
 
-    if not event_id.isdigit():
-        return jsonify({"error": "Event ID must be a positive integer"}), 400
+    # Accept event_ids (list) OR event_id (single string) for backward compat
+    event_ids = data.get("event_ids")
+    if event_ids is None:
+        single = str(data.get("event_id", "")).strip()
+        if not single.isdigit():
+            return jsonify({"error": "Event ID must be a positive integer"}), 400
+        event_ids = [single]
+    else:
+        if not isinstance(event_ids, list) or not event_ids:
+            return jsonify({"error": "event_ids must be a non-empty list"}), 400
+        for eid in event_ids:
+            if not str(eid).strip().isdigit():
+                return jsonify({"error": f"Invalid event ID: {eid}"}), 400
+        event_ids = [str(e).strip() for e in event_ids]
+
     if not api_key:
         return jsonify({"error": "API key is required"}), 400
 
@@ -149,16 +162,34 @@ def fetch_misp_event():
     if url_error:
         return jsonify({"error": url_error}), 400
 
-    fetch_url = f"{misp_url}/events/view/{event_id}"
+    OPTIONAL_PARAMS = [
+        "page", "limit", "value", "type", "category", "org", "tags", "date",
+        "last", "withAttachments", "uuid", "publish_timestamp", "timestamp",
+        "attribute_timestamp", "enforceWarninglist", "to_ids", "deleted",
+        "includeEventUuid", "includeEventTags", "event_timestamp",
+        "threat_level_id", "eventinfo", "sharinggroup", "includeProposals",
+        "includeDecayScore", "includeFullModel", "decayingModel",
+        "excludeDecayed", "score", "first_seen", "last_seen",
+    ]
+    body: dict = {
+        "returnFormat": "json",
+        "eventid": event_ids if len(event_ids) > 1 else event_ids[0],
+    }
+    for param in OPTIONAL_PARAMS:
+        if param in data and data[param] not in (None, "", []):
+            body[param] = data[param]
+
+    fetch_url = f"{misp_url}/events/restSearch"
     try:
-        resp = requests.get(
+        resp = requests.post(
             fetch_url,
             headers={
                 "Authorization": api_key,
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },
-            timeout=15,
+            json=body,
+            timeout=30,
             verify=True,
             allow_redirects=False,
         )
@@ -167,23 +198,35 @@ def fetch_misp_event():
     except requests.exceptions.ConnectionError:
         return jsonify({"error": "Could not reach the MISP instance — check the URL"}), 400
     except requests.exceptions.Timeout:
-        return jsonify({"error": "MISP instance did not respond in time (timeout 15 s)"}), 408
+        return jsonify({"error": "MISP instance did not respond in time (timeout 30 s)"}), 408
     except requests.exceptions.RequestException as exc:
         return jsonify({"error": f"Request failed: {exc}"}), 400
 
-    if resp.status_code == 401 or resp.status_code == 403:
+    if resp.status_code in (401, 403):
         return jsonify({"error": "Authentication failed — check your API key"}), 403
     if resp.status_code == 404:
-        return jsonify({"error": f"Event {event_id} not found on that instance"}), 404
-    if resp.status_code != 200:
-        return jsonify({"error": f"MISP returned HTTP {resp.status_code}"}), 400
+        return jsonify({"error": "Event(s) not found on that instance"}), 404
+    if resp.status_code == 429:
+        return jsonify({"error": "MISP rate limit exceeded"}), 429
 
     try:
-        resp.json()  # just validate it's valid JSON
+        result = resp.json()
     except Exception:
         return jsonify({"error": "MISP returned a non-JSON response"}), 400
 
-    return jsonify({"content": resp.text, "event_id": event_id}), 200
+    # Normalize to {"response": [{"Event": {...}}, ...]}
+    response_list = result.get("response")
+    if isinstance(response_list, list):
+        normalized = {"response": response_list}
+    elif isinstance(response_list, dict) and "Event" in response_list:
+        normalized = {"response": [{"Event": response_list["Event"]}]}
+    elif "Event" in result:
+        normalized = {"response": [{"Event": result["Event"]}]}
+    else:
+        normalized = result
+
+    count = len(normalized["response"]) if isinstance(normalized.get("response"), list) else 1
+    return jsonify({"content": json.dumps(normalized, ensure_ascii=False), "count": count, "event_ids": event_ids}), 200
 
 
 @convert_blueprint.route("/misp_search_events", methods=['POST'])
@@ -266,6 +309,8 @@ def misp_search_events():
             "org":             (ev.get("Orgc") or {}).get("name") or str(ev.get("org_id", "")),
             "threat_level":    THREAT.get(str(ev.get("threat_level_id", "")), ""),
             "published":       ev.get("published", False),
+            "distribution":    str(ev.get("distribution", "3")),
+            "sharing_group":   (ev.get("SharingGroup") or {}).get("name", ""),
             "tags":            visible_tags,
         })
 

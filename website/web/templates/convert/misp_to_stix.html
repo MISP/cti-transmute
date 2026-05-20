@@ -229,6 +229,9 @@
                                   <table class="table table-sm table-hover mb-0" id="mi-table" style="display:none;font-size:0.82rem">
                                     <thead style="position:sticky;top:0;background:var(--surface-2);z-index:1">
                                       <tr>
+                                        <th style="width:32px" class="text-center">
+                                          <input type="checkbox" id="mi-check-all" title="Select all" style="cursor:pointer">
+                                        </th>
                                         <th style="width:55px">ID</th>
                                         <th>Title</th>
                                         <th style="width:88px">Date</th>
@@ -243,11 +246,16 @@
                                   </table>
                                 </div>
 
-                                <!-- Pagination -->
+                                <!-- Pagination + Import Selected -->
                                 <div id="mi-pagination"
                                      class="d-flex align-items-center justify-content-between px-3 py-2 border-top"
                                      style="font-size:0.8rem;background:var(--surface-2);display:none!important">
-                                  <span id="mi-page-info" class="text-muted"></span>
+                                  <div class="d-flex align-items-center gap-2">
+                                    <span id="mi-page-info" class="text-muted"></span>
+                                    <button class="btn btn-xs btn-success d-none" type="button" id="mi-btn-import-selected">
+                                      <i class="fas fa-file-import me-1"></i><span id="mi-import-label">Import Selected (0)</span>
+                                    </button>
+                                  </div>
                                   <div class="d-flex gap-2">
                                     <button class="btn btn-xs btn-outline-secondary" type="button" id="mi-btn-prev">
                                       <i class="fas fa-chevron-left"></i> Prev
@@ -481,7 +489,7 @@
 
                 /* ── MISP Instance — Inline Browser ─────────────────── */
                 const CSRF = () => document.querySelector('input[name="csrf_token"]')?.value || '';
-                const miSt = { url: '', apiKey: '', page: 1, limit: 25, filters: {}, events: [] };
+                const miSt = { url: '', apiKey: '', page: 1, limit: 25, filters: {}, events: [], selected: new Set() };
 
                 function showFlash(msg, type) {
                     const iconMap = { success: 'fa-check-circle', danger: 'fa-times-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
@@ -517,17 +525,59 @@
                     });
                 }
 
-                function showTlpWarning(sensitiveTags, onPrivate, onContinue, onDismiss) {
+                function checkRestrictiveDistribution(evData) {
+                    const d = String(evData?.distribution ?? '3');
+                    if (d === '0') return { label: 'Your Organisation Only', icon: 'fa-building', detail: 'restricted to your organisation' };
+                    if (d === '4') {
+                        const sg = evData?.sharing_group ? ` — ${evData.sharing_group}` : '';
+                        return { label: `Sharing Group${sg}`, icon: 'fa-users', detail: 'restricted to a sharing group' };
+                    }
+                    return null;
+                }
+
+                function showSensitivityWarning(sensitiveTags, distInfo, onPrivate, onContinue, onDismiss) {
+                    const hasTlp  = sensitiveTags.length > 0;
+                    const hasDist = distInfo !== null;
+
+                    const title    = hasTlp && hasDist ? 'Multiple Sensitivity Indicators'
+                                   : hasTlp             ? 'Sensitive TLP Tags Detected'
+                                   :                      'Restricted Distribution Scope';
+                    const subtitle = hasTlp && hasDist ? 'This event has restricted TLP tags and a limited distribution scope'
+                                   : hasTlp             ? 'This event contains restricted TLP classification'
+                                   :                      `This event is ${distInfo.detail}`;
+
+                    let tlpSection = '';
+                    if (hasTlp) {
+                        const tagHtml = sensitiveTags.map(t => {
+                            const bg = t.colour || '#cc2200';
+                            const lum = parseInt(bg.replace('#', ''), 16);
+                            const fg = isNaN(lum) || lum < 0x888888 ? '#fff' : '#111';
+                            return `<span class="badge" style="background:${bg};color:${fg};font-size:0.78rem;padding:0.3em 0.65em;font-weight:600">${t.name}</span>`;
+                        }).join(' ');
+                        tlpSection = `
+                            <div style="margin-bottom:0.85rem">
+                                <div style="font-size:0.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">
+                                    <i class="fas fa-tag me-1"></i>TLP Classification
+                                </div>
+                                <div style="display:flex;flex-wrap:wrap;gap:0.3rem">${tagHtml}</div>
+                            </div>`;
+                    }
+
+                    let distSection = '';
+                    if (hasDist) {
+                        distSection = `
+                            <div style="margin-bottom:0.85rem">
+                                <div style="font-size:0.7rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">
+                                    <i class="fas fa-share-alt me-1"></i>Distribution Scope
+                                </div>
+                                <span class="badge" style="background:rgba(108,117,125,0.15);color:var(--text-2);font-size:0.8rem;padding:0.35em 0.75em;border:1px solid var(--border);font-weight:600">
+                                    <i class="fas ${distInfo.icon} me-1"></i>${distInfo.label}
+                                </span>
+                            </div>`;
+                    }
+
                     const overlay = document.createElement('div');
                     overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center';
-
-                    const tagBadgesHtml = sensitiveTags.map(t => {
-                        const bg = t.colour || '#cc2200';
-                        const lum = parseInt(bg.replace('#', ''), 16);
-                        const fg = isNaN(lum) || lum < 0x888888 ? '#fff' : '#111';
-                        return `<span class="badge" style="background:${bg};color:${fg};font-size:0.78rem;padding:0.3em 0.65em;font-weight:600">${t.name}</span>`;
-                    }).join(' ');
-
                     overlay.innerHTML = `
                         <div style="background:var(--surface);border-radius:12px;max-width:460px;width:92%;box-shadow:0 24px 64px rgba(0,0,0,0.45);border:1px solid var(--border)">
                             <div style="padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
@@ -536,48 +586,40 @@
                                         <i class="fas fa-exclamation-triangle" style="color:#dc3545;font-size:0.95rem"></i>
                                     </div>
                                     <div>
-                                        <div style="font-weight:700;font-size:0.92rem;color:var(--text)">Sensitive Tags Detected</div>
-                                        <div style="font-size:0.72rem;color:var(--text-3);margin-top:1px">This event contains restricted TLP classification</div>
+                                        <div style="font-weight:700;font-size:0.92rem;color:var(--text)">${title}</div>
+                                        <div style="font-size:0.72rem;color:var(--text-3);margin-top:1px">${subtitle}</div>
                                     </div>
                                 </div>
-                                <button id="tlp-dismiss-btn" style="background:none;border:none;color:var(--text-3);cursor:pointer;padding:4px;line-height:1;border-radius:4px">
+                                <button id="sw-dismiss-btn" style="background:none;border:none;color:var(--text-3);cursor:pointer;padding:4px;line-height:1;border-radius:4px">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
                             <div style="padding:1.1rem 1.4rem">
-                                <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:0.8rem;line-height:1.55">
-                                    The selected event carries tags that indicate <strong>restricted or confidential information</strong>.
-                                    Making this conversion public could result in a <strong style="color:#dc3545">data leak</strong>.
+                                <p style="font-size:0.82rem;color:var(--text-2);margin-bottom:0.9rem;line-height:1.55">
+                                    Making this conversion <strong>public</strong> could expose
+                                    <strong style="color:#dc3545">confidential information</strong>.
                                 </p>
-                                <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:1rem">${tagBadgesHtml}</div>
+                                ${tlpSection}${distSection}
                                 <div style="background:rgba(255,193,7,0.1);border:1px solid rgba(255,193,7,0.3);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.78rem;color:var(--text-2);line-height:1.45">
                                     <i class="fas fa-lightbulb me-1" style="color:#ffc107"></i>
-                                    Recommended: set the conversion to <strong>private</strong> before continuing to avoid information leakage.
+                                    Recommended: keep this conversion <strong>private</strong> to avoid leaking sensitive data.
                                 </div>
                             </div>
                             <div style="padding:0.85rem 1.4rem;border-top:1px solid var(--border);display:flex;gap:0.5rem;justify-content:flex-end">
-                                <button id="tlp-continue-btn" class="btn btn-sm btn-outline-secondary" style="font-size:0.8rem">
+                                <button id="sw-continue-btn" class="btn btn-sm btn-outline-secondary" style="font-size:0.8rem">
                                     Continue anyway
                                 </button>
-                                <button id="tlp-private-btn" class="btn btn-sm btn-danger" style="font-size:0.8rem;font-weight:600">
+                                <button id="sw-private-btn" class="btn btn-sm btn-danger" style="font-size:0.8rem;font-weight:600">
                                     <i class="fas fa-lock me-1"></i>Make Private &amp; Continue
                                 </button>
                             </div>
                         </div>`;
 
                     document.body.appendChild(overlay);
-
-                    function close() { overlay.remove(); }
-
-                    overlay.querySelector('#tlp-dismiss-btn').addEventListener('click', () => {
-                        close(); onDismiss?.();
-                    });
-                    overlay.querySelector('#tlp-continue-btn').addEventListener('click', () => {
-                        close(); onContinue();
-                    });
-                    overlay.querySelector('#tlp-private-btn').addEventListener('click', () => {
-                        close(); onPrivate();
-                    });
+                    const close = () => overlay.remove();
+                    overlay.querySelector('#sw-dismiss-btn').addEventListener('click', () => { close(); onDismiss?.(); });
+                    overlay.querySelector('#sw-continue-btn').addEventListener('click', () => { close(); onContinue(); });
+                    overlay.querySelector('#sw-private-btn').addEventListener('click', () => { close(); onPrivate(); });
                 }
 
                 function miShowPhase(phase) {
@@ -615,13 +657,29 @@
                     return html;
                 }
 
+                function miUpdateImportBtn() {
+                    const n = miSt.selected.size;
+                    const btn = document.getElementById('mi-btn-import-selected');
+                    const lbl = document.getElementById('mi-import-label');
+                    if (!btn) return;
+                    btn.classList.toggle('d-none', n === 0);
+                    if (lbl) lbl.textContent = `Import Selected (${n})`;
+                }
+
                 function miRenderRows(events) {
                     const tbody = document.getElementById('mi-tbody');
                     tbody.innerHTML = '';
                     events.forEach(ev => {
                         const tr = document.createElement('tr');
+                        const isChecked = miSt.selected.has(String(ev.id));
+                        const distIcon = ev.distribution === '0'
+                            ? `<i class="fas fa-building ms-1" title="Your organisation only" style="color:var(--text-3);font-size:0.6rem;vertical-align:middle"></i>`
+                            : ev.distribution === '4'
+                            ? `<i class="fas fa-users ms-1" title="Sharing Group" style="color:var(--text-3);font-size:0.6rem;vertical-align:middle"></i>`
+                            : '';
                         tr.innerHTML = `
-                            <td><span class="badge bg-secondary" style="font-size:0.68rem">#${ev.id}</span></td>
+                            <td class="text-center"><input type="checkbox" class="mi-row-check" data-id="${ev.id}" ${isChecked ? 'checked' : ''} style="cursor:pointer"></td>
+                            <td><span class="badge bg-secondary" style="font-size:0.68rem">#${ev.id}</span>${distIcon}</td>
                             <td style="max-width:250px"><span title="${ev.info||''}" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.info || '—'}</span></td>
                             <td class="text-nowrap">${ev.date || ''}</td>
                             <td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${ev.org||''}">${ev.org || ''}</td>
@@ -635,9 +693,25 @@
                             </td>`;
                         tbody.appendChild(tr);
                     });
+                    tbody.querySelectorAll('.mi-row-check').forEach(cb => {
+                        cb.addEventListener('change', () => {
+                            const id = String(cb.dataset.id);
+                            if (cb.checked) miSt.selected.add(id);
+                            else miSt.selected.delete(id);
+                            miUpdateImportBtn();
+                            // Sync header checkbox
+                            const all = tbody.querySelectorAll('.mi-row-check');
+                            const allChecked = [...all].every(c => c.checked);
+                            const checkAll = document.getElementById('mi-check-all');
+                            if (checkAll) { checkAll.checked = allChecked; checkAll.indeterminate = !allChecked && [...all].some(c => c.checked); }
+                        });
+                    });
                     tbody.querySelectorAll('.mi-select-btn').forEach(btn => {
                         btn.addEventListener('click', () => miSelectEvent(btn.dataset.id, btn));
                     });
+                    // Sync header "select all" state
+                    const checkAll = document.getElementById('mi-check-all');
+                    if (checkAll) { checkAll.checked = false; checkAll.indeterminate = miSt.selected.size > 0; }
                 }
 
                 async function miDoSearch(page) {
@@ -705,15 +779,82 @@
                     }
                 }
 
+                async function miImportSelected(makePrivate) {
+                    const ids = [...miSt.selected];
+                    if (!ids.length) return;
+                    const importBtn = document.getElementById('mi-btn-import-selected');
+                    const origImport = importBtn.innerHTML;
+                    importBtn.disabled = true;
+                    importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importing…';
+                    try {
+                        const resp = await fetch('/convert/fetch_misp_event', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF() },
+                            body: JSON.stringify({ misp_url: miSt.url, api_key: miSt.apiKey, event_ids: ids }),
+                        });
+                        const data = await resp.json();
+                        if (!resp.ok || data.error) {
+                            showFlash(data.error || `HTTP ${resp.status}`, 'danger');
+                            importBtn.innerHTML = origImport;
+                            importBtn.disabled = false;
+                            return;
+                        }
+                        if (makePrivate) {
+                            const pub = document.getElementById('publicSwitch');
+                            if (pub) { pub.checked = false; pub.dispatchEvent(new Event('change')); }
+                        }
+                        try { textarea.value = JSON.stringify(JSON.parse(data.content), null, 2); }
+                        catch { textarea.value = data.content; }
+                        textarea.dispatchEvent(new Event('input'));
+                        switchTab('paste');
+                        const n = data.count || ids.length;
+                        showFlash(`${n} event${n !== 1 ? 's' : ''} imported — click <strong>Convert</strong> to proceed.`, 'success');
+                        textarea.style.borderColor = 'var(--success)';
+                        setTimeout(() => { textarea.style.borderColor = ''; }, 2000);
+                        importBtn.innerHTML = '<i class="fas fa-check me-1"></i>Imported';
+                        setTimeout(() => { importBtn.innerHTML = origImport; importBtn.disabled = false; }, 3000);
+                    } catch (err) {
+                        showFlash(`Network error: ${err.message}`, 'danger');
+                        importBtn.innerHTML = origImport;
+                        importBtn.disabled = false;
+                    }
+                }
+
+                function miTriggerImportSelected() {
+                    const ids = [...miSt.selected];
+                    if (!ids.length) return;
+                    // Collect event data for all selected IDs (may span pages — use what we have)
+                    const knownEvents = miSt.events.filter(e => ids.includes(String(e.id)));
+                    const allTags = knownEvents.flatMap(e => e.tags || []);
+                    const sensitiveTags = checkSensitiveTags(allTags);
+                    const restrictiveDists = knownEvents.map(e => checkRestrictiveDistribution(e)).filter(Boolean);
+                    const distInfo = restrictiveDists.length ? restrictiveDists[0] : null;
+
+                    const convertBtn = document.querySelector('[name="convert"]');
+                    if (sensitiveTags.length === 0 && distInfo === null) {
+                        miImportSelected(false);
+                        return;
+                    }
+                    if (convertBtn) convertBtn.disabled = true;
+                    showSensitivityWarning(
+                        sensitiveTags,
+                        distInfo,
+                        () => { if (convertBtn) convertBtn.disabled = false; miImportSelected(true); },
+                        () => { if (convertBtn) convertBtn.disabled = false; miImportSelected(false); },
+                        () => { if (convertBtn) convertBtn.disabled = false; }
+                    );
+                }
+
                 function miSelectEvent(id, btn) {
                     const orig = btn.innerHTML;
                     btn.disabled = true;
                     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-                    const evData = miSt.events.find(e => String(e.id) === String(id));
+                    const evData        = miSt.events.find(e => String(e.id) === String(id));
                     const sensitiveTags = checkSensitiveTags(evData?.tags || []);
+                    const distInfo      = checkRestrictiveDistribution(evData);
 
-                    if (sensitiveTags.length === 0) {
+                    if (sensitiveTags.length === 0 && distInfo === null) {
                         miFetchAndLoad(id, btn, orig);
                         return;
                     }
@@ -721,8 +862,9 @@
                     const convertBtn = document.querySelector('[name="convert"]');
                     if (convertBtn) convertBtn.disabled = true;
 
-                    showTlpWarning(
+                    showSensitivityWarning(
                         sensitiveTags,
+                        distInfo,
                         () => {
                             // Make Private & Continue
                             const pub = document.getElementById('publicSwitch');
@@ -780,6 +922,8 @@
                     miShowPhase('connect');
                     miShowTableState('loading');
                     document.getElementById('mi-tbody').innerHTML = '';
+                    miSt.selected.clear();
+                    miUpdateImportBtn();
                     ['mi-filter-search','mi-filter-tag','mi-filter-from','mi-filter-to'].forEach(id => {
                         const el = document.getElementById(id);
                         if (el) el.value = '';
@@ -793,6 +937,8 @@
                         date_from: document.getElementById('mi-filter-from').value,
                         date_to:   document.getElementById('mi-filter-to').value,
                     };
+                    miSt.selected.clear();
+                    miUpdateImportBtn();
                     miDoSearch(1);
                 });
 
@@ -808,6 +954,20 @@
 
                 document.getElementById('mi-btn-prev')?.addEventListener('click', () => { if (miSt.page > 1) miDoSearch(miSt.page - 1); });
                 document.getElementById('mi-btn-next')?.addEventListener('click', () => miDoSearch(miSt.page + 1));
+
+                document.getElementById('mi-check-all')?.addEventListener('change', function() {
+                    const checkboxes = document.querySelectorAll('#mi-tbody .mi-row-check');
+                    checkboxes.forEach(cb => {
+                        cb.checked = this.checked;
+                        const id = String(cb.dataset.id);
+                        if (this.checked) miSt.selected.add(id);
+                        else miSt.selected.delete(id);
+                    });
+                    this.indeterminate = false;
+                    miUpdateImportBtn();
+                });
+
+                document.getElementById('mi-btn-import-selected')?.addEventListener('click', miTriggerImportSelected);
 
                 /* ── Live JSON validation ─────────────────────────── */
                 const jsonStatus = document.getElementById('json-status');
