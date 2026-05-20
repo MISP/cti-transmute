@@ -414,39 +414,68 @@ def admin_deleted_converts():
 def admin_get_all_notifications():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '', type=str) or None
-    log_type = request.args.get('log_type', 'all')  # all | notifications | system
+
+    from datetime import datetime
+    from website.db_class.db import SystemLog, Notification as NotifModel
+
+    page       = request.args.get('page', 1, type=int)
+    search     = request.args.get('search', '', type=str) or None
+    log_type   = request.args.get('log_type', 'all')
+    date_from_s = request.args.get('date_from', '', type=str)
+    date_to_s   = request.args.get('date_to',   '', type=str)
+
+    try:
+        date_from = datetime.strptime(date_from_s, '%Y-%m-%d') if date_from_s else None
+    except ValueError:
+        date_from = None
+    try:
+        date_to = datetime.strptime(date_to_s, '%Y-%m-%d').replace(hour=23, minute=59, second=59) if date_to_s else None
+    except ValueError:
+        date_to = None
+
+    def apply_date(q, model):
+        if date_from: q = q.filter(model.created_at >= date_from)
+        if date_to:   q = q.filter(model.created_at <= date_to)
+        return q
 
     if log_type == 'notifications':
-        pagination = AccountModel.get_all_notifications_admin(page=page, search=search)
-        items = [dict(n.to_json(), source='notification') for n in pagination.items]
-        return {"success": True, "list": items, "total_page": pagination.pages}, 200
+        q = NotifModel.query
+        if search: q = q.filter(NotifModel.message.ilike(f"%{search}%"))
+        q = apply_date(q, NotifModel)
+        p = q.order_by(NotifModel.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+        return {"success": True, "list": [dict(n.to_json(), source='notification') for n in p.items], "total_page": p.pages or 1}, 200
 
     if log_type == 'system':
-        pagination = AccountModel.get_system_logs(page=page, search=search)
-        items = [dict(l.to_json(), source='system') for l in pagination.items]
-        return {"success": True, "list": items, "total_page": pagination.pages}, 200
+        q = SystemLog.query
+        if search:
+            q = q.filter(
+                SystemLog.event_type.ilike(f"%{search}%") |
+                SystemLog.actor_name.ilike(f"%{search}%") |
+                SystemLog.target_name.ilike(f"%{search}%") |
+                SystemLog.details.ilike(f"%{search}%")
+            )
+        q = apply_date(q, SystemLog)
+        p = q.order_by(SystemLog.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+        return {"success": True, "list": [dict(l.to_json(), source='system') for l in p.items], "total_page": p.pages or 1}, 200
 
-    # Merge both, sort by date, paginate in Python
+    # Merge both
     per_page = 20
-    from website.db_class.db import SystemLog, Notification as NotifModel
-    notif_q = NotifModel.query
-    sys_q = SystemLog.query
+    nq = apply_date(NotifModel.query, NotifModel)
+    sq = apply_date(SystemLog.query, SystemLog)
     if search:
-        notif_q = notif_q.filter(NotifModel.message.ilike(f"%{search}%"))
-        sys_q = sys_q.filter(
+        nq = nq.filter(NotifModel.message.ilike(f"%{search}%"))
+        sq = sq.filter(
             SystemLog.event_type.ilike(f"%{search}%") |
             SystemLog.actor_name.ilike(f"%{search}%") |
             SystemLog.target_name.ilike(f"%{search}%") |
             SystemLog.details.ilike(f"%{search}%")
         )
-    notifs = [dict(n.to_json(), source='notification') for n in notif_q.all()]
-    syslogs = [dict(l.to_json(), source='system') for l in sys_q.all()]
-    merged = sorted(notifs + syslogs, key=lambda x: x.get('created_at', '') or '', reverse=True)
-    total = len(merged)
+    notifs  = [dict(n.to_json(), source='notification') for n in nq.all()]
+    syslogs = [dict(l.to_json(), source='system')       for l in sq.all()]
+    merged  = sorted(notifs + syslogs, key=lambda x: x.get('created_at', '') or '', reverse=True)
+    total      = len(merged)
     total_page = max(1, (total + per_page - 1) // per_page)
-    start = (page - 1) * per_page
+    start      = (page - 1) * per_page
     return {"success": True, "list": merged[start:start + per_page], "total_page": total_page}, 200
 
 
@@ -466,6 +495,40 @@ def admin_delete_log():
     if success:
         return {"success": True, "message": "Log deleted", "toast_class": "success"}, 200
     return {"success": False, "message": "Not found", "toast_class": "danger"}, 404
+
+
+@account_blueprint.route("/admin/delete_logs_bulk", methods=['POST'])
+@login_required
+def admin_delete_logs_bulk():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    entries = (request.get_json(silent=True) or {}).get('entries', [])
+    if not entries:
+        return {"success": False, "message": "Nothing to delete", "toast_class": "warning"}, 400
+    count = AccountModel.delete_logs_bulk(entries)
+    return {"success": True, "message": f"{count} log(s) deleted", "toast_class": "success", "count": count}, 200
+
+
+@account_blueprint.route("/admin/delete_logs_all", methods=['POST'])
+@login_required
+def admin_delete_logs_all():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    from datetime import datetime
+    data       = request.get_json(silent=True) or {}
+    log_type   = data.get('log_type', 'all')
+    date_from_s = data.get('date_from', '')
+    date_to_s   = data.get('date_to',   '')
+    try:
+        date_from = datetime.strptime(date_from_s, '%Y-%m-%d') if date_from_s else None
+    except ValueError:
+        date_from = None
+    try:
+        date_to = datetime.strptime(date_to_s, '%Y-%m-%d').replace(hour=23, minute=59, second=59) if date_to_s else None
+    except ValueError:
+        date_to = None
+    count = AccountModel.delete_all_logs(log_type=log_type, date_from=date_from, date_to=date_to)
+    return {"success": True, "message": f"{count} log(s) deleted", "toast_class": "success", "count": count}, 200
 
 
 @account_blueprint.route("/edit_admin", methods=['POST'])
