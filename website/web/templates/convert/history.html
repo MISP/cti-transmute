@@ -223,26 +223,10 @@
         </div>
 
         <!-- Pagination -->
-        <nav v-if="convert_history.length > 0" aria-label="Page navigation" class="mt-4 mb-5">
-            <ul class="pagination justify-content-center">
-                <li class="page-item" :class="{ disabled: current_page === 1 }">
-                    <button class="page-link" @click="current_page > 1 && fetchConvertHistory(current_page - 1)">
-                        <i class="fas fa-angle-left"></i>
-                    </button>
-                </li>
-                <li class="page-item" v-for="page in visiblePages" :key="page"
-                    :class="{ active: page === current_page, disabled: page === '...' }">
-                    <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">[[ page ]]</button>
-                    <span class="page-link" v-else>…</span>
-                </li>
-                <li class="page-item" :class="{ disabled: current_page === total_pages }">
-                    <button class="page-link"
-                        @click="current_page < total_pages && fetchConvertHistory(current_page + 1)">
-                        <i class="fas fa-angle-right"></i>
-                    </button>
-                </li>
-            </ul>
-        </nav>
+        <app-pagination v-if="convert_history.length > 0"
+            :page="current_page" :total="total_pages"
+            @change="fetchConvertHistory">
+        </app-pagination>
     </div>
 </div>
 {% endblock %}
@@ -251,8 +235,10 @@
 <script type="module">
     const { createApp, ref, computed, watch } = Vue
     import { display_toast, message_list } from '/static/js/toaster.js'
+    import AppPagination from '/static/js/pagination.js'
 
     createApp({
+        components: { 'app-pagination': AppPagination },
         delimiters: ['[[', ']]'],
         setup() {
             const convert_history    = ref([])
@@ -417,17 +403,8 @@
             }
 
 
-            const visiblePages = computed(() => {
-                const pages = [], total = total_pages.value, current = current_page.value
-                if (total <= 7) { for (let i = 1; i <= total; i++) pages.push(i) }
-                else if (current <= 4) pages.push(1, 2, 3, 4, 5, '...', total)
-                else if (current >= total - 3) pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                else pages.push(1, '...', current - 1, current, current + 1, '...', total)
-                return pages
-            })
-
             return {
-                visiblePages, message_list, convert_history, current_page, total_pages,
+                message_list, convert_history, current_page, total_pages,
                 fetchConvertHistory, filter_type, sort_order, deleteItem, current_user_is_admin,
                 only_mine, seeDetails, searchQuery, search_scope, exact_match, date_from, date_to,
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,

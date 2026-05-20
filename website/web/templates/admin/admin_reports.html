@@ -77,15 +77,7 @@
         </tbody>
       </table>
 
-      <div class="d-flex justify-content-center gap-2 mt-3">
-        <button class="btn btn-sm btn-outline-secondary" :disabled="page <= 1" @click="page--; load()">
-          <i class="fas fa-chevron-left"></i>
-        </button>
-        <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ page ]] / [[ total_page ]]</span>
-        <button class="btn btn-sm btn-outline-secondary" :disabled="page >= total_page" @click="page++; load()">
-          <i class="fas fa-chevron-right"></i>
-        </button>
-      </div>
+      <app-pagination :page="page" :total="total_page" @change="p => { page = p; load() }"></app-pagination>
     </div>
   </div>
 
@@ -95,8 +87,10 @@
 <script type="module">
   const { createApp, ref, onMounted } = Vue
   import { create_message, message_list } from '/static/js/toaster.js';
+  import AppPagination from '/static/js/pagination.js'
 
   createApp({
+    components: { 'app-pagination': AppPagination },
     delimiters: ['[[', ']]'],
     setup() {
       const reports = ref([])

@@ -161,15 +161,9 @@
               </div>
             </div>
           </div>
-          <div v-if="comments_total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
-            <button class="btn btn-sm btn-outline-secondary" :disabled="comments_page <= 1" @click="comments_page--; loadMyComments(true)">
-              <i class="fas fa-chevron-left"></i>
-            </button>
-            <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ comments_page ]] / [[ comments_total_page ]]</span>
-            <button class="btn btn-sm btn-outline-secondary" :disabled="comments_page >= comments_total_page" @click="comments_page++; loadMyComments(true)">
-              <i class="fas fa-chevron-right"></i>
-            </button>
-          </div>
+          <app-pagination :page="comments_page" :total="comments_total_page"
+            @change="p => { comments_page = p; loadMyComments(true) }">
+          </app-pagination>
         </div>
 
         <!-- Following -->
@@ -201,15 +195,9 @@
               </button>
             </div>
           </div>
-          <div v-if="following_total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
-            <button class="btn btn-sm btn-outline-secondary" :disabled="following_page <= 1" @click="following_page--; loadFollowing(true)">
-              <i class="fas fa-chevron-left"></i>
-            </button>
-            <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ following_page ]] / [[ following_total_page ]]</span>
-            <button class="btn btn-sm btn-outline-secondary" :disabled="following_page >= following_total_page" @click="following_page++; loadFollowing(true)">
-              <i class="fas fa-chevron-right"></i>
-            </button>
-          </div>
+          <app-pagination :page="following_page" :total="following_total_page"
+            @change="p => { following_page = p; loadFollowing(true) }">
+          </app-pagination>
         </div>
 
       </div>
@@ -224,8 +212,10 @@
 <script type="module">
   const { createApp, ref, onMounted } = Vue
   import { create_message, message_list } from '/static/js/toaster.js';
+  import AppPagination from '/static/js/pagination.js'
 
   createApp({
+    components: { 'app-pagination': AppPagination },
     delimiters: ['[[', ']]'],
     setup() {
       function copyApiKey() {

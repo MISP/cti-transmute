@@ -9,43 +9,42 @@
 
   <div class="custom-card p-3">
 
-    <!-- ── Toolbar ─────────────────────────────────────── -->
-    <div class="d-flex gap-2 mb-2 flex-wrap align-items-center">
-      <div class="search-bar-wrapper" style="min-width:180px;flex:1 1 180px;">
-        <i class="fas fa-search search-bar-icon"></i>
-        <input class="search-bar-input" type="text" v-model="search" @input="debounceSearch" placeholder="Search tags…">
-      </div>
-      <select class="form-select form-select-sm" v-model="filterSource" @change="resetPage" style="width:auto;background:var(--surface);color:var(--text);border-color:var(--border);">
+    <!-- ── Toolbar ───────────────────────────────────────────────── -->
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+      <input class="form-control form-control-sm tags-filter-select" style="width:180px;" type="text" v-model="search" @input="debounceSearch" placeholder="Search…">
+      <select class="form-select form-select-sm tags-filter-select" v-model="filterApproved" @change="resetPage">
+        <option value="all">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+      </select>
+      <select class="form-select form-select-sm tags-filter-select" v-model="filterSource" @change="resetPage">
         <option value="">All sources</option>
         <option value="Taxonomy">Taxonomy</option>
         <option value="Manual">Manual</option>
         <option value="Vulnerability">Vulnerability</option>
       </select>
-      <select class="form-select form-select-sm" v-model="filterApproved" @change="resetPage" style="width:auto;background:var(--surface);color:var(--text);border-color:var(--border);">
-        <option value="all">All statuses</option>
-        <option value="approved">Approved</option>
-        <option value="pending">Pending</option>
-      </select>
-      <select class="form-select form-select-sm" v-model="filterVisibility" @change="resetPage" style="width:auto;background:var(--surface);color:var(--text);border-color:var(--border);">
+      <select class="form-select form-select-sm tags-filter-select" v-model="filterVisibility" @change="resetPage">
         <option value="">All visibility</option>
         <option value="public">Public</option>
         <option value="private">Private</option>
       </select>
-      <div class="btn-group btn-group-sm">
-        <button class="btn" :class="viewMode==='table'?'btn-primary':'btn-outline-secondary'" @click="viewMode='table';resetPage()" title="Table view"><i class="fas fa-table-list"></i></button>
-        <button class="btn" :class="viewMode==='grouped'?'btn-primary':'btn-outline-secondary'" @click="switchGrouped()" title="Group by namespace"><i class="fas fa-layer-group"></i></button>
+      <select class="form-select form-select-sm tags-filter-select" style="width:80px;" v-model.number="perPage" @change="resetPage">
+        <option :value="20">20</option>
+        <option :value="50">50</option>
+        <option :value="100">100</option>
+      </select>
+      <span v-if="!loading" style="font-size:0.78rem;color:var(--text-3);white-space:nowrap;"><i class="fas fa-tags me-1"></i>[[ tags.length ]] tags</span>
+      <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-sm btn-outline-secondary" :class="{active:viewMode==='table'}"   @click="viewMode='table';resetPage()"  title="Table view"><i class="fas fa-table-list"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" :class="{active:viewMode==='grouped'}" @click="switchGrouped()"               title="Group by namespace"><i class="fas fa-layer-group"></i></button>
+        </div>
+        <button class="btn btn-sm btn-outline-success" @click="openCreate()"><i class="fas fa-plus me-1"></i>New Tag</button>
+        <button class="btn btn-sm btn-outline-secondary" @click="importTaxonomies" :disabled="importing">
+          <span v-if="importing"><i class="fas fa-spinner fa-spin me-1"></i>Importing…</span>
+          <span v-else><i class="fas fa-download me-1"></i>Import</span>
+        </button>
       </div>
-      <button class="btn btn-sm btn-success" @click="openCreate()"><i class="fas fa-plus me-1"></i>New Tag</button>
-      <button class="btn btn-sm btn-outline-primary" @click="importTaxonomies" :disabled="importing">
-        <span v-if="importing"><i class="fas fa-spinner fa-spin me-1"></i>Importing…</span>
-        <span v-else><i class="fas fa-download me-1"></i>Import Taxonomies</span>
-      </button>
-    </div>
-
-    <!-- ── Stats ───────────────────────────────────────── -->
-    <div class="d-flex gap-3 mb-2" style="font-size:0.78rem;color:var(--text-3);">
-      <span><i class="fas fa-tags me-1"></i>[[ tags.length ]] shown</span>
-      <span v-if="selectedIds.size>0" style="color:var(--accent);font-weight:600;"><i class="fas fa-check-square me-1"></i>[[ selectedIds.size ]] selected</span>
     </div>
 
     <!-- ── Bulk bar ─────────────────────────────────────── -->
@@ -53,6 +52,9 @@
       <div v-if="selectedIds.size>0" class="bulk-bar">
         <span class="bulk-bar-count"><i class="fas fa-check-square me-1"></i>[[ selectedIds.size ]] selected</span>
         <div class="d-flex gap-1 flex-wrap">
+          <button v-if="hasPendingSelected" class="btn btn-sm btn-warning" @click="bulkApprovePending()">
+            <i class="fas fa-check-double me-1"></i>Accept pending ([[ pendingSelectedCount ]])
+          </button>
           <button class="btn btn-sm btn-outline-success"   @click="bulkAction('activate')">  <i class="fas fa-play me-1"></i>Activate</button>
           <button class="btn btn-sm btn-outline-secondary" @click="bulkAction('deactivate')"><i class="fas fa-pause me-1"></i>Deactivate</button>
           <button class="btn btn-sm btn-outline-primary"   @click="bulkAction('approve')">   <i class="fas fa-check me-1"></i>Approve</button>
@@ -73,54 +75,80 @@
 
     <!-- ── TABLE VIEW ──────────────────────────────────── -->
     <div v-else-if="viewMode==='table'">
-      <table class="table table-hover align-middle" style="font-size:0.85rem;">
+      <div class="table-responsive">
+      <table class="table table-hover align-middle tag-table">
         <thead>
-          <tr style="color:var(--text-2);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;">
+          <tr class="tag-table-head">
             <th style="width:32px;"><input type="checkbox" class="form-check-input" :checked="allSelected" :indeterminate.prop="someSelected" @change="toggleSelectAll"></th>
             <th>Tag</th>
-            <th>Source</th>
-            <th>Visibility</th>
-            <th>Status</th>
-            <th>Active</th>
-            <th>Creator</th>
-            <th></th>
+            <th class="d-none d-sm-table-cell">Visibility</th>
+            <th class="d-none d-sm-table-cell">Status</th>
+            <th class="d-none d-md-table-cell">Source</th>
+            <th class="d-none d-md-table-cell">Active</th>
+            <th class="d-none d-lg-table-cell">Creator</th>
+            <th style="width:80px;"></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="tag in tags" :key="tag.id" :class="{'table-row-selected': selectedIds.has(tag.id)}">
             <td><input type="checkbox" class="form-check-input" :checked="selectedIds.has(tag.id)" @change="toggleSelect(tag.id)"></td>
-            <td style="max-width:400px;">
-              <tag-chip :tag="tag" @click="openEdit(tag)" style="cursor:pointer;max-width:380px;"></tag-chip>
-              <div v-if="tag.description" class="tag-desc" :title="tag.description">[[ tag.description ]]</div>
-            </td>
-            <td><span class="admin-status-badge" :style="sourceStyle(tag.source)"><i class="me-1" :class="sourceIcon(tag.source)"></i>[[ tag.source||'—' ]]</span></td>
+
             <td>
-              <span class="admin-status-badge" :style="tag.visibility==='public'?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(239,68,68,0.12);color:var(--danger)'">
+              <tag-chip :tag="tag" :highlight="search" @click="openEdit(tag)" style="cursor:pointer;"></tag-chip>
+              <div v-if="tag.description" class="tag-desc" :title="tag.description">[[ tag.description ]]</div>
+              <!-- Mobile-only inline badges -->
+              <div class="d-flex d-sm-none gap-1 mt-1 flex-wrap">
+                <span class="admin-status-badge badge-clickable"
+                  :style="tag.visibility==='public'?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(239,68,68,0.12);color:var(--danger)'"
+                  @click="toggleVisibility(tag)" :title="tag.visibility==='public'?'Click to make private':'Click to make public'">
+                  <i class="fas me-1" :class="tag.visibility==='public'?'fa-eye':'fa-eye-slash'"></i>[[ tag.visibility||'—' ]]
+                </span>
+                <span class="admin-status-badge badge-clickable"
+                  :style="tag.is_approved_by_admin?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(245,158,11,0.12);color:var(--warning)'"
+                  @click="approveSingle(tag, !tag.is_approved_by_admin)" :title="tag.is_approved_by_admin?'Click to revoke':'Click to approve'">
+                  <i class="fas me-1" :class="tag.is_approved_by_admin?'fa-check':'fa-clock'"></i>[[ tag.is_approved_by_admin?'Approved':'Pending' ]]
+                </span>
+              </div>
+            </td>
+
+            <td class="d-none d-sm-table-cell">
+              <span class="admin-status-badge badge-clickable"
+                :style="tag.visibility==='public'?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(239,68,68,0.12);color:var(--danger)'"
+                @click="toggleVisibility(tag)" :title="tag.visibility==='public'?'Click to make private':'Click to make public'">
                 <i class="fas me-1" :class="tag.visibility==='public'?'fa-eye':'fa-eye-slash'"></i>[[ tag.visibility||'—' ]]
               </span>
             </td>
-            <td>
-              <span v-if="tag.is_approved_by_admin" class="admin-status-badge" style="background:rgba(16,185,129,0.12);color:var(--success);"><i class="fas fa-check me-1"></i>Approved</span>
-              <span v-else class="admin-status-badge" style="background:rgba(245,158,11,0.12);color:var(--warning);"><i class="fas fa-clock me-1"></i>Pending</span>
+
+            <td class="d-none d-sm-table-cell">
+              <span class="admin-status-badge badge-clickable"
+                :style="tag.is_approved_by_admin?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(245,158,11,0.12);color:var(--warning)'"
+                @click="approveSingle(tag, !tag.is_approved_by_admin)" :title="tag.is_approved_by_admin?'Click to revoke':'Click to approve'">
+                <i class="fas me-1" :class="tag.is_approved_by_admin?'fa-check':'fa-clock'"></i>[[ tag.is_approved_by_admin?'Approved':'Pending' ]]
+              </span>
             </td>
-            <td>
+
+            <td class="d-none d-md-table-cell">
+              <span class="admin-status-badge" :style="sourceStyle(tag.source)">
+                <i class="me-1" :class="sourceIcon(tag.source)"></i>[[ tag.source||'—' ]]
+              </span>
+            </td>
+
+            <td class="d-none d-md-table-cell">
               <button class="btn btn-sm" :class="tag.is_active?'btn-success':'btn-outline-secondary'" style="font-size:0.72rem;padding:2px 8px;" @click="toggleActive(tag)">[[ tag.is_active?'ON':'OFF' ]]</button>
             </td>
-            <td style="font-size:0.78rem;color:var(--text-3);">[[ tag.created_by_user_name||'—' ]]</td>
+
+            <td class="d-none d-lg-table-cell" style="font-size:0.78rem;color:var(--text-3);">[[ tag.created_by_user_name||'—' ]]</td>
+
             <td>
-              <div class="d-flex gap-1">
-                <button class="btn btn-sm btn-outline-secondary" title="Edit"    @click="openEdit(tag)"><i class="fas fa-pen"></i></button>
-                <button class="btn btn-sm" :class="tag.visibility==='public'?'btn-outline-secondary':'btn-outline-info'" :title="tag.visibility==='public'?'Make private':'Make public'" @click="toggleVisibility(tag)">
-                  <i class="fas" :class="tag.visibility==='public'?'fa-eye-slash':'fa-eye'"></i>
-                </button>
-                <button v-if="!tag.is_approved_by_admin" class="btn btn-sm btn-outline-success" title="Approve"      @click="approveSingle(tag,true)"><i class="fas fa-check"></i></button>
-                <button v-else class="btn btn-sm btn-outline-warning"            title="Revoke approval" @click="approveSingle(tag,false)"><i class="fas fa-ban"></i></button>
-                <button class="btn btn-sm btn-outline-danger"  title="Delete"    @click="deleteSingle(tag)"><i class="fas fa-trash"></i></button>
+              <div class="d-flex gap-1 justify-content-end">
+                <button class="btn btn-sm btn-outline-secondary" title="Edit" @click="openEdit(tag)"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-sm btn-outline-danger"  title="Delete" @click="deleteSingle(tag)"><i class="fas fa-trash"></i></button>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
 
     <!-- ── GROUPED VIEW ────────────────────────────────── -->
@@ -129,7 +157,7 @@
         <div class="ns-card-header" @click="toggleGroup(ns)">
           <div class="d-flex align-items-center gap-2">
             <i class="fas fa-chevron-right ns-caret" :class="{open:!collapsedGroups.has(ns)}"></i>
-            <span class="ns-label">[[ ns ]]</span>
+            <span class="ns-label" v-html="hlNs(ns)"></span>
             <span class="ns-pill">[[ group.length ]]</span>
           </div>
           <label class="d-flex align-items-center gap-1 ns-select-all" @click.stop style="cursor:pointer;">
@@ -141,10 +169,11 @@
           </label>
         </div>
         <div v-if="!collapsedGroups.has(ns)" class="ns-card-body">
-          <tag-chip
+          <tag-chip class="p-2"
             v-for="tag in group" :key="tag.id"
             :tag="tag"
             :selected="selectedIds.has(tag.id)"
+            :highlight="search"
             @click="toggleSelect(tag.id)"
             @dblclick="openEdit(tag)"
             style="cursor:pointer;"
@@ -154,11 +183,10 @@
     </div>
 
     <!-- ── Pagination ──────────────────────────────────── -->
-    <div v-if="viewMode==='table' && !loading && tags.length>0" class="d-flex justify-content-center gap-2 mt-3">
-      <button class="btn btn-sm btn-outline-secondary" :disabled="page<=1" @click="page--;load()"><i class="fas fa-chevron-left"></i></button>
-      <span style="font-size:0.82rem;color:var(--text-2);line-height:2;">Page [[ page ]] / [[ total_page ]]</span>
-      <button class="btn btn-sm btn-outline-secondary" :disabled="page>=total_page" @click="page++;load()"><i class="fas fa-chevron-right"></i></button>
-    </div>
+    <app-pagination v-if="viewMode==='table' && !loading && tags.length>0"
+      :page="page" :total="total_page"
+      @change="p => { page = p; load() }">
+    </app-pagination>
   </div>
 </div>
 
@@ -202,17 +230,21 @@
           <!-- Icon picker -->
           <div class="col-md-6">
             <label class="tag-modal-label">Icon <small style="color:var(--text-3);">(FontAwesome)</small></label>
-            <div class="icon-picker-wrap" ref="editIconWrap">
+            <div class="icon-picker">
               <div class="icon-picker-trigger" @click="editIconOpen=!editIconOpen">
-                <span class="icon-picker-preview"><i :class="'fas fa-'+(editForm.icon||'tag')"></i></span>
-                <span class="icon-picker-name">[[ editForm.icon||'tag' ]]</span>
-                <i class="fas fa-chevron-down icon-picker-caret"></i>
+                <span class="icon-trigger-icon"><i :class="'fas fa-'+(editForm.icon||'tag')"></i></span>
+                <span class="icon-trigger-label">[[ editForm.icon||'tag' ]]</span>
+                <i class="fas fa-chevron-down icon-trigger-caret" :class="{open: editIconOpen}"></i>
               </div>
-              <div v-if="editIconOpen" class="icon-picker-dropdown">
-                <input type="text" class="icon-picker-search" v-model="iconSearch" placeholder="Search [[ faIcons.length||'...' ]] icons…" @click.stop>
-                <div class="icon-picker-count">[[ filteredIcons.length ]] shown<span v-if="faIcons.length"> / [[ faIcons.length ]] total</span></div>
-                <div class="icon-picker-grid">
-                  <button v-for="ic in filteredIcons" :key="ic" type="button" class="icon-picker-item" :class="{active:editForm.icon===ic}" :title="ic" @click.stop="editForm.icon=ic;editIconOpen=false;iconSearch=''">
+              <div v-show="editIconOpen" class="icon-picker-panel">
+                <input class="icon-picker-search-input" v-model="iconSearch"
+                  :placeholder="'Search ' + (faIcons.length || '…') + ' icons'"
+                  @click.stop>
+                <div class="icon-picker-meta">[[ filteredIcons.length ]] shown / [[ faIcons.length || '?' ]] total</div>
+                <div class="icon-picker-grid-new">
+                  <button v-for="ic in filteredIcons" :key="ic" type="button"
+                    class="icon-picker-btn" :class="{active: editForm.icon===ic}"
+                    :title="ic" @click.stop="editForm.icon=ic;editIconOpen=false;iconSearch=''">
                     <i :class="'fas fa-'+ic"></i>
                   </button>
                 </div>
@@ -255,327 +287,19 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- CREATE MODAL                                                     -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<div class="modal fade" id="createTagModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content tag-modal">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-plus me-2"></i>New Tag</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <!-- Tabs -->
-        <ul class="nav nav-pills mb-3" style="gap:6px;">
-          <li class="nav-item">
-            <button class="nav-link" :class="{active:createTab==='custom'}" @click="createTab='custom';createErrors={}"><i class="fas fa-pen me-1"></i>Custom</button>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link" :class="{active:createTab==='vuln'}" @click="createTab='vuln';createErrors={}"><i class="fas fa-bug me-1"></i>Vulnerability</button>
-          </li>
-        </ul>
+<create-tag-modal ref="createModal" :is-admin="true" @created="onTagCreated" @toast="onToast"></create-tag-modal>
 
-        <!-- Live preview -->
-        <div class="mb-3">
-          <label class="tag-modal-label">Preview</label>
-          <div class="tag-preview-box"><tag-chip :tag="createPreview"></tag-chip></div>
-        </div>
-
-        <!-- ── Custom tab ─────────────────────────────── -->
-        <div v-if="createTab==='custom'">
-          <div class="alert alert-secondary py-2 px-3 mb-3" style="font-size:0.82rem;">
-            <i class="fas fa-lock me-1"></i>Custom tags are <strong>private</strong> until approved by an admin.
-          </div>
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="tag-modal-label">Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control tag-modal-input" v-model="createForm.name"
-                placeholder="namespace:predicate or free label…" :class="{'is-invalid':createErrors.name}" @blur="validateCreateName">
-              <div class="invalid-feedback">[[ createErrors.name ]]</div>
-            </div>
-            <div class="col-12">
-              <label class="tag-modal-label">Description</label>
-              <textarea class="form-control tag-modal-input" rows="2" v-model="createForm.description" placeholder="Optional…"></textarea>
-            </div>
-            <div class="col-md-6">
-              <label class="tag-modal-label">Color</label>
-              <div class="d-flex gap-2 align-items-center">
-                <input type="color" class="form-control form-control-color flex-shrink-0" v-model="createForm.color" style="width:40px;height:36px;padding:2px;border-radius:var(--radius-sm);">
-                <input type="text" class="form-control tag-modal-input" v-model="createForm.color" placeholder="#6366f1" :class="{'is-invalid':createErrors.color}" @blur="validateCreateColor">
-              </div>
-            </div>
-            <div class="col-md-6">
-              <label class="tag-modal-label">Icon <small style="color:var(--text-3);">(FontAwesome)</small></label>
-              <div class="icon-picker-wrap" ref="createIconWrap">
-                <div class="icon-picker-trigger" @click="createIconOpen=!createIconOpen">
-                  <span class="icon-picker-preview"><i :class="'fas fa-'+(createForm.icon||'tag')"></i></span>
-                  <span class="icon-picker-name">[[ createForm.icon||'tag' ]]</span>
-                  <i class="fas fa-chevron-down icon-picker-caret"></i>
-                </div>
-                <div v-if="createIconOpen" class="icon-picker-dropdown">
-                  <input type="text" class="icon-picker-search" v-model="iconSearch" placeholder="Search [[ faIcons.length||'...' ]] icons…" @click.stop>
-                  <div class="icon-picker-count">[[ filteredIcons.length ]] shown<span v-if="faIcons.length"> / [[ faIcons.length ]] total</span></div>
-                  <div class="icon-picker-grid">
-                    <button v-for="ic in filteredIcons" :key="ic" type="button" class="icon-picker-item" :class="{active:createForm.icon===ic}" :title="ic" @click.stop="createForm.icon=ic;createIconOpen=false;iconSearch=''">
-                      <i :class="'fas fa-'+ic"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Vulnerability tab ──────────────────────── -->
-        <div v-if="createTab==='vuln'">
-          <div class="alert alert-secondary py-2 px-3 mb-3" style="font-size:0.82rem;">
-            <i class="fas fa-shield-halved me-1"></i>Tags stored as <strong>Vulnerability</strong> source. Add one or multiple IDs to create in batch.
-          </div>
-
-          <!-- Input row -->
-          <label class="tag-modal-label">Vulnerability ID <span class="text-danger">*</span></label>
-          <div class="input-group mb-1">
-            <!-- Format selector -->
-            <div class="dropdown">
-              <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle h-100 px-3" @click.stop="vulnDropOpen=!vulnDropOpen" style="border-right:none;border-radius:var(--radius-sm) 0 0 var(--radius-sm);">
-                [[ vulnFormat.name ]]
-              </button>
-              <ul class="dropdown-menu shadow" :class="{show:vulnDropOpen}" style="min-width:160px;z-index:2000;">
-                <li v-for="vt in vulnTypes" :key="vt.name">
-                  <a class="dropdown-item d-flex align-items-center gap-2" href="#" @click.prevent="setVulnFormat(vt)">
-                    <i :class="vt.icon+' text-muted fa-fw'"></i><strong>[[ vt.name ]]</strong><small class="text-muted ms-auto">[[ vt.prefix ]]</small>
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <input type="text" class="form-control tag-modal-input" id="vuln-input"
-              v-model="vulnRaw"
-              :placeholder="vulnFormat.placeholder"
-              :class="{'is-valid':vulnValid,'is-invalid':vulnRaw.length>2&&!vulnValid}"
-              @keydown.enter.prevent="addVulnId"
-              style="border-left:none;">
-            <button class="btn btn-sm" :class="vulnValid?'btn-success':'btn-outline-secondary'" type="button" @click="addVulnId" :disabled="!vulnValid">
-              <i class="fas fa-plus"></i>
-            </button>
-          </div>
-          <div style="font-size:0.7rem;" :class="vulnRaw.length>2&&!vulnValid?'text-danger':'text-muted'">
-            <span v-if="vulnRaw.length>2&&!vulnValid"><i class="fas fa-times-circle me-1"></i>Invalid format for [[ vulnFormat.name ]]</span>
-            <span v-else-if="vulnValid"><i class="fas fa-check-circle me-1" style="color:var(--success);"></i>Valid format</span>
-            <span v-else>Example: [[ vulnFormat.example ]]</span>
-          </div>
-
-          <!-- Queued IDs -->
-          <div v-if="vulnQueue.length>0" class="mt-3">
-            <label class="tag-modal-label">Tags to create ([[ vulnQueue.length ]])</label>
-            <div class="d-flex flex-wrap gap-2 p-2 rounded" style="background:var(--bg-2);border:1px solid var(--border);">
-              <span v-for="(item,i) in vulnQueue" :key="i" class="vuln-badge" :class="getVulnClass(item)">
-                <i :class="getVulnIcon(item)+' me-1'"></i>[[ item ]]
-                <button type="button" @click="vulnQueue.splice(i,1)" style="background:none;border:none;padding:0 0 0 6px;opacity:0.7;cursor:pointer;color:inherit;"><i class="fas fa-times"></i></button>
-              </span>
-            </div>
-          </div>
-
-          <!-- Optional fields -->
-          <div class="row g-2 mt-2">
-            <div class="col-12">
-              <label class="tag-modal-label">Description <small style="color:var(--text-3);">(applies to all)</small></label>
-              <textarea class="form-control tag-modal-input" rows="2" v-model="createForm.description" placeholder="Optional…"></textarea>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary btn-sm" @click="submitCreate" :disabled="createSaving">
-          <span v-if="createSaving"><i class="fas fa-spinner fa-spin me-1"></i>Creating…</span>
-          <span v-else><i class="fas fa-plus me-1"></i>
-            <span v-if="createTab==='vuln' && vulnQueue.length>1">Create [[ vulnQueue.length ]] Tags</span>
-            <span v-else>Create Tag</span>
-          </span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- STYLES                                                           -->
-<!-- ═══════════════════════════════════════════════════════════════ -->
-<style>
-/* ── Tag chip (MISP split style) ──────────────────────────────── */
-.tag-chip {
-  display: inline-flex;
-  align-items: stretch;
-  border-radius: 5px;
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  cursor: default;
-  max-width: 480px;
-  vertical-align: middle;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
-  transition: filter 0.12s ease, transform 0.1s ease;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  line-height: 1;
-}
-.tag-chip:hover {
-  filter: brightness(1.14);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
-}
-.tag-chip.selected {
-  outline: 2px solid rgba(255,255,255,0.9);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 4px var(--accent);
-}
-.tag-chip-left {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 30px;
-  padding: 7px 9px;
-  font-size: 0.75rem;
-  flex-shrink: 0;
-  color: rgba(255,255,255,0.95);
-}
-.tag-chip-right {
-  display: flex;
-  align-items: center;
-  padding: 7px 13px 7px 10px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  min-height: 32px;
-}
-
-/* ── Table helpers ─────────────────────────────────────────────── */
-.table-row-selected { background: rgba(37,99,235,0.06) !important; }
-.tag-desc { font-size:0.7rem; color:var(--text-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:360px; margin-top:2px; }
-
-/* ── Grouped view (namespace cards) ───────────────────────────── */
-.ns-card { border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; }
-.ns-card-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; background: var(--surface-2); cursor: pointer;
-  user-select: none; border-bottom: 1px solid var(--border);
-  transition: background 0.12s;
-}
-.ns-card-header:hover { background: var(--bg-2); }
-.ns-caret { font-size:0.68rem; color:var(--text-3); transition:transform 0.15s; flex-shrink:0; }
-.ns-caret.open { transform: rotate(90deg); }
-.ns-label { font-weight:700; font-size:0.85rem; font-family:var(--font-mono); color:var(--text); }
-.ns-pill {
-  display:inline-flex; align-items:center; padding:0 8px; height:18px;
-  border-radius:20px; font-size:0.68rem; font-weight:700;
-  background:var(--accent-light); color:var(--accent);
-}
-.ns-select-all { font-size:0.72rem; color:var(--text-3); gap:5px; }
-.ns-card-body { display:flex; flex-wrap:wrap; gap:6px; padding:12px 14px; background:var(--surface); }
-
-/* ── Bulk bar ─────────────────────────────────────────────────── */
-.bulk-bar {
-  position:sticky; top:70px; z-index:100;
-  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-  padding:8px 14px; margin-bottom:8px;
-  background:var(--surface); border:1px solid var(--accent);
-  border-radius:var(--radius-md); box-shadow:var(--shadow-md);
-}
-.bulk-bar-count { font-size:0.82rem; font-weight:600; color:var(--accent); white-space:nowrap; }
-.slide-up-enter-active,.slide-up-leave-active { transition:all 0.18s ease; }
-.slide-up-enter-from,.slide-up-leave-to { opacity:0; transform:translateY(-8px); }
-
-/* ── Modal ────────────────────────────────────────────────────── */
-.tag-modal { background:var(--surface); color:var(--text); border-color:var(--border); }
-.tag-modal .modal-header,.tag-modal .modal-footer { border-color:var(--border); }
-.tag-modal-label { font-size:0.78rem; font-weight:600; color:var(--text-2); margin-bottom:4px; display:block; }
-.tag-modal-input { background:var(--surface-2); color:var(--text); border-color:var(--border); font-size:0.85rem; }
-.tag-modal-input:focus { background:var(--surface-2); color:var(--text); border-color:var(--accent); box-shadow:var(--shadow-focus); }
-.tag-modal-input:disabled { opacity:0.45; cursor:not-allowed; }
-.tag-preview-box { min-height:40px; display:flex; align-items:center; padding:8px 12px; background:var(--bg-2); border-radius:var(--radius-sm); border:1px solid var(--border); }
-
-/* ── Icon picker ──────────────────────────────────────────────── */
-.icon-picker-wrap { position:relative; }
-.icon-picker-trigger {
-  display:flex; align-items:center; gap:8px; padding:5px 10px;
-  background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm);
-  cursor:pointer; user-select:none; transition:border-color 0.15s;
-}
-.icon-picker-trigger:hover { border-color:var(--accent); }
-.icon-picker-preview { width:22px; text-align:center; color:var(--text-2); }
-.icon-picker-name { font-size:0.82rem; color:var(--text); flex:1; }
-.icon-picker-caret { font-size:0.65rem; color:var(--text-3); }
-.icon-picker-dropdown {
-  position:absolute; top:calc(100% + 4px); left:0; right:0;
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md);
-  box-shadow:var(--shadow-lg); z-index:1500; padding:8px;
-  min-width:260px;
-}
-.icon-picker-search {
-  width:100%; padding:5px 10px; margin-bottom:8px;
-  background:var(--surface-2); color:var(--text); border:1px solid var(--border);
-  border-radius:var(--radius-sm); font-size:0.82rem; outline:none;
-}
-.icon-picker-search:focus { border-color:var(--accent); }
-.icon-picker-grid { display:grid; grid-template-columns:repeat(9,1fr); gap:2px; max-height:220px; overflow-y:auto; }
-.icon-picker-item {
-  display:flex; align-items:center; justify-content:center;
-  width:30px; height:30px; border-radius:4px;
-  background:none; border:1px solid transparent; color:var(--text-2);
-  font-size:0.82rem; cursor:pointer; transition:background 0.1s,color 0.1s,border-color 0.1s;
-}
-.icon-picker-item:hover { background:var(--accent-light); color:var(--accent); border-color:var(--border); }
-.icon-picker-item.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-.icon-picker-count { font-size:0.68rem; color:var(--text-3); text-align:right; margin-bottom:4px; }
-
-/* ── Vulnerability badges ─────────────────────────────────────── */
-.vuln-badge {
-  display:inline-flex; align-items:center; padding:3px 9px; border-radius:4px;
-  font-size:0.78rem; font-family:var(--font-mono); font-weight:600;
-}
-.vuln-cve    { background:#dc2626; color:#fff; }
-.vuln-ghsa   { background:#d97706; color:#fff; }
-.vuln-pysec  { background:#0891b2; color:#fff; }
-.vuln-gsd    { background:#64748b; color:#fff; }
-.vuln-gcve   { background:#2563eb; color:#fff; }
-.vuln-rhsa   { background:#b91c1c; color:#fff; }
-.vuln-certfr { background:#15803d; color:#fff; }
-.vuln-cisco  { background:#1e293b; color:#fff; }
-.vuln-msrc   { background:#7c3aed; color:#fff; }
-.vuln-other  { background:#475569; color:#fff; }
-</style>
 {% endblock %}
 
 {% block script %}
 <script type="module">
 const { createApp, ref, computed, onMounted, onUnmounted } = Vue
 import { create_message, message_list } from '/static/js/toaster.js'
+import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js'
+import CreateTagModal from '/static/js/tags/createTagModal.js'
+import AppPagination from '/static/js/pagination.js'
 
-/* ── helpers ──────────────────────────────────────────────────── */
-function contrastYIQ(hex) {
-  if (!hex || !hex.startsWith('#') || hex.length < 7) return '#fff'
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
-  return (r*299 + g*587 + b*114) / 1000 >= 145 ? '#000' : '#fff'
-}
-
-
-function nameToColor(name) {
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
-  h = Math.abs(h) % 360
-  const s = 0.72, l = 0.52, a = s * Math.min(l, 1 - l)
-  const f = n => {
-    const k = (n + h / 30) % 12
-    return Math.max(0, Math.min(255, Math.round(255 * (l - a * Math.max(Math.min(k-3, 9-k, 1), -1))))).toString(16).padStart(2,'0')
-  }
-  return `#${f(0)}${f(8)}${f(4)}`
-}
-
-/* ── FA icon featured (shown by default, security-focused) ────── */
+/* ── FA icon featured (edit modal, security-focused) ─────────── */
 const FA_FEATURED = [
   'tag','tags','shield','shield-halved','shield-virus','shield-check','bug','fire','bolt','skull',
   'skull-crossbones','virus','lock','lock-open','key','fingerprint','eye','eye-slash','biohazard',
@@ -588,74 +312,9 @@ const FA_FEATURED = [
   'link','link-slash','map-pin','clock','calendar','boxes-stacked','radar','toolbox',
 ]
 
-/* ── Vulnerability types ──────────────────────────────────────── */
-const VULN_PATTERN = /^(CVE[-\s]\d{4}[-\s]\d{4,7}|GCVE-\d+-\d{4}-\d+|GHSA-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}-[a-zA-Z0-9]{4}|PYSEC-\d{4}-\d{2,5}|GSD-\d{4}-\d{4,5}|wid-sec-w-\d{4}-\d{4}|cisco-sa-\d{8}-[a-zA-Z0-9]+|RHSA-\d{4}:\d{4}|msrc_CVE-\d{4}-\d{4,}|CERTFR-\d{4}-[A-Z]{3}-\d{3})$/i
-
-const VULN_TYPES = [
-  { name:'CVE',    prefix:'CVE-',       example:'CVE-2023-12345',         icon:'fas fa-shield-halved', cls:'vuln-cve' },
-  { name:'GHSA',   prefix:'GHSA-',      example:'GHSA-xxxx-xxxx-xxxx',    icon:'fas fa-bug',            cls:'vuln-ghsa' },
-  { name:'PYSEC',  prefix:'PYSEC-',     example:'PYSEC-2023-12345',       icon:'fas fa-code',           cls:'vuln-pysec' },
-  { name:'GSD',    prefix:'GSD-',       example:'GSD-2023-12345',         icon:'fas fa-database',       cls:'vuln-gsd' },
-  { name:'GCVE',   prefix:'GCVE-',      example:'GCVE-0-2023-12345',      icon:'fas fa-globe',          cls:'vuln-gcve' },
-  { name:'RHSA',   prefix:'RHSA-',      example:'RHSA-2023:1234',         icon:'fas fa-lock',           cls:'vuln-rhsa' },
-  { name:'CERTFR', prefix:'CERTFR-',    example:'CERTFR-2023-AVI-001',    icon:'fas fa-flag',           cls:'vuln-certfr' },
-  { name:'Cisco',  prefix:'cisco-sa-',  example:'cisco-sa-20231001-xxx',  icon:'fas fa-network-wired',  cls:'vuln-cisco' },
-  { name:'MSRC',   prefix:'msrc_CVE-',  example:'msrc_CVE-2023-12345',    icon:'fas fa-shield-virus',   cls:'vuln-msrc' },
-]
-
-function getVulnCls(id) {
-  const up = id.toUpperCase()
-  if (up.startsWith('CVE'))    return 'vuln-cve'
-  if (up.startsWith('GHSA'))   return 'vuln-ghsa'
-  if (up.startsWith('PYSEC'))  return 'vuln-pysec'
-  if (up.startsWith('GSD'))    return 'vuln-gsd'
-  if (up.startsWith('GCVE'))   return 'vuln-gcve'
-  if (up.startsWith('RHSA'))   return 'vuln-rhsa'
-  if (up.startsWith('CERTFR')) return 'vuln-certfr'
-  if (id.toLowerCase().startsWith('cisco')) return 'vuln-cisco'
-  if (up.startsWith('MSRC_') || up.startsWith('MSRC CVE')) return 'vuln-msrc'
-  return 'vuln-other'
-}
-function getVulnIcon(id) {
-  const t = VULN_TYPES.find(v => id.toUpperCase().startsWith(v.name.toUpperCase()) || id.toLowerCase().startsWith(v.prefix.toLowerCase()))
-  return t ? t.icon : 'fas fa-exclamation-triangle'
-}
-
-/* ── helpers ──────────────────────────────────────────────────── */
-function darkenColor(hex, factor = 0.55) {
-  if (!hex || !hex.startsWith('#') || hex.length < 7) return '#1a1a2e'
-  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
-  const h = n => Math.round(n * factor).toString(16).padStart(2,'0')
-  return `#${h(r)}${h(g)}${h(b)}`
-}
-
-/* ── TagChip component ────────────────────────────────────────── */
-const TagChip = {
-  props: { tag: Object, selected: { type: Boolean, default: false } },
-  emits: ['click','dblclick'],
-  template: `
-    <span class="tag-chip" :class="{selected}" :style="{background: chipColor}"
-      @click.stop="$emit('click')" @dblclick.stop="$emit('dblclick')"
-      :title="tag.description||tag.name">
-      <span class="tag-chip-left" :style="{background: chipLeft}">
-        <i :class="'fas fa-'+(tag.icon||'tag')"></i>
-      </span>
-      <span class="tag-chip-right" :style="{color: chipText}" v-text="tag.name"></span>
-    </span>
-  `,
-  computed: {
-    chipColor() {
-      const c = this.tag.color
-      return (c && /^#[0-9a-fA-F]{6}$/.test(c)) ? c : nameToColor(this.tag.name || 'tag')
-    },
-    chipLeft()  { return darkenColor(this.chipColor) },
-    chipText()  { return contrastYIQ(this.chipColor) },
-  }
-}
-
 /* ── App ──────────────────────────────────────────────────────── */
 createApp({
-  components: { TagChip },
+  components: { 'tag-chip': SingleTagDisplay, 'create-tag-modal': CreateTagModal, 'app-pagination': AppPagination },
   delimiters: ['[[',']]'],
   setup() {
     const CSRF = () => document.getElementById('csrf_token')?.value || ''
@@ -670,9 +329,11 @@ createApp({
     const filterSource     = ref('')
     const filterApproved   = ref('all')
     const filterVisibility = ref('')
+    const perPage          = ref(20)
     const viewMode   = ref('table')
     const selectedIds = ref(new Set())
     const collapsedGroups = ref(new Set())
+    const createModal = ref(null)
 
     /* ── Selection ───────────────────── */
     function toggleSelect(id) {
@@ -690,6 +351,9 @@ createApp({
     }
     const allSelected  = computed(()=>tags.value.length>0&&tags.value.every(t=>selectedIds.value.has(t.id)))
     const someSelected = computed(()=>tags.value.some(t=>selectedIds.value.has(t.id))&&!allSelected.value)
+    const pendingSelected = computed(()=>tags.value.filter(t=>selectedIds.value.has(t.id)&&!t.is_approved_by_admin))
+    const hasPendingSelected = computed(()=>pendingSelected.value.length>0)
+    const pendingSelectedCount = computed(()=>pendingSelected.value.length)
     const groupAllSelected  = g=>g.every(t=>selectedIds.value.has(t.id))
     const groupSomeSelected = g=>g.some(t=>selectedIds.value.has(t.id))&&!g.every(t=>selectedIds.value.has(t.id))
     function toggleGroup(ns) {
@@ -717,7 +381,7 @@ createApp({
         const params = new URLSearchParams({
           page: page.value,
           approved: filterApproved.value,
-          per_page: viewMode.value==='grouped' ? 500 : 20,
+          per_page: viewMode.value==='grouped' ? 600 : perPage.value,
         })
         if (search.value) params.set('search', search.value)
         if (filterSource.value) params.set('source', filterSource.value)
@@ -786,6 +450,20 @@ createApp({
       if (data.success) { selectedIds.value=new Set(); await load() }
     }
 
+    /* ── Accept all pending from selection ─────── */
+    async function bulkApprovePending() {
+      const ids = pendingSelected.value.map(t=>t.id)
+      if (!ids.length) return
+      const res = await fetch('/tags/admin/bulk',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':CSRF()},
+        body:JSON.stringify({ids,action:'approve'}),
+      })
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) { selectedIds.value=new Set(); await load() }
+    }
+
     /* ── Import taxonomies ───────────── */
     async function importTaxonomies() {
       if (!confirm('Import all MISP taxonomy tags? Existing tags will be skipped.')) return
@@ -831,9 +509,8 @@ createApp({
       editSaving.value = false
     }
 
-    /* ── Icon picker ─────────────────── */
+    /* ── Icon picker (edit modal) ───────── */
     const iconSearch    = ref('')
-    const createIconOpen = ref(false)
     const faIcons       = ref([])
 
     const filteredIcons = computed(()=>{
@@ -843,97 +520,24 @@ createApp({
       return all.filter(ic => ic.includes(q)).slice(0, 200)
     })
 
-    // close icon pickers on outside click
+    // close edit icon picker on outside click
     function onDocClick(e) {
-      if (!e.target.closest('.icon-picker-wrap')) {
-        editIconOpen.value = false
-        createIconOpen.value = false
-      }
-      if (!e.target.closest('.dropdown') && !e.target.closest('.vuln-dropdown-btn')) {
-        vulnDropOpen.value = false
-      }
+      if (!e.target.closest('.icon-picker')) editIconOpen.value = false
     }
     onMounted(()=>document.addEventListener('click',onDocClick))
     onUnmounted(()=>document.removeEventListener('click',onDocClick))
 
     /* ── Create modal ────────────────── */
-    let createModalInst = null
-    const createTab    = ref('custom')
-    const createForm   = ref({ name:'', description:'', color:'#6366f1', icon:'' })
-    const createErrors = ref({})
-    const createSaving = ref(false)
+    function openCreate() { createModal.value?.openModal() }
+    function onTagCreated() { resetPage() }
+    function onToast(msg, cls) { create_message(msg, cls) }
 
-    // vulnerability state
-    const vulnTypes    = ref(VULN_TYPES)
-    const vulnFormat   = ref(VULN_TYPES[0])
-    const vulnRaw      = ref('')
-    const vulnDropOpen = ref(false)
-    const vulnQueue    = ref([])
-
-    const vulnValid = computed(()=> VULN_PATTERN.test(vulnRaw.value.trim()))
-
-    function setVulnFormat(vt) { vulnFormat.value=vt; vulnDropOpen.value=false; vulnRaw.value=vt.prefix; document.getElementById('vuln-input')?.focus() }
-    function addVulnId() {
-      const val = vulnRaw.value.trim().toUpperCase()
-      if (!vulnValid.value) return
-      if (!vulnQueue.value.includes(val)) vulnQueue.value.push(val)
-      vulnRaw.value = vulnFormat.value.prefix
-    }
-    const getVulnClass = id=>getVulnCls(id)
-    const getVulnIconFn = id=>getVulnIcon(id)
-
-    const createPreview = computed(()=>({
-      name:  createTab.value==='vuln'
-        ? (vulnQueue.value[0] || vulnRaw.value || vulnFormat.value.example)
-        : (createForm.value.name||'tag name'),
-      color: createForm.value.color,
-      icon:  createForm.value.icon,
-    }))
-
-    function validateCreateName() {
-      if (!createForm.value.name.trim()) { createErrors.value.name='Name is required'; return false }
-      createErrors.value={...createErrors.value,name:undefined}; return true
-    }
-    function validateCreateColor() {
-      const c=createForm.value.color
-      if (c && !/^#[0-9a-fA-F]{6}$/.test(c)) { createErrors.value.color='Invalid hex color'; return false }
-      createErrors.value={...createErrors.value,color:undefined}; return true
-    }
-    function openCreate() {
-      createTab.value='custom'
-      createForm.value={name:'',description:'',color:'#6366f1',icon:''}
-      createErrors.value={}
-      vulnRaw.value=VULN_TYPES[0].prefix
-      vulnFormat.value=VULN_TYPES[0]
-      vulnQueue.value=[]
-      createModalInst?.show()
-    }
-    async function submitCreate() {
-      if (createTab.value==='custom') {
-        if (!validateCreateName()||!validateCreateColor()) return
-        createSaving.value=true
-        const payload={name:createForm.value.name.trim(),source:'Manual',description:createForm.value.description,color:createForm.value.color,icon:createForm.value.icon}
-        const res=await fetch('/tags/create',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF()},body:JSON.stringify(payload)})
-        const data=await res.json()
-        create_message(data.message,data.toast_class)
-        if (data.success) { createModalInst?.hide(); resetPage() }
-        else if (res.status===409) createErrors.value.name='A tag with this name already exists'
-      } else {
-        // vuln: create one per queued ID
-        const ids = vulnQueue.value.length ? vulnQueue.value : (vulnValid.value ? [vulnRaw.value.trim().toUpperCase()] : null)
-        if (!ids?.length) { createErrors.value.name='Add at least one valid vulnerability ID'; return }
-        createSaving.value=true
-        let ok=0, failed=[]
-        for (const id of ids) {
-          const res=await fetch('/tags/create',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':CSRF()},body:JSON.stringify({name:id,source:'Vulnerability',description:createForm.value.description,color:'#dc2626',icon:'bug'})})
-          const data=await res.json()
-          if(data.success) ok++; else failed.push(id)
-        }
-        if (ok) create_message(`${ok} vulnerability tag(s) created`,'success')
-        if (failed.length) create_message(`Failed: ${failed.join(', ')}`,'warning')
-        if (ok) { createModalInst?.hide(); resetPage() }
-      }
-      createSaving.value=false
+    /* ── Search highlight helper ─────── */
+    function hlNs(ns) {
+      const safe = (ns || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      if (!search.value) return safe
+      const esc = search.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return safe.replace(new RegExp(`(${esc})`, 'gi'), '<mark class="tag-highlight">$1</mark>')
     }
 
     /* ── Style helpers ───────────────── */
@@ -952,8 +556,9 @@ createApp({
 
     /* ── Init ────────────────────────── */
     onMounted(async ()=>{
-      editModalInst   = new bootstrap.Modal(document.getElementById('editTagModal'))
-      createModalInst = new bootstrap.Modal(document.getElementById('createTagModal'))
+      const urlSearch = new URLSearchParams(window.location.search).get('search')
+      if (urlSearch) search.value = urlSearch
+      editModalInst = new bootstrap.Modal(document.getElementById('editTagModal'))
       load()
       try {
         const r = await fetch('/tags/fa-icons')
@@ -963,22 +568,23 @@ createApp({
 
     return {
       tags, loading, importing, page, total_page,
-      search, filterSource, filterApproved, filterVisibility, viewMode,
-      selectedIds, allSelected, someSelected, groupedTags, collapsedGroups,
+      search, filterSource, filterApproved, filterVisibility, perPage, viewMode,
+      selectedIds, allSelected, someSelected,
+      hasPendingSelected, pendingSelectedCount,
+      groupedTags, collapsedGroups,
+      createModal,
       editForm, editErrors, editSaving, editIconOpen,
-      createTab, createForm, createErrors, createSaving, createPreview, createIconOpen,
-      vulnTypes, vulnFormat, vulnRaw, vulnDropOpen, vulnQueue, vulnValid,
       iconSearch, filteredIcons, faIcons,
       message_list,
       // methods
       load, resetPage, debounceSearch, switchGrouped,
       toggleSelect, toggleSelectAll, toggleSelectGroup, toggleGroup,
       groupAllSelected, groupSomeSelected,
-      approveSingle, toggleActive, toggleVisibility, deleteSingle, bulkAction, importTaxonomies,
+      approveSingle, toggleActive, toggleVisibility, deleteSingle,
+      bulkAction, bulkApprovePending, importTaxonomies,
       openEdit, saveEdit,
-      openCreate, submitCreate, validateCreateName, validateCreateColor,
-      setVulnFormat, addVulnId, getVulnClass, getVulnIcon: getVulnIconFn,
-      sourceStyle, sourceIcon,
+      openCreate, onTagCreated, onToast,
+      sourceStyle, sourceIcon, hlNs,
     }
   }
 }).mount('#main-containers')

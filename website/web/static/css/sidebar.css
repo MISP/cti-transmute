@@ -432,6 +432,19 @@ html.dark-mode .nav-sd-admin-tag {
   background: var(--bg-2);
 }
 
+/* Tag result dot */
+.nav-sd-tag-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  color: #fff;
+}
+
 /* ── Mobile burger (hidden on desktop) ─────────────────────── */
 .top-burger {
   display: none;

@@ -43,20 +43,10 @@
             </div>
         </div>
 
-        <!-- Navbar search -->
-        <form class="top-nav-search" id="top-nav-search-form" action="/convert/history" method="get">
-            <div class="top-nav-search-wrap">
-                <i class="fas fa-search top-nav-search-icon"></i>
-                <input
-                    id="navbar-search-input"
-                    name="search"
-                    class="top-nav-search-input"
-                    type="text"
-                    placeholder="Search converts…"
-                    autocomplete="off">
-                <div class="nav-search-dropdown" id="navbar-search-dropdown" style="display:none;"></div>
-            </div>
-        </form>
+        <!-- Navbar search (Vue component) -->
+        <div id="navbar-search-mount"
+             data-admin="{{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}"
+             data-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"></div>
 
         <!-- Right controls -->
         <div class="top-nav-controls">

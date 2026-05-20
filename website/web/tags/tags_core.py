@@ -3,7 +3,7 @@ import json
 import uuid
 from pathlib import Path
 
-from sqlalchemy import or_
+from sqlalchemy import or_, case
 
 from website.db_class.db import Tag
 from website.web import db
@@ -12,7 +12,7 @@ VENDOR_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / 
 
 
 def get_tags_page(page, source=None, visibility_filter=None, search=None,
-                  current_user_id=None, is_admin=False, per_page=20):
+                  current_user_id=None, is_admin=False, per_page=20, pending_first=False):
     query = Tag.query
 
     if not is_admin:
@@ -30,10 +30,21 @@ def get_tags_page(page, source=None, visibility_filter=None, search=None,
     if search:
         query = query.filter(Tag.name.ilike(f"%{search}%"))
 
-    return query.order_by(Tag.name).paginate(page=page, per_page=per_page, error_out=False)
+    if search:
+        rel = case(
+            (Tag.name.ilike(search), 0),
+            (Tag.name.ilike(f"{search}:%"), 1),
+            (Tag.name.ilike(f"{search}%"), 2),
+            else_=3,
+        )
+        order = ([Tag.is_approved_by_admin.asc()] if pending_first else []) + [rel, Tag.name.asc()]
+    else:
+        order = [Tag.is_approved_by_admin.asc(), Tag.name.asc()] if pending_first else [Tag.name.asc()]
+    return query.order_by(*order).paginate(page=page, per_page=per_page, error_out=False)
 
 
-def create_tag(name, description, color, icon, source, created_by, visibility="private"):
+def create_tag(name, description, color, icon, source, created_by,
+               visibility="private", is_approved_by_admin=False, is_active=False):
     try:
         now = datetime.datetime.utcnow()
         tag = Tag(
@@ -45,8 +56,8 @@ def create_tag(name, description, color, icon, source, created_by, visibility="p
             source=source or "Manual",
             created_by=created_by,
             visibility=visibility,
-            is_active=False,
-            is_approved_by_admin=False,
+            is_active=is_active,
+            is_approved_by_admin=is_approved_by_admin,
             created_at=now,
             updated_at=now,
         )
