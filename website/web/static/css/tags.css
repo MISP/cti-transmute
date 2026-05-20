@@ -284,35 +284,35 @@
 
 .tag-tooltip {
   visibility: hidden;
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(6px);
+  position: fixed;
+  /* top/left set via JS on mouseenter */
+  transform: translateX(-50%) translateY(-100%) translateY(6px);
   width: 300px;
   background-color: #1e1e26;
   color: #eee;
   text-align: left;
   border-radius: 8px;
-  z-index: 1050;
+  z-index: 9999;
   opacity: 0;
   transition: opacity 0.18s ease-out, transform 0.18s ease-out;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
 }
 
+/* Invisible bridge below the tooltip that covers the gap to the tag */
+.tag-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 14px;
+}
+
 .tag-wrapper:hover .tag-tooltip {
   visibility: visible;
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.hover-bridge {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  width: 100%;
-  height: 12px;
-  background: transparent;
+  transform: translateX(-50%) translateY(-100%);
 }
 
 .tooltip-header {
@@ -533,3 +533,76 @@
 }
 
 /* tag-modal, icon-picker, vuln-format-card CSS lives in /static/css/tags.css */
+
+/* ── TagInput component ──────────────────────────────────────── */
+.tag-input-wrapper {
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tag-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 0.55rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: -6px;
+  padding: 0;
+  line-height: 1;
+  transition: background var(--t), color var(--t);
+}
+
+.tag-remove-btn:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.tag-input-dropdown-item:last-child {
+  border-bottom: none !important;
+}
+
+.tag-input-dropdown-item:hover {
+  background: var(--bg-2);
+}
+
+/* Source filter pills inside TagInput */
+.tag-source-btn {
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background var(--t), color var(--t), border-color var(--t);
+  line-height: 1.6;
+}
+
+.tag-source-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.tag-source-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Highlight matched text inside tag labels */
+.tag-highlight {
+  background: rgba(250, 204, 21, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}

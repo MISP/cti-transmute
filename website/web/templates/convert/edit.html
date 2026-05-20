@@ -5,7 +5,6 @@
     <form method="post" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
 
-
         <div class="row mb-3">
             <div class="mb-3">
                 {{ form.name.label(class_="form-label") }} <span class="text-danger">*</span>
@@ -20,15 +19,16 @@
                 {{ form.description(class_="form-control", style="background-color:var(--color-navbar);
                 color:var(--color-text);", placeholder="Optional description...", rows="4") }}
             </div>
-
         </div>
 
+        <div class="mb-4">
+            <div id="tag-input-mount-edit"></div>
+        </div>
 
         <div class="mb-3 d-flex justify-content-between">
             <div>
                 {{ form.edit(class_="btn btn-primary") }}
             </div>
-
             <div>
                 <a href="{{ url_for('convert.detail', id=convert_id) }}" class="btn btn-secondary"
                     title="Back to detail">
@@ -36,7 +36,19 @@
                 </a>
             </div>
         </div>
-
     </form>
 </div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    import TagInput from '/static/js/tags/tagInput.js';
+    const el = document.getElementById('tag-input-mount-edit');
+    if (el) {
+        Vue.createApp(TagInput, {
+            convertId: {{ convert_id }},
+            canEdit: true,
+        }).mount(el);
+    }
+</script>
 {% endblock %}

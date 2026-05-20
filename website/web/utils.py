@@ -154,6 +154,74 @@ def extract_name_from_misp_json(json_text: str) -> str | None:
     return None
 
 
+def _collect_tags_from_event(event: dict, names: set) -> None:
+    """Collect all tag names from a single MISP event dict into `names`."""
+    if not isinstance(event, dict):
+        return
+    for tag in event.get("Tag", []):
+        if isinstance(tag, dict) and tag.get("name"):
+            names.add(tag["name"].strip())
+    for attr in event.get("Attribute", []):
+        if not isinstance(attr, dict):
+            continue
+        for tag in attr.get("Tag", []):
+            if isinstance(tag, dict) and tag.get("name"):
+                names.add(tag["name"].strip())
+    for obj in event.get("Object", []):
+        if not isinstance(obj, dict):
+            continue
+        for attr in obj.get("Attribute", []):
+            if not isinstance(attr, dict):
+                continue
+            for tag in attr.get("Tag", []):
+                if isinstance(tag, dict) and tag.get("name"):
+                    names.add(tag["name"].strip())
+
+
+def extract_tag_names_from_misp_json(json_text: str) -> list[str]:
+    """
+    Extract all unique tag names from a MISP JSON payload.
+
+    Handles all common MISP formats:
+      - Single event with wrapper:    {"Event": {...}}
+      - Single event without wrapper: {"Tag": [...], "Attribute": [...], ...}
+      - Multiple events:              {"response": [{"Event": {...}}, ...]}
+      - Array at root:                [{"Event": {...}}, ...]
+    """
+    try:
+        data = json.loads(json_text)
+    except (ValueError, TypeError):
+        return []
+
+    names: set[str] = set()
+
+    if isinstance(data, list):
+        # Root is an array of events
+        for item in data:
+            event = item.get("Event", item) if isinstance(item, dict) else item
+            _collect_tags_from_event(event, names)
+
+    elif isinstance(data, dict):
+        if "response" in data:
+            # {"response": [{"Event": {...}}, ...]}
+            for item in (data["response"] if isinstance(data["response"], list) else []):
+                event = item.get("Event", item) if isinstance(item, dict) else item
+                _collect_tags_from_event(event, names)
+        elif "Event" in data:
+            event = data["Event"]
+            if isinstance(event, list):
+                # {"Event": [{...}, {...}]}  (unusual but possible)
+                for ev in event:
+                    _collect_tags_from_event(ev, names)
+            else:
+                _collect_tags_from_event(event, names)
+        else:
+            # Raw event dict without wrapper
+            _collect_tags_from_event(data, names)
+
+    return list(names)
+
+
 def sanitazed_params(params):
     """
     Sanitize the params dictionary by changing values.

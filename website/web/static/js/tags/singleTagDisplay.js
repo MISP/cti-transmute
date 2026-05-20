@@ -52,13 +52,27 @@ const SingleTagDisplay = {
             return safe.replace(new RegExp(`(${esc})`, 'gi'), '<mark class="tag-highlight">$1</mark>')
         }
 
-        return { getTextColor, mapIcon, resolvedColor, label, hlLabel };
+        function positionTooltip(event) {
+            const wrapper = event.currentTarget;
+            const tooltip = wrapper.querySelector('.tag-tooltip');
+            if (!tooltip) return;
+            const r = wrapper.getBoundingClientRect();
+            const tipW = 300;
+            const margin = 10;
+            let left = r.left + r.width / 2;
+            left = Math.max(tipW / 2 + margin, Math.min(left, window.innerWidth - tipW / 2 - margin));
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = (r.top - 10) + 'px';
+        }
+
+        return { getTextColor, mapIcon, resolvedColor, label, hlLabel, positionTooltip };
     },
 
     template: `
         <div
             class="tag-wrapper d-inline-block"
             :class="{ selected }"
+            @mouseenter="positionTooltip"
             @click.stop="$emit('click')"
             @dblclick.stop="$emit('dblclick')"
         >
@@ -78,7 +92,6 @@ const SingleTagDisplay = {
             </span>
 
             <div class="tag-tooltip">
-                <div class="hover-bridge"></div>
                 <div
                     class="tooltip-header"
                     :style="{ borderLeft: '4px solid ' + resolvedColor(tag) }"

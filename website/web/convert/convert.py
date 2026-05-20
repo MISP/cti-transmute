@@ -6,10 +6,11 @@ from urllib.parse import urlparse
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
-from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
+from website.web.utils import extract_name_from_misp_json, extract_tag_names_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
 import requests
 from ..convert import convert_core as ConvertModel
 from ..account import account_core as AccountModel
+from ..tags import tags_core as TagsModel
 
 
 def _validate_misp_url(misp_url: str) -> str | None:
@@ -114,6 +115,14 @@ def misp_to_stix():
                         AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: MISP→STIX, Public: {saved.public}")
                         if saved.public and not current_user.is_anonymous():
                             AccountModel.notify_followers_new_convert(saved, current_user.id)
+                        if not current_user.is_anonymous():
+                            raw_ids = request.form.get('tag_ids', '')
+                            manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                            misp_names = extract_tag_names_from_misp_json(file_content)
+                            auto_ids = TagsModel.resolve_tag_ids_from_names(misp_names)
+                            all_ids = list(dict.fromkeys(manual_ids + auto_ids))
+                            if all_ids:
+                                TagsModel.save_convert_tags(saved.id, all_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering the convert!", "danger")
@@ -422,6 +431,11 @@ def stix_to_misp():
                         AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: STIX→MISP, Public: {saved.public}")
                         if saved.public and not current_user.is_anonymous():
                             AccountModel.notify_followers_new_convert(saved, current_user.id)
+                        if not current_user.is_anonymous():
+                            raw_ids = request.form.get('tag_ids', '')
+                            tag_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                            if tag_ids:
+                                TagsModel.save_convert_tags(saved.id, tag_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering in database", "danger")
@@ -467,7 +481,14 @@ def get_page_history():
         date_to=date_to,
         exact_match=exact_match,
     )
-    convert_list = [item.to_json_list() for item in pagination.items]
+    items = pagination.items
+    convert_list = [item.to_json_list() for item in items]
+
+    # Batch load tags for all returned converts
+    ids = [item.id for item in items]
+    tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+    for entry in convert_list:
+        entry['tags'] = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
 
     return {
         "list": convert_list,

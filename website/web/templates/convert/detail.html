@@ -205,6 +205,12 @@
             </div>
         </div>
 
+        <tag-input
+            :convert-id="{{ convert.id }}"
+            :can-edit="false"
+            class="mb-4">
+        </tag-input>
+
         <div class="custom-card mb-4">
             <div class="detail-tabs-header">
                 <ul class="nav nav-underline px-3 pt-2" :id="'tabs-'+convert.id" role="tablist">
@@ -709,6 +715,7 @@
 <script type="module">
     const { createApp, ref, onMounted, watch, nextTick } = Vue
     import { create_message, message_list } from '/static/js/toaster.js';
+    import TagInput from '/static/js/tags/tagInput.js';
 
     const convert_id = document.getElementById('convert_id').dataset.convertId;
     const IS_AUTH = {{ 'true' if current_user.is_authenticated else 'false' }};
@@ -887,7 +894,7 @@
 
     document.addEventListener('shown.bs.tab', highlightAll)
 
-    createApp({
+    const app = createApp({
         delimiters: ['[[', ']]'],
         setup() {
             const convert = ref({})
@@ -1252,7 +1259,9 @@
                 pending_visibility_action, pending_comment_count, confirmTogglePublic,
             }
         }
-    }).mount('#main-containers')
+    })
+    app.component('tag-input', TagInput)
+    app.mount('#main-containers')
 </script>
 
 <script>

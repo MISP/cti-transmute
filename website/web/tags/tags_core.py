@@ -3,9 +3,9 @@ import json
 import uuid
 from pathlib import Path
 
-from sqlalchemy import or_, case
+from sqlalchemy import or_, case, func
 
-from website.db_class.db import Tag
+from website.db_class.db import ConvertTagAssociation, Tag
 from website.web import db
 
 VENDOR_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / "misp-taxonomies"
@@ -278,3 +278,180 @@ def import_taxonomies(admin_user_id, vendor_path=None):
         return 0, 0, [str(e)]
 
     return imported, skipped, errors
+
+
+###################################
+#   Convert tag associations      #
+###################################
+
+_SOURCE_MAP = {
+    'custom':        'Manual',
+    'taxonomy':      'Taxonomy',
+    'vulnerability': 'Vulnerability',
+}
+
+def get_available_tags(user_id, search=None, source=None, limit=60):
+    """Tags available to attach to a convert:
+    - public + active + admin-approved
+    - OR private + active + owned by user (no admin approval required)
+    Filtered by `search` (SQL ilike) and `source` ('custom'|'taxonomy'|'vulnerability').
+    When `search` is provided, prefix matches are returned first.
+    """
+    query = Tag.query.filter(
+        Tag.is_active == True,
+        or_(
+            db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin == True),
+            db.and_(Tag.visibility == 'private', Tag.created_by == user_id),
+        ),
+    )
+    if search:
+        query = query.filter(Tag.name.ilike(f'%{search}%'))
+        # Prefix matches rank higher
+        order = [
+            case((Tag.name.ilike(f'{search}%'), 0), else_=1),
+            Tag.name.asc(),
+        ]
+    else:
+        order = [Tag.name.asc()]
+
+    if source and source in _SOURCE_MAP:
+        query = query.filter(Tag.source == _SOURCE_MAP[source])
+
+    return query.order_by(*order).limit(limit).all()
+
+
+def get_convert_tags(convert_id):
+    """Return all tag associations for a single convert."""
+    return ConvertTagAssociation.query.filter_by(convert_id=convert_id).all()
+
+
+def get_convert_tags_batch(convert_ids):
+    """Return {convert_id: [assoc, ...]} for a list of convert IDs."""
+    if not convert_ids:
+        return {}
+    assocs = ConvertTagAssociation.query.filter(
+        ConvertTagAssociation.convert_id.in_(convert_ids)
+    ).all()
+    result = {cid: [] for cid in convert_ids}
+    for a in assocs:
+        result[a.convert_id].append(a)
+    return result
+
+
+def find_tags_by_names(user_id, names: list[str]) -> list:
+    """Return available tag objects whose name matches any of the given names (case-insensitive).
+    Includes public+approved tags AND private tags owned by the user."""
+    if not names:
+        return []
+    lower_names = [n.lower() for n in names]
+    return (
+        Tag.query
+        .filter(
+            Tag.is_active == True,
+            or_(
+                db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin == True),
+                db.and_(Tag.visibility == 'private', Tag.created_by == user_id),
+            ),
+            func.lower(Tag.name).in_(lower_names),
+        )
+        .order_by(Tag.name.asc())
+        .all()
+    )
+
+
+def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
+    """Return IDs of active+approved public tags whose name matches any of the given names (case-insensitive)."""
+    if not tag_names:
+        return []
+    lower_names = {n.lower() for n in tag_names}
+    tags = Tag.query.filter(
+        Tag.is_active == True,
+        Tag.is_approved_by_admin == True,
+        Tag.visibility == 'public',
+    ).all()
+    return [t.id for t in tags if t.name.lower() in lower_names]
+
+
+def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int) -> int:
+    """Add tags to a convert without removing existing ones. Returns count of newly added tags."""
+    existing = {a.tag_id for a in ConvertTagAssociation.query.filter_by(convert_id=convert_id).all()}
+    now = datetime.datetime.utcnow()
+    count = 0
+    seen = set()
+    for tid in tag_ids:
+        if tid in seen or tid in existing:
+            continue
+        seen.add(tid)
+        tag = Tag.query.get(tid)
+        if not tag or not tag.is_active:
+            continue
+        db.session.add(ConvertTagAssociation(
+            uuid=str(uuid.uuid4()),
+            convert_id=convert_id,
+            tag_id=tid,
+            user_id=user_id,
+            added_at=now,
+        ))
+        count += 1
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        count = 0
+    return count
+
+
+def remove_convert_tags(convert_id: int, tag_ids: list) -> int:
+    """Remove specific tags from a convert. Returns count removed."""
+    q = ConvertTagAssociation.query.filter(
+        ConvertTagAssociation.convert_id == convert_id,
+        ConvertTagAssociation.tag_id.in_(tag_ids),
+    )
+    count = q.count()
+    q.delete(synchronize_session=False)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        count = 0
+    return count
+
+
+def clear_convert_tags(convert_id: int) -> int:
+    """Remove ALL tags from a convert. Returns count removed."""
+    q = ConvertTagAssociation.query.filter_by(convert_id=convert_id)
+    count = q.count()
+    q.delete(synchronize_session=False)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        count = 0
+    return count
+
+
+def save_convert_tags(convert_id, tag_ids, user_id):
+    """Replace all tag associations for a convert (idempotent)."""
+    ConvertTagAssociation.query.filter_by(convert_id=convert_id).delete(synchronize_session=False)
+    now = datetime.datetime.utcnow()
+    seen = set()
+    for tid in tag_ids:
+        if tid in seen:
+            continue
+        seen.add(tid)
+        tag = Tag.query.get(tid)
+        if not tag or not tag.is_active:
+            continue
+        if tag.visibility != 'public' and tag.created_by != user_id:
+            continue
+        db.session.add(ConvertTagAssociation(
+            uuid=str(uuid.uuid4()),
+            convert_id=convert_id,
+            tag_id=tid,
+            user_id=user_id,
+            added_at=now,
+        ))
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()

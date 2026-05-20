@@ -144,6 +144,21 @@
                         </div>
                         <p class="history-card-desc mb-0" v-html="highlight(item.description || 'No description.')"></p>
 
+                        <!-- Tags -->
+                        <div v-if="item.tags && item.tags.length > 0" class="d-flex flex-wrap align-items-center gap-1 mt-2" @click.stop>
+                            <single-tag
+                                v-for="tag in item.tags.slice(0, 7)"
+                                :key="tag.tag_id"
+                                :tag="adaptTag(tag)"
+                                :show-namespace="false">
+                            </single-tag>
+                            <span v-if="item.tags.length > 7"
+                                  class="badge rounded-pill"
+                                  style="font-size:0.7rem; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border);">
+                                +[[ item.tags.length - 7 ]]
+                            </span>
+                        </div>
+
                         <!-- Snippets from JSON content (shown when search_scope includes content) -->
                         <div v-if="searchQuery && (search_scope === 'content' || search_scope === 'all')"
                             class="snippet-block" @click.stop>
@@ -236,9 +251,21 @@
     const { createApp, ref, computed, watch } = Vue
     import { display_toast, message_list } from '/static/js/toaster.js'
     import AppPagination from '/static/js/pagination.js'
+    import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js'
+
+    function adaptTag(t) {
+        return {
+            id: t.tag_id,
+            name: t.tag_name || '',
+            color: t.tag_color || null,
+            icon: t.tag_icon || null,
+            description: t.tag_description || '',
+            visibility: t.tag_visibility || 'public',
+        };
+    }
 
     createApp({
-        components: { 'app-pagination': AppPagination },
+        components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay },
         delimiters: ['[[', ']]'],
         setup() {
             const convert_history    = ref([])
@@ -408,8 +435,7 @@
                 fetchConvertHistory, filter_type, sort_order, deleteItem, current_user_is_admin,
                 only_mine, seeDetails, searchQuery, search_scope, exact_match, date_from, date_to,
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
-                highlight, highlightSnippet, resetFilters,
-
+                highlight, highlightSnippet, resetFilters, adaptTag,
             }
         }
     }).mount('#main-containers')

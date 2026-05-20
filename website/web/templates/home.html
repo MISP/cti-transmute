@@ -113,6 +113,17 @@
                     [[ item.description ]]
                 </div>
                 <div class="home-recent-card-desc fst-italic" v-else style="opacity:0.5;">No description</div>
+                <div v-if="item.tags && item.tags.length > 0" class="d-flex align-items-center gap-1 mt-2" @click.stop.prevent>
+                    <single-tag
+                        :tag="adaptTag(item.tags[0])"
+                        :show-namespace="false">
+                    </single-tag>
+                    <span v-if="item.tags.length > 1"
+                          class="badge rounded-pill"
+                          style="font-size:0.65rem; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border);">
+                        +[[ item.tags.length - 1 ]]
+                    </span>
+                </div>
                 <div class="home-recent-card-footer">
                     <span class="home-recent-card-author">
                         <i class="fas fa-user" style="font-size:0.6rem;"></i>
@@ -238,8 +249,21 @@
 {% block script %}
 <script type="module">
     const { createApp, ref, onMounted } = Vue;
+    import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js';
+
+    function adaptTag(t) {
+        return {
+            id: t.tag_id,
+            name: t.tag_name || '',
+            color: t.tag_color || null,
+            icon: t.tag_icon || null,
+            description: t.tag_description || '',
+            visibility: t.tag_visibility || 'public',
+        };
+    }
 
     createApp({
+        components: { 'single-tag': SingleTagDisplay },
         delimiters: ['[[', ']]'],
         setup() {
             const recent_list = ref([]);
@@ -287,7 +311,7 @@
                 track?.addEventListener('scroll', updateScrollState);
             });
 
-            return { recent_list, is_loading, canScrollLeft, canScrollRight, scroll, formatDate };
+            return { recent_list, is_loading, canScrollLeft, canScrollRight, scroll, formatDate, adaptTag };
         }
     }).mount('#main-container');
 </script>

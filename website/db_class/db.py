@@ -420,3 +420,34 @@ class Tag(db.Model):
             "rule_count":   getattr(self, '_rule_count',   0),
             "bundle_count": getattr(self, '_bundle_count', 0),
         }
+
+
+class ConvertTagAssociation(db.Model):
+    __tablename__ = 'convert_tag_association'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    convert_id = db.Column(db.Integer, db.ForeignKey('convert.id', ondelete='CASCADE'), nullable=False, index=True)
+    tag_id = db.Column(db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
+    added_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+
+    convert = db.relationship('Convert', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
+    tag = db.relationship('Tag', backref=db.backref('convert_associations', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('convert_tag_associations', lazy='dynamic'))
+
+    def to_json(self):
+        tag = self.tag
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "convert_id": self.convert_id,
+            "tag_id": self.tag_id,
+            "user_id": self.user_id,
+            "tag_name": tag.name if tag else None,
+            "tag_color": tag.color if tag else None,
+            "tag_icon": tag.icon if tag else None,
+            "tag_visibility": tag.visibility if tag else None,
+            "tag_description": tag.description if tag else None,
+            "added_at": self.added_at.strftime('%Y-%m-%d %H:%M') if self.added_at else None,
+        }
