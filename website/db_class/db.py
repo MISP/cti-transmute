@@ -1,3 +1,4 @@
+import datetime
 from website.web import db , login_manager
 from flask_login import UserMixin, AnonymousUserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -369,4 +370,53 @@ class ConvertHistory(db.Model):
             "status": self.status,
             "public": self.public
         }
-    
+
+
+class Tag(db.Model):
+    __tablename__ = "tag"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    name = db.Column(db.Text, unique=True, nullable=False, index=True)
+    description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    is_active = db.Column(db.Boolean, default=False)
+    # "public" | "private"
+    visibility = db.Column(db.String(255), nullable=True)
+    external_id = db.Column(db.String, nullable=True)
+
+    color = db.Column(db.String(50), nullable=True)
+    icon = db.Column(db.String(50), nullable=True)
+    # "Manual" | "Taxonomy" | "Vulnerability"
+    source = db.Column(db.String(255), nullable=True)
+
+    galaxy_meta = db.Column(db.JSON, nullable=True)
+
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    is_approved_by_admin = db.Column(db.Boolean, default=False)
+
+    user = db.relationship('User', backref=db.backref('tags', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "name": self.name,
+            "description": self.description,
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M') if self.updated_at else None,
+            "is_active": self.is_active,
+            "visibility": self.visibility,
+            "color": self.color,
+            "icon": self.icon,
+            "created_by_user_id": self.created_by,
+            "created_by_user_name": self.user.first_name if self.user else None,
+            "is_approved_by_admin": self.is_approved_by_admin,
+            "external_id": self.external_id,
+            "source": self.source,
+            "galaxy_meta": self.galaxy_meta if self.galaxy_meta else None,
+            # Injected by _inject_usage_counts() — falls back to 0 outside listing context
+            "rule_count":   getattr(self, '_rule_count',   0),
+            "bundle_count": getattr(self, '_bundle_count', 0),
+        }
