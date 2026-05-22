@@ -121,3 +121,5 @@ Copyright (c) 2025 Computer Incident Response Center Luxembourg (CIRCL)
 Copyright (c) 2025 Christian Studer - https://github.com/chrisr3d
 Copyright (c) 2025 Theo Geffe - https://github.com/ecrou-exact/ 
 ~~~
+
+<img src="https://misp-lea.org//assets/img/eu_funded_en.jpg" alt="EU-logo" style="width: 50%;max-height: 50%" />
