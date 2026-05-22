@@ -112,6 +112,8 @@ The ENSOC Consortium composed of seven member states, namely Austria, Luxembourg
 
 Co-Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or ECCC. Neither the European Union nor the granting authority can be held responsible for them.
 
+<img src="https://misp-lea.org//assets/img/eu_funded_en.jpg" alt="EU-logo" style="width: 50%;max-height: 50%" />
+
 ## License
 
 CTI-Transmute is free software released under the "GNU Affero General Public License v3.0".
@@ -121,5 +123,3 @@ Copyright (c) 2025 Computer Incident Response Center Luxembourg (CIRCL)
 Copyright (c) 2025 Christian Studer - https://github.com/chrisr3d
 Copyright (c) 2025 Theo Geffe - https://github.com/ecrou-exact/ 
 ~~~
-
-<img src="https://misp-lea.org//assets/img/eu_funded_en.jpg" alt="EU-logo" style="width: 50%;max-height: 50%" />
