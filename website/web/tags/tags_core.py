@@ -5,7 +5,7 @@ from pathlib import Path
 
 from sqlalchemy import or_, case, func
 
-from website.db_class.db import ConvertTagAssociation, Tag
+from website.db_class.db import Convert, ConvertTagAssociation, Tag
 from website.web import db
 
 VENDOR_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / "misp-taxonomies"
@@ -338,6 +338,24 @@ def get_convert_tags_batch(convert_ids):
     return result
 
 
+def get_convert_ids(search=None, conv_type=None):
+    query = Convert.query.with_entities(Convert.id)
+    if conv_type and conv_type != "ALL":
+        query = query.filter(Convert.conversion_type == conv_type)
+    if search:
+        query = query.filter(Convert.name.ilike(f"%{search}%"))
+    return [row.id for row in query.all()]
+
+
+def get_converts_page(page, per_page=50, search=None, conv_type=None):
+    query = Convert.query
+    if conv_type and conv_type != "ALL":
+        query = query.filter(Convert.conversion_type == conv_type)
+    if search:
+        query = query.filter(Convert.name.ilike(f"%{search}%"))
+    return query.order_by(Convert.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
+
 def find_tags_by_names(user_id, names: list[str]) -> list:
     """Return available tag objects whose name matches any of the given names (case-insensitive).
     Includes public+approved tags AND private tags owned by the user."""
@@ -428,6 +446,44 @@ def clear_convert_tags(convert_id: int) -> int:
         db.session.rollback()
         count = 0
     return count
+
+
+def get_all_tags_usage():
+    """Return only tags actually used in at least one convert, with their usage counts."""
+    from sqlalchemy import func
+
+    rows = (
+        db.session.query(ConvertTagAssociation.tag_id, func.count(ConvertTagAssociation.id))
+        .group_by(ConvertTagAssociation.tag_id)
+        .having(func.count(ConvertTagAssociation.id) > 0)
+        .all()
+    )
+    if not rows:
+        return []
+
+    counts = {row[0]: row[1] for row in rows}
+    tags = (
+        Tag.query
+        .filter(
+            Tag.id.in_(counts.keys()),
+            Tag.is_active == True,
+            Tag.visibility == 'public',
+            Tag.is_approved_by_admin == True,
+        )
+        .order_by(Tag.name.asc())
+        .all()
+    )
+
+    return [
+        {
+            "name": t.name,
+            "color": t.color,
+            "icon": t.icon,
+            "source": t.source,
+            "usage_count": counts.get(t.id, 0),
+        }
+        for t in tags
+    ]
 
 
 def save_convert_tags(convert_id, tag_ids, user_id):

@@ -469,6 +469,9 @@ def get_page_history():
     date_to     = request.args.get('date_to', type=str)
 
     exact_match  = request.args.get('exact_match', 'false', type=str) == 'true'
+    tag_names_raw = request.args.get('tag_names', '', type=str)
+    tag_names = [t.strip() for t in tag_names_raw.split(',') if t.strip()] if tag_names_raw else None
+    vis_filter = request.args.get('vis_filter', '', type=str) or None
 
     pagination = ConvertModel.get_convert_page(
         page,
@@ -480,6 +483,8 @@ def get_page_history():
         date_from=date_from,
         date_to=date_to,
         exact_match=exact_match,
+        tag_names=tag_names,
+        vis_filter=vis_filter,
     )
     items = pagination.items
     convert_list = [item.to_json_list() for item in items]

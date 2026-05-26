@@ -35,6 +35,7 @@ def login() -> redirect:
         if user is not None and user.password_hash is not None and user.verify_password(form.password.data):
             login_user(user, form.remember_me.data)
             AccountModel.connected(current_user)
+            AccountModel.create_system_log("user_login", actor_id=user.id, actor_name=user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
             flash('You are now logged in. Welcome back!', 'success')
             return redirect( "/")
         else:
@@ -45,9 +46,10 @@ def login() -> redirect:
 @login_required
 def logout() -> redirect:
     "Log out an User"
+    AccountModel.create_system_log("user_logout", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=current_user.id, target_name=f"{current_user.first_name} {current_user.last_name}")
     AccountModel.disconnected(current_user)
     logout_user()
-    
+
     flash('You have been logged out.', 'info')
     return redirect(url_for('home.home'))
 
@@ -72,7 +74,8 @@ def add_user() -> redirect:
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         form_dict["key"] = generate_api_key()
-        AccountModel.add_user_core(form_dict)
+        user = AccountModel.add_user_core(form_dict)
+        AccountModel.create_system_log("user_registered", actor_id=user.id, actor_name=user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}", details=f"email: {user.email}")
         flash('You are now register. You can connect !', 'success')
         return redirect("/account/login")
     return render_template("account/register_user.html", form=form) 
@@ -84,7 +87,17 @@ def edit_user() -> redirect:
     form = EditUserForm()
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
+        changed = []
+        if form_dict.get("first_name") != current_user.first_name:
+            changed.append("first_name")
+        if form_dict.get("last_name") != current_user.last_name:
+            changed.append("last_name")
+        if form_dict.get("email") != current_user.email:
+            changed.append("email")
+        if form_dict.get("password"):
+            changed.append("password")
         AccountModel.edit_user_core(form_dict, current_user.id)
+        AccountModel.create_system_log("user_profile_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=current_user.id, target_name=f"{current_user.first_name} {current_user.last_name}", details=f"changed: {', '.join(changed)}" if changed else "no changes")
         flash('Profil update with success!', 'success')
         return redirect("/account")
     else:
@@ -213,8 +226,11 @@ def delete_user(id) -> redirect:
             else:
                 _success = AccountModel.get_all_convert_own_by_user_id(id)
                 if _success:
+                    _deleted_name = f"{user.first_name} {user.last_name}"
+                    _deleted_id = user.id
                     success = AccountModel.delete(user.id)
                     if success:
+                        AccountModel.create_system_log("user_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=_deleted_id, target_name=_deleted_name)
                         flash(f"User {user.last_name} {user.first_name} deleted with success", 'success')
                         return redirect("/account/manage_user")
                     else:
@@ -554,8 +570,10 @@ def edit_admin():
                     if success:
                         if _bool == True:
                             message="This user has admin right now"
+                            AccountModel.create_system_log("user_admin_granted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
                         else:
                             message="This user has no more admin right now"
+                            AccountModel.create_system_log("user_admin_revoked", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
                         return {
                             "success": True, 
                             "admin": user.admin,

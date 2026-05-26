@@ -19,9 +19,9 @@
           <input class="form-control form-control-sm" style="width:180px;"
                  type="text" v-model="search" @input="debounceSearch" placeholder="Search name…">
           <select class="form-select form-select-sm" style="width:160px;" v-model="filterType" @change="resetPage">
-            <option value="">All types</option>
-            <option value="misp_to_stix">MISP → STIX</option>
-            <option value="stix_to_misp">STIX → MISP</option>
+            <option value="ALL">All types</option>
+            <option value="MISP_TO_STIX">MISP → STIX</option>
+            <option value="STIX_TO_MISP">STIX → MISP</option>
           </select>
           <span class="ms-auto" style="font-size:0.78rem;color:var(--text-3);">
             <span v-if="!loading">[[ total ]] total</span>
@@ -39,6 +39,10 @@
           </span>
           <button v-if="selected.size > 0" type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem; padding:2px 8px;" @click="selected.clear(); selected = new Set(selected)">
             Clear
+          </button>
+          <button v-if="selected.size < total" type="button" class="btn btn-sm btn-outline-accent" style="font-size:0.75rem; padding:2px 8px;" :disabled="selectingAll" @click="selectAllGlobal">
+            <i v-if="selectingAll" class="fas fa-spinner fa-spin me-1"></i>
+            Select all [[ total ]]
           </button>
         </div>
 
@@ -71,8 +75,8 @@
                 <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="c.name">[[ c.name ]]</td>
                 <td>
                   <span class="badge" style="font-size:0.7rem;"
-                        :style="{ background: c.conversion_type === 'misp_to_stix' ? 'var(--accent)' : 'var(--success)', color:'#fff' }">
-                    [[ c.conversion_type === 'misp_to_stix' ? 'MISP→STIX' : 'STIX→MISP' ]]
+                        :style="{ background: c.conversion_type === 'MISP_TO_STIX' ? 'var(--accent)' : 'var(--success)', color:'#fff' }">
+                    [[ c.conversion_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
                   </span>
                 </td>
                 <td style="color:var(--text-3);">[[ c.created_at ]]</td>
@@ -329,12 +333,13 @@ createApp({
             converts:    [],
             loading:     false,
             search:      '',
-            filterType:  '',
+            filterType:  'ALL',
             page:        1,
             perPage:     50,
             totalPages:  1,
             total:       0,
             selected:    new Set(),
+            selectingAll: false,
 
             tagSearch:      '',
             tagSuggestions: [],
@@ -429,6 +434,24 @@ createApp({
                 const s = new Set(this.selected);
                 this.converts.forEach(c => s.add(c.id));
                 this.selected = s;
+            }
+        },
+
+        async selectAllGlobal() {
+            this.selectingAll = true;
+            try {
+                const p = new URLSearchParams();
+                if (this.search.trim()) p.set('search', this.search.trim());
+                if (this.filterType) p.set('type', this.filterType);
+                const r = await fetch('/tags/admin/bulk_converts/all_ids?' + p);
+                const d = await r.json();
+                if (d.success) {
+                    const s = new Set(this.selected);
+                    d.ids.forEach(id => s.add(id));
+                    this.selected = s;
+                }
+            } finally {
+                this.selectingAll = false;
             }
         },
 

@@ -373,26 +373,29 @@ def admin_bulk_converts_list():
     page = request.args.get("page", 1, type=int)
     per_page = min(request.args.get("per_page", 50, type=int), 200)
     search = request.args.get("search", "", type=str).strip() or None
-    conv_type = request.args.get("type", "", type=str).strip() or None
+    conv_type = request.args.get("type", "ALL", type=str).strip() or "ALL"
 
-    query = Convert.query
-    if search:
-        query = query.filter(Convert.name.ilike(f"%{search}%"))
-    if conv_type:
-        query = query.filter(Convert.conversion_type == conv_type)
-    pagination = query.order_by(Convert.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = TagsModel.get_converts_page(page, per_page=per_page, search=search, conv_type=conv_type)
+    tag_map = TagsModel.get_convert_tags_batch([c.id for c in pagination.items])
 
-    convert_ids = [c.id for c in pagination.items]
-    tag_map = TagsModel.get_convert_tags_batch(convert_ids)
-
-    items = []
-    for c in pagination.items:
-        d = {"id": c.id, "name": c.name, "conversion_type": c.conversion_type,
-             "created_at": c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else "",
-             "tag_count": len(tag_map.get(c.id, []))}
-        items.append(d)
-
+    items = [
+        {"id": c.id, "name": c.name, "conversion_type": c.conversion_type,
+         "created_at": c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else "",
+         "tag_count": len(tag_map.get(c.id, []))}
+        for c in pagination.items
+    ]
     return {"success": True, "list": items, "total_page": pagination.pages, "total": pagination.total}, 200
+
+
+@tags_blueprint.route("/admin/bulk_converts/all_ids", methods=["GET"])
+@login_required
+def admin_bulk_converts_all_ids():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    search = request.args.get("search", "", type=str).strip() or None
+    conv_type = request.args.get("type", "ALL", type=str).strip() or "ALL"
+    ids = TagsModel.get_convert_ids(search=search, conv_type=conv_type)
+    return {"success": True, "ids": ids}, 200
 
 
 @tags_blueprint.route("/admin/bulk_converts/scan", methods=["POST"])
@@ -517,6 +520,12 @@ def admin_bulk_clear_tags():
         details=f"clear all tags from {len(convert_ids)} convert(s), job={jid}",
     )
     return {"success": True, "job_id": jid}, 200
+
+
+@tags_blueprint.route("/get_all_tags_usage", methods=["GET"])
+def get_all_tags_usage():
+    result = TagsModel.get_all_tags_usage()
+    return {"tags": result}, 200
 
 
 @tags_blueprint.route("/extract_from_json", methods=["POST"])

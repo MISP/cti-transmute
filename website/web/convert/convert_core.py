@@ -5,7 +5,7 @@ import uuid
 from flask_login import AnonymousUserMixin, current_user
 from website.db_class.db import Comment, CommentReaction, Convert, ConvertHistory, ConvertReport
 from website.web import db
-from sqlalchemy import desc, asc, or_
+from sqlalchemy import desc, asc, or_, func
 import datetime
 import random
 import string
@@ -130,7 +130,7 @@ def list_all():
     return Convert.query.all()
 
 
-def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False):
+def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False, tag_names=None, vis_filter=None):
     """
     Return paginated conversion history with optional filter, sort and ownership filtering.
     - search_scope: 'all' | 'name' | 'description' | 'content'
@@ -181,6 +181,12 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
     if filter_type:
         query = query.filter(Convert.conversion_type == filter_type)
 
+    # Visibility filter (public / private)
+    if vis_filter == 'public':
+        query = query.filter(Convert.public == True)
+    elif vis_filter == 'private':
+        query = query.filter(Convert.public == False)
+
     # Convert only_mine to boolean
     only_mine_bool = str(only_mine).lower() in ['true', '1', 'yes', 'on']
 
@@ -208,6 +214,18 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
         query = query.order_by(asc(Convert.created_at))
     else:
         query = query.order_by(desc(Convert.created_at))
+
+    # Tag filter: convert must have ALL selected tags (AND logic)
+    if tag_names:
+        from website.db_class.db import ConvertTagAssociation, Tag as TagModel
+        for tag_name in tag_names:
+            subq = (
+                db.session.query(ConvertTagAssociation.convert_id)
+                .join(TagModel, ConvertTagAssociation.tag_id == TagModel.id)
+                .filter(func.lower(TagModel.name) == tag_name.lower())
+                .subquery()
+            )
+            query = query.filter(Convert.id.in_(subq))
 
     # Pagination
     return query.paginate(page=page, per_page=10)
