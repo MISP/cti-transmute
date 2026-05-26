@@ -127,10 +127,31 @@
             </div>
             {% endif %}
 
-            <!-- Theme toggle -->
-            <button class="top-nav-icon-btn" id="theme-toggle" aria-label="Toggle theme">
-                <i id="theme-icon" class="fas fa-sun"></i>
-            </button>
+            <!-- Theme picker -->
+            <div class="top-nav-dropdown" id="theme-dropdown">
+                <button class="top-nav-icon-btn top-nav-dropdown-btn" id="theme-toggle" aria-label="Choose theme">
+                    <i id="theme-icon" class="fas fa-sun"></i>
+                </button>
+                <div class="top-nav-dropdown-menu top-nav-dropdown-menu-right theme-picker-menu" id="theme-menu">
+                    <div class="theme-picker-label">Appearance</div>
+                    <button class="top-nav-dropdown-item theme-picker-item" data-theme="light">
+                        <i class="fas fa-sun theme-picker-icon"></i> Light
+                        <i class="fas fa-check theme-picker-check ms-auto"></i>
+                    </button>
+                    <button class="top-nav-dropdown-item theme-picker-item" data-theme="dark">
+                        <i class="fas fa-moon theme-picker-icon"></i> Dark
+                        <i class="fas fa-check theme-picker-check ms-auto"></i>
+                    </button>
+                    <button class="top-nav-dropdown-item theme-picker-item" data-theme="dusk">
+                        <i class="fas fa-star theme-picker-icon"></i> Dusk
+                        <i class="fas fa-check theme-picker-check ms-auto"></i>
+                    </button>
+                    <button class="top-nav-dropdown-item theme-picker-item" data-theme="ocean">
+                        <i class="fas fa-water theme-picker-icon"></i> Ocean
+                        <i class="fas fa-check theme-picker-check ms-auto"></i>
+                    </button>
+                </div>
+            </div>
 
             <!-- Mobile burger -->
             <button class="top-nav-icon-btn top-burger" id="mobileMenuBtn" aria-label="Menu">

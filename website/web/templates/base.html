@@ -9,8 +9,10 @@
 
     <script>
         (function () {
+            const THEMES = ['light', 'dark', 'dusk', 'ocean'];
             let t = localStorage.getItem('theme') ||
                 (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (!THEMES.includes(t)) t = 'light';
             document.documentElement.classList.add(t + '-mode');
         })();
     </script>
@@ -153,23 +155,55 @@
 
             (function () {
                 const html = document.documentElement;
-                const btn = document.getElementById('theme-toggle');
                 const icon = document.getElementById('theme-icon');
-                const saved = localStorage.getItem('theme') ||
+
+                const THEMES = ['light', 'dark', 'dusk', 'ocean'];
+                const ICONS  = {
+                    light:  'fas fa-sun',
+                    dark:   'fas fa-moon',
+                    dusk:   'fas fa-star',
+                    ocean:  'fas fa-water',
+                };
+
+                function applyTheme(t) {
+                    if (!THEMES.includes(t)) t = 'light';
+                    html.classList.remove(...THEMES.map(x => x + '-mode'));
+                    html.classList.add(t + '-mode');
+                    localStorage.setItem('theme', t);
+                    if (icon) icon.className = ICONS[t];
+                    // Update active state on menu items
+                    document.querySelectorAll('.theme-picker-item').forEach(el => {
+                        const isActive = el.dataset.theme === t;
+                        el.classList.toggle('active', isActive);
+                        const check = el.querySelector('.theme-picker-check');
+                        if (check) check.style.opacity = isActive ? '1' : '0';
+                    });
+                    // Notify other scripts (e.g. hljs in detail.html)
+                    html.dispatchEvent(new CustomEvent('themechange', { detail: { theme: t } }));
+                }
+
+                // Init
+                let saved = localStorage.getItem('theme') ||
                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                applyTheme(saved);
 
-                html.classList.remove('light-mode', 'dark-mode');
-                html.classList.add(saved + '-mode');
-                icon.className = saved === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-
-                btn.addEventListener('click', () => {
-                    const isDark = html.classList.contains('dark-mode');
-                    const newTheme = isDark ? 'light' : 'dark';
-                    html.classList.remove('light-mode', 'dark-mode');
-                    html.classList.add(newTheme + '-mode');
-                    localStorage.setItem('theme', newTheme);
-                    icon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-                });
+                // Wire up menu items (they may not exist yet if DOM not ready)
+                function wireMenu() {
+                    document.querySelectorAll('.theme-picker-item').forEach(el => {
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            applyTheme(el.dataset.theme);
+                            // Close the dropdown
+                            document.querySelectorAll('.top-nav-dropdown-menu.open')
+                                .forEach(m => m.classList.remove('open'));
+                        });
+                    });
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', wireMenu);
+                } else {
+                    wireMenu();
+                }
 
                 // Dropdowns
                 document.querySelectorAll('.top-nav-dropdown').forEach(dd => {

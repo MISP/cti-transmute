@@ -41,6 +41,50 @@
     html.dark-mode .pvt-search-icon { background: #1D1D20; border: 1px solid #343437; color: #94a3b8; }
     html.dark-mode .pvt-search-summary { background: #131314; color: #64748b; }
 
+    /* ── Dusk theme graph ── */
+    html.dusk-mode #graph-container,
+    html.dusk-mode #graph-container-output {
+        --pvt-bg: #1b1e30; --pvt-ui-bg: #272c45;
+        --pvt-bg-color-0: #1b1e30; --pvt-bg-color-1: #1e2136; --pvt-bg-color-2: #20243a;
+        --pvt-bg-color-3: #23283f; --pvt-bg-color-4: #272c45; --pvt-bg-color-5: #2c3150;
+        --pvt-bg-color-6: #323862; --pvt-bg-color-7: #414a7a; --pvt-bg-color-8: #515c90;
+        --pvt-border-color: #353c62; --pvt-text-color-5: #c0c8f0; --pvt-text-color-6: #eef0ff;
+        --pvt-graph-grid-color: #232841;
+        --pvt-graph-background-image: repeating-linear-gradient(0deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px);
+        --pvt-edge-label-color: #c0c8f0; --pvt-edge-label-bg: #2c3150;
+        --pvt-menu-bg-color: #2c3150; --pvt-tooltip-floating-bg-color: #414a7a; --pvt-sidebar-bg: #1b1e30;
+    }
+    html.dusk-mode .pvt-modal__body, html.dusk-mode .pvt-searchbox { background: #20243a; color: #eef0ff; }
+    html.dusk-mode .pvt-searchbox .search-container { background: #23283f; border-bottom: 1px solid #353c62; }
+    html.dusk-mode #pvt-search-input { background: transparent; color: #eef0ff; border: none; outline: none; }
+    html.dusk-mode #pvt-search-input::placeholder { color: #4e5680; }
+    html.dusk-mode .pvt-search-results { background: #20243a; color: #eef0ff; }
+    html.dusk-mode .pvt-search-hints { background: #1b1e30; border-top: 1px solid #353c62; color: #4e5680; }
+    html.dusk-mode .pvt-search-icon { background: #272c45; border: 1px solid #353c62; color: #9ba3c9; }
+    html.dusk-mode .pvt-search-summary { background: #20243a; color: #4e5680; }
+
+    /* ── Ocean theme graph ── */
+    html.ocean-mode #graph-container,
+    html.ocean-mode #graph-container-output {
+        --pvt-bg: #eef3fb; --pvt-ui-bg: #ffffff;
+        --pvt-bg-color-0: #eef3fb; --pvt-bg-color-1: #f4f8fe; --pvt-bg-color-2: #f0f5ff;
+        --pvt-bg-color-3: #e8effa; --pvt-bg-color-4: #dde8f5; --pvt-bg-color-5: #d0dff0;
+        --pvt-bg-color-6: #c2d4ea; --pvt-bg-color-7: #b0c6e2; --pvt-bg-color-8: #9db8da;
+        --pvt-border-color: #bdd0eb; --pvt-text-color-5: #1e3a5f; --pvt-text-color-6: #0f172a;
+        --pvt-graph-grid-color: #d8e8f4;
+        --pvt-graph-background-image: repeating-linear-gradient(0deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px);
+        --pvt-edge-label-color: #1e3a8a; --pvt-edge-label-bg: #dde8f5;
+        --pvt-menu-bg-color: #f4f8fe; --pvt-tooltip-floating-bg-color: #dde8f5; --pvt-sidebar-bg: #eef3fb;
+    }
+    html.ocean-mode .pvt-modal__body, html.ocean-mode .pvt-searchbox { background: #f4f8fe; color: #0f172a; }
+    html.ocean-mode .pvt-searchbox .search-container { background: #eef3fb; border-bottom: 1px solid #bdd0eb; }
+    html.ocean-mode #pvt-search-input { background: transparent; color: #0f172a; border: none; outline: none; }
+    html.ocean-mode #pvt-search-input::placeholder { color: #5b7a9d; }
+    html.ocean-mode .pvt-search-results { background: #f4f8fe; color: #0f172a; }
+    html.ocean-mode .pvt-search-hints { background: #eef3fb; border-top: 1px solid #bdd0eb; color: #5b7a9d; }
+    html.ocean-mode .pvt-search-icon { background: #dde8f5; border: 1px solid #bdd0eb; color: #1e3a5f; }
+    html.ocean-mode .pvt-search-summary { background: #f4f8fe; color: #5b7a9d; }
+
     /* Large-file notice (shown instead of syntax highlighting) */
     .hljs-size-notice {
         padding: 6px 14px;
@@ -730,16 +774,20 @@
     const CURRENT_USER_ID = {{ current_user.id if current_user.is_authenticated else 'null' }};
     const IS_ADMIN = {{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }};
 
-    function applyHljsTheme() {
-        const isDark = document.documentElement.classList.contains('dark-mode')
+    const _LIGHT_THEMES = ['light', 'ocean']
+    function applyHljsTheme(theme) {
+        const t = theme || ['light','dark','dusk','forest'].find(
+            x => document.documentElement.classList.contains(x + '-mode')
+        ) || 'light'
+        const isDark = !_LIGHT_THEMES.includes(t)
         document.getElementById('hljs-theme').href = isDark
             ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
             : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css'
     }
 
     applyHljsTheme()
-    document.getElementById('theme-toggle')?.addEventListener('click', () => {
-        setTimeout(() => { applyHljsTheme(); highlightAll() }, 50)
+    document.documentElement.addEventListener('themechange', (e) => {
+        setTimeout(() => { applyHljsTheme(e.detail?.theme); highlightAll() }, 50)
     })
 
     // Raw text lives outside Vue to avoid reactivity overhead on large strings

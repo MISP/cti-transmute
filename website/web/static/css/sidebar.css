@@ -425,6 +425,15 @@ html.dark-mode .nav-sd-admin-tag {
   background: rgba(59, 130, 246, 0.15);
 }
 
+html.dusk-mode .nav-sd-admin-tag {
+  background: rgba(129, 140, 248, 0.15);
+}
+
+html.ocean-mode .nav-sd-admin-tag {
+  background: rgba(30, 58, 138, 0.10);
+  color: #1e3a8a;
+}
+
 /* Keyboard focus on convert items */
 .nav-sd-item:focus,
 .nav-sd-footer:focus {
