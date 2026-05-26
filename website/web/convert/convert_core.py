@@ -3,7 +3,7 @@ import json
 from sqlite3 import IntegrityError
 import uuid
 from flask_login import AnonymousUserMixin, current_user
-from website.db_class.db import Comment, CommentReaction, Convert, ConvertHistory, ConvertReport
+from website.db_class.db import Comment, CommentReaction, Convert, ConvertHistory, ConvertReport, GraphConfig
 from website.web import db
 from sqlalchemy import desc, asc, or_, func
 import datetime
@@ -877,3 +877,60 @@ def delete_report(report_id):
     if report:
         db.session.delete(report)
         db.session.commit()
+
+###################################
+#   Graph configs                 #
+###################################
+
+def get_graph_configs(user_id=None, is_admin=False):
+    query = GraphConfig.query.filter(GraphConfig.is_active == True)
+    if not is_admin:
+        if user_id:
+            query = query.filter(
+                or_(GraphConfig.is_default == True, GraphConfig.created_by == user_id)
+            )
+        else:
+            query = query.filter(GraphConfig.is_default == True)
+    return query.order_by(GraphConfig.is_default.desc(), GraphConfig.created_at.desc()).all()
+
+
+def save_graph_config(name, config_json, created_by):
+    try:
+        now = datetime.datetime.utcnow()
+        cfg = GraphConfig(
+            uuid=str(uuid.uuid4()),
+            name=name.strip()[:100],
+            config_json=config_json,
+            created_by=created_by,
+            is_active=True,
+            is_default=False,
+            created_at=now,
+            updated_at=now,
+        )
+        db.session.add(cfg)
+        db.session.commit()
+        return cfg, None
+    except Exception as e:
+        db.session.rollback()
+        return None, str(e)
+
+
+def delete_graph_config(config_id, user_id, is_admin):
+    cfg = GraphConfig.query.get(config_id)
+    if not cfg:
+        return False, "Not found"
+    if cfg.is_default:
+        return False, "Cannot delete system defaults"
+    if not is_admin and cfg.created_by != user_id:
+        return False, "Forbidden"
+    try:
+        if is_admin:
+            db.session.delete(cfg)
+        else:
+            cfg.is_active = False
+            cfg.updated_at = datetime.datetime.utcnow()
+        db.session.commit()
+        return True, None
+    except Exception as e:
+        db.session.rollback()
+        return False, str(e)

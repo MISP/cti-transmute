@@ -514,6 +514,9 @@ function _initViewer(containerId, jsonText, format) {
 //  Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
+let _convertData = null
+let _rendered = false
+
 /** Switch the visible graph side. Safe to call from onclick attributes. */
 export function showGraphSide(side) {
     const inEl = document.getElementById('graph-container')
@@ -527,6 +530,43 @@ export function showGraphSide(side) {
     if (btnOut) btnOut.className = 'btn btn-sm ' + (side === 'output' ? 'btn-primary' : 'btn-outline-secondary')
 }
 
+/** Deep-merge a config patch into GRAPH_CONFIG. */
+export function applyConfig(patch) {
+    if (patch.maxNodes !== undefined) GRAPH_CONFIG.maxNodes = +patch.maxNodes || GRAPH_CONFIG.maxNodes
+    if (patch.defaultSide !== undefined) GRAPH_CONFIG.defaultSide = patch.defaultSide
+    if (patch.groupingThreshold !== undefined) GRAPH_CONFIG.groupingThreshold = +patch.groupingThreshold || GRAPH_CONFIG.groupingThreshold
+    if (patch.layout?.type !== undefined) GRAPH_CONFIG.layout.type = patch.layout.type
+    if (patch.pivotickUI?.mode !== undefined) GRAPH_CONFIG.pivotickUI.mode = patch.pivotickUI.mode
+    if (patch.pivotickUI?.sidebar?.collapsed !== undefined) GRAPH_CONFIG.pivotickUI.sidebar.collapsed = patch.pivotickUI.sidebar.collapsed
+    if (patch.stixStyles) {
+        for (const [k, v] of Object.entries(patch.stixStyles)) {
+            GRAPH_CONFIG.stixStyles[k] = { ...(GRAPH_CONFIG.stixStyles[k] ?? {}), ...v }
+        }
+    }
+    if (patch.mispStyles) {
+        for (const [k, v] of Object.entries(patch.mispStyles)) {
+            GRAPH_CONFIG.mispStyles[k] = { ...(GRAPH_CONFIG.mispStyles[k] ?? {}), ...v }
+        }
+    }
+    if (Array.isArray(patch.mispNetworkTypes)) GRAPH_CONFIG.mispNetworkTypes = new Set(patch.mispNetworkTypes)
+    if (Array.isArray(patch.mispPayloadTypes)) GRAPH_CONFIG.mispPayloadTypes = new Set(patch.mispPayloadTypes)
+}
+
+/** Re-render both graph sides with the current GRAPH_CONFIG (call after applyConfig). */
+export function reRenderGraph() {
+    if (!_convertData) return
+    _rendered = false
+    const inEl = document.getElementById('graph-container')
+    const outEl = document.getElementById('graph-container-output')
+    if (inEl) _showSpinner('graph-container', 'Building graph…')
+    if (outEl) _showSpinner('graph-container-output', 'Building graph…')
+    // Remove any large-graph warning banners from previous render
+    document.querySelectorAll('.alert.alert-warning').forEach(el => {
+        if (el.textContent.includes('most connected nodes')) el.remove()
+    })
+    window.onGraphTabClick()
+}
+
 /**
  * Call this once the convert data is available (after the API response).
  * It registers the lazy-render hook so the graph only builds when the tab
@@ -535,20 +575,21 @@ export function showGraphSide(side) {
  * @param {object} convertData  — the object returned by /convert/get_convert
  */
 export function initConvertGraph(convertData) {
-    let rendered = false
+    _convertData = convertData
+    _rendered = false
     const isStixToMisp = convertData.conversion_type === 'STIX_TO_MISP'
 
     window.onGraphTabClick = function () {
-        if (rendered) return
-        rendered = true
+        if (_rendered) return
+        _rendered = true
         _showSpinner('graph-container', 'Building graph…')
         setTimeout(() => {
-            _initViewer('graph-container', convertData.input_text, isStixToMisp ? 'stix' : 'misp')
-            _initViewer('graph-container-output', convertData.output_text, isStixToMisp ? 'misp' : 'stix')
+            _initViewer('graph-container', _convertData.input_text, isStixToMisp ? 'stix' : 'misp')
+            _initViewer('graph-container-output', _convertData.output_text, isStixToMisp ? 'misp' : 'stix')
             showGraphSide(GRAPH_CONFIG.defaultSide)
         }, 50)
     }
 
-    // Expose showGraphSide globally for the onclick= attributes in the template
+    // Expose globals for onclick= attributes in the template
     window.showGraphSide = showGraphSide
 }

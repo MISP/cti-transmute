@@ -422,6 +422,40 @@ class Tag(db.Model):
         }
 
 
+class GraphConfig(db.Model):
+    __tablename__ = "graph_config"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    uuid       = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    name       = db.Column(db.String(100), nullable=False)
+    config_json = db.Column(db.Text, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
+    is_active  = db.Column(db.Boolean, default=True, nullable=False)
+    is_default = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False)
+
+    creator = db.relationship('User', backref=db.backref('graph_configs', lazy='dynamic'))
+
+    def to_json(self, current_user_id=None, is_admin=False):
+        return {
+            "id":         self.id,
+            "uuid":       self.uuid,
+            "name":       self.name,
+            "config_json": self.config_json,
+            "created_by": self.created_by,
+            "author":     self.creator.first_name if self.creator else "System",
+            "is_default": self.is_default,
+            "is_active":  self.is_active,
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "can_delete": (
+                is_admin or
+                (current_user_id and self.created_by == current_user_id and not self.is_default)
+            ),
+            "can_hard_delete": is_admin,
+        }
+
+
 class ConvertTagAssociation(db.Model):
     __tablename__ = 'convert_tag_association'
 

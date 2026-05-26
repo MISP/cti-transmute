@@ -386,6 +386,10 @@
                                     <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
                                     <template v-else>STIX Output</template>
                                 </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="openGraphConfigModal()" title="Configure graph display">
+                                    <i class="fas fa-sliders"></i>
+                                </button>
                             </div>
                         </div>
                         <!-- graph-container starts with a spinner, replaced once Pivotick renders -->
@@ -717,7 +721,9 @@
     import { create_message, message_list } from '/static/js/toaster.js';
     import TagInput from '/static/js/tags/tagInput.js';
     import { initConvertGraph, showGraphSide } from '/static/js/graph/convertGraph.js';
+    import { openGraphConfigModal } from '/static/js/graph/graphConfigModal.js';
     window.showGraphSide = showGraphSide;
+    window.openGraphConfigModal = openGraphConfigModal;
 
     const convert_id = document.getElementById('convert_id').dataset.convertId;
     const IS_AUTH = {{ 'true' if current_user.is_authenticated else 'false' }};

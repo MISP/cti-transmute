@@ -1396,3 +1396,48 @@ def admin_get_comments():
         "list": items,
         "total_page": pagination.pages
     }, 200
+
+###################################
+#   Graph configs                 #
+###################################
+
+@convert_blueprint.route("/graph_config/list", methods=["GET"])
+@login_required
+def graph_config_list():
+    configs = ConvertModel.get_graph_configs(user_id=current_user.id, is_admin=current_user.is_admin())
+    is_admin = current_user.is_admin()
+    return {"success": True, "list": [c.to_json(current_user_id=current_user.id, is_admin=is_admin) for c in configs]}, 200
+
+
+@convert_blueprint.route("/graph_config/save", methods=["POST"])
+@login_required
+def graph_config_save():
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    config_json = data.get('config_json') or '{}'
+    if not name:
+        return {"success": False, "message": "Name required", "toast_class": "danger"}, 400
+    try:
+        json.loads(config_json)
+    except Exception:
+        return {"success": False, "message": "Invalid JSON", "toast_class": "danger"}, 400
+    cfg, err = ConvertModel.save_graph_config(name, config_json, current_user.id)
+    if err:
+        return {"success": False, "message": err, "toast_class": "danger"}, 500
+    AccountModel.create_system_log("graph_config_saved", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=cfg.id, target_name=cfg.name)
+    return {"success": True, "message": "Config saved", "toast_class": "success", "config": cfg.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())}, 201
+
+
+@convert_blueprint.route("/graph_config/delete", methods=["POST"])
+@login_required
+def graph_config_delete():
+    data = request.get_json(silent=True) or {}
+    config_id = data.get('id')
+    if not config_id:
+        return {"success": False, "message": "ID required", "toast_class": "danger"}, 400
+    ok, err = ConvertModel.delete_graph_config(config_id, current_user.id, current_user.is_admin())
+    if not ok:
+        code = 403 if err == "Forbidden" else 404
+        return {"success": False, "message": err, "toast_class": "danger"}, code
+    AccountModel.create_system_log("graph_config_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=config_id, target_name="")
+    return {"success": True, "message": "Config deleted", "toast_class": "success"}, 200
