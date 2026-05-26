@@ -31,40 +31,45 @@ A video walkthrough of CTI-Transmute is available on YouTube. It covers the main
 
 ## Installation
 
-To run your own CTI-Transmute service, you will need:
+### Prerequisites
 
 - Python 3.10 or higher
-- A recent version of `uv` - Installation instruction available [here](https://docs.astral.sh/uv/getting-started/installation/)
-- PostgreSQL (for the database)
+- A recent version of `uv` — installation instructions [here](https://docs.astral.sh/uv/getting-started/installation/)
+- PostgreSQL (the default credentials are `cti_user / cti_pass` on `localhost:5432/cti_db`)
 
-Then the process is straight-forward:
+### Fresh install on a new machine
 
 ```bash
-git clone https://github.com/MISP/cti-transmute.git
+# 1. Clone with submodules (misp-taxonomies, misp-galaxy, pivotick)
+git clone --recurse-submodules https://github.com/MISP/cti-transmute.git
 cd cti-transmute
 
-uv sync
+# 2. One-shot init: install deps + create DB + run migrations
+uv run manage init
+
+# 3. Start
+uv run manage start
 ```
+
+> **Note:** `uv run manage init` tries to create the PostgreSQL role and database automatically (connecting as the `postgres` superuser). If that fails due to permissions, create them manually first:
+> ```sql
+> CREATE ROLE cti_user WITH LOGIN PASSWORD 'cti_pass';
+> CREATE DATABASE cti_db OWNER cti_user;
+> ```
+> Then re-run `uv run manage init`.
 
 ### Managing the service
 
-CTI-Transmute ships with a `manage` script that covers day-to-day operations:
+CTI-Transmute ships with a `manage` script that covers all day-to-day operations:
 
 ```bash
-# Start the website
-uv run manage start
-
-# Pull latest code and sync dependencies
-uv run manage update
-
-# Backup the PostgreSQL database
-uv run manage backup
-
-# Full production deployment (backup + update + start)
-uv run manage deploy
-
-# Show all available commands
-uv run manage help
+uv run manage init     # First-time setup (submodules + deps + DB + migrations)
+uv run manage start    # Start the website
+uv run manage update   # Pull latest code + sync deps + run DB migrations
+uv run manage backup   # Backup the PostgreSQL database
+uv run manage deploy   # Full production deployment: backup → update → start
+uv run manage db       # Run flask db upgrade (or: db migrate, db downgrade…)
+uv run manage help     # Show all commands
 ```
 
 **Daily use** — just start the app:
@@ -73,11 +78,17 @@ uv run manage help
 uv run manage start
 ```
 
-**After pulling new code:**
+**After pulling new code** (migrations run automatically):
 
 ```bash
 uv run manage update
 uv run manage start
+```
+
+**Production deployment** (backup first, then update and restart):
+
+```bash
+uv run manage deploy
 ```
 
 ## Query Examples

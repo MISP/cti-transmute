@@ -136,6 +136,29 @@ def admin_delete(tag_id):
     return {"success": False, "message": err or "Error", "toast_class": "danger"}, 404
 
 
+@tags_blueprint.route("/admin/import_galaxies", methods=["POST"])
+@login_required
+def admin_import_galaxies():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    imported, skipped, errors = TagsModel.import_galaxies(admin_user_id=current_user.id)
+    if imported or skipped:
+        AccountModel.create_system_log(
+            "tags_galaxy_imported",
+            actor_id=current_user.id, actor_name=current_user.first_name,
+            target_type="tag",
+            details=f"imported {imported}, skipped {skipped}" + (f", {len(errors)} error(s)" if errors else ""),
+        )
+    return {
+        "success": True,
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors[:10],
+        "message": f"Imported {imported} new galaxy tags, skipped {skipped} existing",
+        "toast_class": "success" if not errors else "warning",
+    }, 200
+
+
 @tags_blueprint.route("/admin/import_taxonomies", methods=["POST"])
 @login_required
 def admin_import_taxonomies():

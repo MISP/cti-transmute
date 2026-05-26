@@ -6,10 +6,12 @@ Usage:
     uv run manage <command>
 
 Commands:
+    init      First-time setup on a new machine (submodules + deps + DB)
     start     Start the website
-    update    Pull latest code + rebuild assets if needed
+    update    Pull latest code + sync deps + run DB migrations
     backup    Backup the PostgreSQL database
     deploy    Full deployment: backup + update + start
+    db        Run Flask-Migrate commands (upgrade by default)
     help      Show this help message
 """
 
@@ -84,10 +86,14 @@ def cmd_help() -> None:
 
 {W}Commands:{R}
 
+  {G}init{R}      {D}First-time setup on a new machine:{R}
+              {D}  init submodules → sync deps → create DB → run migrations{R}
+              {D}→ Run once right after cloning the repo{R}
+
   {G}start{R}     {D}Start the website{R}
               {D}→ Use this every time you want to run the app{R}
 
-  {G}update{R}    {D}Pull latest code from git + sync dependencies{R}
+  {G}update{R}    {D}Pull latest code from git + sync deps + run DB migrations{R}
               {D}→ Use this after someone pushed new code{R}
 
   {G}backup{R}    {D}Backup the PostgreSQL database to backups/{R}
@@ -106,6 +112,12 @@ def cmd_help() -> None:
 
 {W}Examples:{R}
 
+  {D}# Fresh install on a new machine{R}
+  {G}git clone --recurse-submodules https://github.com/MISP/cti-transmute.git{R}
+  {G}cd cti-transmute{R}
+  {G}uv run manage init{R}
+  {G}uv run manage start{R}
+
   {D}# Daily use — just start the app{R}
   {G}uv run manage start{R}
 
@@ -118,6 +130,72 @@ def cmd_help() -> None:
 
 {W}Project root:{R} {D}{ROOT}{R}
 """)
+
+
+def _run_db_upgrade() -> None:
+    """Run flask db upgrade in the correct environment."""
+    env = os.environ.copy()
+    env["TRANSMUTE_HOME"] = str(ROOT)
+    env["FLASK_APP"] = "website.web"
+    cmd = ["uv", "run", "flask", "--app", "website.web", "db", "upgrade"]
+    info(f"$ {' '.join(cmd)}")
+    result = subprocess.run(cmd, cwd=ROOT, env=env)
+    if result.returncode != 0:
+        error("flask db upgrade failed")
+        sys.exit(result.returncode)
+    ok("Database schema up to date")
+
+
+def cmd_init() -> None:
+    """First-time setup on a new machine."""
+    header("Initialising CTI-Transmute (first-time setup)")
+
+    info("Initialising git submodules…")
+    run(["git", "submodule", "update", "--init", "--recursive"])
+    ok("Submodules ready")
+
+    info("Syncing Python dependencies…")
+    run(["uv", "sync"])
+    ok("Dependencies installed")
+
+    # Try to create the PostgreSQL user and database if they don't exist yet.
+    # Best-effort — may fail if the OS user has no PostgreSQL superuser rights.
+    header("Setting up PostgreSQL database")
+    info(f"Attempting to create role '{DB_USER}' and database '{DB_NAME}'…")
+    create_role_sql  = f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='{DB_USER}') THEN CREATE ROLE {DB_USER} WITH LOGIN PASSWORD '{DB_PASSWORD}'; END IF; END $$;"
+    create_db_sql    = f"SELECT 'ok' FROM pg_database WHERE datname='{DB_NAME}'"
+
+    r1 = subprocess.run(
+        ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-c", create_role_sql],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if r1.returncode == 0:
+        ok(f"Role '{DB_USER}' ensured")
+        # Check if database exists, create if not
+        r2 = subprocess.run(
+            ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-tAc", create_db_sql],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+        if r2.stdout.strip() != "ok":
+            subprocess.run(
+                ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-c",
+                 f"CREATE DATABASE {DB_NAME} OWNER {DB_USER};"],
+                cwd=ROOT, check=True,
+            )
+            ok(f"Database '{DB_NAME}' created")
+        else:
+            ok(f"Database '{DB_NAME}' already exists")
+    else:
+        info("Could not connect as postgres superuser — skipping automatic DB creation.")
+        info(f"Create the role and database manually before continuing:")
+        print(f"\n    psql -U postgres -c \"CREATE ROLE {DB_USER} WITH LOGIN PASSWORD '{DB_PASSWORD}';\"")
+        print(f"    psql -U postgres -c \"CREATE DATABASE {DB_NAME} OWNER {DB_USER};\"\n")
+
+    info("Running database migrations…")
+    _run_db_upgrade()
+
+    header("Init complete")
+    ok("Everything is ready. Run:  uv run manage start")
 
 
 def cmd_start() -> None:
@@ -177,6 +255,9 @@ def cmd_update() -> None:
     run(["uv", "sync"])
     ok("Dependencies up to date")
 
+    info("Running database migrations…")
+    _run_db_upgrade()
+
 
 def cmd_deploy() -> None:
     cmd_backup()
@@ -205,6 +286,7 @@ def cmd_db() -> None:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 COMMANDS = {
+    "init":   cmd_init,
     "start":  cmd_start,
     "backup": cmd_backup,
     "update": cmd_update,

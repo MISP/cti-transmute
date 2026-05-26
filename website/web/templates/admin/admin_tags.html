@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div>
+<div v-cloak>
   <div class="list-header">
     <div class="home-hero-badge"><i class="fas fa-tags"></i> Admin</div>
     <h1 class="list-title">Tag Management</h1>
@@ -20,6 +20,7 @@
       <select class="form-select form-select-sm tags-filter-select" v-model="filterSource" @change="resetPage">
         <option value="">All sources</option>
         <option value="Taxonomy">Taxonomy</option>
+        <option value="Galaxy">Galaxy</option>
         <option value="Manual">Manual</option>
         <option value="Vulnerability">Vulnerability</option>
       </select>
@@ -40,10 +41,16 @@
           <button class="btn btn-sm btn-outline-secondary" :class="{active:viewMode==='grouped'}" @click="switchGrouped()"               title="Group by namespace"><i class="fas fa-layer-group"></i></button>
         </div>
         <button class="btn btn-sm btn-outline-success" @click="openCreate()"><i class="fas fa-plus me-1"></i>New Tag</button>
-        <button class="btn btn-sm btn-outline-secondary" @click="importTaxonomies" :disabled="importing">
-          <span v-if="importing"><i class="fas fa-spinner fa-spin me-1"></i>Importing…</span>
-          <span v-else><i class="fas fa-download me-1"></i>Import</span>
-        </button>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-sm btn-outline-secondary" @click="importTaxonomies" :disabled="importing" title="Import MISP Taxonomies">
+            <span v-if="importing && importingSource==='taxonomy'"><i class="fas fa-spinner fa-spin me-1"></i>Importing…</span>
+            <span v-else><i class="fas fa-download me-1"></i>Taxonomies</span>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" @click="importGalaxies" :disabled="importing" title="Import MISP Galaxies">
+            <span v-if="importing && importingSource==='galaxy'"><i class="fas fa-spinner fa-spin me-1"></i>Importing…</span>
+            <span v-else><i class="fas fa-globe me-1"></i>Galaxies</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -205,14 +212,14 @@
           <label class="tag-modal-label">Preview</label>
           <div class="tag-preview-box"><tag-chip :tag="editForm"></tag-chip></div>
         </div>
-        <div v-if="editForm.source==='Taxonomy'" class="alert alert-info py-2 px-3 mb-3" style="font-size:0.82rem;">
-          <i class="fas fa-info-circle me-1"></i>Taxonomy tag — name is read-only.
+        <div v-if="editForm.source==='Taxonomy' || editForm.source==='Galaxy'" class="alert alert-info py-2 px-3 mb-3" style="font-size:0.82rem;">
+          <i class="fas fa-info-circle me-1"></i>[[ editForm.source ]] tag — name is read-only.
         </div>
         <div class="row g-3">
           <div class="col-12">
             <label class="tag-modal-label">Name</label>
             <input type="text" class="form-control tag-modal-input" v-model="editForm.name"
-              :disabled="editForm.source==='Taxonomy'" :class="{'is-invalid':editErrors.name}">
+              :disabled="editForm.source==='Taxonomy' || editForm.source==='Galaxy'" :class="{'is-invalid':editErrors.name}">
             <div class="invalid-feedback">[[ editErrors.name ]]</div>
           </div>
           <div class="col-12">
@@ -257,6 +264,7 @@
             <select class="form-select tag-modal-input" v-model="editForm.source">
               <option value="Manual">Manual</option>
               <option value="Taxonomy">Taxonomy</option>
+              <option value="Galaxy">Galaxy</option>
               <option value="Vulnerability">Vulnerability</option>
             </select>
           </div>
@@ -272,6 +280,17 @@
             <div class="d-flex gap-3 align-items-center" style="height:36px;">
               <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_active"> Active</label>
               <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_approved_by_admin"> Approved</label>
+            </div>
+          </div>
+          <!-- Galaxy metadata (read-only) -->
+          <div v-if="editForm.galaxy_meta && Object.keys(editForm.galaxy_meta).length" class="col-12">
+            <label class="tag-modal-label">Galaxy metadata</label>
+            <div style="background:var(--bg-2);border-radius:var(--radius-sm);padding:8px 10px;font-size:0.75rem;max-height:120px;overflow-y:auto;font-family:monospace;color:var(--text-2);">
+              <div v-for="(v, k) in editForm.galaxy_meta" :key="k" class="mb-1">
+                <span style="color:var(--accent);font-weight:600;">[[ k ]]:</span>
+                <span v-if="Array.isArray(v)"> [[ v.join(', ') ]]</span>
+                <span v-else> [[ v ]]</span>
+              </div>
             </div>
           </div>
         </div>
@@ -323,6 +342,7 @@ createApp({
     const tags       = ref([])
     const loading    = ref(true)
     const importing  = ref(false)
+    const importingSource = ref('')
     const page       = ref(1)
     const total_page = ref(1)
     const search     = ref('')
@@ -468,6 +488,7 @@ createApp({
     async function importTaxonomies() {
       if (!confirm('Import all MISP taxonomy tags? Existing tags will be skipped.')) return
       importing.value = true
+      importingSource.value = 'taxonomy'
       try {
         const res = await fetch('/tags/admin/import_taxonomies',{method:'POST',headers:{'X-CSRFToken':CSRF()}})
         const data = await res.json()
@@ -476,6 +497,23 @@ createApp({
         resetPage()
       } catch { create_message('Import failed','danger') }
       importing.value = false
+      importingSource.value = ''
+    }
+
+    /* ── Import galaxies ─────────────── */
+    async function importGalaxies() {
+      if (!confirm('Import all MISP Galaxy tags (~55 000 entries)?\nThis may take a minute. Existing tags will be skipped.')) return
+      importing.value = true
+      importingSource.value = 'galaxy'
+      try {
+        const res = await fetch('/tags/admin/import_galaxies',{method:'POST',headers:{'X-CSRFToken':CSRF()}})
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.errors?.length) data.errors.forEach(e=>create_message(e,'warning'))
+        resetPage()
+      } catch { create_message('Import failed','danger') }
+      importing.value = false
+      importingSource.value = ''
     }
 
     /* ── Edit modal ──────────────────── */
@@ -488,7 +526,7 @@ createApp({
 
     function openEdit(tag) {
       editTarget.value = tag
-      editForm.value = { name:tag.name, description:tag.description||'', color:tag.color||'#6366f1', icon:tag.icon||'', source:tag.source, visibility:tag.visibility, is_active:tag.is_active, is_approved_by_admin:tag.is_approved_by_admin }
+      editForm.value = { name:tag.name, description:tag.description||'', color:tag.color||'#6366f1', icon:tag.icon||'', source:tag.source, visibility:tag.visibility, is_active:tag.is_active, is_approved_by_admin:tag.is_approved_by_admin, galaxy_meta:tag.galaxy_meta||null }
       editErrors.value = {}
       editModalInst?.show()
     }
@@ -542,14 +580,16 @@ createApp({
 
     /* ── Style helpers ───────────────── */
     function sourceStyle(s) {
-      if (s==='Taxonomy')     return 'background:rgba(37,99,235,0.12);color:var(--accent)'
-      if (s==='Manual')       return 'background:rgba(100,116,139,0.12);color:var(--text-2)'
+      if (s==='Taxonomy')      return 'background:rgba(37,99,235,0.12);color:var(--accent)'
+      if (s==='Galaxy')        return 'background:rgba(124,58,237,0.12);color:#7c3aed'
+      if (s==='Manual')        return 'background:rgba(100,116,139,0.12);color:var(--text-2)'
       if (s==='Vulnerability') return 'background:rgba(239,68,68,0.12);color:var(--danger)'
       return 'background:rgba(100,116,139,0.08);color:var(--text-3)'
     }
     function sourceIcon(s) {
-      if (s==='Taxonomy')     return 'fas fa-sitemap'
-      if (s==='Manual')       return 'fas fa-pen'
+      if (s==='Taxonomy')      return 'fas fa-sitemap'
+      if (s==='Galaxy')        return 'fas fa-globe'
+      if (s==='Manual')        return 'fas fa-pen'
       if (s==='Vulnerability') return 'fas fa-bug'
       return 'fas fa-tag'
     }
@@ -567,7 +607,7 @@ createApp({
     })
 
     return {
-      tags, loading, importing, page, total_page,
+      tags, loading, importing, importingSource, page, total_page,
       search, filterSource, filterApproved, filterVisibility, perPage, viewMode,
       selectedIds, allSelected, someSelected,
       hasPendingSelected, pendingSelectedCount,
@@ -581,7 +621,7 @@ createApp({
       toggleSelect, toggleSelectAll, toggleSelectGroup, toggleGroup,
       groupAllSelected, groupSomeSelected,
       approveSingle, toggleActive, toggleVisibility, deleteSingle,
-      bulkAction, bulkApprovePending, importTaxonomies,
+      bulkAction, bulkApprovePending, importTaxonomies, importGalaxies,
       openEdit, saveEdit,
       openCreate, onTagCreated, onToast,
       sourceStyle, sourceIcon, hlNs,

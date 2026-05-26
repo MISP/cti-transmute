@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import json
 import uuid
 from pathlib import Path
@@ -9,6 +10,14 @@ from website.db_class.db import Convert, ConvertTagAssociation, Tag
 from website.web import db
 
 VENDOR_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / "misp-taxonomies"
+GALAXY_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / "misp-galaxy"
+
+
+def _galaxy_color(cluster_type: str) -> str:
+    """Generate a stable, visually distinct color from the cluster type name."""
+    h = int(hashlib.md5(cluster_type.encode()).hexdigest()[:6], 16)
+    hue = h % 360
+    return f"hsl({hue},55%,45%)"
 
 
 def get_tags_page(page, source=None, visibility_filter=None, search=None,
@@ -79,8 +88,8 @@ def edit_tag(tag_id, current_user_id, is_admin, **kwargs):
         return None, "Tag not found"
     if not is_admin and tag.created_by != current_user_id:
         return None, "Forbidden"
-    if not is_admin and tag.source == "Taxonomy":
-        return None, "Cannot edit taxonomy tags"
+    if not is_admin and tag.source in ("Taxonomy", "Galaxy"):
+        return None, "Cannot edit taxonomy/galaxy tags"
 
     editable = ["description", "color", "icon"]
     if is_admin:
@@ -276,6 +285,108 @@ def import_taxonomies(admin_user_id, vendor_path=None):
     except Exception as e:
         db.session.rollback()
         return 0, 0, [str(e)]
+
+    return imported, skipped, errors
+
+
+def import_galaxies(admin_user_id, vendor_path=None, batch_size=500):
+    """
+    Walk vendor/misp-galaxy/clusters and upsert galaxy tags into the DB.
+    Tag name format: misp-galaxy:<cluster-type>="<entry-value>"
+    Returns (imported_count, skipped_count, errors_list).
+    """
+    path = Path(vendor_path) if vendor_path else GALAXY_PATH
+    clusters_dir = path / "clusters"
+    galaxies_dir = path / "galaxies"
+
+    if not clusters_dir.exists():
+        return 0, 0, [f"Galaxy clusters directory not found: {clusters_dir}"]
+
+    # Build a colour lookup from galaxies/<name>.json (icon field only, no colour)
+    galaxy_meta_map: dict[str, dict] = {}
+    if galaxies_dir.exists():
+        for gf in galaxies_dir.glob("*.json"):
+            try:
+                gd = json.loads(gf.read_text(encoding="utf-8"))
+                galaxy_meta_map[gd.get("type", "")] = {
+                    "icon": gd.get("icon"),
+                    "description": gd.get("description"),
+                }
+            except Exception:
+                pass
+
+    imported = 0
+    skipped = 0
+    errors = []
+    now = datetime.datetime.utcnow()
+    batch_count = 0
+
+    # Pre-load existing galaxy tag names in a set for fast duplicate check
+    existing_names: set[str] = {
+        r[0] for r in db.session.query(Tag.name).filter(Tag.source == "Galaxy").all()
+    }
+
+    for cluster_file in sorted(clusters_dir.glob("*.json")):
+        try:
+            data = json.loads(cluster_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as e:
+            errors.append(f"{cluster_file.stem}: {e}")
+            continue
+
+        cluster_type = data.get("type", cluster_file.stem)
+        gmeta = galaxy_meta_map.get(cluster_type, {})
+        color = _galaxy_color(cluster_type)
+        icon = gmeta.get("icon")
+
+        for entry in data.get("values", []):
+            entry_value = entry.get("value", "").strip()
+            if not entry_value:
+                continue
+
+            tag_name = f'misp-galaxy:{cluster_type}="{entry_value}"'
+
+            if tag_name in existing_names:
+                skipped += 1
+                continue
+
+            existing_names.add(tag_name)
+            description = entry.get("description") or gmeta.get("description") or ""
+            meta = entry.get("meta") or {}
+
+            db.session.add(Tag(
+                uuid=str(uuid.uuid4()),
+                name=tag_name,
+                description=description[:2000] if description else None,
+                color=color,
+                icon=icon,
+                source="Galaxy",
+                created_by=admin_user_id,
+                visibility="public",
+                is_active=True,
+                is_approved_by_admin=True,
+                external_id=cluster_type,
+                galaxy_meta=meta if meta else None,
+                created_at=now,
+                updated_at=now,
+            ))
+            imported += 1
+            batch_count += 1
+
+            if batch_count >= batch_size:
+                try:
+                    db.session.commit()
+                    batch_count = 0
+                except Exception as e:
+                    db.session.rollback()
+                    return imported - batch_size, skipped, [str(e)]
+
+    # Final flush
+    if batch_count > 0:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return imported - batch_count, skipped, [str(e)]
 
     return imported, skipped, errors
 

@@ -4,3 +4,6 @@
 [submodule "vendor/misp-taxonomies"]
 	path = vendor/misp-taxonomies
 	url = https://github.com/MISP/misp-taxonomies.git
+[submodule "vendor/misp-galaxy"]
+	path = vendor/misp-galaxy
+	url = https://github.com/MISP/misp-galaxy.git
