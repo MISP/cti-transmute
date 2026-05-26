@@ -6,25 +6,15 @@
 {% block content %}
 <div v-cloak>
 
-    <!-- Hero header -->
-    <div class="history-hero mb-4">
-        <div class="history-hero-left">
-            <div class="history-hero-icon">
-                <i class="fas fa-clock-rotate-left"></i>
-            </div>
-            <div>
-                <h1 class="history-hero-title">Conversion History</h1>
-                <p class="history-hero-sub">Browse and manage all past conversions. Filter by type, date, tags or search inside JSON content.</p>
-            </div>
+    <!-- Header -->
+    <div class="list-header">
+        <div class="home-hero-badge">
+            <i class="fas fa-clock-rotate-left"></i> History
         </div>
-        <div class="history-hero-actions">
-            <a href="/convert/misp_to_stix" class="history-new-btn">
-                <i class="fas fa-plus" style="font-size:0.7rem;"></i> MISP → STIX
-            </a>
-            <a href="/convert/stix_to_misp" class="history-new-btn primary">
-                <i class="fas fa-plus" style="font-size:0.7rem;"></i> STIX → MISP
-            </a>
-        </div>
+        <h1 class="list-title">Conversion History</h1>
+        <p class="list-subtitle">
+            Browse and manage all past conversions. Filter by type, date, tags or search inside JSON content.
+        </p>
     </div>
 
     <!-- Filters panel -->
@@ -205,8 +195,14 @@
         </div>
     </div>
 
+    
     <!-- List -->
     <div v-else v-cloak>
+        <!-- Pagination -->
+        <app-pagination v-if="convert_history.length > 0"
+            :page="current_page" :total="total_pages"
+            @change="fetchConvertHistory" class="mb-4">
+        </app-pagination>
         <div v-if="convert_history.length > 0">
 
             <div v-for="item in convert_history" :key="item.id" class="history-card"

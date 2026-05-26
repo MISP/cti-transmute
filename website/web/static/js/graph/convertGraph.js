@@ -6,7 +6,7 @@ export const GRAPH_CONFIG = {
 
     // Maximum nodes rendered. Above this the graph is trimmed to the N most
     // connected nodes so the browser stays responsive on large CTI bundles.
-    maxNodes: 9000,
+    maxNodes: 3000,
 
     // Which side is shown first when the Graph tab opens ('input' | 'output').
     defaultSide: 'input',
@@ -374,7 +374,7 @@ function _showSpinner(containerId, message) {
         </div>`
 }
 
-function _initViewer(containerId, jsonText, format) {
+async function _initViewer(containerId, jsonText, format) {
     const container = document.getElementById(containerId)
     if (!container) return
 
@@ -398,6 +398,9 @@ function _initViewer(containerId, jsonText, format) {
     }
 
     _showSpinner(containerId, 'Parsing data…')
+
+    // Yield to browser before heavy parsing so the spinner actually renders
+    await new Promise(r => setTimeout(r, 0))
 
     let parsed
     try {
@@ -432,82 +435,86 @@ function _initViewer(containerId, jsonText, format) {
 
     _showSpinner(containerId, 'Building graph…')
 
-    setTimeout(() => {
-        container.innerHTML = ''
-        const styleMap = format === 'misp' ? mispStyles : stixStyles
+    await new Promise(r => setTimeout(r, 0))
 
-        new window.Pivotick(container, parsed, {
-            isDirected: true,
-            layout,
-            render: {
-                nodeTypeAccessor: (node) => node.getData()?.type ?? '_default',
-                nodeStyleMap: styleMap,
-                defaultNodeStyle: styleMap['_default'],
-                defaultEdgeStyle: { markerEnd: 'arrow' },
+    container.innerHTML = ''
+    const styleMap = format === 'misp' ? mispStyles : stixStyles
+
+    new window.Pivotick(container, parsed, {
+        isDirected: true,
+        layout,
+        simulation: {
+            useWorker: false,
+            warmupTicks: parsed.nodes.length > 300 ? 0 : 'auto',
+        },
+        render: {
+            nodeTypeAccessor: (node) => node.getData()?.type ?? '_default',
+            nodeStyleMap: styleMap,
+            defaultNodeStyle: styleMap['_default'],
+            defaultEdgeStyle: { markerEnd: 'arrow' },
+            nodeHeaderMap: {
+                title: (node) => node.getData()?.label ?? '',
+                subtitle: (node) => node.getData()?.sublabel ?? '',
+            },
+        },
+        UI: {
+            ...pivotickUI,
+            mainHeader: {
+                nodeHeaderMap: {
+                    title: (node) => node.getData()?.label ?? String(node.id),
+                    subtitle: (node) => node.getData()?.sublabel ?? node.getData()?.type ?? '',
+                },
+                edgeHeaderMap: {
+                    title: (edge) => edge.getData()?.label || 'Relationship',
+                    subtitle: (edge) => `${edge.from} → ${edge.to}`,
+                },
+            },
+            propertiesPanel: {
+                nodePropertiesMap: (node) => _nodeProperties(node),
+                edgePropertiesMap: (edge) => [
+                    { name: 'Relationship', value: edge.getData()?.label || '—' },
+                    { name: 'From', value: String(edge.from) },
+                    { name: 'To', value: String(edge.to) },
+                ],
+            },
+            tooltip: {
                 nodeHeaderMap: {
                     title: (node) => node.getData()?.label ?? '',
                     subtitle: (node) => node.getData()?.sublabel ?? '',
                 },
+                renderNodeExtra: (node) => _buildTooltip(node),
             },
-            UI: {
-                ...pivotickUI,
-                mainHeader: {
-                    nodeHeaderMap: {
-                        title: (node) => node.getData()?.label ?? String(node.id),
-                        subtitle: (node) => node.getData()?.sublabel ?? node.getData()?.type ?? '',
-                    },
-                    edgeHeaderMap: {
-                        title: (edge) => edge.getData()?.label || 'Relationship',
-                        subtitle: (edge) => `${edge.from} → ${edge.to}`,
-                    },
-                },
-                propertiesPanel: {
-                    nodePropertiesMap: (node) => _nodeProperties(node),
-                    edgePropertiesMap: (edge) => [
-                        { name: 'Relationship', value: edge.getData()?.label || '—' },
-                        { name: 'From', value: String(edge.from) },
-                        { name: 'To', value: String(edge.to) },
-                    ],
-                },
-                tooltip: {
-                    nodeHeaderMap: {
-                        title: (node) => node.getData()?.label ?? '',
-                        subtitle: (node) => node.getData()?.sublabel ?? '',
-                    },
-                    renderNodeExtra: (node) => _buildTooltip(node),
-                },
-                contextMenu: {
-                    menuNode: {
-                        topbar: [{
-                            text: 'Copy value',
-                            iconClass: 'fas fa-copy',
-                            onclick: (evt, node) => {
-                                const d = node.getData()
-                                const raw = d?.raw ?? {}
-                                let val
-                                if (d?.childAttrs && Object.keys(d.childAttrs).length) {
-                                    val = Object.entries(d.childAttrs).map(([k, v]) => `${k}: ${v}`).join('\n')
-                                } else {
-                                    val = raw.value || raw.name || raw.pattern || d?.label || String(node.id)
-                                }
-                                navigator.clipboard.writeText(val).catch(() => { })
-                            },
-                        }],
-                        menu: [{
-                            text: 'Open raw JSON',
-                            iconClass: 'fas fa-code',
-                            onclick: (evt, node) => {
-                                const raw = node.getData()?.raw ?? {}
-                                const isDark = document.documentElement.classList.contains('dark-mode')
-                                const win = window.open('', '_blank')
-                                win.document.write(`<html><body style="margin:0;background:${isDark ? '#0f0f10' : '#fff'};color:${isDark ? '#e0e0e0' : '#000'}"><pre style="font-family:monospace;font-size:13px;padding:1.5rem;white-space:pre-wrap;word-break:break-all">${JSON.stringify(raw, null, 2)}</pre></body></html>`)
-                            },
-                        }],
-                    },
+            contextMenu: {
+                menuNode: {
+                    topbar: [{
+                        text: 'Copy value',
+                        iconClass: 'fas fa-copy',
+                        onclick: (evt, node) => {
+                            const d = node.getData()
+                            const raw = d?.raw ?? {}
+                            let val
+                            if (d?.childAttrs && Object.keys(d.childAttrs).length) {
+                                val = Object.entries(d.childAttrs).map(([k, v]) => `${k}: ${v}`).join('\n')
+                            } else {
+                                val = raw.value || raw.name || raw.pattern || d?.label || String(node.id)
+                            }
+                            navigator.clipboard.writeText(val).catch(() => { })
+                        },
+                    }],
+                    menu: [{
+                        text: 'Open raw JSON',
+                        iconClass: 'fas fa-code',
+                        onclick: (evt, node) => {
+                            const raw = node.getData()?.raw ?? {}
+                            const isDark = document.documentElement.classList.contains('dark-mode')
+                            const win = window.open('', '_blank')
+                            win.document.write(`<html><body style="margin:0;background:${isDark ? '#0f0f10' : '#fff'};color:${isDark ? '#e0e0e0' : '#000'}"><pre style="font-family:monospace;font-size:13px;padding:1.5rem;white-space:pre-wrap;word-break:break-all">${JSON.stringify(raw, null, 2)}</pre></body></html>`)
+                        },
+                    }],
                 },
             },
-        })
-    }, 30)
+        },
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -515,9 +522,22 @@ function _initViewer(containerId, jsonText, format) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 let _convertData = null
-let _rendered = false
+let _renderedSides = { input: false, output: false }
 
-/** Switch the visible graph side. Safe to call from onclick attributes. */
+function _renderSide(side) {
+    if (!_convertData || _renderedSides[side]) return
+    _renderedSides[side] = true
+    const isStixToMisp = _convertData.conversion_type === 'STIX_TO_MISP'
+    const containerId = side === 'input' ? 'graph-container' : 'graph-container-output'
+    const format = side === 'input'
+        ? (isStixToMisp ? 'stix' : 'misp')
+        : (isStixToMisp ? 'misp' : 'stix')
+    const text = side === 'input' ? _convertData.input_text : _convertData.output_text
+    _showSpinner(containerId, 'Building graph…')
+    _initViewer(containerId, text, format)
+}
+
+/** Switch the visible graph side. Triggers lazy render of the new side if needed. */
 export function showGraphSide(side) {
     const inEl = document.getElementById('graph-container')
     const outEl = document.getElementById('graph-container-output')
@@ -528,6 +548,7 @@ export function showGraphSide(side) {
     outEl.style.display = side === 'output' ? '' : 'none'
     if (btnIn) btnIn.className = 'btn btn-sm ' + (side === 'input' ? 'btn-primary' : 'btn-outline-secondary')
     if (btnOut) btnOut.className = 'btn btn-sm ' + (side === 'output' ? 'btn-primary' : 'btn-outline-secondary')
+    _renderSide(side)
 }
 
 /** Deep-merge a config patch into GRAPH_CONFIG. */
@@ -552,19 +573,17 @@ export function applyConfig(patch) {
     if (Array.isArray(patch.mispPayloadTypes)) GRAPH_CONFIG.mispPayloadTypes = new Set(patch.mispPayloadTypes)
 }
 
-/** Re-render both graph sides with the current GRAPH_CONFIG (call after applyConfig). */
+/** Re-render the currently visible side (call after applyConfig). */
 export function reRenderGraph() {
     if (!_convertData) return
-    _rendered = false
-    const inEl = document.getElementById('graph-container')
-    const outEl = document.getElementById('graph-container-output')
-    if (inEl) _showSpinner('graph-container', 'Building graph…')
-    if (outEl) _showSpinner('graph-container-output', 'Building graph…')
-    // Remove any large-graph warning banners from previous render
     document.querySelectorAll('.alert.alert-warning').forEach(el => {
         if (el.textContent.includes('most connected nodes')) el.remove()
     })
-    window.onGraphTabClick()
+    // Detect which side is currently visible and re-render only that one
+    const outEl = document.getElementById('graph-container-output')
+    const activeSide = outEl?.style.display === 'none' || !outEl ? 'input' : 'output'
+    _renderedSides[activeSide] = false
+    _renderSide(activeSide)
 }
 
 /**
@@ -576,18 +595,12 @@ export function reRenderGraph() {
  */
 export function initConvertGraph(convertData) {
     _convertData = convertData
-    _rendered = false
-    const isStixToMisp = convertData.conversion_type === 'STIX_TO_MISP'
+    _renderedSides = { input: false, output: false }
 
     window.onGraphTabClick = function () {
-        if (_rendered) return
-        _rendered = true
-        _showSpinner('graph-container', 'Building graph…')
-        setTimeout(() => {
-            _initViewer('graph-container', _convertData.input_text, isStixToMisp ? 'stix' : 'misp')
-            _initViewer('graph-container-output', _convertData.output_text, isStixToMisp ? 'misp' : 'stix')
-            showGraphSide(GRAPH_CONFIG.defaultSide)
-        }, 50)
+        // Render only the default side on first tab open
+        const side = GRAPH_CONFIG.defaultSide
+        showGraphSide(side)
     }
 
     // Expose globals for onclick= attributes in the template
