@@ -5,10 +5,10 @@
         <!-- Brand -->
         <a href="/" class="top-brand">
             <img src="{{ url_for('static', filename='image/logo.png') }}" alt="Logo">
-            <span>CTI Transmute</span>
+            <span class="top-brand-name">CTI Transmute</span>
         </a>
 
-        <!-- Nav links (desktop) -->
+        <!-- Nav links + mobile drawer -->
         <div class="top-nav-links" id="topNavLinks">
             <a href="/" class="top-nav-link {% if request.path == '/' %}active{% endif %}">
                 <i class="fas fa-home"></i> Home
@@ -41,6 +41,76 @@
                     </a>
                 </div>
             </div>
+
+            <!-- ── Mobile-only: account + theme ─────────────────── -->
+            <div class="mobile-nav-section">
+                <div class="mobile-nav-divider"></div>
+
+                {% if current_user.is_authenticated %}
+                {% if current_user.is_admin() %}
+                <div class="mobile-nav-label">Admin</div>
+                <a href="/account/manage_user" class="top-nav-link">
+                    <i class="fas fa-users"></i> Manage Users
+                </a>
+                <a href="/account/admin/comments" class="top-nav-link">
+                    <i class="fas fa-comments"></i> All Comments
+                </a>
+                <a href="/account/admin/reports" class="top-nav-link">
+                    <i class="fas fa-flag"></i> Reports
+                </a>
+                <a href="/account/admin/deleted_converts" class="top-nav-link">
+                    <i class="fas fa-trash-alt"></i> Deleted Converts
+                </a>
+                <a href="/account/admin/logs" class="top-nav-link">
+                    <i class="fas fa-stream"></i> Activity Logs
+                </a>
+                <a href="/tags/admin/" class="top-nav-link">
+                    <i class="fas fa-tags"></i> Tag Management
+                </a>
+                <a href="/tags/admin/bulk_converts" class="top-nav-link">
+                    <i class="fas fa-layer-group"></i> Bulk Tag Converts
+                </a>
+                <div class="mobile-nav-divider"></div>
+                {% endif %}
+
+                <div class="mobile-nav-label">Account — {{ current_user.get_first_name() }}</div>
+                <a href="/account/" class="top-nav-link">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+                <a href="/account/logout" class="top-nav-link mobile-nav-danger">
+                    <i class="fas fa-right-from-bracket"></i> Logout
+                </a>
+                {% else %}
+                <div class="mobile-nav-label">Account</div>
+                <a href="/account/register" class="top-nav-link">
+                    <i class="fas fa-user-plus"></i> Register
+                </a>
+                <a href="/account/login" class="top-nav-link">
+                    <i class="fas fa-right-to-bracket"></i> Login
+                </a>
+                {% endif %}
+
+                <div class="mobile-nav-divider"></div>
+                <div class="mobile-nav-label">Appearance</div>
+                <div class="mobile-theme-row">
+                    <button class="mobile-theme-btn theme-picker-item" data-theme="light">
+                        <i class="fas fa-sun"></i>
+                        <span>Light</span>
+                    </button>
+                    <button class="mobile-theme-btn theme-picker-item" data-theme="dark">
+                        <i class="fas fa-moon"></i>
+                        <span>Dark</span>
+                    </button>
+                    <button class="mobile-theme-btn theme-picker-item" data-theme="dusk">
+                        <i class="fas fa-star"></i>
+                        <span>Dusk</span>
+                    </button>
+                    <button class="mobile-theme-btn theme-picker-item" data-theme="ocean">
+                        <i class="fas fa-water"></i>
+                        <span>Ocean</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Navbar search (Vue component) -->
@@ -50,8 +120,8 @@
 
         <!-- Right controls -->
         <div class="top-nav-controls">
-            <!-- User dropdown -->
-            <div class="top-nav-dropdown">
+            <!-- User dropdown (desktop only) -->
+            <div class="top-nav-dropdown nav-desktop-only">
                 <button class="top-nav-link top-nav-dropdown-btn top-user-btn">
                     <i class="fas fa-circle-user"></i>
                     <span class="top-user-name">
@@ -108,7 +178,7 @@
             </div>
 
             {% if current_user.is_authenticated %}
-            <!-- Notification bell dropdown -->
+            <!-- Notification bell -->
             <div class="notif-dropdown-wrapper" id="notif-wrapper">
                 <button class="top-nav-icon-btn notif-bell-wrapper" id="notif-bell-btn" aria-label="Notifications">
                     <i class="fas fa-bell"></i>
@@ -127,8 +197,8 @@
             </div>
             {% endif %}
 
-            <!-- Theme picker -->
-            <div class="top-nav-dropdown" id="theme-dropdown">
+            <!-- Theme picker (desktop only) -->
+            <div class="top-nav-dropdown nav-desktop-only" id="theme-dropdown">
                 <button class="top-nav-icon-btn top-nav-dropdown-btn" id="theme-toggle" aria-label="Choose theme">
                     <i id="theme-icon" class="fas fa-sun"></i>
                 </button>
@@ -155,7 +225,7 @@
 
             <!-- Mobile burger -->
             <button class="top-nav-icon-btn top-burger" id="mobileMenuBtn" aria-label="Menu">
-                <i class="fas fa-bars"></i>
+                <i class="fas fa-bars" id="burgerIcon"></i>
             </button>
         </div>
     </div>

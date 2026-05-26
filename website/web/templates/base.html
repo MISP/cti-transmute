@@ -224,8 +224,37 @@
                 });
 
                 // Mobile menu
-                document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
-                    document.getElementById('topNavLinks').classList.toggle('mobile-open');
+                const mobileBtn  = document.getElementById('mobileMenuBtn');
+                const mobileMenu = document.getElementById('topNavLinks');
+                const burgerIcon = document.getElementById('burgerIcon');
+
+                function closeMobileMenu() {
+                    mobileMenu?.classList.remove('mobile-open');
+                    if (burgerIcon) {
+                        burgerIcon.className = 'fas fa-bars';
+                    }
+                }
+
+                mobileBtn?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = mobileMenu.classList.toggle('mobile-open');
+                    if (burgerIcon) {
+                        burgerIcon.className = isOpen ? 'fas fa-times' : 'fas fa-bars';
+                    }
+                });
+
+                // Close drawer when tapping a nav link (not a dropdown toggle)
+                mobileMenu?.querySelectorAll('a.top-nav-link').forEach(link => {
+                    link.addEventListener('click', closeMobileMenu);
+                });
+
+                // Close drawer on outside click
+                document.addEventListener('click', (e) => {
+                    if (mobileMenu?.classList.contains('mobile-open') &&
+                        !mobileMenu.contains(e.target) &&
+                        !mobileBtn?.contains(e.target)) {
+                        closeMobileMenu();
+                    }
                 });
 
 
