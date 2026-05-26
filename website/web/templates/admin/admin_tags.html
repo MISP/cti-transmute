@@ -1,4 +1,90 @@
 {% extends "base.html" %}
+{% block head %}
+<style>
+.vendor-panel {
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.82rem;
+}
+.vendor-panel-label {
+  font-size: 0.71rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.vendor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+.vendor-chip code {
+  font-size: 0.74rem;
+  color: var(--accent);
+  background: none;
+  padding: 0;
+}
+.vendor-chip-date {
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+.vendor-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.vendor-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.79rem;
+  color: var(--text-3);
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.vendor-step.step-active { border-color: var(--accent); color: var(--text); }
+.vendor-step.step-done   { color: #059669; border-color: rgba(5,150,105,.3); background: rgba(5,150,105,.06); }
+.vendor-step .step-stat  { font-weight: 700; margin-left: 2px; }
+.vendor-result-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+.vendor-git-output {
+  margin-top: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.73rem;
+  color: var(--text-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 72px;
+  overflow-y: auto;
+}
+</style>
+{% endblock %}
 {% block content %}
 <div v-cloak>
   <div class="list-header">
@@ -8,6 +94,106 @@
   </div>
 
   <div class="custom-card p-3">
+
+    <!-- ── GitHub vendor update ─────────────────────────────────── -->
+    <div class="vendor-panel mb-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="vendor-panel-label"><i class="fab fa-github me-1"></i>MISP Data Sources</span>
+        <template v-if="vendorStatus">
+          <span class="vendor-chip">
+            <i class="fas fa-book-open"></i>
+            <strong>misp-taxonomies</strong>
+            <code>[[ vendorStatus.taxonomies.sha ]]</code>
+            <span v-if="vendorStatus.taxonomies.date" class="vendor-chip-date">[[ vendorStatus.taxonomies.date ]]</span>
+          </span>
+          <span class="vendor-chip">
+            <i class="fas fa-globe"></i>
+            <strong>misp-galaxy</strong>
+            <code>[[ vendorStatus.galaxies.sha ]]</code>
+            <span v-if="vendorStatus.galaxies.date" class="vendor-chip-date">[[ vendorStatus.galaxies.date ]]</span>
+          </span>
+        </template>
+        <span v-else style="font-size:0.8rem;color:var(--text-3);">
+          <i class="fas fa-spinner fa-spin me-1"></i>Loading…
+        </span>
+        <button class="btn btn-sm btn-primary ms-auto"
+                @click="startPullAndImport()"
+                :disabled="pullJob && pullJob.status === 'running'">
+          <i class="fas fa-arrows-rotate me-1"
+             :class="{'fa-spin': pullJob && pullJob.status === 'running'}"></i>
+          <span v-if="pullJob && pullJob.status === 'running'">Updating…</span>
+          <span v-else>Pull &amp; Import</span>
+        </button>
+      </div>
+
+      <!-- Job progress / result -->
+      <div v-if="pullJob" class="vendor-progress">
+
+        <!-- Running -->
+        <template v-if="pullJob.status === 'running'">
+          <span class="vendor-step"
+                :class="{ 'step-active': pullJob.phase === 'pulling',
+                          'step-done':   pullJob.progress >= 1 }">
+            <i class="fas fa-fw"
+               :class="pullJob.progress >= 1
+                 ? 'fa-check' : (pullJob.phase === 'pulling' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+            Pull
+          </span>
+          <span class="vendor-step"
+                :class="{ 'step-active': pullJob.phase === 'importing_taxonomies',
+                          'step-done':   pullJob.progress >= 2 }">
+            <i class="fas fa-fw"
+               :class="pullJob.progress >= 2
+                 ? 'fa-check' : (pullJob.phase === 'importing_taxonomies' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+            Taxonomies
+            <span v-if="pullJob.progress >= 2" class="step-stat">+[[ pullJob.taxo_imported ]]</span>
+          </span>
+          <span class="vendor-step"
+                :class="{ 'step-active': pullJob.phase === 'importing_galaxies',
+                          'step-done':   pullJob.phase === 'done' }">
+            <i class="fas fa-fw"
+               :class="pullJob.phase === 'done'
+                 ? 'fa-check' : (pullJob.phase === 'importing_galaxies' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+            Galaxies <span style="font-size:0.7rem;opacity:.7;">(~1 min)</span>
+          </span>
+        </template>
+
+        <!-- Done -->
+        <template v-else-if="pullJob.status === 'done' && pullJob.phase !== 'failed'">
+          <div class="w-100">
+            <div class="vendor-result-row">
+              <i class="fas fa-circle-check text-success"></i>
+              <strong>Update complete</strong>
+              <span class="ms-2">
+                <i class="fas fa-book-open me-1" style="color:var(--accent);"></i>
+                Taxonomies: <strong>+[[ pullJob.taxo_imported ]]</strong> new, [[ pullJob.taxo_skipped ]] skipped
+              </span>
+              <span class="ms-2">
+                <i class="fas fa-globe me-1" style="color:var(--accent);"></i>
+                Galaxies: <strong>+[[ pullJob.galaxy_imported ]]</strong> new, [[ pullJob.galaxy_skipped ]] skipped
+              </span>
+              <span v-if="pullJob.errors?.length" class="ms-2 text-warning">
+                <i class="fas fa-exclamation-triangle me-1"></i>[[ pullJob.errors.length ]] warning(s)
+              </span>
+            </div>
+            <div v-if="pullJob.pull_output" class="vendor-git-output">[[ pullJob.pull_output ]]</div>
+          </div>
+        </template>
+
+        <!-- Failed -->
+        <template v-else-if="pullJob.phase === 'failed'">
+          <div class="w-100">
+            <div class="vendor-result-row text-danger">
+              <i class="fas fa-circle-xmark"></i>
+              <strong>Update failed:</strong>
+              [[ pullJob.errors?.[0] || 'Unknown error' ]]
+            </div>
+            <div v-if="pullJob.pull_output" class="vendor-git-output">[[ pullJob.pull_output ]]</div>
+          </div>
+        </template>
+
+      </div>
+    </div>
 
     <!-- ── Toolbar ───────────────────────────────────────────────── -->
     <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
@@ -68,6 +254,8 @@
           <button class="btn btn-sm btn-outline-warning"   @click="bulkAction('disapprove')"><i class="fas fa-ban me-1"></i>Disapprove</button>
           <button class="btn btn-sm btn-outline-info"      @click="bulkAction('make_public')"><i class="fas fa-eye me-1"></i>Public</button>
           <button class="btn btn-sm btn-outline-secondary" @click="bulkAction('make_private')"><i class="fas fa-eye-slash me-1"></i>Private</button>
+          <button class="btn btn-sm btn-outline-primary"   @click="bulkAction('enable_evaluation')"><i class="fas fa-chart-bar me-1"></i>Enable eval</button>
+          <button class="btn btn-sm btn-outline-secondary" @click="bulkAction('disable_evaluation')"><i class="fas fa-chart-bar me-1"></i>Disable eval</button>
           <button class="btn btn-sm btn-outline-danger"    @click="bulkAction('delete')">    <i class="fas fa-trash me-1"></i>Delete</button>
           <button class="btn btn-sm btn-link text-secondary" @click="selectedIds=new Set()" style="font-size:0.75rem;">Clear</button>
         </div>
@@ -277,9 +465,13 @@
           </div>
           <div class="col-md-4">
             <label class="tag-modal-label">Flags</label>
-            <div class="d-flex gap-3 align-items-center" style="height:36px;">
+            <div class="d-flex flex-column gap-1" style="padding-top:4px;">
               <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_active"> Active</label>
               <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_approved_by_admin"> Approved</label>
+              <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;" title="Allow users to apply this tag as an evaluation on a convert">
+                <input type="checkbox" class="form-check-input" v-model="editForm.is_evaluation_tag">
+                <i class="fas fa-chart-bar" style="font-size:0.72rem;color:var(--accent);"></i> Evaluation
+              </label>
             </div>
           </div>
           <!-- Galaxy metadata (read-only) -->
@@ -354,6 +546,60 @@ createApp({
     const selectedIds = ref(new Set())
     const collapsedGroups = ref(new Set())
     const createModal = ref(null)
+
+    /* ── Vendor / GitHub update ──────── */
+    const vendorStatus = ref(null)
+    const pullJob      = ref(null)
+    let   _pullPollTimer = null
+
+    async function loadVendorStatus() {
+      try {
+        const r = await fetch('/tags/admin/vendor_status')
+        const d = await r.json()
+        if (d.success) vendorStatus.value = d
+      } catch {}
+    }
+
+    async function startPullAndImport() {
+      if (!confirm(
+        'Pull latest MISP taxonomies & galaxies from GitHub and import new tags?\n\n' +
+        '• Step 1 — git submodule update (vendor/misp-taxonomies + vendor/misp-galaxy)\n' +
+        '• Step 2 — Import new taxonomy tags (existing skipped)\n' +
+        '• Step 3 — Import new galaxy tags, ~55k entries (~1 min)\n\n' +
+        'Existing tags are never modified or deleted.'
+      )) return
+      try {
+        const r = await fetch('/tags/admin/pull_and_import', {
+          method: 'POST', headers: { 'X-CSRFToken': CSRF() }
+        })
+        const d = await r.json()
+        if (d.success) {
+          pullJob.value = { status: 'running', phase: 'pulling', progress: 0, total: 3,
+                            taxo_imported: 0, galaxy_imported: 0, errors: [], pull_output: '' }
+          _startPollPullJob(d.job_id)
+        } else {
+          create_message(d.message || 'Failed to start', 'danger')
+        }
+      } catch { create_message('Network error', 'danger') }
+    }
+
+    function _startPollPullJob(jid) {
+      clearInterval(_pullPollTimer)
+      _pullPollTimer = setInterval(async () => {
+        try {
+          const r = await fetch(`/tags/admin/bulk_converts/job/${jid}`)
+          const d = await r.json()
+          if (d.success) {
+            pullJob.value = d.job
+            if (d.job.status === 'done') {
+              clearInterval(_pullPollTimer)
+              await loadVendorStatus()
+              if (d.job.phase !== 'failed') resetPage()
+            }
+          }
+        } catch {}
+      }, 1500)
+    }
 
     /* ── Selection ───────────────────── */
     function toggleSelect(id) {
@@ -526,7 +772,7 @@ createApp({
 
     function openEdit(tag) {
       editTarget.value = tag
-      editForm.value = { name:tag.name, description:tag.description||'', color:tag.color||'#6366f1', icon:tag.icon||'', source:tag.source, visibility:tag.visibility, is_active:tag.is_active, is_approved_by_admin:tag.is_approved_by_admin, galaxy_meta:tag.galaxy_meta||null }
+      editForm.value = { name:tag.name, description:tag.description||'', color:tag.color||'#6366f1', icon:tag.icon||'', source:tag.source, visibility:tag.visibility, is_active:tag.is_active, is_approved_by_admin:tag.is_approved_by_admin, is_evaluation_tag:tag.is_evaluation_tag||false, galaxy_meta:tag.galaxy_meta||null }
       editErrors.value = {}
       editModalInst?.show()
     }
@@ -600,11 +846,14 @@ createApp({
       if (urlSearch) search.value = urlSearch
       editModalInst = new bootstrap.Modal(document.getElementById('editTagModal'))
       load()
+      loadVendorStatus()
       try {
         const r = await fetch('/tags/fa-icons')
         if (r.ok) { const d = await r.json(); faIcons.value = d.icons || [] }
       } catch {}
     })
+
+    onUnmounted(()=>{ clearInterval(_pullPollTimer) })
 
     return {
       tags, loading, importing, importingSource, page, total_page,
@@ -613,6 +862,7 @@ createApp({
       hasPendingSelected, pendingSelectedCount,
       groupedTags, collapsedGroups,
       createModal,
+      vendorStatus, pullJob, startPullAndImport,
       editForm, editErrors, editSaving, editIconOpen,
       iconSearch, filteredIcons, faIcons,
       message_list,

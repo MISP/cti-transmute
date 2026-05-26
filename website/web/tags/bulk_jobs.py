@@ -90,6 +90,19 @@ def start_clear(app, convert_ids: list, user_id: int) -> str:
     return jid
 
 
+def start_pull_and_import(app, user_id: int) -> str:
+    """Pull latest MISP vendor submodules then import new taxonomy/galaxy tags."""
+    jid = create('pull_import', total=3)
+    update(jid,
+           phase='pulling',
+           pull_output='',
+           taxo_imported=0, taxo_skipped=0,
+           galaxy_imported=0, galaxy_skipped=0)
+    t = threading.Thread(target=_pull_import_worker, args=(app, jid, user_id), daemon=True)
+    t.start()
+    return jid
+
+
 # ── Private ───────────────────────────────────────────────────────
 
 def _trim() -> None:
@@ -169,6 +182,71 @@ def _remove_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int
             update(jid, progress=i + 1, added=removed_total)
 
         update(jid, status='done', progress=len(convert_ids), added=removed_total)
+
+
+def _pull_import_worker(app, jid: str, user_id: int) -> None:
+    import subprocess
+
+    with app.app_context():
+        from website.web.tags.tags_core import (
+            VENDOR_PATH, import_taxonomies, import_galaxies,
+        )
+
+        project_root = VENDOR_PATH.parent.parent  # vendor/misp-taxonomies/../../  = project root
+
+        # ── Step 1: git submodule update --remote ──────────────────────
+        update(jid, phase='pulling', progress=0)
+        try:
+            result = subprocess.run(
+                ['git', 'submodule', 'update', '--remote',
+                 'vendor/misp-taxonomies', 'vendor/misp-galaxy'],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+            pull_output = (result.stdout + result.stderr).strip()
+            if result.returncode != 0:
+                update(jid, status='done', phase='failed',
+                       pull_output=pull_output,
+                       errors=[f'git returned {result.returncode}: {pull_output[:300]}'])
+                return
+        except subprocess.TimeoutExpired:
+            update(jid, status='done', phase='failed',
+                   errors=['Git pull timed out (3 min)'])
+            return
+        except Exception as exc:
+            update(jid, status='done', phase='failed',
+                   errors=[f'Git error: {str(exc)[:200]}'])
+            return
+
+        update(jid, progress=1, pull_output=pull_output, phase='importing_taxonomies')
+
+        # ── Step 2: import taxonomies ──────────────────────────────────
+        try:
+            t_imp, t_skip, t_errs = import_taxonomies(admin_user_id=user_id)
+        except Exception as exc:
+            t_imp, t_skip, t_errs = 0, 0, [str(exc)]
+
+        if t_errs:
+            with _lock:
+                _jobs[jid]['errors'].extend([f'taxo: {e[:80]}' for e in t_errs[:5]])
+
+        update(jid, progress=2, phase='importing_galaxies',
+               taxo_imported=t_imp, taxo_skipped=t_skip)
+
+        # ── Step 3: import galaxies ────────────────────────────────────
+        try:
+            g_imp, g_skip, g_errs = import_galaxies(admin_user_id=user_id)
+        except Exception as exc:
+            g_imp, g_skip, g_errs = 0, 0, [str(exc)]
+
+        if g_errs:
+            with _lock:
+                _jobs[jid]['errors'].extend([f'galaxy: {e[:80]}' for e in g_errs[:5]])
+
+        update(jid, progress=3, status='done', phase='done',
+               galaxy_imported=g_imp, galaxy_skipped=g_skip)
 
 
 def _clear_worker(app, jid: str, convert_ids: list, user_id: int) -> None:

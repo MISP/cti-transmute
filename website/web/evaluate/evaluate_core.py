@@ -1,26 +1,30 @@
 import datetime
 from website.web import db
-from website.db_class.db import ConvertEvaluation, Comment, Convert
+from website.db_class.db import ConvertEvaluation, Comment, Convert, Tag
 
-# Predefined CTI-themed reactions
-REACTIONS = [
-    {'key': 'accurate',    'label': 'Accurate',    'fa': 'fa-check-circle',          'color': '#059669'},
-    {'key': 'quality',     'label': 'Quality',     'fa': 'fa-star',                  'color': '#d97706'},
-    {'key': 'useful',      'label': 'Useful',      'fa': 'fa-lightbulb',             'color': '#1d4ed8'},
-    {'key': 'incorrect',   'label': 'Incorrect',   'fa': 'fa-times-circle',          'color': '#dc2626'},
-    {'key': 'incomplete',  'label': 'Incomplete',  'fa': 'fa-exclamation-triangle',  'color': '#ea580c'},
-    {'key': 'referenced',  'label': 'Referenced',  'fa': 'fa-link',                  'color': '#7c3aed'},
-]
-REACTION_KEYS = {r['key'] for r in REACTIONS}
+
+def get_tlp_tags() -> list[dict]:
+    tags = (Tag.query
+            .filter(Tag.is_evaluation_tag == True, Tag.is_active == True)
+            .order_by(Tag.name)
+            .all())
+    result = []
+    for t in tags:
+        d = t.to_json()
+        d['key'] = t.name
+        d['label'] = t.name
+        result.append(d)
+    return result
 
 
 def get_summary(convert_id: int, viewer_id: int | None = None) -> dict:
+    tlp_tags = get_tlp_tags()
     rows = ConvertEvaluation.query.filter_by(convert_id=convert_id).all()
 
     likes    = sum(1 for r in rows if r.eval_type == 'like')
     dislikes = sum(1 for r in rows if r.eval_type == 'dislike')
 
-    reaction_counts = {r['key']: 0 for r in REACTIONS}
+    reaction_counts = {t['key']: 0 for t in tlp_tags}
     for row in rows:
         if row.eval_type == 'reaction' and row.reaction_key in reaction_counts:
             reaction_counts[row.reaction_key] += 1
@@ -50,7 +54,7 @@ def get_summary(convert_id: int, viewer_id: int | None = None) -> dict:
         'viewer_like':      viewer_like,
         'viewer_dislike':   viewer_dislike,
         'viewer_reactions': viewer_reactions,
-        'reaction_defs':    REACTIONS,
+        'reaction_defs':    tlp_tags,
         'eval_comments':    eval_comments,
     }
 
@@ -96,7 +100,12 @@ def toggle_dislike(convert_id: int, user_id: int) -> dict:
 
 
 def toggle_reaction(convert_id: int, user_id: int, reaction_key: str) -> dict:
-    if reaction_key not in REACTION_KEYS:
+    tag = Tag.query.filter(
+        Tag.name == reaction_key,
+        Tag.is_evaluation_tag == True,
+        Tag.is_active == True,
+    ).first()
+    if not tag:
         raise ValueError(f"Unknown reaction key: {reaction_key}")
 
     existing = ConvertEvaluation.query.filter_by(

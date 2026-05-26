@@ -159,6 +159,52 @@ def admin_import_galaxies():
     }, 200
 
 
+@tags_blueprint.route("/admin/vendor_status", methods=["GET"])
+@login_required
+def admin_vendor_status():
+    """Return commit SHA + date for each MISP vendor submodule."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    import subprocess
+
+    def _git_info(path):
+        try:
+            sha = subprocess.run(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                cwd=str(path), capture_output=True, text=True, timeout=8,
+            ).stdout.strip() or '?'
+            date = subprocess.run(
+                ['git', 'log', '-1', '--format=%ci'],
+                cwd=str(path), capture_output=True, text=True, timeout=8,
+            ).stdout.strip()[:10] or ''
+        except Exception:
+            sha, date = '?', ''
+        return {'sha': sha, 'date': date}
+
+    return {
+        "success":    True,
+        "taxonomies": _git_info(TagsModel.VENDOR_PATH),
+        "galaxies":   _git_info(TagsModel.GALAXY_PATH),
+    }, 200
+
+
+@tags_blueprint.route("/admin/pull_and_import", methods=["POST"])
+@login_required
+def admin_pull_and_import():
+    """Pull latest MISP vendor submodules then import new tags as a background job."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    from flask import current_app
+    from website.web.tags import bulk_jobs
+    jid = bulk_jobs.start_pull_and_import(current_app._get_current_object(), current_user.id)
+    AccountModel.create_system_log(
+        "tags_vendor_pull_started",
+        actor_id=current_user.id, actor_name=current_user.first_name,
+        target_type="tag", details=f"job {jid}",
+    )
+    return {"success": True, "job_id": jid}, 200
+
+
 @tags_blueprint.route("/admin/import_taxonomies", methods=["POST"])
 @login_required
 def admin_import_taxonomies():
@@ -190,7 +236,9 @@ def admin_bulk():
     data = request.get_json(silent=True) or {}
     ids = data.get("ids", [])
     action = data.get("action", "")
-    if not ids or action not in ("activate", "deactivate", "approve", "disapprove", "delete", "make_public", "make_private"):
+    ALLOWED = ("activate", "deactivate", "approve", "disapprove", "delete",
+               "make_public", "make_private", "enable_evaluation", "disable_evaluation")
+    if not ids or action not in ALLOWED:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
     count, err = TagsModel.bulk_action(ids, action)
     if err:
@@ -199,6 +247,7 @@ def admin_bulk():
         "activate": "activated", "deactivate": "deactivated",
         "approve": "approved", "disapprove": "approval revoked",
         "delete": "deleted", "make_public": "made public", "make_private": "made private",
+        "enable_evaluation": "enabled for evaluation", "disable_evaluation": "disabled for evaluation",
     }[action]
     AccountModel.create_system_log(
         "tag_bulk_action",
@@ -244,7 +293,7 @@ def admin_edit(tag_id):
     data = request.get_json(silent=True) or {}
     tag, err = TagsModel.edit_tag(tag_id, current_user.id, is_admin=True, **data)
     if tag:
-        changed = [k for k in ("name", "description", "color", "icon", "source", "visibility", "is_active", "is_approved_by_admin") if k in data and data[k] is not None]
+        changed = [k for k in ("name", "description", "color", "icon", "source", "visibility", "is_active", "is_approved_by_admin", "is_evaluation_tag") if k in data and data[k] is not None]
         AccountModel.create_system_log(
             "tag_edited",
             actor_id=current_user.id, actor_name=current_user.first_name,
@@ -327,7 +376,8 @@ def available_tags():
     """Tags available to the current user for attaching to a convert."""
     search = request.args.get("search", "", type=str).strip() or None
     source = request.args.get("source", "", type=str).strip() or None
-    tags = TagsModel.get_available_tags(current_user.id, search=search, source=source)
+    is_evaluation = request.args.get("is_evaluation", "false", type=str).lower() == "true"
+    tags = TagsModel.get_available_tags(current_user.id, search=search, source=source, is_evaluation=is_evaluation)
     return {"success": True, "list": [t.to_json() for t in tags]}, 200
 
 

@@ -396,7 +396,8 @@ class Tag(db.Model):
     galaxy_meta = db.Column(db.JSON, nullable=True)
 
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    is_approved_by_admin = db.Column(db.Boolean, default=False)
+    is_approved_by_admin  = db.Column(db.Boolean, default=False)
+    is_evaluation_tag     = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
 
     user = db.relationship('User', backref=db.backref('tags', lazy='dynamic', cascade='all, delete-orphan'))
 
@@ -418,6 +419,7 @@ class Tag(db.Model):
             "external_id": self.external_id,
             "source": self.source,
             "galaxy_meta": self.galaxy_meta if self.galaxy_meta else None,
+            "is_evaluation_tag": self.is_evaluation_tag,
             # Injected by _inject_usage_counts() — falls back to 0 outside listing context
             "rule_count":   getattr(self, '_rule_count',   0),
             "bundle_count": getattr(self, '_bundle_count', 0),

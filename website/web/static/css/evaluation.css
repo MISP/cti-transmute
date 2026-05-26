@@ -125,24 +125,86 @@
   text-decoration: underline;
 }
 
-/* ── Reactions ──────────────────────────────────────────────── */
-.eval-reactions {
+/* ── Taxonomy reactions section ─────────────────────────────── */
+.eval-taxo-section {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
-.eval-reaction-btn {
+.eval-taxo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.eval-taxo-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 28px;
-  padding: 0 9px;
-  border: 1.5px solid var(--border);
+  height: 26px;
+  padding: 0 8px;
   border-radius: 99px;
-  background: var(--bg-2);
-  color: var(--text-2);
-  font-size: 0.76rem;
+  border: 1.5px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: filter var(--t);
+  white-space: nowrap;
+}
+
+.eval-taxo-chip-mine { color: #fff; }
+.eval-taxo-chip-mine:hover { filter: brightness(1.1); }
+
+.eval-taxo-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.eval-taxo-label {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eval-taxo-count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-taxo-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  font-size: 0.9rem;
+  margin-left: 1px;
+  display: flex;
+  align-items: center;
+}
+.eval-taxo-remove:hover { opacity: 1; }
+
+.eval-taxo-add-wrap { position: relative; }
+
+.eval-add-taxo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1.5px dashed var(--border);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--t);
@@ -150,48 +212,49 @@
   appearance: none;
 }
 
-.eval-reaction-btn i {
-  font-size: 0.72rem;
+.eval-add-taxo-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
-.eval-reaction-btn:hover:not(.disabled) {
-  background: var(--surface-2);
-  border-color: var(--border-2);
+.eval-taxo-limit {
+  font-size: 0.73rem;
+  color: var(--text-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+}
+
+.eval-taxo-dropdown {
+  position: absolute;
+  z-index: 1050;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+  overflow: hidden;
+}
+
+.eval-taxo-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
   color: var(--text);
+  cursor: pointer;
+  transition: background var(--t);
 }
+.eval-taxo-option:hover { background: var(--bg-2); }
 
-.eval-reaction-btn.active {
-  color: #fff;
-  /* background and border-color set inline via activeReactionStyle() */
-}
-
-.eval-reaction-btn.active:hover {
-  filter: brightness(1.12);
-}
-
-.eval-reaction-btn.disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.eval-reaction-label {
-  white-space: nowrap;
-}
-
-.eval-reaction-count {
-  background: rgba(255,255,255,0.22);
-  border-radius: 99px;
-  padding: 0 5px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  min-width: 16px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.eval-reaction-btn:not(.active) .eval-reaction-count {
-  background: var(--border);
-  color: var(--text-2);
+.eval-taxo-empty {
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  color: var(--text-3);
 }
 
 /* ── Evaluation-comment link ────────────────────────────────── */
@@ -274,6 +337,43 @@ html.ocean-mode .eval-comment-badge {
   cursor: pointer;
 }
 
+/* ── MISP tag dropdown (used in push modal) ─────────────────── */
+.misp-tag-dropdown {
+  position: absolute;
+  z-index: 1060;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.misp-tag-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 0.83rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--t);
+}
+
+.misp-tag-suggestion:hover {
+  background: var(--bg-2);
+}
+
+.misp-tag-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 /* ── Admin table badge ──────────────────────────────────────── */
 .eval-type-badge {
   display: inline-flex;
@@ -288,3 +388,259 @@ html.ocean-mode .eval-comment-badge {
 .eval-type-like     { background: rgba(37,99,235,0.10);  color: #2563eb; }
 .eval-type-dislike  { background: rgba(220,38,38,0.10);  color: #dc2626; }
 .eval-type-reaction { background: rgba(124,58,237,0.10); color: #7c3aed; }
+
+/* ── Panel section layout ───────────────────────────────────── */
+.eval-panel-section {
+  padding: 4px 2px 8px;
+}
+
+.eval-panel-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.eval-panel-section-sub {
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-3);
+  opacity: 0.8;
+}
+
+.eval-panel-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0 12px;
+}
+
+/* ── Vote cards ─────────────────────────────────────────────── */
+.eval-vote-cards-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.eval-vote-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 22px;
+  min-width: 86px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--bg-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--t);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.eval-vote-card i {
+  font-size: 1rem;
+  margin-bottom: 1px;
+}
+
+.eval-vote-card-num {
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--text);
+}
+
+.eval-vote-card-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+}
+
+.eval-vote-card:hover:not(.disabled) {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.eval-vote-card:hover:not(.disabled) .eval-vote-card-num,
+.eval-vote-card:hover:not(.disabled) .eval-vote-card-label {
+  color: #2563eb;
+}
+
+.eval-vote-card.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.eval-vote-card.active .eval-vote-card-num  { color: #fff; }
+.eval-vote-card.active .eval-vote-card-label { color: rgba(255,255,255,0.75); }
+
+.eval-vote-card.dislike:hover:not(.disabled) {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.05);
+}
+
+.eval-vote-card.dislike:hover:not(.disabled) .eval-vote-card-num,
+.eval-vote-card.dislike:hover:not(.disabled) .eval-vote-card-label {
+  color: #dc2626;
+}
+
+.eval-vote-card.dislike.active {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.eval-vote-card.disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ── Approval score summary ─────────────────────────────────── */
+.eval-score-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+
+.eval-score-big {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1;
+}
+
+.eval-score-big-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+/* ── Charts section ─────────────────────────────────────────── */
+.eval-charts-loading {
+  color: var(--text-3);
+  font-size: 0.8rem;
+  padding: 4px 2px;
+}
+
+.eval-charts-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin: 14px 0 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.eval-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.eval-chart-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+  padding: 14px 16px 12px;
+}
+
+.eval-chart-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+/* Donut chart wrapper — positions center text overlay */
+.eval-donut-wrap {
+  position: relative;
+  height: 160px;
+}
+
+.eval-donut-wrap canvas {
+  display: block;
+}
+
+.eval-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.eval-donut-pct {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1;
+}
+
+.eval-donut-sub {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+/* Bar chart wrapper */
+.eval-bar-wrap {
+  position: relative;
+}
+
+.eval-bar-wrap canvas {
+  display: block;
+}
+
+/* Chart legend row */
+.eval-chart-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 0.74rem;
+  color: var(--text-3);
+}
+
+.eval-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

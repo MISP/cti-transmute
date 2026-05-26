@@ -93,7 +93,7 @@ def edit_tag(tag_id, current_user_id, is_admin, **kwargs):
 
     editable = ["description", "color", "icon"]
     if is_admin:
-        editable += ["name", "visibility", "is_active", "is_approved_by_admin", "source"]
+        editable += ["name", "visibility", "is_active", "is_approved_by_admin", "source", "is_evaluation_tag"]
 
     for field in editable:
         if field in kwargs and kwargs[field] is not None:
@@ -181,6 +181,10 @@ def bulk_action(tag_ids, action):
             tag.visibility = "public"
         elif action == "make_private":
             tag.visibility = "private"
+        elif action == "enable_evaluation":
+            tag.is_evaluation_tag = True
+        elif action == "disable_evaluation":
+            tag.is_evaluation_tag = False
         tag.updated_at = now
     try:
         db.session.commit()
@@ -401,12 +405,13 @@ _SOURCE_MAP = {
     'vulnerability': 'Vulnerability',
 }
 
-def get_available_tags(user_id, search=None, source=None, limit=60):
+def get_available_tags(user_id, search=None, source=None, is_evaluation=False, limit=60):
     """Tags available to attach to a convert:
     - public + active + admin-approved
     - OR private + active + owned by user (no admin approval required)
     Filtered by `search` (SQL ilike) and `source` ('custom'|'taxonomy'|'vulnerability').
     When `search` is provided, prefix matches are returned first.
+    When `is_evaluation` is True, only tags marked as evaluation tags are returned.
     """
     query = Tag.query.filter(
         Tag.is_active == True,
@@ -415,6 +420,9 @@ def get_available_tags(user_id, search=None, source=None, limit=60):
             db.and_(Tag.visibility == 'private', Tag.created_by == user_id),
         ),
     )
+    if is_evaluation:
+        query = query.filter(Tag.is_evaluation_tag == True)
+
     if search:
         query = query.filter(Tag.name.ilike(f'%{search}%'))
         # Prefix matches rank higher
