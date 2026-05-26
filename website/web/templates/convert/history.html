@@ -205,9 +205,11 @@
         </app-pagination>
         <div v-if="convert_history.length > 0">
 
-            <div v-for="item in convert_history" :key="item.id" class="history-card"
-                @click="seeDetails(item.id)">
-                <div class="history-card-inner">
+            <div v-for="item in convert_history" :key="item.id"
+                class="history-card" :class="{ 'hc-expanded': expandedIds.has(item.id) }">
+
+                <!-- ── Summary row (always visible) ── -->
+                <div class="history-card-inner" @click="seeDetails(item.id)">
 
                     <!-- Left: type -->
                     <div class="history-type-badge">
@@ -220,70 +222,119 @@
                         <span v-else class="type-pill type-default">—</span>
                     </div>
 
-                    <!-- Center: content + snippets -->
+                    <!-- Center: content -->
                     <div class="history-card-content">
-                        <div class="d-flex align-items-center gap-2 mb-1">
+                        <!-- Title + visibility -->
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                             <span class="history-card-title" v-html="highlight(item.name)"></span>
                             <span class="vis-badge" :class="item.public ? 'vis-public' : 'vis-private'">
                                 <i :class="item.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
                                 [[ item.public ? 'Public' : 'Private' ]]
                             </span>
                         </div>
+                        <!-- Description (truncated) -->
                         <p class="history-card-desc mb-0" v-html="highlight(item.description || 'No description.')"></p>
+                        <!-- Meta line: author · date · tags preview · match hint -->
+                        <div class="hc-meta-line" @click.stop>
+                            <span class="hc-meta-item">
+                                <i class="fas fa-user" style="font-size:0.6rem;"></i> [[ item.author || 'Anonymous' ]]
+                            </span>
+                            <span class="hc-meta-sep">·</span>
+                            <span class="hc-meta-item">
+                                <i class="fas fa-clock" style="font-size:0.6rem;"></i> [[ item.created_at ]]
+                            </span>
+                            <template v-if="item.tags && item.tags.length > 0">
+                                <span class="hc-meta-sep">·</span>
+                                <single-tag v-for="tag in item.tags.slice(0, 3)" :key="tag.tag_id"
+                                    :tag="adaptTag(tag)" :show-namespace="false">
+                                </single-tag>
+                                <span v-if="item.tags.length > 3" class="hc-tag-overflow">
+                                    +[[ item.tags.length - 3 ]]
+                                </span>
+                            </template>
+                            <template v-if="searchQuery && (search_scope==='content'||search_scope==='all') && snippets[item.id]?.length > 0">
+                                <span class="hc-meta-sep">·</span>
+                                <span class="hc-match-hint" @click.stop="openExpand(item.id)">
+                                    <i class="fas fa-search" style="font-size:0.6rem;"></i>
+                                    [[ snippets[item.id].length ]] match[[ snippets[item.id].length > 1 ? 'es' : '' ]]
+                                </span>
+                            </template>
+                        </div>
+                    </div>
 
-                        <!-- Tags -->
-                        <div v-if="item.tags && item.tags.length > 0" class="d-flex flex-wrap align-items-center gap-1 mt-2" @click.stop>
+                    <!-- Right: actions -->
+                    <div class="hc-actions" @click.stop>
+                        <button class="hc-expand-btn" @click.stop="toggleExpand(item.id)"
+                            :class="{ active: expandedIds.has(item.id) }"
+                            :title="expandedIds.has(item.id) ? 'Collapse' : 'Show more'">
+                            <i class="fas fa-chevron-down hc-expand-icon"></i>
+                        </button>
+                        {% if current_user.is_authenticated %}
+                        <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
+                            <button class="hc-delete-btn btn btn-sm btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#del_modal_'+item.id" @click.stop>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </template>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- ── Expanded details ── -->
+                <div v-if="expandedIds.has(item.id)" class="hc-details" @click.stop>
+
+                    <!-- Description (full) -->
+                    <div v-if="item.description" class="hcd-section">
+                        <div class="hcd-label"><i class="fas fa-align-left me-1"></i>Description</div>
+                        <p class="hcd-text mb-0">[[ item.description ]]</p>
+                    </div>
+
+                    <!-- Tags -->
+                    <div v-if="item.tags && item.tags.length > 0" class="hcd-section">
+                        <div class="hcd-label">
+                            <i class="fas fa-tags me-1"></i>Tags
+                            <span class="hcd-count">[[ item.tags.length ]]</span>
+                            <button v-if="item.tags.length > 10" class="hcd-toggle-btn ms-2"
+                                @click.stop="toggleTagExpand(item.id)">
+                                [[ tagExpandedIds.has(item.id) ? 'Fewer' : 'Show all' ]]
+                                <i class="fas ms-1" :class="tagExpandedIds.has(item.id) ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size:0.6rem;"></i>
+                            </button>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 mt-2">
                             <single-tag
-                                v-for="tag in item.tags.slice(0, 7)"
-                                :key="tag.tag_id"
-                                :tag="adaptTag(tag)"
-                                :show-namespace="true">
+                                v-for="tag in (tagExpandedIds.has(item.id) ? item.tags : item.tags.slice(0, 10))"
+                                :key="tag.tag_id" :tag="adaptTag(tag)" :show-namespace="true">
                             </single-tag>
-                            <span v-if="item.tags.length > 7"
-                                  class="badge rounded-pill"
-                                  style="font-size:0.7rem; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border);">
-                                +[[ item.tags.length - 7 ]]
+                            <span v-if="!tagExpandedIds.has(item.id) && item.tags.length > 10"
+                                class="hc-tag-overflow">
+                                +[[ item.tags.length - 10 ]] more
                             </span>
                         </div>
+                    </div>
 
-                        <!-- Snippets from JSON content (shown when search_scope includes content) -->
-                        <div v-if="searchQuery && (search_scope === 'content' || search_scope === 'all')"
-                            class="snippet-block" @click.stop>
-                            <div v-if="snippets[item.id] === undefined" class="snippet-loading">
-                                <i class="fas fa-spinner fa-spin me-1"></i> Loading matches…
-                            </div>
-                            <div v-else-if="snippets[item.id].length === 0" class="snippet-loading">
-                                No matches in JSON content.
-                            </div>
-                            <div v-else>
-                                <div v-for="(s, idx) in snippets[item.id]" :key="idx" class="snippet-item">
-                                    <span class="snippet-field-badge">[[ s.field ]]</span><span v-html="highlightSnippet(s)"></span>
-                                </div>
+                    <!-- JSON snippets -->
+                    <div v-if="searchQuery && (search_scope === 'content' || search_scope === 'all')"
+                        class="hcd-section">
+                        <div class="hcd-label"><i class="fas fa-code me-1"></i>JSON matches</div>
+                        <div v-if="snippets[item.id] === undefined" class="snippet-loading">
+                            <i class="fas fa-spinner fa-spin me-1"></i> Loading…
+                        </div>
+                        <div v-else-if="snippets[item.id].length === 0" class="snippet-loading">
+                            No matches in JSON content.
+                        </div>
+                        <div v-else class="snippet-block mt-1">
+                            <div v-for="(s, idx) in snippets[item.id]" :key="idx" class="snippet-item">
+                                <span class="snippet-field-badge">[[ s.field ]]</span>
+                                <span v-html="highlightSnippet(s)"></span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right: meta -->
-                    <div class="history-card-meta">
-                        <div class="d-flex align-items-center gap-2 mb-2 justify-content-end">
-                            <span class="author-badge">
-                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
-                                [[ item.author || 'Anonymous' ]]
-                            </span>
-                        </div>
-                        <div class="history-card-date">
-                            <i class="fas fa-clock me-1" style="opacity:0.5;"></i>[[ item.created_at ]]
-                        </div>
-                        <div class="mt-2 d-flex justify-content-end" @click.stop>
-                            {% if current_user.is_authenticated %}
-                            <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
-                                <button class="btn btn-danger btn-sm" data-bs-toggle="modal"
-                                    :data-bs-target="'#del_modal_'+item.id" @click.stop>
-                                    <i class="fas fa-trash fa-fw"></i>
-                                </button>
-                            </template>
-                            {% endif %}
-                        </div>
+                    <!-- Footer -->
+                    <div class="hcd-footer">
+                        <button class="btn btn-sm btn-primary" @click.stop="seeDetails(item.id)">
+                            <i class="fas fa-arrow-right me-1"></i>View details
+                        </button>
                     </div>
                 </div>
             </div>
@@ -373,7 +424,25 @@
             const selectedTagNames   = ref([])
             const vis_filter         = ref('')
             const filtersOpen        = ref(true)
+            const expandedIds        = ref(new Set())
+            const tagExpandedIds     = ref(new Set())
             let   searchDebounce     = null
+
+            function toggleExpand(id) {
+                const s = new Set(expandedIds.value)
+                s.has(id) ? s.delete(id) : s.add(id)
+                expandedIds.value = s
+            }
+            function openExpand(id) {
+                const s = new Set(expandedIds.value)
+                s.add(id)
+                expandedIds.value = s
+            }
+            function toggleTagExpand(id) {
+                const s = new Set(tagExpandedIds.value)
+                s.has(id) ? s.delete(id) : s.add(id)
+                tagExpandedIds.value = s
+            }
 
             const activeFilterCount = computed(() => {
                 let n = 0
@@ -545,6 +614,7 @@
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
+                expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
             }
         }
     }).mount('#main-containers')
