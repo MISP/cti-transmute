@@ -1058,10 +1058,11 @@ def get_comments():
 def add_comment():
     """Create a comment or reply on a convert."""
     data = request.get_json(silent=True) or {}
-    convert_id = data.get('convert_id')
-    content = (data.get('content') or '').strip()
-    is_private = bool(data.get('is_private', False))
-    parent_id = data.get('parent_id')
+    convert_id    = data.get('convert_id')
+    content       = (data.get('content') or '').strip()
+    is_private    = bool(data.get('is_private', False))
+    is_evaluation = bool(data.get('is_evaluation', False))
+    parent_id     = data.get('parent_id')
 
     if not convert_id or not content:
         return {"success": False, "message": "Missing content or convert_id", "toast_class": "danger"}, 400
@@ -1080,7 +1081,8 @@ def add_comment():
         user_id=current_user.id,
         content=content,
         is_private=is_private,
-        parent_id=parent_id if parent_id else None
+        parent_id=parent_id if parent_id else None,
+        is_evaluation=is_evaluation,
     )
     if not comment:
         return {"success": False, "message": "Failed to save comment", "toast_class": "danger"}, 500

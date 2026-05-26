@@ -151,6 +151,7 @@ class Comment(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey("comment.id", ondelete="CASCADE"), nullable=True)
     created_at = db.Column(db.DateTime, index=True)
     is_deleted = db.Column(db.Boolean, default=False, index=True)
+    is_evaluation = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
 
     convert = db.relationship("Convert", backref=db.backref("comments", lazy=True, cascade="all, delete-orphan"))
     replies = db.relationship(
@@ -193,6 +194,7 @@ class Comment(db.Model):
             "can_toggle_private": bool(current_user_id and (
                 current_user_id == self.user_id or is_admin
             )),
+            "is_evaluation": self.is_evaluation,
         }
 
 
@@ -484,4 +486,32 @@ class ConvertTagAssociation(db.Model):
             "tag_visibility": tag.visibility if tag else None,
             "tag_description": tag.description if tag else None,
             "added_at": self.added_at.strftime('%Y-%m-%d %H:%M') if self.added_at else None,
+        }
+
+
+class ConvertEvaluation(db.Model):
+    """Stores like/dislike/reaction evaluations on converts."""
+    __tablename__ = "convert_evaluation"
+
+    id           = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    convert_id   = db.Column(db.Integer, db.ForeignKey("convert.id",  ondelete="CASCADE"), nullable=False, index=True)
+    user_id      = db.Column(db.Integer, db.ForeignKey("user.id",     ondelete="CASCADE"), nullable=False, index=True)
+    # 'like' | 'dislike' | 'reaction'
+    eval_type    = db.Column(db.String(20),  nullable=False)
+    # set only when eval_type == 'reaction', e.g. 'accurate', 'quality', ...
+    reaction_key = db.Column(db.String(50),  nullable=True)
+    created_at   = db.Column(db.DateTime, index=True)
+
+    convert = db.relationship("Convert", backref=db.backref("evaluations", lazy="dynamic", cascade="all, delete-orphan"))
+    user    = db.relationship("User",    backref=db.backref("evaluations", lazy="dynamic"))
+
+    def to_json(self):
+        return {
+            "id":           self.id,
+            "convert_id":   self.convert_id,
+            "user_id":      self.user_id,
+            "username":     self.user.first_name if self.user else "Unknown",
+            "eval_type":    self.eval_type,
+            "reaction_key": self.reaction_key,
+            "created_at":   self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
         }

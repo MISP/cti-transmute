@@ -312,6 +312,18 @@
                         </div>
                     </div>
 
+                    <!-- Evaluation (only for public converts or own) -->
+                    <div v-if="item.public || {{ 'true' if current_user.is_authenticated else 'false' }}"
+                         class="hcd-section">
+                        <div class="hcd-label"><i class="fas fa-chart-bar me-1"></i>Evaluation</div>
+                        <evaluation-panel
+                            :convert-id="item.id"
+                            :is-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
+                            :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && item.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
+                            :is-public="item.public">
+                        </evaluation-panel>
+                    </div>
+
                     <!-- JSON snippets -->
                     <div v-if="searchQuery && (search_scope === 'content' || search_scope === 'all')"
                         class="hcd-section">
@@ -386,6 +398,7 @@
 
 {% block script %}
 <script type="module">
+import EvaluationPanel from '/static/js/evaluationPanel.js'
     const { createApp, ref, computed, watch } = Vue
     import { display_toast, message_list } from '/static/js/toaster.js'
     import AppPagination from '/static/js/pagination.js'
@@ -403,7 +416,7 @@
         };
     }
 
-    createApp({
+    const app = createApp({
         components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay, 'multi-tag-filter': MultiTagFilter },
         delimiters: ['[[', ']]'],
         setup() {
@@ -617,6 +630,8 @@
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
             }
         }
-    }).mount('#main-containers')
+    })
+    app.component('evaluation-panel', EvaluationPanel)
+    app.mount('#main-containers')
 </script>
 {% endblock %}

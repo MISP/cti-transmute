@@ -1,0 +1,290 @@
+/* ═══════════════════════════════════════════════════════════════
+   EVALUATION PANEL
+   Drop-in component styles. No cascade side-effects.
+═══════════════════════════════════════════════════════════════ */
+
+.eval-panel-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eval-loading {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+/* ── Vote row ───────────────────────────────────────────────── */
+.eval-vote-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.eval-vote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.eval-vote-btn:hover:not(.disabled) {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.07);
+}
+
+.eval-vote-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.eval-vote-btn.dislike:hover:not(.disabled) {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.07);
+}
+
+.eval-vote-btn.dislike.active {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.eval-vote-btn.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.eval-vote-count {
+  font-variant-numeric: tabular-nums;
+  min-width: 14px;
+  text-align: center;
+}
+
+/* ── Score bar ──────────────────────────────────────────────── */
+.eval-score-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 80px;
+  max-width: 200px;
+}
+
+.eval-score-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.eval-score-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.eval-score-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Auth hint ──────────────────────────────────────────────── */
+.eval-hint {
+  font-size: 0.78rem;
+  color: var(--text-3);
+}
+
+.eval-hint a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.eval-hint a:hover {
+  text-decoration: underline;
+}
+
+/* ── Reactions ──────────────────────────────────────────────── */
+.eval-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.eval-reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.eval-reaction-btn i {
+  font-size: 0.72rem;
+}
+
+.eval-reaction-btn:hover:not(.disabled) {
+  background: var(--surface-2);
+  border-color: var(--border-2);
+  color: var(--text);
+}
+
+.eval-reaction-btn.active {
+  color: #fff;
+  /* background and border-color set inline via activeReactionStyle() */
+}
+
+.eval-reaction-btn.active:hover {
+  filter: brightness(1.12);
+}
+
+.eval-reaction-btn.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.eval-reaction-label {
+  white-space: nowrap;
+}
+
+.eval-reaction-count {
+  background: rgba(255,255,255,0.22);
+  border-radius: 99px;
+  padding: 0 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-reaction-btn:not(.active) .eval-reaction-count {
+  background: var(--border);
+  color: var(--text-2);
+}
+
+/* ── Evaluation-comment link ────────────────────────────────── */
+.eval-comments-link {
+  font-size: 0.78rem;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Evaluation section wrapper (used in detail/history) ─────── */
+.eval-section {
+  padding: 14px 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.eval-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Evaluation badge on comments ───────────────────────────── */
+.eval-comment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(37, 99, 235, 0.10);
+  color: var(--accent);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  flex-shrink: 0;
+}
+
+html.dark-mode .eval-comment-badge {
+  background: rgba(59, 130, 246, 0.14);
+}
+
+html.dusk-mode .eval-comment-badge {
+  background: rgba(129, 140, 248, 0.14);
+  color: #818cf8;
+  border-color: rgba(129, 140, 248, 0.25);
+}
+
+html.ocean-mode .eval-comment-badge {
+  background: rgba(30, 58, 138, 0.07);
+  color: #1e3a8a;
+  border-color: rgba(30, 58, 138, 0.14);
+}
+
+/* ── Evaluation comment checkbox in form ────────────────────── */
+.eval-comment-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.79rem;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.eval-comment-toggle input[type=checkbox] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ── Admin table badge ──────────────────────────────────────── */
+.eval-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.eval-type-like     { background: rgba(37,99,235,0.10);  color: #2563eb; }
+.eval-type-dislike  { background: rgba(220,38,38,0.10);  color: #dc2626; }
+.eval-type-reaction { background: rgba(124,58,237,0.10); color: #7c3aed; }

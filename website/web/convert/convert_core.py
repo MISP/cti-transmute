@@ -687,7 +687,7 @@ def _can_see_comment(comment, convert_is_public, current_user_id, is_admin, conv
     return current_user_id == convert_owner_id or current_user_id == comment.user_id
 
 
-def create_comment(convert_id, user_id, content, is_private=False, parent_id=None):
+def create_comment(convert_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
     """Create a new comment or reply on a convert."""
     try:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -698,7 +698,8 @@ def create_comment(convert_id, user_id, content, is_private=False, parent_id=Non
             is_private=is_private,
             parent_id=parent_id,
             created_at=now,
-            is_deleted=False
+            is_deleted=False,
+            is_evaluation=bool(is_evaluation) if not parent_id else False,
         )
         db.session.add(comment)
         db.session.commit()

@@ -293,6 +293,11 @@
                             <span v-if="comments_total > 0" class="badge bg-secondary ms-1">[[ comments_total ]]</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#eval-pane-'+convert.id" role="tab">
+                            <i class="fas fa-chart-bar me-1"></i> Evaluation
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -518,7 +523,12 @@
                                 <label class="comment-privacy-toggle">
                                     <input type="checkbox" v-model="new_comment_private">
                                     <i class="fas fa-lock" style="font-size:0.75rem;"></i>
-                                    Private (only visible to you and the convert owner)
+                                    Private
+                                </label>
+                                <label class="eval-comment-toggle">
+                                    <input type="checkbox" v-model="new_comment_evaluation">
+                                    <i class="fas fa-chart-bar" style="font-size:0.75rem; color:var(--accent);"></i>
+                                    Evaluation
                                 </label>
                                 <button class="btn btn-sm btn-primary" @click="postComment()" :disabled="!new_comment_text.trim()">
                                     <i class="fas fa-paper-plane me-1"></i> Post
@@ -552,6 +562,9 @@
                                     <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
                                     <span v-if="comment.is_private" class="comment-private-badge">
                                         <i class="fas fa-lock"></i> Private
+                                    </span>
+                                    <span v-if="comment.is_evaluation" class="eval-comment-badge">
+                                        <i class="fas fa-chart-bar"></i> Evaluation
                                     </span>
                                 </div>
 
@@ -620,6 +633,21 @@
                             </div>
                         </template>
 
+                    </div>
+                </div>
+
+                <!-- ── Evaluation tab ────────────────────────────── -->
+                <div class="tab-pane fade" :id="'eval-pane-'+convert.id" role="tabpanel">
+                    <div class="eval-section" style="border:none; background:transparent; padding:4px 0;">
+                        <div class="eval-section-label">
+                            <i class="fas fa-chart-bar"></i> Evaluation
+                        </div>
+                        <div class="eval-panel"
+                             data-convert-id="{{ convert.id }}"
+                             data-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
+                             data-owner="{{ 'true' if current_user.is_authenticated and convert.user_id == current_user.id else 'false' }}"
+                             data-public="{{ 'true' if convert.public else 'false' }}">
+                        </div>
                     </div>
                 </div>
 
@@ -766,6 +794,8 @@
     import TagInput from '/static/js/tags/tagInput.js';
     import { initConvertGraph, showGraphSide } from '/static/js/graph/convertGraph.js';
     import { openGraphConfigModal } from '/static/js/graph/graphConfigModal.js';
+    import EvaluationPanel from '/static/js/evaluationPanel.js';
+    import { mountEvaluationPanels } from '/static/js/evaluationPanel.js'
     window.showGraphSide = showGraphSide;
     window.openGraphConfigModal = openGraphConfigModal;
 
@@ -964,8 +994,9 @@
             const comments_total = ref(0)
             const comments_loading = ref(false)
             const comments_loaded = ref(false)
-            const new_comment_text = ref('')
-            const new_comment_private = ref(false)
+            const new_comment_text       = ref('')
+            const new_comment_private    = ref(false)
+            const new_comment_evaluation = ref(false)
             const reply_open_for = ref(null)
             const reply_texts = ref({})
             const is_following_author = ref(false)
@@ -979,6 +1010,8 @@
             const pending_visibility_action = ref(null)
             const pending_comment_count = ref(0)
 
+
+            
             async function getConvert() {
                 const res = await fetch(`/convert/get_convert?id=${convert_id}`)
                 if (res.ok) {
@@ -1008,6 +1041,9 @@
                         highlightAll()
                         initConvertGraph(c)
                     }, 0)
+
+                    await nextTick()
+                    mountEvaluationPanels()
                 } else {
                     is_loading.value = false
                 }
@@ -1173,13 +1209,19 @@
                 const res = await fetch('/convert/comment', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
-                    body: JSON.stringify({convert_id: parseInt(convert_id), content, is_private: new_comment_private.value})
+                    body: JSON.stringify({
+                        convert_id:    parseInt(convert_id),
+                        content,
+                        is_private:    new_comment_private.value,
+                        is_evaluation: new_comment_evaluation.value,
+                    })
                 })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (res.status === 201) {
-                    new_comment_text.value = ''
-                    new_comment_private.value = false
+                    new_comment_text.value       = ''
+                    new_comment_private.value    = false
+                    new_comment_evaluation.value = false
                     await refreshComments()
                     window.__refreshNotifCount?.()
                 }
@@ -1303,7 +1345,7 @@
                 getRawInput, getRawOutput,
                 // Comments
                 comments, comments_total, comments_loading,
-                new_comment_text, new_comment_private,
+                new_comment_text, new_comment_private, new_comment_evaluation,
                 reply_open_for, reply_texts,
                 loadComments, postComment, postReply, deleteComment,
                 toggleCommentPrivate, toggleReplyForm,
@@ -1318,6 +1360,7 @@
     })
     app.component('tag-input', TagInput)
     app.mount('#main-containers')
+
 </script>
 
 <!-- graph logic lives in /static/js/graph/convertGraph.js -->

@@ -16,11 +16,13 @@ def main():
     from website.web.convert.convert import convert_blueprint
     from website.web.account.account import account_blueprint
     from website.web.tags.tags import tags_blueprint
+    from website.web.evaluate.evaluate import evaluate_blueprint
 
     application.register_blueprint(home_blueprint, url_prefix="/")
     application.register_blueprint(convert_blueprint, url_prefix="/convert")
     application.register_blueprint(account_blueprint, url_prefix="/account")
     application.register_blueprint(tags_blueprint, url_prefix="/tags")
+    application.register_blueprint(evaluate_blueprint, url_prefix="/evaluate")
 
 
 
