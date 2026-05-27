@@ -9,8 +9,10 @@
 
     <script>
         (function () {
+            const THEMES = ['light', 'dark', 'dusk', 'ocean'];
             let t = localStorage.getItem('theme') ||
                 (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (!THEMES.includes(t)) t = 'light';
             document.documentElement.classList.add(t + '-mode');
         })();
     </script>
@@ -20,6 +22,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/solid.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='fontawesome-6.3.0/css/brands.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/core.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/evaluation.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tags.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pagination.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
@@ -151,23 +156,55 @@
 
             (function () {
                 const html = document.documentElement;
-                const btn = document.getElementById('theme-toggle');
                 const icon = document.getElementById('theme-icon');
-                const saved = localStorage.getItem('theme') ||
+
+                const THEMES = ['light', 'dark', 'dusk', 'ocean'];
+                const ICONS  = {
+                    light:  'fas fa-sun',
+                    dark:   'fas fa-moon',
+                    dusk:   'fas fa-star',
+                    ocean:  'fas fa-water',
+                };
+
+                function applyTheme(t) {
+                    if (!THEMES.includes(t)) t = 'light';
+                    html.classList.remove(...THEMES.map(x => x + '-mode'));
+                    html.classList.add(t + '-mode');
+                    localStorage.setItem('theme', t);
+                    if (icon) icon.className = ICONS[t];
+                    // Update active state on menu items
+                    document.querySelectorAll('.theme-picker-item').forEach(el => {
+                        const isActive = el.dataset.theme === t;
+                        el.classList.toggle('active', isActive);
+                        const check = el.querySelector('.theme-picker-check');
+                        if (check) check.style.opacity = isActive ? '1' : '0';
+                    });
+                    // Notify other scripts (e.g. hljs in detail.html)
+                    html.dispatchEvent(new CustomEvent('themechange', { detail: { theme: t } }));
+                }
+
+                // Init
+                let saved = localStorage.getItem('theme') ||
                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                applyTheme(saved);
 
-                html.classList.remove('light-mode', 'dark-mode');
-                html.classList.add(saved + '-mode');
-                icon.className = saved === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-
-                btn.addEventListener('click', () => {
-                    const isDark = html.classList.contains('dark-mode');
-                    const newTheme = isDark ? 'light' : 'dark';
-                    html.classList.remove('light-mode', 'dark-mode');
-                    html.classList.add(newTheme + '-mode');
-                    localStorage.setItem('theme', newTheme);
-                    icon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-                });
+                // Wire up menu items (they may not exist yet if DOM not ready)
+                function wireMenu() {
+                    document.querySelectorAll('.theme-picker-item').forEach(el => {
+                        el.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            applyTheme(el.dataset.theme);
+                            // Close the dropdown
+                            document.querySelectorAll('.top-nav-dropdown-menu.open')
+                                .forEach(m => m.classList.remove('open'));
+                        });
+                    });
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', wireMenu);
+                } else {
+                    wireMenu();
+                }
 
                 // Dropdowns
                 document.querySelectorAll('.top-nav-dropdown').forEach(dd => {
@@ -188,152 +225,39 @@
                 });
 
                 // Mobile menu
-                document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
-                    document.getElementById('topNavLinks').classList.toggle('mobile-open');
+                const mobileBtn  = document.getElementById('mobileMenuBtn');
+                const mobileMenu = document.getElementById('topNavLinks');
+                const burgerIcon = document.getElementById('burgerIcon');
+
+                function closeMobileMenu() {
+                    mobileMenu?.classList.remove('mobile-open');
+                    if (burgerIcon) {
+                        burgerIcon.className = 'fas fa-bars';
+                    }
+                }
+
+                mobileBtn?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = mobileMenu.classList.toggle('mobile-open');
+                    if (burgerIcon) {
+                        burgerIcon.className = isOpen ? 'fas fa-times' : 'fas fa-bars';
+                    }
                 });
 
-                // Navbar search dropdown
-                ;(function () {
-                    const IS_ADMIN = {{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}
-                    const IS_AUTH  = {{ 'true' if current_user.is_authenticated else 'false' }}
+                // Close drawer when tapping a nav link (not a dropdown toggle)
+                mobileMenu?.querySelectorAll('a.top-nav-link').forEach(link => {
+                    link.addEventListener('click', closeMobileMenu);
+                });
 
-                    const input    = document.getElementById('navbar-search-input')
-                    const dropdown = document.getElementById('navbar-search-dropdown')
-                    const form     = document.getElementById('top-nav-search-form')
-                    if (!input || !dropdown) return
-
-                    const _sq = new URLSearchParams(window.location.search).get('search')
-                    if (_sq) input.value = _sq
-
-                    let debounce = null
-                    let activeIdx = -1
-
-                    const SECTIONS = [
-                        { icon: 'fa-home',                 label: 'Home',              url: '/' },
-                        { icon: 'fa-book',                 label: 'History',           url: '/convert/history' },
-                        { icon: 'fa-arrow-right-arrow-left', label: 'MISP → STIX',    url: '/convert/misp_to_stix' },
-                        { icon: 'fa-arrow-right-arrow-left', label: 'STIX → MISP',    url: '/convert/stix_to_misp' },
-                        { icon: 'fa-plug',                 label: 'API Endpoints',     url: '/list' },
-                        ...(IS_AUTH ? [{ icon: 'fa-user', label: 'Profile', url: '/account/' }] : []),
-                        ...(IS_ADMIN ? [
-                            { icon: 'fa-users',      label: 'Manage Users',      url: '/account/manage_user',            admin: true },
-                            { icon: 'fa-comments',   label: 'All Comments',      url: '/account/admin/comments',         admin: true },
-                            { icon: 'fa-flag',       label: 'Reports',           url: '/account/admin/reports',          admin: true },
-                            { icon: 'fa-trash-alt',  label: 'Deleted Converts',  url: '/account/admin/deleted_converts', admin: true },
-                            { icon: 'fa-stream',     label: 'Activity Logs',     url: '/account/admin/logs',             admin: true },
-                        ] : []),
-                    ]
-
-                    function esc(s) {
-                        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+                // Close drawer on outside click
+                document.addEventListener('click', (e) => {
+                    if (mobileMenu?.classList.contains('mobile-open') &&
+                        !mobileMenu.contains(e.target) &&
+                        !mobileBtn?.contains(e.target)) {
+                        closeMobileMenu();
                     }
-                    function typeLabel(t) { return t==='MISP_TO_STIX'?'MISP→STIX':t==='STIX_TO_MISP'?'STIX→MISP':t||'—' }
-                    function typeClass(t)  { return t==='MISP_TO_STIX'?'nav-sd-misp':t==='STIX_TO_MISP'?'nav-sd-stix':'' }
+                });
 
-                    function sectionHtml(sections) {
-                        return sections.map(s =>
-                            `<a class="nav-sd-section-item nav-sd-focusable" href="${s.url}">
-                                <span class="nav-sd-section-icon${s.admin?' nav-sd-admin-icon':''}"><i class="fas ${s.icon}"></i></span>
-                                <span class="nav-sd-name">${esc(s.label)}</span>
-                                ${s.admin ? '<span class="nav-sd-admin-tag">Admin</span>' : ''}
-                            </a>`
-                        ).join('')
-                    }
-
-                    function showQuickAccess() {
-                        const user  = SECTIONS.filter(s => !s.admin)
-                        const admin = SECTIONS.filter(s =>  s.admin)
-                        let html = ''
-                        if (user.length)  html += `<div class="nav-sd-group-header"><i class="fas fa-layer-group me-1"></i>Quick Access</div>` + sectionHtml(user)
-                        if (admin.length) html += `<div class="nav-sd-group-header"><i class="fas fa-shield-halved me-1"></i>Admin</div>` + sectionHtml(admin)
-                        dropdown.innerHTML = html
-                        dropdown.style.display = 'block'
-                        activeIdx = -1
-                    }
-
-                    async function search(q) {
-                        if (!q.trim()) { showQuickAccess(); return }
-                        try {
-                            const matchUser  = SECTIONS.filter(s => !s.admin && s.label.toLowerCase().includes(q.toLowerCase()))
-                            const matchAdmin = SECTIONS.filter(s =>  s.admin && s.label.toLowerCase().includes(q.toLowerCase()))
-
-                            let html = ''
-                            if (matchUser.length)  html += `<div class="nav-sd-group-header"><i class="fas fa-layer-group me-1"></i>Sections</div>` + sectionHtml(matchUser)
-                            if (matchAdmin.length) html += `<div class="nav-sd-group-header"><i class="fas fa-shield-halved me-1"></i>Admin</div>` + sectionHtml(matchAdmin)
-
-                            const res  = await fetch('/convert/get_convert_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
-                            const data = res.ok ? await res.json() : { list: [] }
-                            const items = (data.list || []).slice(0, 5)
-
-                            if (items.length) {
-                                html += `<div class="nav-sd-group-header"><i class="fas fa-exchange-alt me-1"></i>Converts</div>`
-                                html += items.map(item =>
-                                    `<a class="nav-sd-item nav-sd-focusable" href="/convert/detail/${item.id}">
-                                        <span class="nav-sd-badge ${typeClass(item.conversion_type)}">${typeLabel(item.conversion_type)}</span>
-                                        <span class="nav-sd-name">${esc(item.name)}</span>
-                                    </a>`
-                                ).join('')
-                                html += `<a class="nav-sd-footer nav-sd-focusable" href="/convert/history?search=${encodeURIComponent(q)}">
-                                    <i class="fas fa-search me-1"></i>See all results for &ldquo;${esc(q)}&rdquo;
-                                </a>`
-                            } else if (!matchUser.length && !matchAdmin.length) {
-                                html = `<div class="nav-sd-empty"><i class="fas fa-inbox me-1"></i>No results</div>`
-                            }
-
-                            dropdown.innerHTML = html
-                            dropdown.style.display = 'block'
-                            activeIdx = -1
-                        } catch {}
-                    }
-
-                    function getFocusable() { return Array.from(dropdown.querySelectorAll('.nav-sd-focusable')) }
-
-                    input.addEventListener('keydown', e => {
-                        const items = getFocusable()
-                        if (e.key === 'ArrowDown') {
-                            e.preventDefault()
-                            activeIdx = Math.min(activeIdx + 1, items.length - 1)
-                            items[activeIdx]?.focus()
-                        } else if (e.key === 'Escape') {
-                            dropdown.style.display = 'none'
-                        }
-                    })
-
-                    dropdown.addEventListener('keydown', e => {
-                        const items = getFocusable()
-                        if (e.key === 'ArrowDown') {
-                            e.preventDefault()
-                            activeIdx = Math.min(activeIdx + 1, items.length - 1)
-                            items[activeIdx]?.focus()
-                        } else if (e.key === 'ArrowUp') {
-                            e.preventDefault()
-                            if (activeIdx <= 0) { activeIdx = -1; input.focus(); return }
-                            activeIdx = Math.max(0, activeIdx - 1)
-                            items[activeIdx]?.focus()
-                        } else if (e.key === 'Escape') {
-                            dropdown.style.display = 'none'
-                            input.focus()
-                        }
-                    })
-
-                    input.addEventListener('input', () => {
-                        clearTimeout(debounce)
-                        const q = input.value
-                        if (!q.trim()) { showQuickAccess(); return }
-                        debounce = setTimeout(() => search(q), 250)
-                    })
-
-                    input.addEventListener('focus', () => {
-                        const q = input.value
-                        if (!q.trim()) showQuickAccess()
-                        else search(q)
-                    })
-
-                    form.addEventListener('submit', () => { dropdown.style.display = 'none' })
-                    document.addEventListener('click', e => {
-                        if (!form.contains(e.target)) dropdown.style.display = 'none'
-                    })
-                })()
 
                 // Back to top
                 const backBtn = document.getElementById('backToTop');
@@ -487,6 +411,17 @@
         })()
     </script>
     {% endif %}
+
+    <script type="module">
+        import NavbarSearch from '/static/js/navbarSearch.js'
+        const el = document.getElementById('navbar-search-mount')
+        if (el) {
+            Vue.createApp(NavbarSearch, {
+                isAdmin: el.dataset.admin === 'true',
+                isAuth:  el.dataset.auth  === 'true',
+            }).mount(el)
+        }
+    </script>
 
     {% block script %}
     <script type="module">

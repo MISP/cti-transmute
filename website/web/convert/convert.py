@@ -1,13 +1,36 @@
 # website/web/convert/views.py
 import io
+import ipaddress
 import json
+from urllib.parse import urlparse
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
-from website.web.utils import extract_name_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
+from website.web.utils import extract_name_from_misp_json, extract_tag_names_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
 import requests
 from ..convert import convert_core as ConvertModel
 from ..account import account_core as AccountModel
+from ..tags import tags_core as TagsModel
+
+
+def _validate_misp_url(misp_url: str) -> str | None:
+    """Return an error string if the URL is invalid/unsafe, None if OK."""
+    try:
+        parsed = urlparse(misp_url)
+    except Exception:
+        return "Invalid URL"
+    if parsed.scheme != "https":
+        return "MISP URL must use HTTPS"
+    hostname = parsed.hostname
+    if not hostname:
+        return "Invalid MISP URL (missing host)"
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return "Private/loopback/reserved IP addresses are not allowed"
+    except ValueError:
+        pass  # it's a domain name — OK
+    return None
 
 convert_blueprint = Blueprint(
     "convert",
@@ -92,6 +115,14 @@ def misp_to_stix():
                         AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: MISP→STIX, Public: {saved.public}")
                         if saved.public and not current_user.is_anonymous():
                             AccountModel.notify_followers_new_convert(saved, current_user.id)
+                        if not current_user.is_anonymous():
+                            raw_ids = request.form.get('tag_ids', '')
+                            manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                            misp_names = extract_tag_names_from_misp_json(file_content)
+                            auto_ids = TagsModel.resolve_tag_ids_from_names(misp_names)
+                            all_ids = list(dict.fromkeys(manual_ids + auto_ids))
+                            if all_ids:
+                                TagsModel.save_convert_tags(saved.id, all_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering the convert!", "danger")
@@ -106,6 +137,195 @@ def misp_to_stix():
                 flash(error, "danger")
 
     return render_template("convert/misp_to_stix.html", form=form, result=result, error=error)
+
+
+@convert_blueprint.route("/fetch_misp_event", methods=['POST'])
+def fetch_misp_event():
+    """Fetch one or more MISP events via restSearch.
+    Accepts event_ids (list) or event_id (string). Supports optional restSearch params.
+    Returns {"content": json_string, "count": N, "event_ids": [...]}
+    """
+    data = request.get_json(silent=True) or {}
+    misp_url = data.get("misp_url", "").strip().rstrip("/")
+    api_key  = data.get("api_key",  "").strip()
+
+    # Accept event_ids (list) OR event_id (single string) for backward compat
+    event_ids = data.get("event_ids")
+    if event_ids is None:
+        single = str(data.get("event_id", "")).strip()
+        if not single.isdigit():
+            return jsonify({"error": "Event ID must be a positive integer"}), 400
+        event_ids = [single]
+    else:
+        if not isinstance(event_ids, list) or not event_ids:
+            return jsonify({"error": "event_ids must be a non-empty list"}), 400
+        for eid in event_ids:
+            if not str(eid).strip().isdigit():
+                return jsonify({"error": f"Invalid event ID: {eid}"}), 400
+        event_ids = [str(e).strip() for e in event_ids]
+
+    if not api_key:
+        return jsonify({"error": "API key is required"}), 400
+
+    url_error = _validate_misp_url(misp_url)
+    if url_error:
+        return jsonify({"error": url_error}), 400
+
+    OPTIONAL_PARAMS = [
+        "page", "limit", "value", "type", "category", "org", "tags", "date",
+        "last", "withAttachments", "uuid", "publish_timestamp", "timestamp",
+        "attribute_timestamp", "enforceWarninglist", "to_ids", "deleted",
+        "includeEventUuid", "includeEventTags", "event_timestamp",
+        "threat_level_id", "eventinfo", "sharinggroup", "includeProposals",
+        "includeDecayScore", "includeFullModel", "decayingModel",
+        "excludeDecayed", "score", "first_seen", "last_seen",
+    ]
+    body: dict = {
+        "returnFormat": "json",
+        "eventid": event_ids if len(event_ids) > 1 else event_ids[0],
+    }
+    for param in OPTIONAL_PARAMS:
+        if param in data and data[param] not in (None, "", []):
+            body[param] = data[param]
+
+    fetch_url = f"{misp_url}/events/restSearch"
+    try:
+        resp = requests.post(
+            fetch_url,
+            headers={
+                "Authorization": api_key,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json=body,
+            timeout=30,
+            verify=True,
+            allow_redirects=False,
+        )
+    except requests.exceptions.SSLError:
+        return jsonify({"error": "SSL certificate verification failed for that MISP instance"}), 400
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Could not reach the MISP instance — check the URL"}), 400
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "MISP instance did not respond in time (timeout 30 s)"}), 408
+    except requests.exceptions.RequestException as exc:
+        return jsonify({"error": f"Request failed: {exc}"}), 400
+
+    if resp.status_code in (401, 403):
+        return jsonify({"error": "Authentication failed — check your API key"}), 403
+    if resp.status_code == 404:
+        return jsonify({"error": "Event(s) not found on that instance"}), 404
+    if resp.status_code == 429:
+        return jsonify({"error": "MISP rate limit exceeded"}), 429
+
+    try:
+        result = resp.json()
+    except Exception:
+        return jsonify({"error": "MISP returned a non-JSON response"}), 400
+
+    # Normalize to {"response": [{"Event": {...}}, ...]}
+    response_list = result.get("response")
+    if isinstance(response_list, list):
+        normalized = {"response": response_list}
+    elif isinstance(response_list, dict) and "Event" in response_list:
+        normalized = {"response": [{"Event": response_list["Event"]}]}
+    elif "Event" in result:
+        normalized = {"response": [{"Event": result["Event"]}]}
+    else:
+        normalized = result
+
+    count = len(normalized["response"]) if isinstance(normalized.get("response"), list) else 1
+    return jsonify({"content": json.dumps(normalized, ensure_ascii=False), "count": count, "event_ids": event_ids}), 200
+
+
+@convert_blueprint.route("/misp_search_events", methods=['POST'])
+def misp_search_events():
+    """Search events on an external MISP instance using /events/index."""
+    data = request.get_json(silent=True) or {}
+    misp_url = data.get("misp_url", "").strip().rstrip("/")
+    api_key  = data.get("api_key",  "").strip()
+
+    if not api_key:
+        return jsonify({"error": "API key required"}), 400
+    url_error = _validate_misp_url(misp_url)
+    if url_error:
+        return jsonify({"error": url_error}), 400
+
+    try:
+        limit = min(int(data.get("limit", 25)), 100)
+        page  = max(int(data.get("page",  1)),  1)
+    except (TypeError, ValueError):
+        return jsonify({"error": "limit and page must be integers"}), 400
+
+    search_body = {"limit": limit, "page": page}
+    if data.get("search"):    search_body["searchinfo"]     = data["search"].strip()
+    if data.get("tag"):       search_body["searchtag"]      = data["tag"].strip()
+    if data.get("date_from"): search_body["searchdatefrom"] = data["date_from"].strip()
+    if data.get("date_to"):   search_body["searchdateto"]   = data["date_to"].strip()
+
+    try:
+        resp = requests.post(
+            f"{misp_url}/events/index",
+            headers={"Authorization": api_key, "Accept": "application/json",
+                     "Content-Type": "application/json"},
+            json=search_body,
+            timeout=15,
+            verify=True,
+            allow_redirects=False,
+        )
+    except requests.exceptions.SSLError:
+        return jsonify({"error": "SSL certificate verification failed"}), 400
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Cannot reach the MISP instance — check the URL"}), 400
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "MISP instance timed out (15 s)"}), 408
+    except requests.exceptions.RequestException as exc:
+        return jsonify({"error": f"Request failed: {exc}"}), 400
+
+    if resp.status_code in (401, 403):
+        return jsonify({"error": "Authentication failed — check your API key"}), 403
+    if resp.status_code != 200:
+        return jsonify({"error": f"MISP returned HTTP {resp.status_code}"}), 400
+
+    try:
+        raw = resp.json()
+    except Exception:
+        return jsonify({"error": "MISP returned a non-JSON response"}), 400
+
+    # Normalise the various response shapes MISP can return
+    if isinstance(raw, dict):
+        raw = raw.get("response", [])
+    if not isinstance(raw, list):
+        raw = []
+
+    THREAT = {"1": "High", "2": "Medium", "3": "Low", "4": "Undefined"}
+
+    events = []
+    for ev in raw:
+        raw_tags = ev.get("Tag") or []
+        if not raw_tags:
+            raw_tags = [et.get("Tag", {}) for et in ev.get("EventTag", []) if et.get("Tag")]
+        visible_tags = [
+            {"name": t.get("name", ""), "colour": t.get("colour", "#888888")}
+            for t in raw_tags
+            if not t.get("hide_tag", False)
+        ]
+        events.append({
+            "id":              ev.get("id"),
+            "info":            ev.get("info", ""),
+            "date":            ev.get("date", ""),
+            "attribute_count": ev.get("attribute_count", 0),
+            "org":             (ev.get("Orgc") or {}).get("name") or str(ev.get("org_id", "")),
+            "threat_level":    THREAT.get(str(ev.get("threat_level_id", "")), ""),
+            "published":       ev.get("published", False),
+            "distribution":    str(ev.get("distribution", "3")),
+            "sharing_group":   (ev.get("SharingGroup") or {}).get("name", ""),
+            "tags":            visible_tags,
+        })
+
+    return jsonify({"events": events, "count": len(events), "page": page, "limit": limit}), 200
+
+
 @convert_blueprint.route("/stix_to_misp", methods=['GET', 'POST'])
 def stix_to_misp():
     form = stixToMispParamForm()
@@ -211,6 +431,11 @@ def stix_to_misp():
                         AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: STIX→MISP, Public: {saved.public}")
                         if saved.public and not current_user.is_anonymous():
                             AccountModel.notify_followers_new_convert(saved, current_user.id)
+                        if not current_user.is_anonymous():
+                            raw_ids = request.form.get('tag_ids', '')
+                            tag_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                            if tag_ids:
+                                TagsModel.save_convert_tags(saved.id, tag_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering in database", "danger")
@@ -244,6 +469,9 @@ def get_page_history():
     date_to     = request.args.get('date_to', type=str)
 
     exact_match  = request.args.get('exact_match', 'false', type=str) == 'true'
+    tag_names_raw = request.args.get('tag_names', '', type=str)
+    tag_names = [t.strip() for t in tag_names_raw.split(',') if t.strip()] if tag_names_raw else None
+    vis_filter = request.args.get('vis_filter', '', type=str) or None
 
     pagination = ConvertModel.get_convert_page(
         page,
@@ -255,8 +483,17 @@ def get_page_history():
         date_from=date_from,
         date_to=date_to,
         exact_match=exact_match,
+        tag_names=tag_names,
+        vis_filter=vis_filter,
     )
-    convert_list = [item.to_json_list() for item in pagination.items]
+    items = pagination.items
+    convert_list = [item.to_json_list() for item in items]
+
+    # Batch load tags for all returned converts
+    ids = [item.id for item in items]
+    tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+    for entry in convert_list:
+        entry['tags'] = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
 
     return {
         "list": convert_list,
@@ -821,10 +1058,11 @@ def get_comments():
 def add_comment():
     """Create a comment or reply on a convert."""
     data = request.get_json(silent=True) or {}
-    convert_id = data.get('convert_id')
-    content = (data.get('content') or '').strip()
-    is_private = bool(data.get('is_private', False))
-    parent_id = data.get('parent_id')
+    convert_id    = data.get('convert_id')
+    content       = (data.get('content') or '').strip()
+    is_private    = bool(data.get('is_private', False))
+    is_evaluation = bool(data.get('is_evaluation', False))
+    parent_id     = data.get('parent_id')
 
     if not convert_id or not content:
         return {"success": False, "message": "Missing content or convert_id", "toast_class": "danger"}, 400
@@ -843,7 +1081,8 @@ def add_comment():
         user_id=current_user.id,
         content=content,
         is_private=is_private,
-        parent_id=parent_id if parent_id else None
+        parent_id=parent_id if parent_id else None,
+        is_evaluation=is_evaluation,
     )
     if not comment:
         return {"success": False, "message": "Failed to save comment", "toast_class": "danger"}, 500
@@ -1128,6 +1367,159 @@ def bulk_action():
     return {"success": True, "message": msg, "toast_class": "success" if done > 0 else "warning", "done": done}, 200
 
 
+@convert_blueprint.route("/misp_test_connection", methods=['POST'])
+@login_required
+def misp_test_connection():
+    """Test connectivity to a MISP instance and return its tag list."""
+    data = request.get_json(silent=True) or {}
+    misp_url = data.get("misp_url", "").strip().rstrip("/")
+    api_key  = data.get("api_key",  "").strip()
+
+    if not api_key:
+        return {"success": False, "error": "API key required"}, 400
+    url_error = _validate_misp_url(misp_url)
+    if url_error:
+        return {"success": False, "error": url_error}, 400
+
+    try:
+        resp = requests.get(
+            f"{misp_url}/tags/index",
+            headers={"Authorization": api_key, "Accept": "application/json"},
+            timeout=10,
+            verify=True,
+            allow_redirects=False,
+        )
+    except requests.exceptions.SSLError:
+        return {"success": False, "error": "SSL certificate verification failed for that MISP instance"}, 400
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "Cannot reach the MISP instance — check the URL"}, 400
+    except requests.exceptions.Timeout:
+        return {"success": False, "error": "MISP instance timed out (10 s)"}, 408
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "error": f"Request failed: {exc}"}, 400
+
+    if resp.status_code in (401, 403):
+        return {"success": False, "error": "Authentication failed — check your API key"}, 403
+    if resp.status_code != 200:
+        return {"success": False, "error": f"MISP returned HTTP {resp.status_code}"}, 400
+
+    try:
+        result = resp.json()
+    except Exception:
+        return {"success": False, "error": "MISP returned a non-JSON response"}, 400
+
+    raw_tags = result if isinstance(result, list) else result.get("Tag", [])
+    tags = [
+        {"name": t["name"], "colour": t.get("colour", "#888888")}
+        for t in raw_tags
+        if isinstance(t, dict) and t.get("name") and not t.get("hide_tag", False)
+    ]
+    return {"success": True, "tags": tags, "count": len(tags)}, 200
+
+
+@convert_blueprint.route("/push_to_misp", methods=['POST'])
+@login_required
+def push_to_misp():
+    """Push the MISP event associated with a convert to an external MISP instance."""
+    data = request.get_json(silent=True) or {}
+    convert_id = data.get("convert_id")
+    misp_url   = data.get("misp_url", "").strip().rstrip("/")
+    api_key    = data.get("api_key",  "").strip()
+    tags       = data.get("tags", [])
+
+    if not convert_id or not misp_url or not api_key:
+        return {"success": False, "error": "Missing required fields (convert_id, misp_url, api_key)"}, 400
+
+    url_error = _validate_misp_url(misp_url)
+    if url_error:
+        return {"success": False, "error": url_error}, 400
+
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Convert not found"}, 404
+    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+        return {"success": False, "error": "Forbidden"}, 403
+
+    # Pick the MISP JSON: input for MISP→STIX, output for STIX→MISP
+    misp_text = convert.input_text if convert.conversion_type == "MISP_TO_STIX" else convert.output_text
+    if not misp_text:
+        return {"success": False, "error": "No MISP data found in this convert"}, 400
+
+    try:
+        misp_data = json.loads(misp_text)
+    except json.JSONDecodeError:
+        return {"success": False, "error": "Invalid JSON in convert data"}, 400
+
+    # Extract the Event object
+    event_data = (
+        misp_data.get("Event")
+        or (misp_data.get("response") or [{}])[0].get("Event")
+    )
+    if not event_data:
+        return {"success": False, "error": "No MISP Event found in convert data"}, 400
+
+    # Merge selected tags into the event
+    if tags:
+        existing = {t.get("name", "") for t in (event_data.get("Tag") or [])}
+        for tag_name in tags:
+            if tag_name and tag_name not in existing:
+                (event_data.setdefault("Tag", [])).append({"name": tag_name, "exportable": True})
+
+    # Remove server-assigned fields that would conflict on a fresh import
+    for field in ("id", "uuid", "timestamp", "publish_timestamp", "published"):
+        event_data.pop(field, None)
+
+    try:
+        resp = requests.post(
+            f"{misp_url}/events",
+            headers={
+                "Authorization": api_key,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+            json={"Event": event_data},
+            timeout=30,
+            verify=True,
+            allow_redirects=False,
+        )
+    except requests.exceptions.SSLError:
+        return {"success": False, "error": "SSL certificate verification failed"}, 400
+    except requests.exceptions.ConnectionError:
+        return {"success": False, "error": "Cannot reach the MISP instance"}, 400
+    except requests.exceptions.Timeout:
+        return {"success": False, "error": "MISP instance timed out (30 s)"}, 408
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "error": f"Request failed: {exc}"}, 400
+
+    if resp.status_code in (401, 403):
+        return {"success": False, "error": "Authentication failed — check your API key"}, 403
+
+    try:
+        result = resp.json()
+    except Exception:
+        result = {}
+
+    if resp.status_code not in (200, 201) or result.get("errors"):
+        err = result.get("errors") or result.get("message") or f"MISP returned HTTP {resp.status_code}"
+        return {"success": False, "error": str(err)}, 400
+
+    new_event_id = (result.get("Event") or {}).get("id")
+    AccountModel.create_system_log(
+        "misp_push",
+        actor_id=current_user.id,
+        actor_name=current_user.first_name,
+        target_type="convert",
+        target_id=convert_id,
+        target_name=convert.name,
+        details=f"Pushed to {misp_url} — new event ID: {new_event_id}"
+    )
+    return {
+        "success": True,
+        "message": f"Event pushed to MISP successfully!{' (event #' + str(new_event_id) + ')' if new_event_id else ''}",
+        "event_id": new_event_id,
+    }, 200
+
+
 @convert_blueprint.route("/admin/get_all_comments", methods=['GET'])
 @login_required
 def admin_get_comments():
@@ -1159,3 +1551,48 @@ def admin_get_comments():
         "list": items,
         "total_page": pagination.pages
     }, 200
+
+###################################
+#   Graph configs                 #
+###################################
+
+@convert_blueprint.route("/graph_config/list", methods=["GET"])
+@login_required
+def graph_config_list():
+    configs = ConvertModel.get_graph_configs(user_id=current_user.id, is_admin=current_user.is_admin())
+    is_admin = current_user.is_admin()
+    return {"success": True, "list": [c.to_json(current_user_id=current_user.id, is_admin=is_admin) for c in configs]}, 200
+
+
+@convert_blueprint.route("/graph_config/save", methods=["POST"])
+@login_required
+def graph_config_save():
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    config_json = data.get('config_json') or '{}'
+    if not name:
+        return {"success": False, "message": "Name required", "toast_class": "danger"}, 400
+    try:
+        json.loads(config_json)
+    except Exception:
+        return {"success": False, "message": "Invalid JSON", "toast_class": "danger"}, 400
+    cfg, err = ConvertModel.save_graph_config(name, config_json, current_user.id)
+    if err:
+        return {"success": False, "message": err, "toast_class": "danger"}, 500
+    AccountModel.create_system_log("graph_config_saved", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=cfg.id, target_name=cfg.name)
+    return {"success": True, "message": "Config saved", "toast_class": "success", "config": cfg.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())}, 201
+
+
+@convert_blueprint.route("/graph_config/delete", methods=["POST"])
+@login_required
+def graph_config_delete():
+    data = request.get_json(silent=True) or {}
+    config_id = data.get('id')
+    if not config_id:
+        return {"success": False, "message": "ID required", "toast_class": "danger"}, 400
+    ok, err = ConvertModel.delete_graph_config(config_id, current_user.id, current_user.is_admin())
+    if not ok:
+        code = 403 if err == "Forbidden" else 404
+        return {"success": False, "message": err, "toast_class": "danger"}, code
+    AccountModel.create_system_log("graph_config_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=config_id, target_name="")
+    return {"success": True, "message": "Config deleted", "toast_class": "success"}, 200

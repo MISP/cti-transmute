@@ -1,0 +1,91 @@
+/* =========================================================================
+   App pagination — dots numérotés
+   ========================================================================= */
+
+.pg-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 0;
+  flex-wrap: wrap;
+}
+
+.pg-numbers {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ── Base button ──────────────────────────────────────────────────── */
+.pg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-2);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s, transform 0.1s;
+  line-height: 1;
+  user-select: none;
+}
+.pg-btn:hover:not(:disabled) {
+  background: var(--accent-light, rgba(99,102,241,0.1));
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.pg-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Number dots ──────────────────────────────────────────────────── */
+.pg-num {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+}
+.pg-num.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  transform: none;
+  cursor: default;
+}
+
+/* ── Prev / Next ──────────────────────────────────────────────────── */
+.pg-prev,
+.pg-next {
+  padding: 0 10px;
+  height: 32px;
+  font-weight: 500;
+}
+
+.pg-label {
+  font-size: 0.78rem;
+}
+
+/* ── Ellipsis ─────────────────────────────────────────────────────── */
+.pg-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 32px;
+  font-size: 0.85rem;
+  color: var(--text-3);
+  user-select: none;
+}
+
+/* ── Mobile: masque le texte prev/next ───────────────────────────── */
+@media (max-width: 480px) {
+  .pg-label { display: none; }
+  .pg-prev, .pg-next { padding: 0; width: 32px; }
+}

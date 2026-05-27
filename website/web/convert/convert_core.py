@@ -3,9 +3,9 @@ import json
 from sqlite3 import IntegrityError
 import uuid
 from flask_login import AnonymousUserMixin, current_user
-from website.db_class.db import Comment, CommentReaction, Convert, ConvertHistory, ConvertReport
+from website.db_class.db import Comment, CommentReaction, Convert, ConvertHistory, ConvertReport, GraphConfig
 from website.web import db
-from sqlalchemy import desc, asc, or_
+from sqlalchemy import desc, asc, or_, func
 import datetime
 import random
 import string
@@ -130,7 +130,7 @@ def list_all():
     return Convert.query.all()
 
 
-def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False):
+def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False, tag_names=None, vis_filter=None):
     """
     Return paginated conversion history with optional filter, sort and ownership filtering.
     - search_scope: 'all' | 'name' | 'description' | 'content'
@@ -181,6 +181,12 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
     if filter_type:
         query = query.filter(Convert.conversion_type == filter_type)
 
+    # Visibility filter (public / private)
+    if vis_filter == 'public':
+        query = query.filter(Convert.public == True)
+    elif vis_filter == 'private':
+        query = query.filter(Convert.public == False)
+
     # Convert only_mine to boolean
     only_mine_bool = str(only_mine).lower() in ['true', '1', 'yes', 'on']
 
@@ -208,6 +214,18 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
         query = query.order_by(asc(Convert.created_at))
     else:
         query = query.order_by(desc(Convert.created_at))
+
+    # Tag filter: convert must have ALL selected tags (AND logic)
+    if tag_names:
+        from website.db_class.db import ConvertTagAssociation, Tag as TagModel
+        for tag_name in tag_names:
+            subq = (
+                db.session.query(ConvertTagAssociation.convert_id)
+                .join(TagModel, ConvertTagAssociation.tag_id == TagModel.id)
+                .filter(func.lower(TagModel.name) == tag_name.lower())
+                .subquery()
+            )
+            query = query.filter(Convert.id.in_(subq))
 
     # Pagination
     return query.paginate(page=page, per_page=10)
@@ -669,7 +687,7 @@ def _can_see_comment(comment, convert_is_public, current_user_id, is_admin, conv
     return current_user_id == convert_owner_id or current_user_id == comment.user_id
 
 
-def create_comment(convert_id, user_id, content, is_private=False, parent_id=None):
+def create_comment(convert_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
     """Create a new comment or reply on a convert."""
     try:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -680,7 +698,8 @@ def create_comment(convert_id, user_id, content, is_private=False, parent_id=Non
             is_private=is_private,
             parent_id=parent_id,
             created_at=now,
-            is_deleted=False
+            is_deleted=False,
+            is_evaluation=bool(is_evaluation) if not parent_id else False,
         )
         db.session.add(comment)
         db.session.commit()
@@ -859,3 +878,60 @@ def delete_report(report_id):
     if report:
         db.session.delete(report)
         db.session.commit()
+
+###################################
+#   Graph configs                 #
+###################################
+
+def get_graph_configs(user_id=None, is_admin=False):
+    query = GraphConfig.query.filter(GraphConfig.is_active == True)
+    if not is_admin:
+        if user_id:
+            query = query.filter(
+                or_(GraphConfig.is_default == True, GraphConfig.created_by == user_id)
+            )
+        else:
+            query = query.filter(GraphConfig.is_default == True)
+    return query.order_by(GraphConfig.is_default.desc(), GraphConfig.created_at.desc()).all()
+
+
+def save_graph_config(name, config_json, created_by):
+    try:
+        now = datetime.datetime.utcnow()
+        cfg = GraphConfig(
+            uuid=str(uuid.uuid4()),
+            name=name.strip()[:100],
+            config_json=config_json,
+            created_by=created_by,
+            is_active=True,
+            is_default=False,
+            created_at=now,
+            updated_at=now,
+        )
+        db.session.add(cfg)
+        db.session.commit()
+        return cfg, None
+    except Exception as e:
+        db.session.rollback()
+        return None, str(e)
+
+
+def delete_graph_config(config_id, user_id, is_admin):
+    cfg = GraphConfig.query.get(config_id)
+    if not cfg:
+        return False, "Not found"
+    if cfg.is_default:
+        return False, "Cannot delete system defaults"
+    if not is_admin and cfg.created_by != user_id:
+        return False, "Forbidden"
+    try:
+        if is_admin:
+            db.session.delete(cfg)
+        else:
+            cfg.is_active = False
+            cfg.updated_at = datetime.datetime.utcnow()
+        db.session.commit()
+        return True, None
+    except Exception as e:
+        db.session.rollback()
+        return False, str(e)

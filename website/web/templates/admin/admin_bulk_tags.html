@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+  <div class="list-header">
+    <div class="home-hero-badge"><i class="fas fa-layer-group"></i> Admin</div>
+    <h1 class="list-title">Bulk Tag Converts</h1>
+    <p class="list-subtitle">Select converts and auto-scan their JSON for tags, or assign specific tags to all selected.</p>
+  </div>
+
+  <div id="bulk-tags-app">
+
+    <!-- ── Layout: left = convert list, right = actions + jobs ── -->
+    <div class="d-flex gap-3 flex-wrap flex-lg-nowrap">
+
+      <!-- ── Convert List ─────────────────────────────────── -->
+      <div class="custom-card p-3 flex-grow-1" style="min-width:0;">
+        <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+          <span style="font-weight:600; font-size:0.9rem;"><i class="fas fa-list me-1"></i> Converts</span>
+          <input class="form-control form-control-sm" style="width:180px;"
+                 type="text" v-model="search" @input="debounceSearch" placeholder="Search name…">
+          <select class="form-select form-select-sm" style="width:160px;" v-model="filterType" @change="resetPage">
+            <option value="ALL">All types</option>
+            <option value="MISP_TO_STIX">MISP → STIX</option>
+            <option value="STIX_TO_MISP">STIX → MISP</option>
+          </select>
+          <span class="ms-auto" style="font-size:0.78rem;color:var(--text-3);">
+            <span v-if="!loading">[[ total ]] total</span>
+            <i v-else class="fas fa-spinner fa-spin"></i>
+          </span>
+        </div>
+
+        <!-- Select all bar -->
+        <div class="d-flex align-items-center gap-2 mb-2" style="font-size:0.82rem;">
+          <input type="checkbox" :checked="allPageSelected" :indeterminate.prop="somePageSelected && !allPageSelected"
+                 @change="toggleAll" style="cursor:pointer;">
+          <span>
+            <span v-if="selected.size === 0" style="color:var(--text-3);">None selected</span>
+            <span v-else style="color:var(--accent); font-weight:600;">[[ selected.size ]] selected</span>
+          </span>
+          <button v-if="selected.size > 0" type="button" class="btn btn-sm btn-outline-secondary" style="font-size:0.75rem; padding:2px 8px;" @click="selected.clear(); selected = new Set(selected)">
+            Clear
+          </button>
+          <button v-if="selected.size < total" type="button" class="btn btn-sm btn-outline-accent" style="font-size:0.75rem; padding:2px 8px;" :disabled="selectingAll" @click="selectAllGlobal">
+            <i v-if="selectingAll" class="fas fa-spinner fa-spin me-1"></i>
+            Select all [[ total ]]
+          </button>
+        </div>
+
+        <!-- Table -->
+        <div style="overflow-x:auto;">
+          <table class="table table-sm" style="font-size:0.82rem; margin:0;">
+            <thead>
+              <tr>
+                <th style="width:32px;"></th>
+                <th>Name</th>
+                <th style="width:130px;">Type</th>
+                <th style="width:90px;">Date</th>
+                <th style="width:60px; text-align:center;">Tags</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="loading">
+                <td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-3);">
+                  <i class="fas fa-spinner fa-spin me-1"></i> Loading…
+                </td>
+              </tr>
+              <tr v-else-if="converts.length === 0">
+                <td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-3);font-style:italic;">No converts found.</td>
+              </tr>
+              <tr v-for="c in converts" :key="c.id"
+                  @click="toggleOne(c.id)"
+                  style="cursor:pointer;"
+                  :style="{ background: selected.has(c.id) ? 'rgba(var(--accent-rgb,99,102,241),0.08)' : '' }">
+                <td><input type="checkbox" :checked="selected.has(c.id)" @click.stop="toggleOne(c.id)" style="cursor:pointer;"></td>
+                <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" :title="c.name">[[ c.name ]]</td>
+                <td>
+                  <span class="badge" style="font-size:0.7rem;"
+                        :style="{ background: c.conversion_type === 'MISP_TO_STIX' ? 'var(--accent)' : 'var(--success)', color:'#fff' }">
+                    [[ c.conversion_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
+                  </span>
+                </td>
+                <td style="color:var(--text-3);">[[ c.created_at ]]</td>
+                <td style="text-align:center;">
+                  <span v-if="c.tag_count > 0" class="badge" style="background:var(--surface-2);color:var(--text-2);font-size:0.72rem;">[[ c.tag_count ]]</span>
+                  <span v-else style="color:var(--text-3);font-size:0.75rem;">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPages > 1" class="d-flex gap-1 mt-2 flex-wrap">
+          <button v-for="p in totalPages" :key="p" type="button"
+                  class="btn btn-sm"
+                  :class="p === page ? 'btn-primary' : 'btn-outline-secondary'"
+                  style="min-width:32px; font-size:0.78rem; padding:2px 7px;"
+                  @click="gotoPage(p)">[[ p ]]</button>
+        </div>
+      </div>
+
+      <!-- ── Right panel: Actions + Jobs ──────────────────── -->
+      <div style="width:340px; flex-shrink:0;">
+
+        <!-- Actions card -->
+        <div class="custom-card p-3 mb-3">
+          <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.8rem;">
+            <i class="fas fa-wand-magic-sparkles me-1"></i> Actions
+            <span v-if="selected.size > 0" style="font-size:0.78rem;font-weight:normal;color:var(--accent);margin-left:4px;">
+              on [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+            </span>
+          </div>
+
+          <div v-if="selected.size === 0" style="font-size:0.82rem;color:var(--text-3);font-style:italic;">
+            Select converts from the list first.
+          </div>
+          <template v-else>
+            <!-- Auto-scan -->
+            <div class="mb-3">
+              <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.4rem;">
+                <i class="fas fa-magnifying-glass-plus me-1"></i> Auto-scan JSON
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
+                Detect tags from each convert's stored MISP JSON.
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary w-100"
+                      @click="runScan" :disabled="jobRunning">
+                <i class="fas fa-play me-1"></i> Scan [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+              </button>
+            </div>
+
+            <div class="top-nav-dropdown-divider mb-3" style="border-top:1px solid var(--border);"></div>
+
+            <!-- Manual assign -->
+            <div>
+              <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.4rem;">
+                <i class="fas fa-tag me-1"></i> Assign specific tags
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
+                Pick tags to add to all selected converts.
+              </div>
+
+              <!-- Tag search -->
+              <div class="position-relative mb-2">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text" style="background:var(--surface);border-color:var(--border);color:var(--text-3);">
+                    <i v-if="tagSearching" class="fas fa-spinner fa-spin" style="font-size:0.65rem;"></i>
+                    <i v-else class="fas fa-magnifying-glass" style="font-size:0.65rem;"></i>
+                  </span>
+                  <input type="text" class="form-control form-control-sm"
+                         v-model="tagSearch"
+                         @focus="tagDropOpen=true"
+                         @keydown.escape="tagDropOpen=false; tagSearch=''"
+                         placeholder="Search tags to assign…"
+                         autocomplete="off"
+                         style="background:var(--surface);color:var(--text);border-color:var(--border);font-size:0.82rem;">
+                </div>
+                <!-- Dropdown -->
+                <div v-if="tagDropOpen && tagSuggestions.length > 0"
+                     style="position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:900;
+                            background:var(--surface);border:1px solid var(--border);
+                            border-radius:var(--radius-sm);max-height:200px;overflow-y:auto;
+                            box-shadow:var(--shadow-lg);">
+                  <div v-for="tag in tagSuggestions" :key="tag.id"
+                       @click="pickTag(tag)"
+                       style="cursor:pointer;padding:5px 10px;font-size:0.8rem;border-bottom:1px solid var(--border);"
+                       class="tag-input-dropdown-item">
+                    <span class="badge me-1" :style="{ background: tag.color || '#888', color:'#fff', fontSize:'0.7rem' }">[[ tag.name ]]</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Chosen tags chips -->
+              <div v-if="chosenTags.length > 0" class="d-flex flex-wrap gap-1 mb-2">
+                <span v-for="t in chosenTags" :key="t.id"
+                      class="badge d-inline-flex align-items-center gap-1"
+                      :style="{ background: t.color || '#888', color:'#fff', fontSize:'0.75rem', cursor:'default' }">
+                  [[ t.name ]]
+                  <button type="button" @click="removeChosenTag(t.id)"
+                          style="background:none;border:none;color:inherit;padding:0;font-size:0.7rem;line-height:1;cursor:pointer;">
+                    <i class="fas fa-xmark"></i>
+                  </button>
+                </span>
+              </div>
+
+              <button type="button" class="btn btn-sm btn-outline-success w-100"
+                      @click="runAssign"
+                      :disabled="jobRunning || chosenTags.length === 0">
+                <i class="fas fa-check me-1"></i> Assign to [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+              </button>
+            </div>
+
+            <div class="top-nav-dropdown-divider mb-3 mt-3" style="border-top:1px solid var(--border);"></div>
+
+            <!-- Remove tags -->
+            <div>
+              <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.4rem;color:var(--danger);">
+                <i class="fas fa-trash-can me-1"></i> Remove tags
+              </div>
+
+              <!-- Remove specific tags -->
+              <div class="mb-2">
+                <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
+                  Remove specific tags from all selected converts.
+                </div>
+                <!-- Reuse same tag search for remove -->
+                <div class="position-relative mb-2">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text" style="background:var(--surface);border-color:var(--border);color:var(--text-3);">
+                      <i v-if="rmTagSearching" class="fas fa-spinner fa-spin" style="font-size:0.65rem;"></i>
+                      <i v-else class="fas fa-magnifying-glass" style="font-size:0.65rem;"></i>
+                    </span>
+                    <input type="text" class="form-control form-control-sm"
+                           v-model="rmTagSearch"
+                           @focus="rmTagDropOpen=true"
+                           @keydown.escape="rmTagDropOpen=false; rmTagSearch=''"
+                           placeholder="Search tags to remove…"
+                           autocomplete="off"
+                           style="background:var(--surface);color:var(--text);border-color:var(--border);font-size:0.82rem;">
+                  </div>
+                  <div v-if="rmTagDropOpen && rmTagSuggestions.length > 0"
+                       style="position:absolute;top:calc(100% + 3px);left:0;right:0;z-index:900;
+                              background:var(--surface);border:1px solid var(--border);
+                              border-radius:var(--radius-sm);max-height:160px;overflow-y:auto;
+                              box-shadow:var(--shadow-lg);">
+                    <div v-for="tag in rmTagSuggestions" :key="tag.id"
+                         @click="pickRmTag(tag)"
+                         style="cursor:pointer;padding:5px 10px;font-size:0.8rem;border-bottom:1px solid var(--border);"
+                         class="tag-input-dropdown-item">
+                      <span class="badge me-1" :style="{ background: tag.color || '#888', color:'#fff', fontSize:'0.7rem' }">[[ tag.name ]]</span>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="rmTags.length > 0" class="d-flex flex-wrap gap-1 mb-2">
+                  <span v-for="t in rmTags" :key="t.id"
+                        class="badge d-inline-flex align-items-center gap-1"
+                        :style="{ background: t.color || '#888', color:'#fff', fontSize:'0.75rem' }">
+                    [[ t.name ]]
+                    <button type="button" @click="removeRmTag(t.id)"
+                            style="background:none;border:none;color:inherit;padding:0;font-size:0.7rem;line-height:1;cursor:pointer;">
+                      <i class="fas fa-xmark"></i>
+                    </button>
+                  </span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger w-100"
+                        @click="runRemoveTags"
+                        :disabled="jobRunning || rmTags.length === 0">
+                  <i class="fas fa-minus me-1"></i> Remove [[ rmTags.length ]] tag[[ rmTags.length > 1 ? 's' : '' ]] from [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+                </button>
+              </div>
+
+              <!-- Clear all tags -->
+              <div class="mt-2">
+                <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
+                  Remove <strong>all</strong> tags from selected converts.
+                </div>
+                <button type="button" class="btn btn-sm btn-danger w-100"
+                        @click="runClearTags"
+                        :disabled="jobRunning">
+                  <i class="fas fa-trash me-1"></i> Clear all tags from [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Jobs card -->
+        <div class="custom-card p-3">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span style="font-weight:600; font-size:0.9rem;"><i class="fas fa-clock-rotate-left me-1"></i> Recent Jobs</span>
+            <span v-if="jobRunning" style="font-size:0.75rem;color:var(--accent);">
+              <i class="fas fa-spinner fa-spin me-1"></i>Running…
+            </span>
+          </div>
+
+          <div v-if="jobs.length === 0" style="font-size:0.82rem;color:var(--text-3);font-style:italic;">No jobs yet.</div>
+
+          <div v-for="job in jobs" :key="job.id"
+               class="mb-2 p-2"
+               style="border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.78rem;">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span>
+                <span class="badge me-1"
+                      :style="{ background: job.type==='scan' ? 'var(--accent)' : job.type==='remove'||job.type==='clear' ? 'var(--danger)' : 'var(--success)', color:'#fff', fontSize:'0.68rem' }">
+                  [[ job.type ]]
+                </span>
+                <span style="font-family:monospace;font-size:0.72rem;color:var(--text-3);">#[[ job.id ]]</span>
+              </span>
+              <div class="d-flex align-items-center gap-2">
+                <span :style="{ color: job.status==='done' ? 'var(--success)' : job.status==='error' ? 'var(--danger)' : 'var(--accent)' }">
+                  <i :class="job.status==='done' ? 'fas fa-check-circle' : job.status==='error' ? 'fas fa-circle-xmark' : 'fas fa-spinner fa-spin'" class="me-1"></i>
+                  [[ job.status ]]
+                </span>
+                <button type="button" @click="deleteJob(job.id)"
+                        :disabled="job.status === 'running'"
+                        style="background:none;border:none;padding:0;font-size:0.72rem;cursor:pointer;color:var(--text-3);"
+                        title="Delete job">
+                  <i class="fas fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+            <!-- Progress bar -->
+            <div style="background:var(--border);border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px;">
+              <div :style="{ width: job.total > 0 ? (job.progress/job.total*100)+'%' : '0%',
+                             background: job.status==='done' ? (job.type==='remove'||job.type==='clear' ? 'var(--danger)' : 'var(--success)') : 'var(--accent)',
+                             height:'100%', transition:'width 0.3s' }"></div>
+            </div>
+            <div style="color:var(--text-3);">
+              [[ job.progress ]]/[[ job.total ]]
+              <span v-if="job.added > 0" class="ms-1"
+                    :style="{ color: job.type==='remove'||job.type==='clear' ? 'var(--danger)' : 'var(--success)' }">
+                [[ job.type==='remove'||job.type==='clear' ? '-' : '+' ]][[ job.added ]]
+              </span>
+              <span v-if="job.skipped > 0" class="ms-1">· [[ job.skipped ]] skipped</span>
+              <span v-if="job.errors && job.errors.length > 0" class="ms-1" style="color:var(--danger);">[[ job.errors.length ]] err</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+const { createApp } = Vue;
+
+createApp({
+    delimiters: ['[[', ']]'],
+    data() {
+        return {
+            converts:    [],
+            loading:     false,
+            search:      '',
+            filterType:  'ALL',
+            page:        1,
+            perPage:     50,
+            totalPages:  1,
+            total:       0,
+            selected:    new Set(),
+            selectingAll: false,
+
+            tagSearch:      '',
+            tagSuggestions: [],
+            tagSearching:   false,
+            tagDropOpen:    false,
+            chosenTags:     [],
+            _tagDebounce:   null,
+
+            rmTagSearch:      '',
+            rmTagSuggestions: [],
+            rmTagSearching:   false,
+            rmTagDropOpen:    false,
+            rmTags:           [],
+            _rmTagDebounce:   null,
+
+            jobs:        [],
+            jobRunning:  false,
+            _pollTimer:  null,
+            _debounce:   null,
+        };
+    },
+    computed: {
+        allPageSelected() {
+            return this.converts.length > 0 && this.converts.every(c => this.selected.has(c.id));
+        },
+        somePageSelected() {
+            return this.converts.some(c => this.selected.has(c.id));
+        },
+    },
+    watch: {
+        tagSearch(val) {
+            clearTimeout(this._tagDebounce);
+            this._tagDebounce = setTimeout(() => this._fetchTagSuggestions(val, 'assign'), 220);
+        },
+        rmTagSearch(val) {
+            clearTimeout(this._rmTagDebounce);
+            this._rmTagDebounce = setTimeout(() => this._fetchTagSuggestions(val, 'remove'), 220);
+        },
+    },
+    async mounted() {
+        await this.loadConverts();
+        await this.loadJobs();
+
+        this._outsideClick = (e) => {
+            if (!this.$el.contains(e.target)) this.tagDropOpen = false;
+        };
+        document.addEventListener('click', this._outsideClick);
+    },
+    beforeUnmount() {
+        document.removeEventListener('click', this._outsideClick);
+        clearTimeout(this._pollTimer);
+        clearTimeout(this._debounce);
+        clearTimeout(this._tagDebounce);
+        clearTimeout(this._rmTagDebounce);
+    },
+    methods: {
+        async loadConverts() {
+            this.loading = true;
+            try {
+                const p = new URLSearchParams({ page: this.page, per_page: this.perPage });
+                if (this.search.trim()) p.set('search', this.search.trim());
+                if (this.filterType) p.set('type', this.filterType);
+                const r = await fetch('/tags/admin/bulk_converts/list?' + p);
+                const d = await r.json();
+                if (d.success) {
+                    this.converts   = d.list;
+                    this.totalPages = d.total_page;
+                    this.total      = d.total;
+                }
+            } finally {
+                this.loading = false;
+            }
+        },
+        debounceSearch() {
+            clearTimeout(this._debounce);
+            this._debounce = setTimeout(() => { this.resetPage(); }, 300);
+        },
+        resetPage() { this.page = 1; this.loadConverts(); },
+        gotoPage(p) { this.page = p; this.loadConverts(); },
+
+        toggleOne(id) {
+            const s = new Set(this.selected);
+            if (s.has(id)) s.delete(id); else s.add(id);
+            this.selected = s;
+        },
+        toggleAll() {
+            if (this.allPageSelected) {
+                const s = new Set(this.selected);
+                this.converts.forEach(c => s.delete(c.id));
+                this.selected = s;
+            } else {
+                const s = new Set(this.selected);
+                this.converts.forEach(c => s.add(c.id));
+                this.selected = s;
+            }
+        },
+
+        async selectAllGlobal() {
+            this.selectingAll = true;
+            try {
+                const p = new URLSearchParams();
+                if (this.search.trim()) p.set('search', this.search.trim());
+                if (this.filterType) p.set('type', this.filterType);
+                const r = await fetch('/tags/admin/bulk_converts/all_ids?' + p);
+                const d = await r.json();
+                if (d.success) {
+                    const s = new Set(this.selected);
+                    d.ids.forEach(id => s.add(id));
+                    this.selected = s;
+                }
+            } finally {
+                this.selectingAll = false;
+            }
+        },
+
+        async _fetchTagSuggestions(q, mode) {
+            const isRemove = mode === 'remove';
+            if (isRemove) this.rmTagSearching = true; else this.tagSearching = true;
+            try {
+                const params = new URLSearchParams();
+                if (q && q.trim()) params.set('search', q.trim());
+                const r = await fetch('/tags/available?' + params);
+                const d = await r.json();
+                if (d.success) {
+                    if (isRemove) {
+                        const ids = new Set(this.rmTags.map(t => t.id));
+                        this.rmTagSuggestions = d.list.filter(t => !ids.has(t.id));
+                        if (this.rmTagSuggestions.length > 0) this.rmTagDropOpen = true;
+                    } else {
+                        const ids = new Set(this.chosenTags.map(t => t.id));
+                        this.tagSuggestions = d.list.filter(t => !ids.has(t.id));
+                        if (this.tagSuggestions.length > 0) this.tagDropOpen = true;
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                if (isRemove) this.rmTagSearching = false; else this.tagSearching = false;
+            }
+        },
+        pickTag(tag) {
+            if (!this.chosenTags.find(t => t.id === tag.id))
+                this.chosenTags = [...this.chosenTags, tag];
+            this.tagSearch   = '';
+            this.tagDropOpen = false;
+        },
+        removeChosenTag(id) {
+            this.chosenTags = this.chosenTags.filter(t => t.id !== id);
+        },
+        pickRmTag(tag) {
+            if (!this.rmTags.find(t => t.id === tag.id))
+                this.rmTags = [...this.rmTags, tag];
+            this.rmTagSearch   = '';
+            this.rmTagDropOpen = false;
+        },
+        removeRmTag(id) {
+            this.rmTags = this.rmTags.filter(t => t.id !== id);
+        },
+
+        async runScan() {
+            const ids = [...this.selected];
+            const r = await fetch('/tags/admin/bulk_converts/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ convert_ids: ids }),
+            });
+            const d = await r.json();
+            if (d.success) this._startPolling(d.job_id);
+        },
+        async runAssign() {
+            const ids = [...this.selected];
+            const tagIds = this.chosenTags.map(t => t.id);
+            const r = await fetch('/tags/admin/bulk_converts/assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ convert_ids: ids, tag_ids: tagIds }),
+            });
+            const d = await r.json();
+            if (d.success) this._startPolling(d.job_id);
+        },
+
+        async runRemoveTags() {
+            const ids = [...this.selected];
+            const tagIds = this.rmTags.map(t => t.id);
+            const r = await fetch('/tags/admin/bulk_converts/remove_tags', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ convert_ids: ids, tag_ids: tagIds }),
+            });
+            const d = await r.json();
+            if (d.success) this._startPolling(d.job_id);
+        },
+        async runClearTags() {
+            const ids = [...this.selected];
+            const r = await fetch('/tags/admin/bulk_converts/clear_tags', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ convert_ids: ids }),
+            });
+            const d = await r.json();
+            if (d.success) this._startPolling(d.job_id);
+        },
+        async deleteJob(jid) {
+            await fetch(`/tags/admin/bulk_converts/job/${jid}`, { method: 'DELETE' });
+            this.jobs = this.jobs.filter(j => j.id !== jid);
+        },
+
+        _startPolling(jid) {
+            this.jobRunning = true;
+            clearTimeout(this._pollTimer);
+            const poll = async () => {
+                await this.loadJobs();
+                const job = this.jobs.find(j => j.id === jid);
+                if (job && job.status === 'done') {
+                    this.jobRunning = false;
+                    await this.loadConverts();
+                } else {
+                    this._pollTimer = setTimeout(poll, 1500);
+                }
+            };
+            poll();
+        },
+
+        async loadJobs() {
+            try {
+                const r = await fetch('/tags/admin/bulk_converts/jobs');
+                const d = await r.json();
+                if (d.success) this.jobs = d.jobs;
+            } catch (e) {
+                console.error(e);
+            }
+        },
+    },
+}).mount('#bulk-tags-app');
+</script>
+{% endblock %}

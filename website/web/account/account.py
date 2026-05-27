@@ -35,6 +35,7 @@ def login() -> redirect:
         if user is not None and user.password_hash is not None and user.verify_password(form.password.data):
             login_user(user, form.remember_me.data)
             AccountModel.connected(current_user)
+            AccountModel.create_system_log("user_login", actor_id=user.id, actor_name=user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
             flash('You are now logged in. Welcome back!', 'success')
             return redirect( "/")
         else:
@@ -45,9 +46,10 @@ def login() -> redirect:
 @login_required
 def logout() -> redirect:
     "Log out an User"
+    AccountModel.create_system_log("user_logout", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=current_user.id, target_name=f"{current_user.first_name} {current_user.last_name}")
     AccountModel.disconnected(current_user)
     logout_user()
-    
+
     flash('You have been logged out.', 'info')
     return redirect(url_for('home.home'))
 
@@ -72,7 +74,8 @@ def add_user() -> redirect:
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         form_dict["key"] = generate_api_key()
-        AccountModel.add_user_core(form_dict)
+        user = AccountModel.add_user_core(form_dict)
+        AccountModel.create_system_log("user_registered", actor_id=user.id, actor_name=user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}", details=f"email: {user.email}")
         flash('You are now register. You can connect !', 'success')
         return redirect("/account/login")
     return render_template("account/register_user.html", form=form) 
@@ -84,7 +87,17 @@ def edit_user() -> redirect:
     form = EditUserForm()
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
+        changed = []
+        if form_dict.get("first_name") != current_user.first_name:
+            changed.append("first_name")
+        if form_dict.get("last_name") != current_user.last_name:
+            changed.append("last_name")
+        if form_dict.get("email") != current_user.email:
+            changed.append("email")
+        if form_dict.get("password"):
+            changed.append("password")
         AccountModel.edit_user_core(form_dict, current_user.id)
+        AccountModel.create_system_log("user_profile_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=current_user.id, target_name=f"{current_user.first_name} {current_user.last_name}", details=f"changed: {', '.join(changed)}" if changed else "no changes")
         flash('Profil update with success!', 'success')
         return redirect("/account")
     else:
@@ -213,8 +226,11 @@ def delete_user(id) -> redirect:
             else:
                 _success = AccountModel.get_all_convert_own_by_user_id(id)
                 if _success:
+                    _deleted_name = f"{user.first_name} {user.last_name}"
+                    _deleted_id = user.id
                     success = AccountModel.delete(user.id)
                     if success:
+                        AccountModel.create_system_log("user_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=_deleted_id, target_name=_deleted_name)
                         flash(f"User {user.last_name} {user.first_name} deleted with success", 'success')
                         return redirect("/account/manage_user")
                     else:
@@ -414,39 +430,68 @@ def admin_deleted_converts():
 def admin_get_all_notifications():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '', type=str) or None
-    log_type = request.args.get('log_type', 'all')  # all | notifications | system
+
+    from datetime import datetime
+    from website.db_class.db import SystemLog, Notification as NotifModel
+
+    page       = request.args.get('page', 1, type=int)
+    search     = request.args.get('search', '', type=str) or None
+    log_type   = request.args.get('log_type', 'all')
+    date_from_s = request.args.get('date_from', '', type=str)
+    date_to_s   = request.args.get('date_to',   '', type=str)
+
+    try:
+        date_from = datetime.strptime(date_from_s, '%Y-%m-%d') if date_from_s else None
+    except ValueError:
+        date_from = None
+    try:
+        date_to = datetime.strptime(date_to_s, '%Y-%m-%d').replace(hour=23, minute=59, second=59) if date_to_s else None
+    except ValueError:
+        date_to = None
+
+    def apply_date(q, model):
+        if date_from: q = q.filter(model.created_at >= date_from)
+        if date_to:   q = q.filter(model.created_at <= date_to)
+        return q
 
     if log_type == 'notifications':
-        pagination = AccountModel.get_all_notifications_admin(page=page, search=search)
-        items = [dict(n.to_json(), source='notification') for n in pagination.items]
-        return {"success": True, "list": items, "total_page": pagination.pages}, 200
+        q = NotifModel.query
+        if search: q = q.filter(NotifModel.message.ilike(f"%{search}%"))
+        q = apply_date(q, NotifModel)
+        p = q.order_by(NotifModel.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+        return {"success": True, "list": [dict(n.to_json(), source='notification') for n in p.items], "total_page": p.pages or 1}, 200
 
     if log_type == 'system':
-        pagination = AccountModel.get_system_logs(page=page, search=search)
-        items = [dict(l.to_json(), source='system') for l in pagination.items]
-        return {"success": True, "list": items, "total_page": pagination.pages}, 200
+        q = SystemLog.query
+        if search:
+            q = q.filter(
+                SystemLog.event_type.ilike(f"%{search}%") |
+                SystemLog.actor_name.ilike(f"%{search}%") |
+                SystemLog.target_name.ilike(f"%{search}%") |
+                SystemLog.details.ilike(f"%{search}%")
+            )
+        q = apply_date(q, SystemLog)
+        p = q.order_by(SystemLog.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+        return {"success": True, "list": [dict(l.to_json(), source='system') for l in p.items], "total_page": p.pages or 1}, 200
 
-    # Merge both, sort by date, paginate in Python
+    # Merge both
     per_page = 20
-    from website.db_class.db import SystemLog, Notification as NotifModel
-    notif_q = NotifModel.query
-    sys_q = SystemLog.query
+    nq = apply_date(NotifModel.query, NotifModel)
+    sq = apply_date(SystemLog.query, SystemLog)
     if search:
-        notif_q = notif_q.filter(NotifModel.message.ilike(f"%{search}%"))
-        sys_q = sys_q.filter(
+        nq = nq.filter(NotifModel.message.ilike(f"%{search}%"))
+        sq = sq.filter(
             SystemLog.event_type.ilike(f"%{search}%") |
             SystemLog.actor_name.ilike(f"%{search}%") |
             SystemLog.target_name.ilike(f"%{search}%") |
             SystemLog.details.ilike(f"%{search}%")
         )
-    notifs = [dict(n.to_json(), source='notification') for n in notif_q.all()]
-    syslogs = [dict(l.to_json(), source='system') for l in sys_q.all()]
-    merged = sorted(notifs + syslogs, key=lambda x: x.get('created_at', '') or '', reverse=True)
-    total = len(merged)
+    notifs  = [dict(n.to_json(), source='notification') for n in nq.all()]
+    syslogs = [dict(l.to_json(), source='system')       for l in sq.all()]
+    merged  = sorted(notifs + syslogs, key=lambda x: x.get('created_at', '') or '', reverse=True)
+    total      = len(merged)
     total_page = max(1, (total + per_page - 1) // per_page)
-    start = (page - 1) * per_page
+    start      = (page - 1) * per_page
     return {"success": True, "list": merged[start:start + per_page], "total_page": total_page}, 200
 
 
@@ -466,6 +511,40 @@ def admin_delete_log():
     if success:
         return {"success": True, "message": "Log deleted", "toast_class": "success"}, 200
     return {"success": False, "message": "Not found", "toast_class": "danger"}, 404
+
+
+@account_blueprint.route("/admin/delete_logs_bulk", methods=['POST'])
+@login_required
+def admin_delete_logs_bulk():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    entries = (request.get_json(silent=True) or {}).get('entries', [])
+    if not entries:
+        return {"success": False, "message": "Nothing to delete", "toast_class": "warning"}, 400
+    count = AccountModel.delete_logs_bulk(entries)
+    return {"success": True, "message": f"{count} log(s) deleted", "toast_class": "success", "count": count}, 200
+
+
+@account_blueprint.route("/admin/delete_logs_all", methods=['POST'])
+@login_required
+def admin_delete_logs_all():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    from datetime import datetime
+    data       = request.get_json(silent=True) or {}
+    log_type   = data.get('log_type', 'all')
+    date_from_s = data.get('date_from', '')
+    date_to_s   = data.get('date_to',   '')
+    try:
+        date_from = datetime.strptime(date_from_s, '%Y-%m-%d') if date_from_s else None
+    except ValueError:
+        date_from = None
+    try:
+        date_to = datetime.strptime(date_to_s, '%Y-%m-%d').replace(hour=23, minute=59, second=59) if date_to_s else None
+    except ValueError:
+        date_to = None
+    count = AccountModel.delete_all_logs(log_type=log_type, date_from=date_from, date_to=date_to)
+    return {"success": True, "message": f"{count} log(s) deleted", "toast_class": "success", "count": count}, 200
 
 
 @account_blueprint.route("/edit_admin", methods=['POST'])
@@ -491,8 +570,10 @@ def edit_admin():
                     if success:
                         if _bool == True:
                             message="This user has admin right now"
+                            AccountModel.create_system_log("user_admin_granted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
                         else:
                             message="This user has no more admin right now"
+                            AccountModel.create_system_log("user_admin_revoked", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
                         return {
                             "success": True, 
                             "admin": user.admin,

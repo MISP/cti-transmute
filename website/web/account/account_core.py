@@ -414,3 +414,33 @@ def delete_system_log(log_id):
     db.session.delete(log)
     db.session.commit()
     return True
+
+
+def delete_logs_bulk(entries):
+    """Delete multiple logs. entries = list of {id, source} dicts."""
+    sys_ids   = [e['id'] for e in entries if e.get('source') == 'system']
+    notif_ids = [e['id'] for e in entries if e.get('source') != 'system']
+    count = 0
+    if sys_ids:
+        count += SystemLog.query.filter(SystemLog.id.in_(sys_ids)).delete(synchronize_session=False)
+    if notif_ids:
+        count += Notification.query.filter(Notification.id.in_(notif_ids)).delete(synchronize_session=False)
+    db.session.commit()
+    return count
+
+
+def delete_all_logs(log_type='all', date_from=None, date_to=None):
+    """Bulk-delete logs by type and optional date range."""
+    count = 0
+    if log_type in ('all', 'system'):
+        q = SystemLog.query
+        if date_from: q = q.filter(SystemLog.created_at >= date_from)
+        if date_to:   q = q.filter(SystemLog.created_at <= date_to)
+        count += q.delete(synchronize_session=False)
+    if log_type in ('all', 'notifications'):
+        q = Notification.query
+        if date_from: q = q.filter(Notification.created_at >= date_from)
+        if date_to:   q = q.filter(Notification.created_at <= date_to)
+        count += q.delete(synchronize_session=False)
+    db.session.commit()
+    return count

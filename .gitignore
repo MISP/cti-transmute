@@ -197,3 +197,5 @@ cython_debug/
 website/db_class/backups/*
 
 vendor/pivotick/node_modules/
+
+/to_do

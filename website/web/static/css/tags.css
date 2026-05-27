@@ -1,0 +1,608 @@
+/* =========================================================================
+   Tags — split pill + tooltip + create modal
+   ========================================================================= */
+
+/* ── Create/Edit tag modal ───────────────────────────────────── */
+.tag-modal {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.tag-modal .modal-header,
+.tag-modal .modal-footer {
+  border-color: var(--border);
+}
+
+.tag-modal-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.tag-modal-input {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+  font-size: 0.85rem;
+}
+
+.tag-modal-input:focus {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.tag-modal-input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tag-preview-box {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--bg-2, var(--surface-2));
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+/* ── Icon picker (redesigned, inline panel) ─────────────────── */
+.icon-picker {
+  position: relative;
+}
+
+.icon-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s;
+  user-select: none;
+}
+
+.icon-picker-trigger:hover {
+  border-color: var(--accent);
+}
+
+.icon-trigger-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-light, rgba(99, 102, 241, 0.1));
+  border-radius: var(--radius-xs, 4px);
+  color: var(--accent);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.icon-trigger-label {
+  flex: 1;
+  font-size: 0.83rem;
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+.icon-trigger-caret {
+  font-size: 0.65rem;
+  color: var(--text-3);
+  transition: transform 0.2s;
+}
+
+.icon-trigger-caret.open {
+  transform: rotate(180deg);
+}
+
+.icon-picker-panel {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--surface);
+  padding: 8px;
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.2));
+}
+
+.icon-picker-search-input {
+  width: 100%;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs, 4px);
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.icon-picker-search-input:focus {
+  border-color: var(--accent);
+}
+
+.icon-picker-meta {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  margin-bottom: 6px;
+}
+
+.icon-picker-grid-new {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.icon-picker-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  font-size: 0;
+  /* hide label by default */
+}
+
+.icon-picker-btn i {
+  font-size: 0.9rem;
+}
+
+.icon-picker-btn:hover {
+  background: var(--accent-light, rgba(99, 102, 241, 0.1));
+  color: var(--accent);
+  border-color: var(--border);
+}
+
+.icon-picker-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.icon-picker-grid-new::-webkit-scrollbar {
+  width: 4px;
+}
+
+.icon-picker-grid-new::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+/* ── Vuln format cards ───────────────────────────────────────── */
+.vuln-format-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.vuln-format-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  transition: all 0.12s;
+}
+
+.vuln-format-card:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light, rgba(99, 102, 241, 0.07));
+}
+
+.vuln-format-card.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.vuln-format-card i {
+  font-size: 0.75rem;
+}
+
+.tag-split {
+  display: inline-flex;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 1px 3px 5px rgba(0, 0, 0, 0.22);
+  vertical-align: middle;
+  line-height: 1;
+  transition: filter 0.12s ease, transform 0.1s ease;
+}
+
+.on-hover-zoom:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.tag-left {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.55rem;
+  background-color: #343a40;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.tag-left i {
+  font-size: 0.85rem;
+  color: #fff !important;
+}
+
+.tag-right {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Wrapper + tooltip (pure CSS hover) ──────────────────────── */
+
+.tag-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.tag-wrapper:hover {
+  z-index: 1100;
+}
+
+.tag-wrapper.selected .tag-split {
+  outline: 2.5px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--accent, #6366f1);
+}
+
+.tag-tooltip {
+  visibility: hidden;
+  position: fixed;
+  /* top/left set via JS on mouseenter */
+  transform: translateX(-50%) translateY(-100%) translateY(6px);
+  width: 300px;
+  background-color: #1e1e26;
+  color: #eee;
+  text-align: left;
+  border-radius: 8px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+/* Invisible bridge below the tooltip that covers the gap to the tag */
+.tag-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 14px;
+}
+
+.tag-wrapper:hover .tag-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(-100%);
+}
+
+.tooltip-header {
+  padding: 9px 13px;
+  border-radius: 8px 8px 0 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tooltip-body {
+  padding: 10px 13px;
+  font-size: 0.8rem;
+}
+
+.tooltip-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -7px;
+  border-width: 7px;
+  border-style: solid;
+  border-color: #1e1e26 transparent transparent transparent;
+}
+
+.description-container {
+  position: relative;
+}
+
+.description-scroll {
+  max-height: 80px;
+  overflow-y: auto;
+  line-height: 1.5;
+  padding-bottom: 4px;
+  font-size: 0.78rem;
+}
+
+.description-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+
+.description-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+/* tag-chip / tag-split styles now in /static/css/tags.css */
+
+/* ── Table ─────────────────────────────────────────────────────── */
+.tag-table {
+  font-size: 0.85rem;
+  min-width: 360px;
+}
+
+.tag-table-head th {
+  color: var(--text-2);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.table-row-selected {
+  background: rgba(37, 99, 235, 0.06) !important;
+}
+
+.tag-desc {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
+  margin-top: 2px;
+}
+
+/* ── Clickable badge ───────────────────────────────────────────── */
+.badge-clickable {
+  cursor: pointer;
+  transition: filter 0.12s, transform 0.1s;
+  user-select: none;
+}
+
+.badge-clickable:hover {
+  filter: brightness(1.25);
+  transform: translateY(-1px);
+}
+
+/* ── Grouped view (namespace cards) ───────────────────────────── */
+.ns-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ns-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+
+.ns-card-header:hover {
+  background: var(--bg-2);
+}
+
+.ns-caret {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.ns-caret.open {
+  transform: rotate(90deg);
+}
+
+.ns-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.ns-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 18px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.ns-select-all {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  gap: 5px;
+}
+
+.ns-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+
+/* ── Bulk bar ─────────────────────────────────────────────────── */
+.bulk-bar {
+  position: sticky;
+  top: 70px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.bulk-bar-count {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.18s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ── Search highlight ────────────────────────────────────────── */
+.tag-highlight {
+  background: #fff3cd;
+  border-radius: 2px;
+  color: inherit;
+  font-style: normal;
+  padding: 0 1px;
+}
+
+/* ── Admin tags filter selects ───────────────────────────────── */
+.tags-filter-select {
+  width: auto;
+  min-width: 130px;
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+  font-size: 0.83rem;
+}
+
+.tags-filter-select:focus {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-focus);
+}
+
+/* tag-modal, icon-picker, vuln-format-card CSS lives in /static/css/tags.css */
+
+/* ── TagInput component ──────────────────────────────────────── */
+.tag-input-wrapper {
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.tag-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 0.55rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: -6px;
+  padding: 0;
+  line-height: 1;
+  transition: background var(--t), color var(--t);
+}
+
+.tag-remove-btn:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.tag-input-dropdown-item:last-child {
+  border-bottom: none !important;
+}
+
+.tag-input-dropdown-item:hover {
+  background: var(--bg-2);
+}
+
+/* Source filter pills inside TagInput */
+.tag-source-btn {
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background var(--t), color var(--t), border-color var(--t);
+  line-height: 1.6;
+}
+
+.tag-source-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.tag-source-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Highlight matched text inside tag labels */
+.tag-highlight {
+  background: rgba(250, 204, 21, 0.35);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
