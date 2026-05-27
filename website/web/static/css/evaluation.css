@@ -374,6 +374,135 @@ html.ocean-mode .eval-comment-badge {
   flex-shrink: 0;
 }
 
+/* ── Category evaluation blocks ─────────────────────────────── */
+.eval-categories-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eval-category-block {
+  padding: 11px 13px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 8px);
+}
+
+.eval-cat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  flex-wrap: wrap;
+}
+
+.eval-cat-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+.eval-cat-my-pick {
+  font-size: 0.67rem;
+  font-weight: 600;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+}
+
+.eval-cat-votes-badge {
+  font-size: 0.67rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.eval-cat-picker {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+
+.eval-val-btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 99px;
+  border: 1.5px solid;
+  font-size: 0.71rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.12s, filter 0.12s;
+  white-space: nowrap;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.eval-val-btn:not(:disabled):hover {
+  opacity: 0.82;
+  filter: brightness(1.08);
+}
+
+.eval-val-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ── Bar chart ───────────────────────────────────────────────── */
+.eval-cat-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eval-bar-row {
+  display: grid;
+  grid-template-columns: 68px 1fr 60px;
+  align-items: center;
+  gap: 6px;
+}
+
+.eval-bar-label {
+  font-size: 0.7rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eval-bar-track {
+  height: 7px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.eval-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+.eval-bar-stat {
+  font-size: 0.67rem;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.eval-bar-pct {
+  opacity: 0.7;
+}
+
+.eval-no-votes {
+  font-size: 0.71rem;
+  color: var(--text-3);
+  font-style: italic;
+}
+
 /* ── Admin table badge ──────────────────────────────────────── */
 .eval-type-badge {
   display: inline-flex;

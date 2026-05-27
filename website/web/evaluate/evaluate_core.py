@@ -1,6 +1,17 @@
+import re
 import datetime
 from website.web import db
 from website.db_class.db import ConvertEvaluation, Comment, Convert, Tag
+
+VALUE_ORDER = ['very-low', 'low', 'moderate', 'high', 'very-high']
+
+
+def _parse_eval_tag(name: str):
+    """Parse 'ns:category="value"' → (ns, category, value) or (None, None, None)."""
+    m = re.match(r'^([\w-]+):([\w.-]+)="([\w.-]+)"$', name or '')
+    if m:
+        return m.group(1), m.group(2), m.group(3)
+    return None, None, None
 
 
 def get_tlp_tags() -> list[dict]:
@@ -17,21 +28,60 @@ def get_tlp_tags() -> list[dict]:
     return result
 
 
+def _build_cti_categories(rows, viewer_id=None) -> dict:
+    """
+    Returns { category: { values, counts, percentages, total, viewer_value } }
+    for all active cti-evaluation:* tags.
+    """
+    tags = (Tag.query
+            .filter(Tag.is_evaluation_tag == True,
+                    Tag.is_active == True,
+                    Tag.name.like('cti-evaluation:%'))
+            .all())
+
+    cats = {}
+    for t in tags:
+        _, cat, val = _parse_eval_tag(t.name)
+        if not cat or not val:
+            continue
+        if cat not in cats:
+            cats[cat] = {'values': [], 'counts': {}, 'percentages': {}, 'total': 0, 'viewer_value': None}
+        if val not in cats[cat]['values']:
+            cats[cat]['values'].append(val)
+        cats[cat]['counts'][val] = 0
+
+    for cat_data in cats.values():
+        cat_data['values'].sort(key=lambda v: VALUE_ORDER.index(v) if v in VALUE_ORDER else 99)
+
+    for row in rows:
+        if row.eval_type != 'reaction' or not row.reaction_key:
+            continue
+        _, cat, val = _parse_eval_tag(row.reaction_key)
+        if not cat or cat not in cats or val not in cats[cat]['counts']:
+            continue
+        cats[cat]['counts'][val] += 1
+        cats[cat]['total'] += 1
+        if viewer_id and row.user_id == viewer_id:
+            cats[cat]['viewer_value'] = val
+
+    for cat_data in cats.values():
+        total = cat_data['total']
+        cat_data['percentages'] = {
+            v: (round(cat_data['counts'][v] / total * 100) if total else 0)
+            for v in cat_data['counts']
+        }
+
+    return cats
+
+
 def get_summary(convert_id: int, viewer_id: int | None = None) -> dict:
-    tlp_tags = get_tlp_tags()
     rows = ConvertEvaluation.query.filter_by(convert_id=convert_id).all()
 
     likes    = sum(1 for r in rows if r.eval_type == 'like')
     dislikes = sum(1 for r in rows if r.eval_type == 'dislike')
 
-    reaction_counts = {t['key']: 0 for t in tlp_tags}
-    for row in rows:
-        if row.eval_type == 'reaction' and row.reaction_key in reaction_counts:
-            reaction_counts[row.reaction_key] += 1
-
     viewer_like      = False
     viewer_dislike   = False
-    viewer_reactions: list[str] = []
     if viewer_id:
         for row in rows:
             if row.user_id != viewer_id:
@@ -40,22 +90,32 @@ def get_summary(convert_id: int, viewer_id: int | None = None) -> dict:
                 viewer_like = True
             elif row.eval_type == 'dislike':
                 viewer_dislike = True
-            elif row.eval_type == 'reaction' and row.reaction_key:
-                viewer_reactions.append(row.reaction_key)
 
     eval_comments = Comment.query.filter_by(
         convert_id=convert_id, is_evaluation=True, is_deleted=False
     ).count()
 
+    cti_categories = _build_cti_categories(rows, viewer_id)
+
+    # Approval score = average of all cti-evaluation votes mapped to 0-100
+    value_score_map = {'very-low': 0, 'low': 25, 'moderate': 50, 'high': 75, 'very-high': 100}
+    all_scores = []
+    for row in rows:
+        if row.eval_type != 'reaction' or not row.reaction_key:
+            continue
+        ns, _, val = _parse_eval_tag(row.reaction_key)
+        if ns == 'cti-evaluation' and val in value_score_map:
+            all_scores.append(value_score_map[val])
+    approval_score = round(sum(all_scores) / len(all_scores)) if all_scores else None
+
     return {
-        'likes':            likes,
-        'dislikes':         dislikes,
-        'reactions':        reaction_counts,
-        'viewer_like':      viewer_like,
-        'viewer_dislike':   viewer_dislike,
-        'viewer_reactions': viewer_reactions,
-        'reaction_defs':    tlp_tags,
-        'eval_comments':    eval_comments,
+        'likes':          likes,
+        'dislikes':       dislikes,
+        'viewer_like':    viewer_like,
+        'viewer_dislike': viewer_dislike,
+        'cti_categories': cti_categories,
+        'eval_comments':  eval_comments,
+        'approval_score': approval_score,
     }
 
 
@@ -108,6 +168,8 @@ def toggle_reaction(convert_id: int, user_id: int, reaction_key: str) -> dict:
     if not tag:
         raise ValueError(f"Unknown reaction key: {reaction_key}")
 
+    ns, cat, val = _parse_eval_tag(reaction_key)
+
     existing = ConvertEvaluation.query.filter_by(
         convert_id=convert_id, user_id=user_id,
         eval_type='reaction', reaction_key=reaction_key
@@ -117,6 +179,16 @@ def toggle_reaction(convert_id: int, user_id: int, reaction_key: str) -> dict:
         db.session.delete(existing)
         db.session.commit()
         return {'action': 'removed', 'type': 'reaction', 'key': reaction_key}
+
+    # For cti-evaluation: radio semantics — replace any prior pick in the same category
+    if ns == 'cti-evaluation' and cat:
+        prior_rows = ConvertEvaluation.query.filter_by(
+            convert_id=convert_id, user_id=user_id, eval_type='reaction'
+        ).all()
+        for old in prior_rows:
+            old_ns, old_cat, _ = _parse_eval_tag(old.reaction_key or '')
+            if old_ns == 'cti-evaluation' and old_cat == cat:
+                db.session.delete(old)
 
     db.session.add(ConvertEvaluation(
         convert_id=convert_id, user_id=user_id,

@@ -709,9 +709,9 @@
     window.openGraphConfigModal = openGraphConfigModal;
 
     const convert_id = document.getElementById('convert_id').dataset.convertId;
-    const IS_AUTH = {{ 'true' if current_user.is_authenticated else 'false' }};
-    const CURRENT_USER_ID = {{ current_user.id if current_user.is_authenticated else 'null' }};
-    const IS_ADMIN = {{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }};
+    const IS_AUTH = "{{ 'true' if current_user.is_authenticated else 'false' }}";
+    const CURRENT_USER_ID = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
+    const IS_ADMIN = "{{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}";
 
     const _LIGHT_THEMES = ['light', 'ocean']
     function applyHljsTheme(theme) {

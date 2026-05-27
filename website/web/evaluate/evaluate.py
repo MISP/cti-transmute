@@ -24,8 +24,6 @@ def _can_evaluate(convert: Convert) -> tuple[bool, str]:
         return False, "Login required"
     if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
         return False, "Convert is private"
-    if current_user.id == convert.user_id:
-        return False, "Cannot evaluate your own convert"
     return True, ""
 
 
