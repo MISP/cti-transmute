@@ -133,8 +133,8 @@ def get_users():
 
         return {
             "list": users_list,
-            "total_page": pagination.page,
-            "success": False, 
+            "total_page": pagination.pages,
+            "success": True,
         }, 200
     else:
         return render_template("access_denied.html")

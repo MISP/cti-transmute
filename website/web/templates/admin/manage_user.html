@@ -7,7 +7,7 @@
 </script>
 {% else %}
 
-<div class="container my-5" id="main-container">
+<div class="container my-5"  v-cloak>
     <h2 class="mb-4">User Management</h2>
 
     <div class="mb-3">
@@ -36,7 +36,10 @@
             </div>
         </div>
     </div>
-
+    <app-pagination v-if="users.length > 0"
+        :page="current_page" :total="total_pages"
+        @change="fetchUser" class="mb-4">
+    </app-pagination>
 
 
     <div class="user-list">
@@ -57,9 +60,7 @@
         </div>
     </div>
 
-    <div v-if="users.length > 0" style="margin-bottom: 100px;">
-        <app-pagination :page="current_page" :total="total_pages" @change="fetchUser"></app-pagination>
-    </div>
+    
 </div>
 {% endif %}
 {% endblock %}
