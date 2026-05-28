@@ -1519,4 +1519,74 @@ html.ocean-mode .alert-warning { color: #92400e; }
   color: var(--accent);
   opacity: 0;
   transition: opacity 0.1s;
+}}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLL REVEAL ANIMATIONS
+═══════════════════════════════════════════════════════════════ */
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal-up, .reveal-left, .reveal-right,
+  .reveal-stagger > *, .anim-hero { opacity: 1 !important; transform: none !important;
+    transition: none !important; animation: none !important; }
 }
+
+/* Base invisible states */
+.reveal         { opacity: 0; }
+.reveal-up      { opacity: 0; transform: translateY(30px); }
+.reveal-left    { opacity: 0; transform: translateX(-30px); }
+.reveal-right   { opacity: 0; transform: translateX(30px); }
+
+/* Transition curve — snappy deceleration */
+.reveal,
+.reveal-up,
+.reveal-left,
+.reveal-right {
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Delay helpers */
+.reveal-d1 { transition-delay: 80ms;  }
+.reveal-d2 { transition-delay: 160ms; }
+.reveal-d3 { transition-delay: 240ms; }
+.reveal-d4 { transition-delay: 320ms; }
+
+/* Triggered by IntersectionObserver adding .is-visible */
+.reveal.is-visible,
+.reveal-up.is-visible,
+.reveal-left.is-visible,
+.reveal-right.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Stagger parent: children appear one by one */
+.reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal-stagger.is-visible > *:nth-child(1) { transition-delay: 0ms;   }
+.reveal-stagger.is-visible > *:nth-child(2) { transition-delay: 90ms;  }
+.reveal-stagger.is-visible > *:nth-child(3) { transition-delay: 180ms; }
+.reveal-stagger.is-visible > *:nth-child(4) { transition-delay: 270ms; }
+.reveal-stagger.is-visible > *:nth-child(5) { transition-delay: 360ms; }
+.reveal-stagger.is-visible > *:nth-child(6) { transition-delay: 450ms; }
+.reveal-stagger.is-visible > * { opacity: 1; transform: none; }
+
+/* ── Hero entrance (plays on load, no scroll needed) ─────────── */
+@keyframes heroFadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.anim-hero {
+  animation: heroFadeUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-hero-1 { animation-delay: 0ms;   }
+.anim-hero-2 { animation-delay: 110ms; }
+.anim-hero-3 { animation-delay: 210ms; }
+.anim-hero-4 { animation-delay: 340ms; }
