@@ -108,6 +108,28 @@
     transform: translateY(-1px);
 }
 
+/* ── Hero ? button ────────────────────────────────────────────── */
+.btn-hero-why {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-3);
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: border-color var(--t), color var(--t), transform 0.15s, box-shadow var(--t);
+}
+.btn-hero-why:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
 /* ── Shared labels ────────────────────────────────────────────── */
 .home-section-label {
     display: block;

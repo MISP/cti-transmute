@@ -102,8 +102,13 @@ def get_users_page(page, searchQuery=None, filterConnection=None, filterAdmin=No
     elif filterAdmin == "user":
         query = query.filter(User.admin.is_(False))
 
+
+    # get totals admin and connected for stats
+    total_admin = query.filter(User.admin.is_(True)).count()
+    total_connected = query.filter(User.is_connected.is_(True)).count()
+
     # Pagination
-    return query.paginate(page=page, per_page=10)
+    return query.paginate(page=page, per_page=10) ,  total_admin, total_connected
 
 
 

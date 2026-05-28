@@ -128,13 +128,16 @@ def get_users():
     filterConnection = request.args.get('filterConnection',  type=str)
     filterAdmin = request.args.get('filterAdmin',  type=str)
     if current_user.is_admin():
-        pagination = AccountModel.get_users_page(page, searchQuery=searchQuery, filterConnection=filterConnection, filterAdmin=filterAdmin)
+        pagination , total_admin, total_connected = AccountModel.get_users_page(page, searchQuery=searchQuery, filterConnection=filterConnection, filterAdmin=filterAdmin)
         users_list = [item.to_json() for item in pagination.items]
 
         return {
             "list": users_list,
             "total_page": pagination.pages,
             "success": True,
+            "total_users": pagination.total,
+            "admin": total_admin,
+            "connected": total_connected
         }, 200
     else:
         return render_template("access_denied.html")

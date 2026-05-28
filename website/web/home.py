@@ -17,6 +17,11 @@ def home():
     """Home page"""
     return render_template("home.html")
 
+@home_blueprint.route("/why")
+def why():
+    """Why CTI-Transmute page"""
+    return render_template("why.html")
+
 @home_blueprint.route("/list")
 def list():
     """List page"""

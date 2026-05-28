@@ -151,6 +151,9 @@ createApp({
     delimiters: ['[[', ']]'],
     setup() {
         const users            = ref([])
+        const total_users       = ref(0)
+        const total_admin        = ref(0)
+        const total_connected    = ref(0)
         const current_page     = ref(1)
         const total_pages      = ref(1)
         const loading          = ref(false)
@@ -160,9 +163,9 @@ createApp({
         const blurNames        = ref(true)
 
         const stats = computed(() => ({
-            total:  users.value.length,
-            online: users.value.filter(u => u.is_connected).length,
-            admins: users.value.filter(u => u.admin).length,
+            total:  total_users.value,
+            online: total_connected.value,
+            admins: total_admin.value,
         }))
 
         function avatarGradient(id) {
@@ -191,6 +194,10 @@ createApp({
                     users.value        = data.list || []
                     total_pages.value  = data.total_page || 1
                     current_page.value = page
+                    total_users.value  = data.total_users || 0,
+                    total_admin.value  = data.admin || 0,
+                    total_connected.value = data.connected || 0
+
                 }
             } finally {
                 loading.value = false
@@ -214,6 +221,7 @@ createApp({
             searchQuery, filterConnection, filterAdmin, blurNames,
             stats, fetchUser, onSearchInput,
             seeUserDetail, avatarGradient, initials, message_list,
+            total_users
         }
     },
 }).mount('#mu-app')
