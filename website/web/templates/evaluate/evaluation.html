@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/evaluation.css') }}">
+{% endblock %}
+
+{% block content %}
+<div >
+    <h1 class="list-title">Evaluation</h1>
+    <p class="list-subtitle">Review your likes, dislikes and reactions across all your converts.</p>
+    
+   
+
+    In this pge we want to things, 
+    - first, we want to show many graphs and stats about the user's evaluations, such as the distribution of tags, the most common tags, the average rating, etc.
+    - second, we want to propose a new feature that allows users to evaluate CTI-tranmuste in the globality with a single rating and a comment. This will help us to get feedback from users and to improve the platform. And maybe 
+    we can also tag like a convrrt for the app. It would be really cool and I want a proper designe like all the cti-transmute website with many graphe and many stat( wrning not show private comment or convert... )
+    we can propose the last converts to begin evaluate them.
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+  const { createApp, ref } = Vue
+
+  createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+
+
+      return {  }
+    }
+  }).mount('#main-container')
+</script>
+{% endblock %}

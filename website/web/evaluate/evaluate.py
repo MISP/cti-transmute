@@ -203,3 +203,9 @@ def consensus_tags(convert_id):
     threshold = request.args.get("threshold", 3, type=int)
     tags = EvalModel.get_consensus_tags(convert_id, threshold=threshold)
     return {"success": True, "tags": tags}, 200
+
+@evaluate_blueprint.route("/", methods=["GET"])
+@login_required
+def evaluation_page():
+    """Evaluation page for users to see their own evaluations across all converts."""
+    return render_template("evaluate/evaluation.html")
