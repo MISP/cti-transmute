@@ -199,12 +199,18 @@ const PushConvertToMISP = {
             mispEventInfo.value = null
             if (!props.convertData) return
             const candidates = [props.convertData.input_text, props.convertData.output_text].filter(Boolean)
+            const MISP_EVENT_KEYS = new Set(['info', 'uuid', 'Attribute', 'Object', 'Tag', 'Galaxy'])
             for (const text of candidates) {
                 try {
                     const parsed = JSON.parse(text)
-                    const ev = parsed?.Event ?? parsed?.response?.[0]?.Event
-                    if (ev?.id) {
-                        mispEventInfo.value = { id: ev.id, info: ev.info || '' }
+                    // Standard wrapped formats: {"Event":{}} or {"response":[{"Event":{}}]}
+                    let ev = parsed?.Event ?? parsed?.response?.[0]?.Event
+                    // Raw event dict — STIX→MISP output has keys like uuid/info/Object/Tag directly
+                    if (!ev && parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        if (Object.keys(parsed).some(k => MISP_EVENT_KEYS.has(k))) ev = parsed
+                    }
+                    if (ev && (ev.id || ev.uuid || ev.info)) {
+                        mispEventInfo.value = { id: ev.id ?? ev.uuid, info: ev.info || '' }
                         return
                     }
                 } catch {}

@@ -11,6 +11,7 @@ import requests
 from ..convert import convert_core as ConvertModel
 from ..account import account_core as AccountModel
 from ..tags import tags_core as TagsModel
+from ..evaluate import evaluate_core as EvalModel
 
 
 def _validate_misp_url(misp_url: str) -> str | None:
@@ -433,9 +434,12 @@ def stix_to_misp():
                             AccountModel.notify_followers_new_convert(saved, current_user.id)
                         if not current_user.is_anonymous():
                             raw_ids = request.form.get('tag_ids', '')
-                            tag_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
-                            if tag_ids:
-                                TagsModel.save_convert_tags(saved.id, tag_ids, current_user.id)
+                            manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                            misp_names = extract_tag_names_from_misp_json(output_text)
+                            auto_ids = TagsModel.resolve_tag_ids_from_names(misp_names)
+                            all_ids = list(dict.fromkeys(manual_ids + auto_ids))
+                            if all_ids:
+                                TagsModel.save_convert_tags(saved.id, all_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering in database", "danger")
@@ -1450,20 +1454,35 @@ def push_to_misp():
     except json.JSONDecodeError:
         return {"success": False, "error": "Invalid JSON in convert data"}, 400
 
-    # Extract the Event object
-    event_data = (
-        misp_data.get("Event")
-        or (misp_data.get("response") or [{}])[0].get("Event")
-    )
+    # Extract the Event object — handle all MISP JSON formats:
+    #   {"Event": {...}}
+    #   {"response": [{"Event": {...}}, ...]}
+    #   [{"Event": {...}}, ...]  or  [{raw_event}, ...]
+    #   {raw_event}  (STIX→MISP output: keys are uuid/info/Attribute/… directly)
+    _MISP_EVENT_KEYS = {'info', 'uuid', 'Attribute', 'Object', 'Tag', 'Galaxy'}
+    if isinstance(misp_data, list):
+        first = misp_data[0] if misp_data else {}
+        event_data = first.get("Event") or (first if isinstance(first, dict) and _MISP_EVENT_KEYS & first.keys() else None)
+    elif isinstance(misp_data, dict):
+        event_data = (
+            misp_data.get("Event")
+            or (misp_data.get("response") or [{}])[0].get("Event")
+            or (misp_data if _MISP_EVENT_KEYS & misp_data.keys() else None)
+        )
+    else:
+        event_data = None
     if not event_data:
         return {"success": False, "error": "No MISP Event found in convert data"}, 400
 
-    # Merge selected tags into the event
-    if tags:
+    # Merge evaluation tags and user-selected tags into the event
+    eval_tags = EvalModel.get_misp_push_tags(convert_id)
+    all_tags_to_add = eval_tags + [t for t in (tags or []) if t]
+    if all_tags_to_add:
         existing = {t.get("name", "") for t in (event_data.get("Tag") or [])}
-        for tag_name in tags:
-            if tag_name and tag_name not in existing:
+        for tag_name in all_tags_to_add:
+            if tag_name not in existing:
                 (event_data.setdefault("Tag", [])).append({"name": tag_name, "exportable": True})
+                existing.add(tag_name)
 
     # Remove server-assigned fields that would conflict on a fresh import
     for field in ("id", "uuid", "timestamp", "publish_timestamp", "published"):

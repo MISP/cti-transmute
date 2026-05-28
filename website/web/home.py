@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import current_user
+from sqlalchemy import and_, or_
 import requests
-
 
 
 home_blueprint = Blueprint(
@@ -46,6 +46,41 @@ def get_features():
 def get_current_user() -> jsonify:
     """Is the current user admin or not for vue js"""
     return jsonify({'user': current_user.is_admin()})
+
+@home_blueprint.route("/get_public_activity")
+def get_public_activity():
+    """Public activity feed for the homepage, based on system logs for public converts."""
+    from website.db_class.db import SystemLog, Convert
+
+    PUBLIC_EVENTS = [
+        'convert_created', 'eval_like', 'eval_dislike',
+        'eval_reaction', 'convert_edited', 'convert_visibility_changed',
+    ]
+    try:
+        logs = (
+            SystemLog.query
+            .join(Convert, and_(
+                SystemLog.target_id == Convert.id,
+                SystemLog.target_type == 'convert'
+            ))
+            .filter(
+                SystemLog.event_type.in_(PUBLIC_EVENTS),
+                Convert.public == True,
+                Convert.is_active == True,
+                SystemLog.actor_name.isnot(None),
+                or_(
+                    SystemLog.event_type != 'convert_visibility_changed',
+                    SystemLog.details == 'public'
+                )
+            )
+            .order_by(SystemLog.created_at.desc())
+            .limit(20)
+            .all()
+        )
+        return jsonify({"success": True, "list": [l.to_json() for l in logs]}), 200
+    except Exception as e:
+        return jsonify({"success": False, "list": [], "message": str(e)}), 500
+
 
 @home_blueprint.route("/access_denied", methods=['GET'])
 def access_denied() -> jsonify:

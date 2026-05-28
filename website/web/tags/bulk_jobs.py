@@ -125,11 +125,17 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
         for i, cid in enumerate(convert_ids):
             try:
                 conv = Convert.query.get(cid)
-                if not conv or not conv.input_text:
+                if not conv:
                     skipped += 1
                     update(jid, progress=i + 1, skipped=skipped)
                     continue
-                names = extract_tag_names_from_misp_json(conv.input_text)
+                # STIX→MISP: MISP JSON is in output_text; MISP→STIX: MISP JSON is in input_text
+                misp_text = conv.output_text if conv.conversion_type == "STIX_TO_MISP" else conv.input_text
+                if not misp_text:
+                    skipped += 1
+                    update(jid, progress=i + 1, skipped=skipped)
+                    continue
+                names = extract_tag_names_from_misp_json(misp_text)
                 if not names:
                     skipped += 1
                     update(jid, progress=i + 1, skipped=skipped)

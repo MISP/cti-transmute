@@ -222,6 +222,40 @@ def get_admin_list(page: int = 1, per_page: int = 50,
     }
 
 
+def get_misp_push_tags(convert_id: int) -> list[str]:
+    """
+    Return evaluation tag names to inject into a MISP event on push.
+    Includes each cti-evaluation reaction_key voted on this convert,
+    plus a computed cti-evaluation:overall-score="<level>" tag when votes exist.
+    """
+    rows = ConvertEvaluation.query.filter_by(convert_id=convert_id).all()
+
+    reaction_keys: set[str] = {
+        row.reaction_key for row in rows
+        if row.eval_type == 'reaction' and row.reaction_key
+    }
+
+    value_score_map = {'very-low': 0, 'low': 25, 'moderate': 50, 'high': 75, 'very-high': 100}
+    all_scores = []
+    for row in rows:
+        if row.eval_type != 'reaction' or not row.reaction_key:
+            continue
+        _, _, val = _parse_eval_tag(row.reaction_key)
+        if val in value_score_map:
+            all_scores.append(value_score_map[val])
+
+    if all_scores:
+        avg = round(sum(all_scores) / len(all_scores))
+        if avg < 13:   lbl = 'very-low'
+        elif avg < 38: lbl = 'low'
+        elif avg < 63: lbl = 'moderate'
+        elif avg < 88: lbl = 'high'
+        else:          lbl = 'very-high'
+        reaction_keys.add(f'cti-evaluation:overall-score="{lbl}"')
+
+    return list(reaction_keys)
+
+
 def delete_evaluation(eval_id: int) -> bool:
     row = ConvertEvaluation.query.get(eval_id)
     if not row:

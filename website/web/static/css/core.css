@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    CTI TRANSMUTE — PROFESSIONAL REDESIGN
    Aesthetic: Clean enterprise security tool (Datadog / Elastic)
-   Fonts: DM Sans (UI) + DM Mono (code)
+   Fonts: Inter (UI) + JetBrains Mono (code)
 ═══════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
 
 /* ── Hide FOUC ─────────────────────────────────────────────── */
 [v-cloak] {
@@ -47,8 +47,8 @@ html.ocean-mode {
   --text-3: #94a3b8;
   --text-inv: #ffffff;
 
-  --font-ui: 'DM Sans', system-ui, sans-serif;
-  --font-mono: 'DM Mono', 'Fira Code', monospace;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   --radius-xs: 4px;
   --radius-sm: 6px;
