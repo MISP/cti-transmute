@@ -1106,6 +1106,8 @@ def add_comment():
         parent = ConvertModel.get_comment(parent_id)
         if parent:
             AccountModel.notify_comment_reply(parent, comment, current_user.id)
+    else:
+        AccountModel.notify_new_comment(convert, comment, current_user.id)
 
     return {
         "success": True,
@@ -1117,6 +1119,56 @@ def add_comment():
             convert_owner_id=convert.user_id
         )
     }, 201
+
+
+@convert_blueprint.route("/get_comment_info", methods=['GET'])
+def get_comment_info():
+    """Return convert_id and is_evaluation for a comment — used for notification deep-linking."""
+    comment_id = request.args.get('comment_id', type=int)
+    if not comment_id:
+        return {"success": False}, 400
+    comment = ConvertModel.get_comment(comment_id)
+    if not comment:
+        return {"success": False}, 404
+    # For replies, the evaluation flag lives on the parent comment
+    is_eval = comment.is_evaluation
+    if comment.parent_id:
+        parent = ConvertModel.get_comment(comment.parent_id)
+        if parent:
+            is_eval = parent.is_evaluation
+    return {"success": True, "convert_id": comment.convert_id, "is_evaluation": is_eval}, 200
+
+
+@convert_blueprint.route("/edit_comment", methods=['POST'])
+@login_required
+def edit_comment():
+    """Edit the content of a comment (author only)."""
+    data = request.get_json(silent=True) or {}
+    comment_id = data.get('comment_id')
+    content    = data.get('content', '')
+    if not comment_id:
+        return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
+    comment = ConvertModel.get_comment(comment_id)
+    success, message = ConvertModel.edit_comment(
+        comment_id=comment_id,
+        requesting_user_id=current_user.id,
+        content=content,
+    )
+    if success and comment:
+        AccountModel.create_system_log(
+            "comment_edited",
+            actor_id=current_user.id,
+            actor_name=current_user.first_name,
+            target_type="comment",
+            target_id=comment_id,
+            target_name=f"On convert #{comment.convert_id}",
+            details=content[:120] + ('…' if len(content) > 120 else ''),
+        )
+    return {
+        "success": success,
+        "message": message,
+        "toast_class": "success" if success else "danger",
+    }, 200 if success else 403
 
 
 @convert_blueprint.route("/delete_comment", methods=['GET'])

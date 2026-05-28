@@ -194,6 +194,7 @@ class Comment(db.Model):
             "can_toggle_private": bool(current_user_id and (
                 current_user_id == self.user_id or is_admin
             )),
+            "can_edit": bool(current_user_id and current_user_id == self.user_id and not self.is_deleted),
             "is_evaluation": self.is_evaluation,
         }
 

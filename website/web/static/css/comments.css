@@ -2,6 +2,17 @@
    CTI TRANSMUTE — Comments, Reactions, Notifications
 ═══════════════════════════════════════════════════ */
 
+/* ── Deep-link highlight ────────────────────────── */
+@keyframes comment-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(37,99,235,0.35); background: rgba(37,99,235,0.06); }
+    50%  { box-shadow: 0 0 0 6px rgba(37,99,235,0.0); background: rgba(37,99,235,0.10); }
+    100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); background: transparent; }
+}
+.comment-highlight {
+    border-radius: var(--radius-sm);
+    animation: comment-pulse 2.5s ease forwards;
+}
+
 /* ── Comment section wrapper ────────────────────── */
 .comments-section {
     display: flex;
@@ -646,3 +657,150 @@
     .report-reason-grid { grid-template-columns: 1fr; }
     .comment-form-footer { flex-direction: column; align-items: flex-start; }
 }
+
+/* ═══════════════════════════════════════════════════
+   COMMENT SECTIONS — Discussion / Evaluations
+═══════════════════════════════════════════════════ */
+
+/* Eval color token */
+:root { --cs-eval: #f59e0b; --cs-eval-light: rgba(245,158,11,0.10); --cs-eval-border: rgba(245,158,11,0.25); }
+
+/* Section wrapper */
+.cs-section { padding: 0.25rem 0 0.5rem; }
+.cs-section--eval { padding-top: 0; }
+
+/* Section header row */
+.cs-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.cs-section-icon {
+    width: 26px; height: 26px;
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+.cs-section-icon--discuss {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+.cs-section-icon--eval {
+    background: var(--cs-eval-light);
+    color: var(--cs-eval);
+}
+
+.cs-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.01em;
+}
+
+.cs-section-count {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid rgba(37,99,235,0.15);
+}
+.cs-section-count--eval {
+    background: var(--cs-eval-light);
+    color: var(--cs-eval);
+    border-color: var(--cs-eval-border);
+}
+
+.cs-eval-hint {
+    font-size: 0.72rem;
+    color: var(--text-3);
+    margin-left: auto;
+    font-style: italic;
+}
+
+/* Separator between sections */
+.cs-separator {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
+    margin: 1.5rem 0;
+    position: relative;
+}
+.cs-separator::after {
+    content: '· · ·';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface);
+    padding: 0 0.75rem;
+    font-size: 0.65rem;
+    color: var(--text-3);
+    letter-spacing: 0.2em;
+}
+
+/* Login hint */
+.cs-login-hint {
+    font-size: 0.82rem;
+    color: var(--text-3);
+    padding: 0.6rem 0 1rem;
+}
+.cs-login-hint a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.cs-login-hint a:hover { text-decoration: underline; }
+
+/* Comment list inside a section */
+.cs-comment-list { display: flex; flex-direction: column; }
+
+/* ── Evaluation comment card ────────────────────── */
+.comment-card--eval {
+    border-left: 3px solid var(--cs-eval);
+    padding-left: 10px;
+    margin-left: -10px;
+    background: linear-gradient(90deg, var(--cs-eval-light) 0%, transparent 80%);
+    border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+
+.comment-avatar--eval {
+    background: var(--cs-eval-light) !important;
+    color: var(--cs-eval) !important;
+}
+
+/* ── Evaluation form ────────────────────────────── */
+.comment-form-wrapper--eval {
+    border-color: var(--cs-eval-border);
+    background: linear-gradient(135deg, rgba(245,158,11,0.04) 0%, var(--surface-2) 100%);
+}
+.comment-form-wrapper--eval .comment-textarea:focus {
+    border-color: var(--cs-eval);
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.14);
+}
+
+.cs-eval-form-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: var(--cs-eval);
+    opacity: 0.85;
+}
+
+.cs-eval-post-btn {
+    background: var(--cs-eval);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    transition: background var(--t), transform var(--t);
+}
+.cs-eval-post-btn:hover:not(:disabled) {
+    background: #d97706;
+    color: #fff;
+    transform: translateY(-1px);
+}
+.cs-eval-post-btn:disabled { opacity: 0.5; cursor: not-allowed; }

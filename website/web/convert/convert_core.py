@@ -805,6 +805,23 @@ def react_to_comment(comment_id, user_id, emoji):
         return False, False
 
 
+def edit_comment(comment_id, requesting_user_id, content):
+    """Edit a comment's content. Only the original author can edit."""
+    comment = Comment.query.get(comment_id)
+    if not comment:
+        return False, "Comment not found"
+    if comment.is_deleted:
+        return False, "Cannot edit a deleted comment"
+    if comment.user_id != requesting_user_id:
+        return False, "Permission denied"
+    content = content.strip()
+    if not content:
+        return False, "Content cannot be empty"
+    comment.content = content
+    db.session.commit()
+    return True, "Comment updated"
+
+
 def get_comment(comment_id):
     return Comment.query.get(comment_id)
 
