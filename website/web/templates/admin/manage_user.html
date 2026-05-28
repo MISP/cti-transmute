@@ -1,132 +1,229 @@
 {% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+{% endblock %}
 
 {% block content %}
 {% if not current_user.is_admin() %}
-<script>
-  window.location.href = "/access_denied";
-</script>
+<script>window.location.href = "/access_denied";</script>
 {% else %}
 
-<div class="container my-5" id="main-container">
-    <h2 class="mb-4">User Management</h2>
+<div id="mu-app" v-cloak>
+<div class="mu-wrap">
 
-    <div class="mb-3">
-        <div class="row g-2 align-items-center" >
-            <!-- Search bar -->
-            <div class="col-md-4">
-                <input  type="text"  class="form-control"  placeholder="Search users..." v-model="searchQuery"  @input="onSearchInput"  @keyup.enter="onEnterKey" style="background-color:var(--color-navbar); color:var(--color-text);">
+    <!-- ── Page header ──────────────────────────────────────────── -->
+    <div class="mu-header reveal-up">
+        <div class="home-hero-badge">
+            <i class="fas fa-shield-alt"></i> Admin Panel
+        </div>
+        <h1 class="list-title">User Management</h1>
+        <p class="list-subtitle">Manage accounts, permissions and connection status across the platform.</p>
+
+        <div class="mu-stats">
+            <div class="mu-stat">
+                <i class="fas fa-users" style="color:var(--accent);"></i>
+                <span><strong>[[ stats.total ]]</strong> users</span>
             </div>
-
-            <!-- Connected filter -->
-            <div class="col-md-3">
-                <select class="form-select" v-model="filterConnection" @change="onSearchInput" style="background-color:var(--color-navbar); color:var(--color-text);">
-                    <option value="all"  selected>All users</option>
-                    <option value="connected">Connected only</option>
-                    <option value="disconnected">Disconnected only</option>
-                </select>
+            <div class="mu-stat">
+                <span class="mu-dot mu-dot--online"></span>
+                <span><strong>[[ stats.online ]]</strong> online</span>
             </div>
-
-            <!-- Admin filter -->
-            <div class="col-md-3">
-                <select class="form-select" v-model="filterAdmin" @change="onSearchInput" style="background-color:var(--color-navbar); color:var(--color-text);">
-                    <option value="all" selected>All roles</option>
-                    <option value="admin">Admins only</option>
-                    <option value="user">Non-admins only</option>
-                </select>
+            <div class="mu-stat">
+                <i class="fas fa-user-shield" style="color:var(--danger); font-size:0.75rem;"></i>
+                <span><strong>[[ stats.admins ]]</strong> admins</span>
             </div>
         </div>
     </div>
 
+    <!-- ── Toolbar ──────────────────────────────────────────────── -->
+    <div class="mu-toolbar reveal-up">
+        <div class="mu-search-wrap">
+            <i class="fas fa-search mu-search-icon"></i>
+            <input type="text" class="mu-search-input"
+                placeholder="Search by name or email…"
+                v-model="searchQuery"
+                @input="onSearchInput"
+                @keyup.enter="fetchUser(1)">
+        </div>
 
+        <select class="mu-select" v-model="filterConnection" @change="onSearchInput">
+            <option value="all">All users</option>
+            <option value="connected">Online only</option>
+            <option value="disconnected">Offline only</option>
+        </select>
 
-    <div class="user-list">
-        <div  v-for="user in users" :key="user.id" class="user-item mb-3 p-3 border rounded shadow-sm" class="card" id="card-item">
-            <div  class="d-flex justify-content-between align-items-center"role="button" @click="seeUserDetail(user.id)" >
-                <div class="d-flex flex-column">
-                    <h5 class="mb-1">[[ user.first_name ]] [[ user.last_name ]]</h5>
-                    <small>[[ user.email ]]</small>
-                </div>
+        <select class="mu-select" v-model="filterAdmin" @change="onSearchInput">
+            <option value="all">All roles</option>
+            <option value="admin">Admins only</option>
+            <option value="user">Non-admins</option>
+        </select>
 
-                <div class="d-flex align-items-center gap-2">
-                    <span  v-if="user.admin"  class="badge bg-secondary">Admin</span>
-                    <span  v-if="user.is_connected"  class="badge bg-success" >Online</span>
-                    <span  v-else class="badge bg-danger">Offline</span>
-                    <i class="bi bi-chevron-down small"></i>
-                </div>
+        <button class="mu-blur-btn" :class="{ 'mu-blur-btn--active': blurNames }" @click="blurNames = !blurNames">
+            <i :class="blurNames ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+            <span>[[ blurNames ? 'Blurred' : 'Revealed' ]]</span>
+        </button>
+    </div>
+
+    <!-- ── Pagination top ───────────────────────────────────────── -->
+    <app-pagination v-if="total_pages > 1"
+        :page="current_page" :total="total_pages"
+        @change="fetchUser" class="mb-3">
+    </app-pagination>
+
+    <!-- ── Loading ──────────────────────────────────────────────── -->
+    <div v-if="loading" class="mu-state">
+        <div class="spinner-border" style="color:var(--accent); width:1.75rem; height:1.75rem;" role="status"></div>
+    </div>
+
+    <!-- ── Empty ────────────────────────────────────────────────── -->
+    <div v-else-if="users.length === 0" class="mu-state">
+        <i class="fas fa-users-slash" style="font-size:1.75rem; opacity:0.35; display:block; margin-bottom:0.6rem;"></i>
+        <p style="font-size:0.875rem; color:var(--text-2); margin:0;">No users match your filters.</p>
+    </div>
+
+    <!-- ── User list ─────────────────────────────────────────────── -->
+    <div v-else class="mu-list">
+        <div v-for="user in users" :key="user.id"
+            class="mu-card"
+            @click="seeUserDetail(user.id)">
+
+            <!-- Avatar -->
+            <div class="mu-avatar" :style="{ background: avatarGradient(user.id) }">
+                [[ initials(user) ]]
             </div>
+
+            <!-- Main info -->
+            <div class="mu-info">
+                <div class="mu-name" :class="{ 'mu-blurred': blurNames }">
+                    [[ user.first_name ]] [[ user.last_name ]]
+                </div>
+                <div class="mu-email" :class="{ 'mu-blurred': blurNames }">
+                    <i class="fas fa-envelope" style="font-size:0.65rem; margin-right:4px; opacity:0.5;"></i>[[ user.email ]]
+                </div>
+                <div class="mu-userid">#[[ user.id ]]</div>
+            </div>
+
+            <!-- Badges -->
+            <div class="mu-badges">
+                <span v-if="user.admin" class="mu-badge mu-badge--admin">
+                    <i class="fas fa-shield-alt"></i> Admin
+                </span>
+                <span v-if="user.is_connected" class="mu-badge mu-badge--online">
+                    <span class="mu-dot mu-dot--online" style="width:5px;height:5px;"></span> Online
+                </span>
+                <span v-else class="mu-badge mu-badge--offline">
+                    <span class="mu-dot" style="width:5px;height:5px;background:var(--text-3);border-radius:50%;display:inline-block;"></span> Offline
+                </span>
+            </div>
+
+            <i class="fas fa-chevron-right mu-chevron"></i>
         </div>
     </div>
 
-    <div v-if="users.length > 0" style="margin-bottom: 100px;">
-        <app-pagination :page="current_page" :total="total_pages" @change="fetchUser"></app-pagination>
-    </div>
+    <!-- ── Pagination bottom ─────────────────────────────────────── -->
+    <app-pagination v-if="total_pages > 1"
+        :page="current_page" :total="total_pages"
+        @change="fetchUser" class="mt-3">
+    </app-pagination>
+
+</div>
 </div>
 {% endif %}
 {% endblock %}
 
 {% block script %}
 <script type="module">
-const { createApp, ref,computed } = Vue
-import { display_toast, message_list, display_prepared_toast } from '/static/js/toaster.js'
-import AppPagination from '/static/js/pagination.js'
+const { createApp, ref, computed } = Vue
+import { message_list } from '/static/js/toaster.js'
+import AppPagination    from '/static/js/pagination.js'
+
+const AVATAR_PALETTE = [
+    'linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)',
+    'linear-gradient(135deg,#7c3aed 0%,#6d28d9 100%)',
+    'linear-gradient(135deg,#0891b2 0%,#0e7490 100%)',
+    'linear-gradient(135deg,#059669 0%,#047857 100%)',
+    'linear-gradient(135deg,#d97706 0%,#b45309 100%)',
+    'linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)',
+]
 
 createApp({
-  components: { 'app-pagination': AppPagination },
-  delimiters: ['[[', ']]'],
-  setup() {
-    const users = ref([])
-    const current_page = ref(1)
-    const total_pages = ref(1)
+    components: { 'app-pagination': AppPagination },
+    delimiters: ['[[', ']]'],
+    setup() {
+        const users            = ref([])
+        const total_users       = ref(0)
+        const total_admin        = ref(0)
+        const total_connected    = ref(0)
+        const current_page     = ref(1)
+        const total_pages      = ref(1)
+        const loading          = ref(false)
+        const searchQuery      = ref('')
+        const filterConnection = ref('all')
+        const filterAdmin      = ref('all')
+        const blurNames        = ref(true)
 
-    const searchQuery = ref('')
-    const filterConnection = ref("all")
-    const filterAdmin = ref("all")
+        const stats = computed(() => ({
+            total:  total_users.value,
+            online: total_connected.value,
+            admins: total_admin.value,
+        }))
 
-    async function fetchUser(page = 1) {
-      if (page < 1) return
-      const params = new URLSearchParams({
-        page: page,
-        searchQuery: searchQuery.value || '',
-        filterConnection: filterConnection.value || '',
-        filterAdmin: filterAdmin.value || ''
-      })
-      const res = await fetch('/account/get_users?' + params.toString())
-      if (res.ok) {
-        const data = await res.json()
-        users.value = data.list || []
-        total_pages.value = data.total_page || 1
-        current_page.value = page
-      } 
-    }
+        function avatarGradient(id) {
+            return AVATAR_PALETTE[id % AVATAR_PALETTE.length]
+        }
 
-    async function onSearchInput() {
-      await fetchUser(1)
-    }
+        function initials(user) {
+            const f = (user.first_name || '').charAt(0).toUpperCase()
+            const l = (user.last_name  || '').charAt(0).toUpperCase()
+            return f + l || '?'
+        }
 
-    async function onEnterKey() {
-      await fetchUser(1)
-    }
+        async function fetchUser(page = 1) {
+            if (page < 1) return
+            loading.value = true
+            const params = new URLSearchParams({
+                page,
+                searchQuery:      searchQuery.value || '',
+                filterConnection: filterConnection.value || '',
+                filterAdmin:      filterAdmin.value || '',
+            })
+            try {
+                const res = await fetch('/account/get_users?' + params.toString())
+                if (res.ok) {
+                    const data = await res.json()
+                    users.value        = data.list || []
+                    total_pages.value  = data.total_page || 1
+                    current_page.value = page
+                    total_users.value  = data.total_users || 0,
+                    total_admin.value  = data.admin || 0,
+                    total_connected.value = data.connected || 0
 
-    function seeUserDetail(id){
-        window.location.href = "/account/detail_user/"+id;
-    }
+                }
+            } finally {
+                loading.value = false
+            }
+        }
 
-    fetchUser(1)
+        let debounce = null
+        function onSearchInput() {
+            clearTimeout(debounce)
+            debounce = setTimeout(() => fetchUser(1), 280)
+        }
 
-    return {
-      users,
-      current_page,
-      total_pages,
-      searchQuery,
-      fetchUser,
-      onSearchInput,
-      onEnterKey,
-      message_list,
-      filterConnection,
-      filterAdmin,
-      seeUserDetail
-    }
-  }
-}).mount('#main-containers')
+        function seeUserDetail(id) {
+            window.location.href = '/account/detail_user/' + id
+        }
+
+        fetchUser(1)
+
+        return {
+            users, current_page, total_pages, loading,
+            searchQuery, filterConnection, filterAdmin, blurNames,
+            stats, fetchUser, onSearchInput,
+            seeUserDetail, avatarGradient, initials, message_list,
+            total_users
+        }
+    },
+}).mount('#mu-app')
 </script>
 {% endblock %}

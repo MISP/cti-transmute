@@ -102,8 +102,13 @@ def get_users_page(page, searchQuery=None, filterConnection=None, filterAdmin=No
     elif filterAdmin == "user":
         query = query.filter(User.admin.is_(False))
 
+
+    # get totals admin and connected for stats
+    total_admin = query.filter(User.admin.is_(True)).count()
+    total_connected = query.filter(User.is_connected.is_(True)).count()
+
     # Pagination
-    return query.paginate(page=page, per_page=10)
+    return query.paginate(page=page, per_page=10) ,  total_admin, total_connected
 
 
 
@@ -327,6 +332,22 @@ def notify_admins_new_report(convert, reporter_id):
         )
 
 
+def notify_new_comment(convert, comment, actor_id):
+    """Notify convert owner that someone posted a comment on their convert."""
+    if not convert.user_id or convert.user_id == actor_id:
+        return
+    actor = get_user(actor_id)
+    actor_name = actor.first_name if actor else "Someone"
+    create_notification(
+        user_id=convert.user_id,
+        notif_type="new_comment",
+        message=f"{actor_name} commented on your convert \"{convert.name}\".",
+        related_id=comment.id,
+        related_type="comment",
+        actor_id=actor_id
+    )
+
+
 def notify_comment_reply(parent_comment, reply_comment, actor_id):
     """Notify original comment author that their comment received a reply."""
     if not parent_comment.user_id or parent_comment.user_id == actor_id:
@@ -337,8 +358,8 @@ def notify_comment_reply(parent_comment, reply_comment, actor_id):
         user_id=parent_comment.user_id,
         notif_type="comment_reply",
         message=f"{actor_name} replied to your comment.",
-        related_id=reply_comment.convert_id,
-        related_type="convert",
+        related_id=reply_comment.id,
+        related_type="comment",
         actor_id=actor_id
     )
 

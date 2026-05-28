@@ -561,9 +561,7 @@
     const el = document.getElementById('tag-input-mount-s2m');
     if (el) {
         Vue.createApp(TagInput, {
-            hiddenInputId:   'tag-ids-hidden-s2m',
-            jsonTextareaId:  'stix_content',
-            jsonFileInputId: 'file',
+            hiddenInputId: 'tag-ids-hidden-s2m',
             canEdit: true,
         }).mount(el);
     }

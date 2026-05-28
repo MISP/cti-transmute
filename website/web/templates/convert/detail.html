@@ -195,12 +195,13 @@
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="comments">
                             <i class="fas fa-comments me-1"></i> Comments
-                            <span v-if="comments_total > 0" class="badge bg-secondary ms-1">[[ comments_total ]]</span>
+                            <span v-if="discuss_comments.length > 0" class="badge bg-secondary ms-1">[[ discuss_comments.length ]]</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" :href="'#eval-pane-'+convert.id" role="tab">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#eval-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="eval">
                             <i class="fas fa-chart-bar me-1"></i> Evaluation
+                            <span v-if="eval_comments.length > 0" class="badge ms-1" style="background:var(--cs-eval); color:#fff;">[[ eval_comments.length ]]</span>
                         </a>
                     </li>
                 </ul>
@@ -414,128 +415,112 @@
                 <div class="tab-pane fade" :id="'comments-pane-'+convert.id" role="tabpanel">
                     <div class="comments-section">
 
-                        <!-- Visibility banner when convert is private -->
+                        <!-- Visibility banner -->
                         <div v-if="!convert.public" class="visibility-info-banner private-banner">
                             <i class="fas fa-lock mt-1"></i>
                             <span>This convert is <strong>private</strong>. Only you and admins can see the comments below, regardless of their individual visibility.</span>
                         </div>
 
-                        <!-- Write comment (logged-in only) -->
-                        {% if current_user.is_authenticated %}
-                        <div class="comment-form-wrapper">
-                            <textarea class="comment-textarea" v-model="new_comment_text" placeholder="Write a comment…" maxlength="2000" rows="2"></textarea>
-                            <div class="comment-form-footer">
-                                <label class="comment-privacy-toggle">
-                                    <input type="checkbox" v-model="new_comment_private">
-                                    <i class="fas fa-lock" style="font-size:0.75rem;"></i>
-                                    Private
-                                </label>
-                                <label class="eval-comment-toggle">
-                                    <input type="checkbox" v-model="new_comment_evaluation">
-                                    <i class="fas fa-chart-bar" style="font-size:0.75rem; color:var(--accent);"></i>
-                                    Evaluation
-                                </label>
-                                <button class="btn btn-sm btn-primary" @click="postComment()" :disabled="!new_comment_text.trim()">
-                                    <i class="fas fa-paper-plane me-1"></i> Post
-                                </button>
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="text-center py-3 mb-3" style="font-size:0.85rem; color:var(--text-3);">
-                            <a href="/account/login" style="color:var(--accent); font-weight:600;">Log in</a> to leave a comment.
-                        </div>
-                        {% endif %}
-
-                        <!-- Comments list -->
-                        <div v-if="comments_loading" class="text-center py-4">
+                        <!-- Loading -->
+                        <div v-if="comments_loading" class="text-center py-5">
                             <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
                         </div>
 
-                        <div v-else-if="comments.length === 0" class="comments-empty">
-                            <i class="fas fa-comments"></i>
-                            <p class="mb-0" style="font-weight:500;">No comments yet</p>
-                            <p style="font-size:0.8rem;">Be the first to share your thoughts.</p>
-                        </div>
-
                         <template v-else>
-                            <div v-for="comment in comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card">
 
-                                <!-- Comment header -->
-                                <div class="comment-header">
-                                    <div class="comment-avatar">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
-                                    <span class="comment-author">[[ comment.author ]]</span>
-                                    <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
-                                    <span v-if="comment.is_private" class="comment-private-badge">
-                                        <i class="fas fa-lock"></i> Private
-                                    </span>
-                                    <span v-if="comment.is_evaluation" class="eval-comment-badge">
-                                        <i class="fas fa-chart-bar"></i> Evaluation
-                                    </span>
+                            <!-- ══ DISCUSSION ══════════════════════════════════ -->
+                            <div class="cs-section">
+                                <div class="cs-section-header">
+                                    <span class="cs-section-icon cs-section-icon--discuss"><i class="fas fa-comments"></i></span>
+                                    <span class="cs-section-title">Discussion</span>
+                                    <span v-if="discuss_comments.length" class="cs-section-count">[[ discuss_comments.length ]]</span>
                                 </div>
 
-                                <!-- Content -->
-                                <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">
-                                    [[ comment.content ]]
-                                </div>
-
-                                <!-- Actions -->
-                                <div class="comment-actions" v-if="!comment.is_deleted">
-                                    {% if current_user.is_authenticated %}
-                                    <button class="comment-action-btn" @click="toggleReplyForm(comment.id)">
-                                        <i class="fas fa-reply"></i> Reply
-                                    </button>
-                                    <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
-                                        <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
-                                        [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
-                                    </button>
-                                    <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                    {% endif %}
-                                </div>
-
-                                <!-- Reply form -->
                                 {% if current_user.is_authenticated %}
-                                <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
-                                    <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
-                                    <div class="d-flex justify-content-end gap-2 mt-2">
-                                        <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
-                                        <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()">
-                                            <i class="fas fa-paper-plane me-1"></i> Reply
+                                <div class="comment-form-wrapper">
+                                    <textarea class="comment-textarea" v-model="new_discuss_text"
+                                        placeholder="Share your thoughts, ask a question…"
+                                        maxlength="2000" rows="2"></textarea>
+                                    <div class="comment-form-footer">
+                                        <label class="comment-privacy-toggle">
+                                            <input type="checkbox" v-model="new_discuss_private">
+                                            <i class="fas fa-lock" style="font-size:0.75rem;"></i> Private
+                                        </label>
+                                        <button class="btn btn-sm btn-primary" @click="postComment(false)" :disabled="!new_discuss_text.trim()">
+                                            <i class="fas fa-paper-plane me-1"></i> Post
                                         </button>
                                     </div>
                                 </div>
+                                {% else %}
+                                <div class="cs-login-hint">
+                                    <a href="/account/login">Log in</a> to join the discussion.
+                                </div>
                                 {% endif %}
 
-                                <!-- Replies -->
-                                <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
-                                    <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
+                                <div v-if="discuss_comments.length === 0" class="comments-empty" style="padding:1.25rem 0 0.5rem;">
+                                    <i class="fas fa-comments" style="font-size:1.3rem; opacity:0.28; display:block; margin-bottom:0.4rem;"></i>
+                                    <p style="font-size:0.82rem; margin:0;">No discussion yet. Start the conversation.</p>
+                                </div>
+                                <div v-else class="cs-comment-list">
+                                    <div v-for="comment in discuss_comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card">
                                         <div class="comment-header">
-                                            <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
-                                            <span class="comment-author">[[ reply.author ]]</span>
-                                            <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
-                                            <span v-if="reply.is_private" class="comment-private-badge">
-                                                <i class="fas fa-lock"></i> Private
-                                            </span>
+                                            <div class="comment-avatar">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                            <span class="comment-author">[[ comment.author ]]</span>
+                                            <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
+                                            <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                                         </div>
-                                        <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">
-                                            [[ reply.content ]]
-                                        </div>
-                                        <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
+                                        <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
+                                        <div class="comment-actions" v-if="!comment.is_deleted">
                                             {% if current_user.is_authenticated %}
-                                            <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
-                                                <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
-                                                [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
+                                            <button class="comment-action-btn" @click="toggleReplyForm(comment.id)"><i class="fas fa-reply"></i> Reply</button>
+                                            <button v-if="comment.can_edit" class="comment-action-btn" @click="startEdit(comment)"><i class="fas fa-pen"></i> Edit</button>
+                                            <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
+                                                <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
                                             </button>
-                                            <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </button>
+                                            <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)"><i class="fas fa-trash"></i> Delete</button>
                                             {% endif %}
+                                        </div>
+                                        {% if current_user.is_authenticated %}
+                                        <div v-if="edit_comment_id === comment.id" class="replies-section reply-form">
+                                            <textarea class="reply-textarea" v-model="edit_comment_text" maxlength="2000" rows="2"></textarea>
+                                            <div class="d-flex justify-content-end gap-2 mt-2">
+                                                <button class="btn btn-sm btn-secondary" @click="cancelEdit()">Cancel</button>
+                                                <button class="btn btn-sm btn-primary" @click="submitEdit(comment.id)" :disabled="!edit_comment_text.trim()"><i class="fas fa-check me-1"></i> Save</button>
+                                            </div>
+                                        </div>
+                                        <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
+                                            <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
+                                            <div class="d-flex justify-content-end gap-2 mt-2">
+                                                <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
+                                                <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()"><i class="fas fa-paper-plane me-1"></i> Reply</button>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
+                                            <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
+                                                <div class="comment-header">
+                                                    <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                                    <span class="comment-author">[[ reply.author ]]</span>
+                                                    <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
+                                                    <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                                </div>
+                                                <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
+                                                <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
+                                                    {% if current_user.is_authenticated %}
+                                                    <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
+                                                        <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                        [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
+                                                    </button>
+                                                    <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)"><i class="fas fa-trash"></i> Delete</button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
+
                         </template>
 
                     </div>
@@ -550,6 +535,108 @@
                         :is-public="convert.public">
                     </evaluation-panel>
                     <evaluation-charts :convert-id="{{ convert.id }}"></evaluation-charts>
+
+                    <!-- ── Evaluation comments ───────────────────── -->
+                    <div class="cs-separator" style="margin:1.25rem 0;"></div>
+
+                    <div class="cs-section cs-section--eval">
+                        <div class="cs-section-header">
+                            <span class="cs-section-icon cs-section-icon--eval"><i class="fas fa-comment-alt"></i></span>
+                            <span class="cs-section-title">Evaluation Comments</span>
+                            <span v-if="eval_comments.length" class="cs-section-count cs-section-count--eval">[[ eval_comments.length ]]</span>
+                            <span class="cs-eval-hint">Qualitative feedback on this convert</span>
+                        </div>
+
+                        {% if current_user.is_authenticated %}
+                        <div class="comment-form-wrapper comment-form-wrapper--eval">
+                            <textarea class="comment-textarea" v-model="new_eval_text"
+                                placeholder="Share your evaluation — quality, accuracy, completeness…"
+                                maxlength="2000" rows="2"></textarea>
+                            <div class="comment-form-footer">
+                                <label class="comment-privacy-toggle">
+                                    <input type="checkbox" v-model="new_eval_private">
+                                    <i class="fas fa-lock" style="font-size:0.75rem;"></i> Private
+                                </label>
+                                <span class="cs-eval-form-label">
+                                    <i class="fas fa-chart-bar"></i> Marked as evaluation
+                                </span>
+                                <button class="btn btn-sm cs-eval-post-btn" @click="postComment(true)" :disabled="!new_eval_text.trim()">
+                                    <i class="fas fa-paper-plane me-1"></i> Post Evaluation
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="cs-login-hint">
+                            <a href="/account/login">Log in</a> to post an evaluation.
+                        </div>
+                        {% endif %}
+
+                        <div v-if="comments_loading" class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm" style="color:var(--cs-eval);"></div>
+                        </div>
+                        <div v-else-if="eval_comments.length === 0" class="comments-empty" style="padding:1.25rem 0 0.5rem;">
+                            <i class="fas fa-comment-alt" style="font-size:1.3rem; opacity:0.28; display:block; margin-bottom:0.4rem;"></i>
+                            <p style="font-size:0.82rem; margin:0;">No evaluation comments yet.</p>
+                        </div>
+                        <div v-else class="cs-comment-list">
+                            <div v-for="comment in eval_comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card comment-card--eval">
+                                <div class="comment-header">
+                                    <div class="comment-avatar comment-avatar--eval">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                    <span class="comment-author">[[ comment.author ]]</span>
+                                    <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
+                                    <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                </div>
+                                <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
+                                <div class="comment-actions" v-if="!comment.is_deleted">
+                                    {% if current_user.is_authenticated %}
+                                    <button class="comment-action-btn" @click="toggleReplyForm(comment.id)"><i class="fas fa-reply"></i> Reply</button>
+                                    <button v-if="comment.can_edit" class="comment-action-btn" @click="startEdit(comment)"><i class="fas fa-pen"></i> Edit</button>
+                                    <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
+                                        <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                        [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
+                                    </button>
+                                    <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)"><i class="fas fa-trash"></i> Delete</button>
+                                    {% endif %}
+                                </div>
+                                {% if current_user.is_authenticated %}
+                                <div v-if="edit_comment_id === comment.id" class="replies-section reply-form">
+                                    <textarea class="reply-textarea" v-model="edit_comment_text" maxlength="2000" rows="2"></textarea>
+                                    <div class="d-flex justify-content-end gap-2 mt-2">
+                                        <button class="btn btn-sm btn-secondary" @click="cancelEdit()">Cancel</button>
+                                        <button class="btn btn-sm btn-primary" @click="submitEdit(comment.id)" :disabled="!edit_comment_text.trim()"><i class="fas fa-check me-1"></i> Save</button>
+                                    </div>
+                                </div>
+                                <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
+                                    <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
+                                    <div class="d-flex justify-content-end gap-2 mt-2">
+                                        <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
+                                        <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()"><i class="fas fa-paper-plane me-1"></i> Reply</button>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
+                                    <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                            <span class="comment-author">[[ reply.author ]]</span>
+                                            <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
+                                            <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                        </div>
+                                        <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
+                                        <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
+                                            {% if current_user.is_authenticated %}
+                                            <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
+                                                <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
+                                            </button>
+                                            <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)"><i class="fas fa-trash"></i> Delete</button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
             </div>
@@ -697,7 +784,7 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, onMounted, watch, nextTick } = Vue
+    const { createApp, ref, computed, onMounted, watch, nextTick } = Vue
     import { create_message, message_list } from '/static/js/toaster.js';
     import TagInput from '/static/js/tags/tagInput.js';
     import { initConvertGraph, showGraphSide } from '/static/js/graph/convertGraph.js';
@@ -903,11 +990,17 @@
             const comments_total = ref(0)
             const comments_loading = ref(false)
             const comments_loaded = ref(false)
-            const new_comment_text       = ref('')
-            const new_comment_private    = ref(false)
-            const new_comment_evaluation = ref(false)
-            const reply_open_for = ref(null)
-            const reply_texts = ref({})
+            const new_discuss_text    = ref('')
+            const new_discuss_private = ref(false)
+            const new_eval_text       = ref('')
+            const new_eval_private    = ref(false)
+            const reply_open_for    = ref(null)
+            const reply_texts       = ref({})
+            const edit_comment_id   = ref(null)
+            const edit_comment_text = ref('')
+
+            const discuss_comments = computed(() => comments.value.filter(c => !c.is_evaluation))
+            const eval_comments    = computed(() => comments.value.filter(c =>  c.is_evaluation))
             const is_following_author = ref(false)
 
             // Report state
@@ -1110,8 +1203,10 @@
                 }
             }
 
-            async function postComment() {
-                const content = new_comment_text.value.trim()
+            async function postComment(isEval = false) {
+                const text    = isEval ? new_eval_text.value    : new_discuss_text.value
+                const isPriv  = isEval ? new_eval_private.value : new_discuss_private.value
+                const content = text.trim()
                 if (!content) return
                 const res = await fetch('/convert/comment', {
                     method: 'POST',
@@ -1119,16 +1214,15 @@
                     body: JSON.stringify({
                         convert_id:    parseInt(convert_id),
                         content,
-                        is_private:    new_comment_private.value,
-                        is_evaluation: new_comment_evaluation.value,
+                        is_private:    isPriv,
+                        is_evaluation: isEval,
                     })
                 })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (res.status === 201) {
-                    new_comment_text.value       = ''
-                    new_comment_private.value    = false
-                    new_comment_evaluation.value = false
+                    if (isEval) { new_eval_text.value = '';    new_eval_private.value = false }
+                    else        { new_discuss_text.value = ''; new_discuss_private.value = false }
                     await refreshComments()
                     window.__refreshNotifCount?.()
                 }
@@ -1167,6 +1261,28 @@
 
             function toggleReplyForm(comment_id) {
                 reply_open_for.value = reply_open_for.value === comment_id ? null : comment_id
+            }
+
+            function startEdit(comment) {
+                edit_comment_id.value   = comment.id
+                edit_comment_text.value = comment.content
+                reply_open_for.value    = null
+            }
+            function cancelEdit() {
+                edit_comment_id.value   = null
+                edit_comment_text.value = ''
+            }
+            async function submitEdit(comment_id) {
+                const content = edit_comment_text.value.trim()
+                if (!content) return
+                const res = await fetch('/convert/edit_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({ comment_id, content }),
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) { cancelEdit(); await refreshComments() }
             }
 
             // ── Follow functions ─────────────────────────────
@@ -1227,14 +1343,19 @@
                             comments_total.value = comments.value.length
                             comments_loaded.value = true
                         }
-                        const hash = window.location.hash
+                        const hash     = window.location.hash
+                        const params   = new URLSearchParams(window.location.search)
+                        const openTab  = params.get('open_tab')
                         if (hash && hash.startsWith('#comment-')) {
-                            const tabEl = document.querySelector('[data-tab="comments"]')
+                            const tabSel = openTab === 'eval' ? '[data-tab="eval"]' : '[data-tab="comments"]'
+                            const tabEl  = document.querySelector(tabSel)
                             if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show()
                             const tryScroll = (attempts = 0) => {
                                 const el = document.querySelector(hash)
                                 if (el) {
                                     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                    el.classList.add('comment-highlight')
+                                    setTimeout(() => el.classList.remove('comment-highlight'), 2500)
                                 } else if (attempts < 10) {
                                     setTimeout(() => tryScroll(attempts + 1), 150)
                                 }
@@ -1252,10 +1373,14 @@
                 getRawInput, getRawOutput,
                 // Comments
                 comments, comments_total, comments_loading,
-                new_comment_text, new_comment_private, new_comment_evaluation,
+                discuss_comments, eval_comments,
+                new_discuss_text, new_discuss_private,
+                new_eval_text, new_eval_private,
                 reply_open_for, reply_texts,
+                edit_comment_id, edit_comment_text,
                 loadComments, postComment, postReply, deleteComment,
                 toggleCommentPrivate, toggleReplyForm,
+                startEdit, cancelEdit, submitEdit,
                 // Follow
                 is_following_author, toggleFollow,
                 // Report
@@ -1270,6 +1395,28 @@
     app.component('evaluation-charts', EvaluationCharts)
     app.component('push-convert-to-misp', PushConvertToMISP)
     app.mount('#main-containers')
+
+    // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)
+    const _evalTarget = '{{ convert.id }}'
+    const _evalSession = sessionStorage.getItem('open_eval_tab')
+    const _evalHash = window.location.hash === '#eval-tab'
+    if (_evalSession === _evalTarget || _evalHash) {
+        if (_evalSession) sessionStorage.removeItem('open_eval_tab')
+        if (_evalHash) history.replaceState(null, '', window.location.pathname)
+        // :href is a Vue binding — wait for Vue to render before querying
+        const _activateEvalTab = () => {
+            const link = document.querySelector('[data-tab="eval"]')
+            if (link) { new bootstrap.Tab(link).show(); return true }
+            return false
+        }
+        if (!_activateEvalTab()) {
+            // Retry up to ~500 ms in case Vue is slow to mount
+            let _tries = 0
+            const _iv = setInterval(() => {
+                if (_activateEvalTab() || ++_tries > 10) clearInterval(_iv)
+            }, 50)
+        }
+    }
 
 </script>
 

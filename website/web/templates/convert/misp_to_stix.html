@@ -1078,9 +1078,7 @@
     const el = document.getElementById('tag-input-mount-m2s');
     if (el) {
         Vue.createApp(TagInput, {
-            hiddenInputId:   'tag-ids-hidden-m2s',
-            jsonTextareaId:  'misp_content',
-            jsonFileInputId: 'file',
+            hiddenInputId: 'tag-ids-hidden-m2s',
             canEdit: true,
         }).mount(el);
     }

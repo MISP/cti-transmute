@@ -439,9 +439,12 @@ def get_available_tags(user_id, search=None, source=None, is_evaluation=False, l
     return query.order_by(*order).limit(limit).all()
 
 
-def get_convert_tags(convert_id):
-    """Return all tag associations for a single convert."""
-    return ConvertTagAssociation.query.filter_by(convert_id=convert_id).all()
+def get_convert_tags(convert_id, source_type=None):
+    """Return tag associations for a convert. Optionally filter by source_type ('user'|'json')."""
+    q = ConvertTagAssociation.query.filter_by(convert_id=convert_id)
+    if source_type:
+        q = q.filter_by(source_type=source_type)
+    return q.all()
 
 
 def get_convert_tags_batch(convert_ids):
@@ -509,9 +512,16 @@ def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
     return [t.id for t in tags if t.name.lower() in lower_names]
 
 
-def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int) -> int:
-    """Add tags to a convert without removing existing ones. Returns count of newly added tags."""
-    existing = {a.tag_id for a in ConvertTagAssociation.query.filter_by(convert_id=convert_id).all()}
+def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int, source_type: str = "user") -> int:
+    """Add tags to a convert without removing existing ones. Returns count of newly added tags.
+    source_type: 'user' (default) for manually added tags, 'json' for admin-scan-detected tags.
+    Deduplication is scoped to the same source_type."""
+    existing = {
+        a.tag_id
+        for a in ConvertTagAssociation.query.filter_by(
+            convert_id=convert_id, source_type=source_type
+        ).all()
+    }
     now = datetime.datetime.utcnow()
     count = 0
     seen = set()
@@ -528,6 +538,7 @@ def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int) -> int:
             tag_id=tid,
             user_id=user_id,
             added_at=now,
+            source_type=source_type,
         ))
         count += 1
     try:
@@ -606,8 +617,11 @@ def get_all_tags_usage():
 
 
 def save_convert_tags(convert_id, tag_ids, user_id):
-    """Replace all tag associations for a convert (idempotent)."""
-    ConvertTagAssociation.query.filter_by(convert_id=convert_id).delete(synchronize_session=False)
+    """Replace user-added tag associations for a convert (idempotent).
+    JSON-sourced tags (source_type='json') are never touched by this function."""
+    ConvertTagAssociation.query.filter_by(
+        convert_id=convert_id, source_type="user"
+    ).delete(synchronize_session=False)
     now = datetime.datetime.utcnow()
     seen = set()
     for tid in tag_ids:
@@ -625,6 +639,7 @@ def save_convert_tags(convert_id, tag_ids, user_id):
             tag_id=tid,
             user_id=user_id,
             added_at=now,
+            source_type="user",
         ))
     try:
         db.session.commit()

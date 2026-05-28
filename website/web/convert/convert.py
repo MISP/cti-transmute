@@ -11,6 +11,7 @@ import requests
 from ..convert import convert_core as ConvertModel
 from ..account import account_core as AccountModel
 from ..tags import tags_core as TagsModel
+from ..evaluate import evaluate_core as EvalModel
 
 
 def _validate_misp_url(misp_url: str) -> str | None:
@@ -118,11 +119,8 @@ def misp_to_stix():
                         if not current_user.is_anonymous():
                             raw_ids = request.form.get('tag_ids', '')
                             manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
-                            misp_names = extract_tag_names_from_misp_json(file_content)
-                            auto_ids = TagsModel.resolve_tag_ids_from_names(misp_names)
-                            all_ids = list(dict.fromkeys(manual_ids + auto_ids))
-                            if all_ids:
-                                TagsModel.save_convert_tags(saved.id, all_ids, current_user.id)
+                            if manual_ids:
+                                TagsModel.save_convert_tags(saved.id, manual_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering the convert!", "danger")
@@ -433,9 +431,9 @@ def stix_to_misp():
                             AccountModel.notify_followers_new_convert(saved, current_user.id)
                         if not current_user.is_anonymous():
                             raw_ids = request.form.get('tag_ids', '')
-                            tag_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
-                            if tag_ids:
-                                TagsModel.save_convert_tags(saved.id, tag_ids, current_user.id)
+                            manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                            if manual_ids:
+                                TagsModel.save_convert_tags(saved.id, manual_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering in database", "danger")
@@ -1102,6 +1100,8 @@ def add_comment():
         parent = ConvertModel.get_comment(parent_id)
         if parent:
             AccountModel.notify_comment_reply(parent, comment, current_user.id)
+    else:
+        AccountModel.notify_new_comment(convert, comment, current_user.id)
 
     return {
         "success": True,
@@ -1113,6 +1113,56 @@ def add_comment():
             convert_owner_id=convert.user_id
         )
     }, 201
+
+
+@convert_blueprint.route("/get_comment_info", methods=['GET'])
+def get_comment_info():
+    """Return convert_id and is_evaluation for a comment — used for notification deep-linking."""
+    comment_id = request.args.get('comment_id', type=int)
+    if not comment_id:
+        return {"success": False}, 400
+    comment = ConvertModel.get_comment(comment_id)
+    if not comment:
+        return {"success": False}, 404
+    # For replies, the evaluation flag lives on the parent comment
+    is_eval = comment.is_evaluation
+    if comment.parent_id:
+        parent = ConvertModel.get_comment(comment.parent_id)
+        if parent:
+            is_eval = parent.is_evaluation
+    return {"success": True, "convert_id": comment.convert_id, "is_evaluation": is_eval}, 200
+
+
+@convert_blueprint.route("/edit_comment", methods=['POST'])
+@login_required
+def edit_comment():
+    """Edit the content of a comment (author only)."""
+    data = request.get_json(silent=True) or {}
+    comment_id = data.get('comment_id')
+    content    = data.get('content', '')
+    if not comment_id:
+        return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
+    comment = ConvertModel.get_comment(comment_id)
+    success, message = ConvertModel.edit_comment(
+        comment_id=comment_id,
+        requesting_user_id=current_user.id,
+        content=content,
+    )
+    if success and comment:
+        AccountModel.create_system_log(
+            "comment_edited",
+            actor_id=current_user.id,
+            actor_name=current_user.first_name,
+            target_type="comment",
+            target_id=comment_id,
+            target_name=f"On convert #{comment.convert_id}",
+            details=content[:120] + ('…' if len(content) > 120 else ''),
+        )
+    return {
+        "success": success,
+        "message": message,
+        "toast_class": "success" if success else "danger",
+    }, 200 if success else 403
 
 
 @convert_blueprint.route("/delete_comment", methods=['GET'])
@@ -1450,20 +1500,35 @@ def push_to_misp():
     except json.JSONDecodeError:
         return {"success": False, "error": "Invalid JSON in convert data"}, 400
 
-    # Extract the Event object
-    event_data = (
-        misp_data.get("Event")
-        or (misp_data.get("response") or [{}])[0].get("Event")
-    )
+    # Extract the Event object — handle all MISP JSON formats:
+    #   {"Event": {...}}
+    #   {"response": [{"Event": {...}}, ...]}
+    #   [{"Event": {...}}, ...]  or  [{raw_event}, ...]
+    #   {raw_event}  (STIX→MISP output: keys are uuid/info/Attribute/… directly)
+    _MISP_EVENT_KEYS = {'info', 'uuid', 'Attribute', 'Object', 'Tag', 'Galaxy'}
+    if isinstance(misp_data, list):
+        first = misp_data[0] if misp_data else {}
+        event_data = first.get("Event") or (first if isinstance(first, dict) and _MISP_EVENT_KEYS & first.keys() else None)
+    elif isinstance(misp_data, dict):
+        event_data = (
+            misp_data.get("Event")
+            or (misp_data.get("response") or [{}])[0].get("Event")
+            or (misp_data if _MISP_EVENT_KEYS & misp_data.keys() else None)
+        )
+    else:
+        event_data = None
     if not event_data:
         return {"success": False, "error": "No MISP Event found in convert data"}, 400
 
-    # Merge selected tags into the event
-    if tags:
+    # Merge evaluation tags and user-selected tags into the event
+    eval_tags = EvalModel.get_misp_push_tags(convert_id)
+    all_tags_to_add = eval_tags + [t for t in (tags or []) if t]
+    if all_tags_to_add:
         existing = {t.get("name", "") for t in (event_data.get("Tag") or [])}
-        for tag_name in tags:
-            if tag_name and tag_name not in existing:
+        for tag_name in all_tags_to_add:
+            if tag_name not in existing:
                 (event_data.setdefault("Tag", [])).append({"name": tag_name, "exportable": True})
+                existing.add(tag_name)
 
     # Remove server-assigned fields that would conflict on a fresh import
     for field in ("id", "uuid", "timestamp", "publish_timestamp", "published"):
@@ -1596,3 +1661,39 @@ def graph_config_delete():
         return {"success": False, "message": err, "toast_class": "danger"}, code
     AccountModel.create_system_log("graph_config_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=config_id, target_name="")
     return {"success": True, "message": "Config deleted", "toast_class": "success"}, 200
+
+
+@convert_blueprint.route("/json_tags/<int:convert_id>", methods=["GET"])
+def get_json_tags(convert_id):
+    """Return tag objects for all tags embedded in the stored MISP/STIX JSON.
+    JSON is never modified. Tags are matched against the DB for color/icon;
+    unmatched names get a minimal object with nameToColor fallback on the frontend."""
+    from website.db_class.db import Tag as TagModel
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Not found"}, 404
+    if not convert.public:
+        if not current_user.is_authenticated:
+            return {"success": False, "message": "Unauthorized"}, 403
+        if not current_user.is_admin() and current_user.id != convert.user_id:
+            return {"success": False, "message": "Forbidden"}, 403
+    # STIX→MISP: MISP JSON is in output_text; MISP→STIX: MISP JSON is in input_text
+    misp_text = convert.output_text if convert.conversion_type == "STIX_TO_MISP" else convert.input_text
+    names = extract_tag_names_from_misp_json(misp_text or '')
+    if not names:
+        return {"success": True, "tags": []}, 200
+    # Look up DB tags for color/icon enrichment
+    db_tags = {t.name: t for t in TagModel.query.filter(TagModel.name.in_(names)).all()}
+    tags = []
+    for name in sorted(names):
+        t = db_tags.get(name)
+        tags.append({
+            "id":          t.id if t else None,
+            "name":        name,
+            "color":       t.color if t else None,
+            "icon":        t.icon if t else None,
+            "description": t.description if t else None,
+            "visibility":  t.visibility if t else "public",
+            "source_type": "json",
+        })
+    return {"success": True, "tags": tags}, 200

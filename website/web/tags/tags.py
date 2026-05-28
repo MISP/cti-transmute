@@ -383,7 +383,8 @@ def available_tags():
 
 @tags_blueprint.route("/for_convert/<int:convert_id>", methods=["GET"])
 def for_convert(convert_id):
-    """Get tags attached to a convert (public access for public converts)."""
+    """Get tags attached to a convert.
+    Optional ?source_type=user|json to filter by origin."""
     convert = Convert.query.get(convert_id)
     if not convert:
         return {"success": False, "message": "Not found"}, 404
@@ -392,7 +393,8 @@ def for_convert(convert_id):
             return {"success": False, "message": "Unauthorized"}, 403
         if current_user.id != convert.user_id and not current_user.is_admin():
             return {"success": False, "message": "Forbidden"}, 403
-    assocs = TagsModel.get_convert_tags(convert_id)
+    source_type = request.args.get("source_type") or None
+    assocs = TagsModel.get_convert_tags(convert_id, source_type=source_type)
     return {"success": True, "list": [a.to_json() for a in assocs]}, 200
 
 
@@ -618,12 +620,14 @@ def extract_from_json():
 @tags_blueprint.route("/extract_from_convert/<int:convert_id>", methods=["GET"])
 @login_required
 def extract_from_convert(convert_id):
-    """Extract tags from a stored convert's input JSON and return available matching tags."""
+    """Extract tags from a stored convert's MISP JSON and return available matching tags."""
     convert = Convert.query.get(convert_id)
     if not convert:
         return {"success": False, "message": "Convert not found"}, 404
     if convert.user_id != current_user.id and not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    names = extract_tag_names_from_misp_json(convert.input_text or '')
+    # STIX→MISP: MISP JSON is in output_text; MISP→STIX: MISP JSON is in input_text
+    misp_text = convert.output_text if convert.conversion_type == "STIX_TO_MISP" else convert.input_text
+    names = extract_tag_names_from_misp_json(misp_text or '')
     tags = TagsModel.find_tags_by_names(current_user.id, names)
     return {"success": True, "list": [t.to_json() for t in tags], "found_names": len(names)}, 200

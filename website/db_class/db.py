@@ -194,6 +194,7 @@ class Comment(db.Model):
             "can_toggle_private": bool(current_user_id and (
                 current_user_id == self.user_id or is_admin
             )),
+            "can_edit": bool(current_user_id and current_user_id == self.user_id and not self.is_deleted),
             "is_evaluation": self.is_evaluation,
         }
 
@@ -469,6 +470,8 @@ class ConvertTagAssociation(db.Model):
     tag_id = db.Column(db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     added_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    # "user" = manually added via UI | "json" = extracted from MISP/STIX JSON by admin scan
+    source_type = db.Column(db.String(10), nullable=False, default="user", server_default="user")
 
     convert = db.relationship('Convert', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
     tag = db.relationship('Tag', backref=db.backref('convert_associations', lazy='dynamic'))
@@ -488,6 +491,7 @@ class ConvertTagAssociation(db.Model):
             "tag_visibility": tag.visibility if tag else None,
             "tag_description": tag.description if tag else None,
             "added_at": self.added_at.strftime('%Y-%m-%d %H:%M') if self.added_at else None,
+            "source_type": self.source_type,
         }
 
 
@@ -516,4 +520,26 @@ class ConvertEvaluation(db.Model):
             "eval_type":    self.eval_type,
             "reaction_key": self.reaction_key,
             "created_at":   self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+        }
+
+
+class PlatformReview(db.Model):
+    """Stores user ratings and comments about the CTI-Transmute platform itself."""
+    __tablename__ = "platform_review"
+
+    id         = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True)
+    rating     = db.Column(db.Integer, nullable=False)   # 1–5
+    comment    = db.Column(db.Text,    nullable=True)
+    created_at = db.Column(db.DateTime, index=True)
+
+    user = db.relationship("User", backref=db.backref("platform_reviews", lazy="dynamic"))
+
+    def to_json(self):
+        return {
+            "id":         self.id,
+            "rating":     self.rating,
+            "comment":    self.comment,
+            "author":     self.user.first_name if self.user else "Anonymous",
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
         }
