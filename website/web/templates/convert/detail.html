@@ -1396,6 +1396,28 @@
     app.component('push-convert-to-misp', PushConvertToMISP)
     app.mount('#main-containers')
 
+    // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)
+    const _evalTarget = '{{ convert.id }}'
+    const _evalSession = sessionStorage.getItem('open_eval_tab')
+    const _evalHash = window.location.hash === '#eval-tab'
+    if (_evalSession === _evalTarget || _evalHash) {
+        if (_evalSession) sessionStorage.removeItem('open_eval_tab')
+        if (_evalHash) history.replaceState(null, '', window.location.pathname)
+        // :href is a Vue binding — wait for Vue to render before querying
+        const _activateEvalTab = () => {
+            const link = document.querySelector('[data-tab="eval"]')
+            if (link) { new bootstrap.Tab(link).show(); return true }
+            return false
+        }
+        if (!_activateEvalTab()) {
+            // Retry up to ~500 ms in case Vue is slow to mount
+            let _tries = 0
+            const _iv = setInterval(() => {
+                if (_activateEvalTab() || ++_tries > 10) clearInterval(_iv)
+            }, 50)
+        }
+    }
+
 </script>
 
 <!-- graph logic lives in /static/js/graph/convertGraph.js -->

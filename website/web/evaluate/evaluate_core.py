@@ -314,3 +314,132 @@ def delete_evaluation(eval_id: int) -> bool:
     db.session.delete(row)
     db.session.commit()
     return True
+
+
+def get_global_stats() -> dict:
+    """Platform-wide evaluation stats. Only public, active converts."""
+    pub_ids = {c.id for c in Convert.query.filter_by(public=True, is_active=True).with_entities(Convert.id).all()}
+    rows = ConvertEvaluation.query.filter(ConvertEvaluation.convert_id.in_(pub_ids)).all()
+
+    total_likes     = sum(1 for r in rows if r.eval_type == 'like')
+    total_dislikes  = sum(1 for r in rows if r.eval_type == 'dislike')
+    total_reactions = sum(1 for r in rows if r.eval_type == 'reaction')
+    like_total      = total_likes + total_dislikes
+    like_ratio      = round(total_likes / like_total * 100) if like_total else None
+    converts_evaluated = len({r.convert_id for r in rows})
+
+    tag_counts = Counter(r.reaction_key for r in rows if r.eval_type == 'reaction' and r.reaction_key)
+    top_tag_names = [n for n, _ in tag_counts.most_common(10)]
+    tag_objs = {t.name: t for t in Tag.query.filter(Tag.name.in_(top_tag_names)).all()}
+    top_tags = []
+    for name, count in tag_counts.most_common(10):
+        t = tag_objs.get(name)
+        _, cat, val = _parse_eval_tag(name)
+        top_tags.append({
+            "name":  name,
+            "count": count,
+            "color": t.color if t else None,
+            "label": f"{cat}: {val}" if cat and val else name,
+        })
+
+    category_breakdown = {}
+    for r in rows:
+        if r.eval_type != 'reaction' or not r.reaction_key:
+            continue
+        _, cat, val = _parse_eval_tag(r.reaction_key)
+        if not cat or not val:
+            continue
+        if cat not in category_breakdown:
+            category_breakdown[cat] = {v: 0 for v in VALUE_ORDER}
+        if val in category_breakdown[cat]:
+            category_breakdown[cat][val] += 1
+
+    value_score_map = {'very-low': 0, 'low': 25, 'moderate': 50, 'high': 75, 'very-high': 100}
+    all_scores = []
+    for r in rows:
+        if r.eval_type != 'reaction' or not r.reaction_key:
+            continue
+        ns, _, val = _parse_eval_tag(r.reaction_key)
+        if ns == 'cti-evaluation' and val in value_score_map:
+            all_scores.append(value_score_map[val])
+    avg_score = round(sum(all_scores) / len(all_scores)) if all_scores else None
+
+    return {
+        "total_evaluations":  len(rows),
+        "total_likes":        total_likes,
+        "total_dislikes":     total_dislikes,
+        "total_reactions":    total_reactions,
+        "converts_evaluated": converts_evaluated,
+        "like_ratio":         like_ratio,
+        "top_tags":           top_tags,
+        "category_breakdown": category_breakdown,
+        "avg_score":          avg_score,
+    }
+
+
+def submit_platform_review(user_id: int, rating: int, comment: str) -> dict:
+    from website.db_class.db import PlatformReview
+    if not (1 <= rating <= 5):
+        raise ValueError("Rating must be between 1 and 5")
+    rev = PlatformReview(
+        user_id=user_id,
+        rating=rating,
+        comment=comment.strip() if comment else None,
+        created_at=datetime.datetime.utcnow(),
+    )
+    db.session.add(rev)
+    db.session.commit()
+    return rev.to_json()
+
+
+def get_platform_reviews(page: int = 1, per_page: int = 10) -> dict:
+    from website.db_class.db import PlatformReview
+    paginated = PlatformReview.query.order_by(PlatformReview.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    return {
+        "items": [r.to_json() for r in paginated.items],
+        "total": paginated.total,
+        "pages": paginated.pages,
+        "page":  page,
+    }
+
+
+def get_activity_timeline(days: int = 30) -> list:
+    """Returns evaluation count per day for the last N days (public converts only)."""
+    from collections import defaultdict
+    pub_ids = {c.id for c in Convert.query.filter_by(public=True, is_active=True).with_entities(Convert.id).all()}
+    since = datetime.datetime.utcnow() - datetime.timedelta(days=days)
+    rows = ConvertEvaluation.query.filter(
+        ConvertEvaluation.convert_id.in_(pub_ids),
+        ConvertEvaluation.created_at >= since
+    ).all()
+    daily = defaultdict(int)
+    for r in rows:
+        if r.created_at:
+            daily[r.created_at.strftime('%Y-%m-%d')] += 1
+    result = []
+    for i in range(days):
+        day = (datetime.datetime.utcnow() - datetime.timedelta(days=days - 1 - i)).strftime('%Y-%m-%d')
+        result.append({"date": day, "count": daily.get(day, 0)})
+    return result
+
+
+def get_recent_to_evaluate(viewer_id=None, limit=8) -> list:
+    """Recent public converts, with their evaluation summary."""
+    converts = (Convert.query
+                .filter_by(public=True, is_active=True)
+                .order_by(Convert.created_at.desc())
+                .limit(limit).all())
+    result = []
+    for c in converts:
+        summary = get_summary(c.id, viewer_id)
+        result.append({
+            "id":              c.id,
+            "name":            c.name,
+            "description":     c.description,
+            "conversion_type": c.conversion_type,
+            "created_at":      c.created_at.strftime('%Y-%m-%d') if c.created_at else None,
+            "eval_summary":    summary,
+        })
+    return result

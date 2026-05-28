@@ -521,3 +521,25 @@ class ConvertEvaluation(db.Model):
             "reaction_key": self.reaction_key,
             "created_at":   self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
         }
+
+
+class PlatformReview(db.Model):
+    """Stores user ratings and comments about the CTI-Transmute platform itself."""
+    __tablename__ = "platform_review"
+
+    id         = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True)
+    rating     = db.Column(db.Integer, nullable=False)   # 1–5
+    comment    = db.Column(db.Text,    nullable=True)
+    created_at = db.Column(db.DateTime, index=True)
+
+    user = db.relationship("User", backref=db.backref("platform_reviews", lazy="dynamic"))
+
+    def to_json(self):
+        return {
+            "id":         self.id,
+            "rating":     self.rating,
+            "comment":    self.comment,
+            "author":     self.user.first_name if self.user else "Anonymous",
+            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+        }

@@ -204,8 +204,50 @@ def consensus_tags(convert_id):
     tags = EvalModel.get_consensus_tags(convert_id, threshold=threshold)
     return {"success": True, "tags": tags}, 200
 
-@evaluate_blueprint.route("/", methods=["GET"])
+@evaluate_blueprint.route("/overview")
+def overview():
+    """Public overview page: platform-wide evaluation stats + platform reviews."""
+    return render_template("evaluate/overview.html")
+
+
+@evaluate_blueprint.route("/global_stats")
+def global_stats():
+    data = EvalModel.get_global_stats()
+    return {"success": True, **data}, 200
+
+
+@evaluate_blueprint.route("/platform_review", methods=["POST"])
 @login_required
-def evaluation_page():
-    """Evaluation page for users to see their own evaluations across all converts."""
-    return render_template("evaluate/evaluation.html")
+def submit_platform_review():
+    data    = request.get_json(silent=True) or {}
+    rating  = data.get("rating")
+    comment = data.get("comment", "")
+    if not rating or not isinstance(rating, int):
+        return {"success": False, "message": "Rating required (1–5)"}, 400
+    try:
+        rev = EvalModel.submit_platform_review(current_user.id, rating, comment)
+    except ValueError as e:
+        return {"success": False, "message": str(e)}, 400
+    return {"success": True, "review": rev}, 200
+
+
+@evaluate_blueprint.route("/platform_reviews")
+def platform_reviews():
+    page = request.args.get("page", 1, type=int)
+    data = EvalModel.get_platform_reviews(page=page)
+    return {"success": True, **data}, 200
+
+
+@evaluate_blueprint.route("/recent_to_evaluate")
+def recent_to_evaluate():
+    viewer_id = current_user.id if current_user.is_authenticated else None
+    items = EvalModel.get_recent_to_evaluate(viewer_id=viewer_id)
+    return {"success": True, "list": items}, 200
+
+
+@evaluate_blueprint.route("/activity_timeline")
+def activity_timeline():
+    days = request.args.get("days", 30, type=int)
+    data = EvalModel.get_activity_timeline(days=days)
+    return {"success": True, "timeline": data}, 200
+

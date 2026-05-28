@@ -9,6 +9,7 @@ const SingleTagDisplay = {
     props: {
         tag:           { type: Object,  required: true },
         showNamespace: { type: Boolean, default: true  },
+        showFull:      { type: Boolean, default: false },
         selected:      { type: Boolean, default: false },
         highlight:     { type: String,  default: ''    },
     },
@@ -37,8 +38,13 @@ const SingleTagDisplay = {
         }
 
         function label(tag) {
-            const ns  = namespaceOf(tag.name);
-            const val = valueOf(tag.name);
+            const name = tag.name || '';
+            if (props.showFull) {
+                // Show everything after the first colon: 'accuracy="high"'
+                return name.includes(':') ? name.split(':').slice(1).join(':') : name;
+            }
+            const ns  = namespaceOf(name);
+            const val = valueOf(name);
             if (props.showNamespace && ns) return `${ns}:${val}`;
             return val;
         }

@@ -236,7 +236,7 @@ const TagInput = {
                 <template v-else-if="evaluationTags.length">
                     <div class="d-flex flex-wrap gap-2 mb-1">
                         <div v-for="tag in visibleEval" :key="tag.name" class="d-inline-flex align-items-center gap-1">
-                            <single-tag :tag="tag" :show-namespace="true"></single-tag>
+                            <single-tag :tag="tag" :show-full="true"></single-tag>
                             <span style="font-size:0.65rem; color:var(--text-3); font-style:italic;">
                                 ×[[ tag.votes ]]
                             </span>
