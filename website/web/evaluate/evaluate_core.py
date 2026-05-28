@@ -1,5 +1,6 @@
 import re
 import datetime
+from collections import Counter
 from website.web import db
 from website.db_class.db import ConvertEvaluation, Comment, Convert, Tag
 
@@ -235,23 +236,21 @@ def get_misp_push_tags(convert_id: int) -> list[str]:
         if row.eval_type == 'reaction' and row.reaction_key
     }
 
-    value_score_map = {'very-low': 0, 'low': 25, 'moderate': 50, 'high': 75, 'very-high': 100}
-    all_scores = []
+    # Count votes per level across all reaction tags
+    level_votes: Counter = Counter()
     for row in rows:
         if row.eval_type != 'reaction' or not row.reaction_key:
             continue
         _, _, val = _parse_eval_tag(row.reaction_key)
-        if val in value_score_map:
-            all_scores.append(value_score_map[val])
+        if val in VALUE_ORDER:
+            level_votes[val] += 1
 
-    if all_scores:
-        avg = round(sum(all_scores) / len(all_scores))
-        if avg < 13:   lbl = 'very-low'
-        elif avg < 38: lbl = 'low'
-        elif avg < 63: lbl = 'moderate'
-        elif avg < 88: lbl = 'high'
-        else:          lbl = 'very-high'
-        reaction_keys.add(f'cti-evaluation:overall-score="{lbl}"')
+    if level_votes:
+        max_votes = max(level_votes.values())
+        # Among all levels tied for most votes, pick the lowest (most pessimistic)
+        # VALUE_ORDER is already sorted lowest→highest, so first match = lowest
+        candidates = [v for v in VALUE_ORDER if level_votes.get(v, 0) == max_votes]
+        reaction_keys.add(f'cti-evaluation:overall-score="{candidates[0]}"')
 
     return list(reaction_keys)
 
