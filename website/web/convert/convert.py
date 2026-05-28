@@ -119,11 +119,8 @@ def misp_to_stix():
                         if not current_user.is_anonymous():
                             raw_ids = request.form.get('tag_ids', '')
                             manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
-                            misp_names = extract_tag_names_from_misp_json(file_content)
-                            auto_ids = TagsModel.resolve_tag_ids_from_names(misp_names)
-                            all_ids = list(dict.fromkeys(manual_ids + auto_ids))
-                            if all_ids:
-                                TagsModel.save_convert_tags(saved.id, all_ids, current_user.id)
+                            if manual_ids:
+                                TagsModel.save_convert_tags(saved.id, manual_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering the convert!", "danger")
@@ -435,11 +432,8 @@ def stix_to_misp():
                         if not current_user.is_anonymous():
                             raw_ids = request.form.get('tag_ids', '')
                             manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
-                            misp_names = extract_tag_names_from_misp_json(output_text)
-                            auto_ids = TagsModel.resolve_tag_ids_from_names(misp_names)
-                            all_ids = list(dict.fromkeys(manual_ids + auto_ids))
-                            if all_ids:
-                                TagsModel.save_convert_tags(saved.id, all_ids, current_user.id)
+                            if manual_ids:
+                                TagsModel.save_convert_tags(saved.id, manual_ids, current_user.id)
                         return redirect(url_for("convert.detail", id=saved.id))
                     else:
                         flash("Error during registering in database", "danger")
@@ -1667,3 +1661,39 @@ def graph_config_delete():
         return {"success": False, "message": err, "toast_class": "danger"}, code
     AccountModel.create_system_log("graph_config_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=config_id, target_name="")
     return {"success": True, "message": "Config deleted", "toast_class": "success"}, 200
+
+
+@convert_blueprint.route("/json_tags/<int:convert_id>", methods=["GET"])
+def get_json_tags(convert_id):
+    """Return tag objects for all tags embedded in the stored MISP/STIX JSON.
+    JSON is never modified. Tags are matched against the DB for color/icon;
+    unmatched names get a minimal object with nameToColor fallback on the frontend."""
+    from website.db_class.db import Tag as TagModel
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "message": "Not found"}, 404
+    if not convert.public:
+        if not current_user.is_authenticated:
+            return {"success": False, "message": "Unauthorized"}, 403
+        if not current_user.is_admin() and current_user.id != convert.user_id:
+            return {"success": False, "message": "Forbidden"}, 403
+    # STIX→MISP: MISP JSON is in output_text; MISP→STIX: MISP JSON is in input_text
+    misp_text = convert.output_text if convert.conversion_type == "STIX_TO_MISP" else convert.input_text
+    names = extract_tag_names_from_misp_json(misp_text or '')
+    if not names:
+        return {"success": True, "tags": []}, 200
+    # Look up DB tags for color/icon enrichment
+    db_tags = {t.name: t for t in TagModel.query.filter(TagModel.name.in_(names)).all()}
+    tags = []
+    for name in sorted(names):
+        t = db_tags.get(name)
+        tags.append({
+            "id":          t.id if t else None,
+            "name":        name,
+            "color":       t.color if t else None,
+            "icon":        t.icon if t else None,
+            "description": t.description if t else None,
+            "visibility":  t.visibility if t else "public",
+            "source_type": "json",
+        })
+    return {"success": True, "tags": tags}, 200

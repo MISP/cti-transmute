@@ -142,7 +142,7 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
                     continue
                 tags = find_tags_by_names(user_id, names)
                 if tags:
-                    n = merge_convert_tags(cid, [t.id for t in tags], user_id)
+                    n = merge_convert_tags(cid, [t.id for t in tags], user_id, source_type="json")
                     added_total += n
                 else:
                     skipped += 1

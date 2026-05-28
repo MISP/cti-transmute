@@ -255,6 +255,58 @@ def get_misp_push_tags(convert_id: int) -> list[str]:
     return list(reaction_keys)
 
 
+def get_consensus_tags(convert_id: int, threshold: int = 3) -> list[dict]:
+    """
+    Return evaluation tag objects that meet the vote threshold.
+    For each category (overall-score, accuracy, quality…):
+      - count votes per level
+      - if max votes >= threshold, pick the winning level
+      - on tie: pick the lowest level (VALUE_ORDER sorted lowest→highest)
+    Returns full tag objects (color, icon, description from DB when found).
+    """
+    rows = ConvertEvaluation.query.filter_by(convert_id=convert_id).all()
+
+    category_votes: dict[str, Counter] = {}
+    for row in rows:
+        if row.eval_type != 'reaction' or not row.reaction_key:
+            continue
+        _, cat, val = _parse_eval_tag(row.reaction_key)
+        if not cat or not val:
+            continue
+        if cat not in category_votes:
+            category_votes[cat] = Counter()
+        category_votes[cat][val] += 1
+
+    consensus = []
+    for cat, votes in sorted(category_votes.items()):
+        if not votes:
+            continue
+        max_votes = max(votes.values())
+        if max_votes < threshold:
+            continue
+        # Tie-break: among all levels with max_votes, pick the lowest (most pessimistic)
+        tied = [v for v in VALUE_ORDER if votes.get(v, 0) == max_votes]
+        if not tied:
+            tied = [k for k, v in votes.items() if v == max_votes]
+        winning_level = tied[0]
+        tag_name = f'cti-evaluation:{cat}="{winning_level}"'
+
+        tag_obj = Tag.query.filter_by(name=tag_name, is_evaluation_tag=True).first()
+        consensus.append({
+            'id':          tag_obj.id if tag_obj else None,
+            'name':        tag_name,
+            'category':    cat,
+            'level':       winning_level,
+            'votes':       max_votes,
+            'color':       tag_obj.color if tag_obj else None,
+            'icon':        tag_obj.icon if tag_obj else None,
+            'description': tag_obj.description if tag_obj else None,
+            'visibility':  'public',
+        })
+
+    return consensus
+
+
 def delete_evaluation(eval_id: int) -> bool:
     row = ConvertEvaluation.query.get(eval_id)
     if not row:

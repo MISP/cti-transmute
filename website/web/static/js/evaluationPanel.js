@@ -228,16 +228,20 @@ const EvaluationPanel = {
             return res.json()
         }
 
+        function notifyEvalUpdated() {
+            document.dispatchEvent(new CustomEvent('evaluate:updated', { detail: { convertId: props.convertId } }))
+        }
+
         async function toggleLike() {
             if (!data.value.can_evaluate) return
             const body = await apiPost('/evaluate/toggle_like', { convert_id: props.convertId })
-            if (body.success && body.summary) data.value = { ...data.value, ...body.summary }
+            if (body.success && body.summary) { data.value = { ...data.value, ...body.summary }; notifyEvalUpdated() }
         }
 
         async function toggleDislike() {
             if (!data.value.can_evaluate) return
             const body = await apiPost('/evaluate/toggle_dislike', { convert_id: props.convertId })
-            if (body.success && body.summary) data.value = { ...data.value, ...body.summary }
+            if (body.success && body.summary) { data.value = { ...data.value, ...body.summary }; notifyEvalUpdated() }
         }
 
         async function toggleReaction(key) {
@@ -245,7 +249,7 @@ const EvaluationPanel = {
             const body = await apiPost('/evaluate/toggle_reaction', {
                 convert_id: props.convertId, reaction_key: key,
             })
-            if (body.success && body.summary) data.value = { ...data.value, ...body.summary }
+            if (body.success && body.summary) { data.value = { ...data.value, ...body.summary }; notifyEvalUpdated() }
         }
 
         async function selectCatValue(catName, val) {

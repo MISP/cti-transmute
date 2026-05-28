@@ -189,3 +189,17 @@ def admin_delete(eval_id):
         details="Admin deleted an evaluation"
     )
     return {"success": True}, 200
+
+
+@evaluate_blueprint.route("/consensus_tags/<int:convert_id>", methods=["GET"])
+def consensus_tags(convert_id):
+    """Return evaluation tags that have reached the 3-vote threshold.
+    Public converts are accessible to everyone; private ones require auth."""
+    convert = Convert.query.get(convert_id)
+    if not convert:
+        return {"success": False, "message": "Not found"}, 404
+    if not _can_view_convert(convert):
+        return {"success": False, "message": "Forbidden"}, 403
+    threshold = request.args.get("threshold", 3, type=int)
+    tags = EvalModel.get_consensus_tags(convert_id, threshold=threshold)
+    return {"success": True, "tags": tags}, 200

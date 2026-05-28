@@ -470,6 +470,8 @@ class ConvertTagAssociation(db.Model):
     tag_id = db.Column(db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     added_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    # "user" = manually added via UI | "json" = extracted from MISP/STIX JSON by admin scan
+    source_type = db.Column(db.String(10), nullable=False, default="user", server_default="user")
 
     convert = db.relationship('Convert', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
     tag = db.relationship('Tag', backref=db.backref('convert_associations', lazy='dynamic'))
@@ -489,6 +491,7 @@ class ConvertTagAssociation(db.Model):
             "tag_visibility": tag.visibility if tag else None,
             "tag_description": tag.description if tag else None,
             "added_at": self.added_at.strftime('%Y-%m-%d %H:%M') if self.added_at else None,
+            "source_type": self.source_type,
         }
 
 
