@@ -269,7 +269,7 @@
 {% block script %}
 <script type="module">
     const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue
-    import { display_prepared_toast } from '/static/js/toaster.js'
+    import { display_prepared_toast, message_list } from '/static/js/toaster.js'
     import AppPagination from '/static/js/pagination.js'
 
     const user_id = document.getElementById('user_id')?.dataset.userId
@@ -379,7 +379,12 @@
                 })
                 const d = await res.json()
                 if (res.ok) user.value.admin = d.admin
-                display_prepared_toast({ message: d.message, toast_class: d.toast_class, id: Math.random() })
+                display_prepared_toast({
+                    message: d.message,
+                    toast_class: d.toast_class,
+                    icon: d.admin ? 'fas fa-user-shield' : 'fas fa-user-minus',
+                    id: Math.random()
+                })
             }
 
             /* ── edit ──────────────────────────────────────────── */
@@ -403,7 +408,12 @@
                     user.value = d.user
                     showEditModal.value = false
                 }
-                display_prepared_toast({ message: d.message, toast_class: d.toast_class, id: Math.random() })
+                display_prepared_toast({
+                    message: d.message,
+                    toast_class: d.toast_class,
+                    icon: d.success ? 'fas fa-check' : 'fas fa-xmark',
+                    id: Math.random()
+                })
                 editSaving.value = false
             }
 
@@ -557,6 +567,7 @@
                 chartType, chartVisibility, chartEvals, chartActivity,
                 fetchConverts, onSearchInput, goTo,
                 changeAdminRight, openEditModal, saveEdit,
+                message_list,
             }
         }
     }).mount('#main-containers')

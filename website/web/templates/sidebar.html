@@ -142,6 +142,11 @@
                     <span class="top-user-name">
                         {% if current_user.is_authenticated %}
                         {{ current_user.get_first_name() }}
+                        {% if current_user.is_admin() %}
+                        <span class="top-user-admin-badge" title="Administrator">
+                            <i class="fas fa-shield-halved"></i>
+                        </span>
+                        {% endif %}
                         {% else %}
                         Account
                         {% endif %}

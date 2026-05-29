@@ -26,15 +26,10 @@
 /* ── Top row ───────────────────────────────────────────────── */
 
 .du-top-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     margin-bottom: 20px;
-    align-items: start;
-}
-
-@media (max-width: 700px) {
-    .du-top-row { grid-template-columns: 1fr; }
 }
 
 /* Profile card */
@@ -135,16 +130,18 @@
 /* Stats grid */
 .du-stats-grid {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .du-stat-chip {
+    flex: 1;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 10px 16px;
-    min-width: 110px;
+    padding: 12px 16px;
+    min-width: 100px;
     text-align: center;
     box-shadow: var(--shadow-xs);
 }
