@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import current_user
 from sqlalchemy import and_, or_
 import requests
@@ -96,4 +96,4 @@ def docs():
 @home_blueprint.route("/access_denied", methods=['GET'])
 def access_denied() -> jsonify:
     """Access denied page"""
-    return render_template("access_denied.html")
+    return abort(403)

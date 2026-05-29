@@ -2,16 +2,16 @@
 {% block content %}
 <div class="nf-page">
 
-    <div class="nf-code">404</div>
+    <div class="nf-code" style="background: linear-gradient(90deg, #ef4444, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">403</div>
 
     <div class="nf-icon">
-        <i class="fas fa-route"></i>
+        <i class="fas fa-lock"></i>
     </div>
 
-    <h1 class="nf-title">Page not found</h1>
+    <h1 class="nf-title">Access denied</h1>
     <p class="nf-sub">
-        The page you're looking for doesn't exist or has been moved.<br>
-        Check the URL or head back to a known route.
+        You don't have permission to access this page.<br>
+        Make sure you're logged in with the right account.
     </p>
 
     <div class="nf-path">
@@ -24,9 +24,8 @@
         <a href="/" class="nf-btn nf-btn-primary">
             <i class="fas fa-house me-2"></i>Back to home
         </a>
-        <!-- Go to the doc-->
-        <a href="/docs" class="nf-btn nf-btn-secondary">
-            <i class="fas fa-book-open me-2"></i>Read the docs
+        <a href="/account/login" class="nf-btn nf-btn-secondary">
+            <i class="fas fa-right-to-bracket me-2"></i>Sign in
         </a>
     </div>
 
@@ -50,10 +49,6 @@
     font-weight: 800;
     line-height: 1;
     letter-spacing: -0.04em;
-    background: linear-gradient(90deg, var(--accent), var(--accent-hover, #2563eb));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
     margin-bottom: 0.5rem;
     opacity: 0.9;
 }

@@ -1,7 +1,7 @@
 import functools
 from pathlib import Path
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, abort
 from flask_login import current_user, login_required
 
 from website.db_class.db import Convert, Tag
@@ -41,7 +41,7 @@ def fa_icons_list():
 @login_required
 def admin_tags():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_tags.html")
 
 
@@ -436,7 +436,7 @@ def delete_tag(tag_id):
 @login_required
 def admin_bulk_converts():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_bulk_tags.html")
 
 

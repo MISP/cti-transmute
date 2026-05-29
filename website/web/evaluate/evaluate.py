@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template, Response
+from flask import Blueprint, request, render_template, Response, abort
 from flask_login import current_user, login_required
 from website.db_class.db import Convert
 from ..evaluate import evaluate_core as EvalModel
@@ -147,7 +147,7 @@ def toggle_reaction():
 @login_required
 def admin_evaluations():
     if not current_user.is_admin():
-        return render_template("access_denied.html"), 403
+        return abort(403)
     return render_template("evaluate/admin_evaluations.html",
                            reactions=EvalModel.get_tlp_tags())
 

@@ -3,7 +3,7 @@ import io
 import ipaddress
 import json
 from urllib.parse import urlparse
-from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
+from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for, abort
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
 from website.web.utils import extract_name_from_misp_json, extract_tag_names_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
@@ -674,7 +674,7 @@ def edit(id):
 
             return render_template("convert/edit.html", form=form, convert_id=id )
     else:
-            return render_template("access_denied.html")
+            return abort(403)
         
         
 
@@ -741,7 +741,7 @@ def edit_public():
                     "message": "Error during the edit of the public/private section", 
                     "toast_class" : "danger"
                 }, 500
-            return redirect(url_for("access_denied"))
+            return abort(403)
         return {
             "success": False, 
             "message": "No convert history for this id", 
@@ -772,7 +772,7 @@ def get_share_key():
                     "message": "Share key found", 
                     "toast_class" : "success"
                     }, 200
-            return redirect(url_for("access_denied"))
+            return abort(403)
         return {
             "success": False, 
             "message": "No convert history for this id", 
@@ -807,7 +807,7 @@ def regenerate_share_key():
                     "message": "Error during the regeneration of the share key", 
                     "toast_class" : "danger"
                 }, 500
-            return redirect(url_for("access_denied"))
+            return abort(403)
         return {
             "success": False, 
             "message": "No convert history for this id", 

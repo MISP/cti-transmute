@@ -12,6 +12,11 @@ def page_not_found(e):
     return render_template("404.html"), 404
 
 
+@application.errorhandler(403)
+def forbidden(e):
+    return render_template("403.html"), 403
+
+
 def main():
     ip = get_config('generic', 'website_listen_ip')
     port = get_config('generic', 'website_listen_port')

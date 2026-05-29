@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash
+from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash, abort
 from datetime import datetime, timedelta
 from sqlalchemy import func
 
@@ -68,7 +68,7 @@ def profil() -> render_template:
 @login_required
 def acces_denied() -> render_template:
     """acces_denied page"""
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route('/register', methods=['GET', 'POST'])
 def add_user() -> redirect:
@@ -120,7 +120,7 @@ def manage_user() -> redirect:
     """Manage user section"""
     if current_user.is_admin():
         return render_template("admin/manage_user.html")
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route("/get_users", methods=['GET'])
 @login_required
@@ -143,7 +143,7 @@ def get_users():
             "connected": total_connected
         }, 200
     else:
-        return render_template("access_denied.html")
+        return abort(403)
 
 @account_blueprint.route("/detail_user/<int:id>", methods=['GET', "POST"])
 @login_required
@@ -156,7 +156,7 @@ def detail_user(id) -> redirect:
         else:
             flash('No user with this id !', 'danger')
             return redirect("/admin/manage_user")
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route("/get_user", methods=['GET', "POST"])
 @login_required
@@ -178,7 +178,7 @@ def get_user() -> redirect:
                 "user": None,
                 "Message": " No user found with this id "
             }, 404
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 @account_blueprint.route("/get_user_convert", methods=['GET', "POST"])
@@ -214,7 +214,7 @@ def get_user_convert() -> redirect:
                 "user": None,
                 "Message": " No user found with this id "
             }, 404
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 
@@ -248,7 +248,7 @@ def delete_user(id) -> redirect:
 
         flash(f"Enable to delete User: {user.last_name} {user.first_name}!", 'danger')
         return redirect(f"/account/detail_user/{id}")
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 
@@ -403,7 +403,7 @@ def my_comments():
 @login_required
 def admin_comments():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_comments.html")
 
 
@@ -411,7 +411,7 @@ def admin_comments():
 @login_required
 def admin_reports():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_reports.html")
 
 
@@ -419,7 +419,7 @@ def admin_reports():
 @login_required
 def admin_logs():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_logs.html")
 
 
@@ -427,7 +427,7 @@ def admin_logs():
 @login_required
 def admin_deleted_converts():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/deleted_converts.html")
 
 
@@ -602,7 +602,7 @@ def edit_admin():
             "toast_class" : "danger"
             }, 404
 
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 @account_blueprint.route("/admin_edit_user", methods=['POST'])
