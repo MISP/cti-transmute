@@ -521,23 +521,37 @@ a.nav-link:hover {
 #backToTop {
   position: fixed;
   right: 24px;
-  bottom: 24px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  bottom: 28px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  gap: 3px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(8px);
-  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+  transform: translateY(10px);
+  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease,
+              background 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+              box-shadow 0.18s ease;
   z-index: 1050;
+  font-size: 0;
+}
+
+#backToTop::after {
+  content: 'TOP';
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  transition: color 0.18s ease;
 }
 
 #backToTop.show {
@@ -547,19 +561,25 @@ a.nav-link:hover {
 }
 
 #backToTop:hover {
-  background: var(--accent-hover);
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.28), var(--shadow-md);
+}
+
+#backToTop:hover::after {
+  color: rgba(255,255,255,0.75);
 }
 
 #backToTop .fa-chevron-up {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 @media (max-width: 480px) {
   #backToTop {
-    right: 12px;
-    bottom: 12px;
-    width: 36px;
-    height: 36px;
+    right: 14px;
+    bottom: 18px;
+    padding: 7px 10px;
   }
 }
 
