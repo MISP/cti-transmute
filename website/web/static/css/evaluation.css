@@ -773,3 +773,125 @@ html.ocean-mode .eval-comment-badge {
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* ── MISP Push Modal — CTI Evaluation Preview section ───────── */
+.misp-preview-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.misp-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .65rem 1rem;
+  background: var(--surface-2, var(--bg-2));
+  border-bottom: 1px solid transparent;
+  transition: background var(--t);
+}
+.misp-preview-header:hover {
+  background: var(--bg-2);
+}
+.misp-preview-section:has(.misp-preview-body) .misp-preview-header {
+  border-bottom-color: var(--border);
+}
+
+.misp-preview-badge {
+  display: inline-block;
+  padding: .15em .55em;
+  border-radius: 20px;
+  font-size: .73rem;
+  font-weight: 600;
+  background: rgba(var(--accent-rgb, 120,80,240), .12);
+  color: var(--accent);
+}
+
+.misp-preview-body {
+  padding: 1rem;
+}
+
+.misp-preview-sublabel {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-3, var(--text-muted));
+  margin-bottom: .4rem;
+}
+
+/* Level pills (very-low → very-high) */
+.misp-level-pill {
+  display: inline-block;
+  padding: .18em .65em;
+  border-radius: 5px;
+  font-size: .78rem;
+  font-weight: 600;
+}
+.lvl-very-low  { background: rgba(220,50,50,.15);  color: #e05555; }
+.lvl-low       { background: rgba(240,120,40,.15); color: #d97706; }
+.lvl-moderate  { background: rgba(230,190,0,.15);  color: #b59b00; }
+.lvl-high      { background: rgba(50,190,80,.15);  color: #18a34a; }
+.lvl-very-high { background: rgba(50,120,255,.15); color: #2b6fe8; }
+
+/* Attributes detail table */
+.misp-attr-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.misp-attr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .8rem;
+}
+.misp-attr-table th {
+  background: var(--surface-2, var(--bg-2));
+  border-bottom: 2px solid var(--border);
+  padding: .45rem .7rem;
+  text-align: left;
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-3, var(--text-muted));
+  position: sticky;
+  top: 0;
+}
+.misp-attr-table td {
+  border-bottom: 1px solid var(--border);
+  padding: .4rem .7rem;
+  vertical-align: top;
+}
+.misp-attr-table tr:last-child td { border-bottom: none; }
+.misp-attr-table tr:hover td      { background: rgba(120,80,240,.04); }
+.attr-relation { font-weight: 600; font-family: monospace; color: var(--accent); white-space: nowrap; }
+.attr-type     { font-family: monospace; font-size: .75rem; color: var(--text-3, var(--text-muted)); white-space: nowrap; }
+.attr-value    { font-family: monospace; word-break: break-all; font-size: .78rem; }
+.attr-desc     { font-size: .77rem; color: var(--text-3, var(--text-muted)); }
+
+/* Raw JSON block */
+.misp-json-block {
+  position: relative;
+  background: #1e1e2e;
+  border-radius: 6px;
+  padding: .75rem;
+  color: #cdd6f4;
+  font-family: monospace;
+}
+.misp-json-copy {
+  position: absolute;
+  top: .5rem;
+  right: .5rem;
+  padding: .2rem .55rem;
+  font-size: .72rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  color: #ccc;
+  cursor: pointer;
+  transition: background .2s;
+}
+.misp-json-copy:hover { background: rgba(255,255,255,.18); color: #fff; }
