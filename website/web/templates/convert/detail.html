@@ -100,6 +100,79 @@
                                 style="vertical-align:middle; margin-right:4px;"> MISP
                         </button>
 
+                        <!-- Download dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download me-1"></i> Download
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="min-width:230px; font-size:.83rem;">
+
+                                <!-- Raw conversion files -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-file-code me-1"></i> Conversion files
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/input'">
+                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                         <img v-else src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
+                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'MISP input' : 'STIX input' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/output'">
+                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">  
+                                        <img v-else src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'STIX output' : 'MISP output' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/misp-push'">
+                                        <img src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        MISP push payload
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">+ eval object</span>
+                                    </a>
+                                </li>
+
+                                <li><hr class="dropdown-divider"></li>
+
+                                <!-- Evaluation report -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-chart-bar me-1"></i> Evaluation report
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + convert.id + '/pdf'"
+                                       download>
+                                        <i class="fas fa-file-pdf me-2" style="color:#e05555; width:13px;"></i>
+                                        PDF report
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + convert.id + '/markdown'"
+                                       download>
+                                        <i class="fab fa-markdown me-2" style="color:var(--text-2); width:13px;"></i>
+                                        Markdown report
+                                    </a>
+                                </li>
+
+                            </ul>
+                        </div>
 
                     </div>
                 </template>
@@ -535,6 +608,25 @@
                         :is-public="convert.public">
                     </evaluation-panel>
                     <evaluation-charts :convert-id="{{ convert.id }}"></evaluation-charts>
+
+                    <!-- ── Export evaluation report ─────────────────── -->
+                    <div class="d-flex align-items-center gap-2 mt-3 mb-1 px-1" style="flex-wrap:wrap;">
+                        <span style="font-size:.8rem; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">
+                            <i class="fas fa-file-export me-1"></i> Export report
+                        </span>
+                        <a href="/evaluate/export/{{ convert.id }}/markdown"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fab fa-markdown me-1"></i> Markdown
+                        </a>
+                        <a href="/evaluate/export/{{ convert.id }}/pdf"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fas fa-file-pdf me-1" style="color:#e05555;"></i> PDF
+                        </a>
+                    </div>
 
                     <!-- ── Evaluation comments ───────────────────── -->
                     <div class="cs-separator" style="margin:1.25rem 0;"></div>

@@ -425,6 +425,335 @@ def get_activity_timeline(days: int = 30) -> list:
     return result
 
 
+SCORE_MAP = {'very-low': 0, 'low': 25, 'moderate': 50, 'high': 75, 'very-high': 100}
+
+DIMENSION_LABELS = {
+    'accuracy':           'Accuracy',
+    'clarity':            'Clarity',
+    'confidence':         'Confidence',
+    'conversion-fidelity':'Conversion Fidelity',
+    'evidence-strength':  'Evidence Strength',
+    'format-validity':    'Format Validity',
+    'relevance':          'Relevance',
+    'source-reliability': 'Source Reliability',
+    'specificity':        'Specificity',
+    'timeliness':         'Timeliness',
+    'usefulness':         'Usefulness',
+}
+
+DIMENSION_DESCRIPTIONS = {
+    'accuracy':           'Whether assertions are based on reliable, verified, and corroborated data.',
+    'clarity':            'Whether the CTI is understandable, unambiguous, and actionable for its intended audience.',
+    'confidence':         'Analyst or reviewer confidence in the CTI judgments.',
+    'conversion-fidelity':'How faithfully intelligence survives format conversion (e.g. MISP ↔ STIX).',
+    'evidence-strength':  'Strength and sufficiency of supporting evidence for the claims.',
+    'format-validity':    'Conformance of CTI artifacts to expected schema/syntax (STIX, MISP).',
+    'relevance':          'Whether the CTI pertains directly to the user mission and decision-making needs.',
+    'source-reliability': 'Reliability of primary and secondary sources underpinning the CTI.',
+    'specificity':        'Whether CTI contains concrete details (what, where, when, who, how) needed to act.',
+    'timeliness':         'Whether CTI is delivered with enough lead time for effective action.',
+    'usefulness':         'Practical utility of CTI for operations, detection, response, or strategic decisions.',
+}
+
+
+def build_evaluation_report(convert_id: int) -> dict | None:
+    """
+    Assemble all data needed to render an evaluation report (Markdown or PDF).
+
+    Returns a structured dict or None if the convert does not exist.
+    Fields:
+      convert        – basic convert metadata
+      generated_at   – UTC timestamp string
+      overall        – {level, score, total_votes, likes, dislikes, like_ratio}
+      dimensions     – list of {key, label, description, level, score, votes, distribution}
+      consensus_tags – list of {name, category, level, votes}
+      all_tags       – sorted list of tag name strings
+      eval_comments  – list of {author, content, created_at}
+    """
+    convert = Convert.query.get(convert_id)
+    if not convert:
+        return None
+
+    summary        = get_summary(convert_id)
+    consensus_tags = get_consensus_tags(convert_id, threshold=2)
+    push_tags      = get_misp_push_tags(convert_id)
+
+    # Overall level from push tags
+    overall_level = None
+    for t in push_tags:
+        _, cat, val = _parse_eval_tag(t)
+        if cat == 'overall-score':
+            overall_level = val
+            break
+
+    like_total  = summary['likes'] + summary['dislikes']
+    like_ratio  = round(summary['likes'] / like_total * 100) if like_total else None
+
+    # Build per-dimension rows (only categories that received at least one vote)
+    dimensions = []
+    for key, data in sorted(summary['cti_categories'].items()):
+        if data['total'] == 0:
+            continue
+        # Dominant level = highest vote count; on tie, most pessimistic (lowest in VALUE_ORDER)
+        max_votes = max(data['counts'].values())
+        dominant  = next(v for v in VALUE_ORDER if data['counts'].get(v, 0) == max_votes)
+        dimensions.append({
+            'key':         key,
+            'label':       DIMENSION_LABELS.get(key, key.replace('-', ' ').title()),
+            'description': DIMENSION_DESCRIPTIONS.get(key, ''),
+            'level':       dominant,
+            'score':       SCORE_MAP.get(dominant, 0),
+            'votes':       data['total'],
+            'distribution': {
+                v: {'count': data['counts'].get(v, 0), 'pct': data['percentages'].get(v, 0)}
+                for v in VALUE_ORDER
+            },
+        })
+
+    # Evaluation comments
+    eval_comments_raw = (
+        Comment.query
+        .filter_by(convert_id=convert_id, is_evaluation=True, is_deleted=False)
+        .order_by(Comment.created_at.asc())
+        .all()
+    )
+    from website.db_class.db import User
+    eval_comments = []
+    for c in eval_comments_raw:
+        u = User.query.get(c.user_id)
+        eval_comments.append({
+            'author':     u.first_name if u else 'Anonymous',
+            'content':    c.content,
+            'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
+        })
+
+    source_fmt = 'MISP'     if convert.conversion_type == 'MISP_TO_STIX' else 'STIX 2.1'
+    target_fmt = 'STIX 2.1' if convert.conversion_type == 'MISP_TO_STIX' else 'MISP'
+
+    return {
+        'convert': {
+            'id':          convert.id,
+            'name':        convert.name,
+            'uuid':        convert.uuid,
+            'description': convert.description or '',
+            'type':        convert.conversion_type,
+            'source_fmt':  source_fmt,
+            'target_fmt':  target_fmt,
+            'created_at':  convert.created_at.strftime('%Y-%m-%d %H:%M') if convert.created_at else '',
+            'public':      convert.public,
+        },
+        'generated_at': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+        'overall': {
+            'level':       overall_level,
+            'score':       summary.get('approval_score'),
+            'total_votes': sum(d['total'] for d in summary['cti_categories'].values()),
+            'likes':       summary['likes'],
+            'dislikes':    summary['dislikes'],
+            'like_ratio':  like_ratio,
+        },
+        'dimensions':     dimensions,
+        'consensus_tags': consensus_tags,
+        'all_tags':       sorted(push_tags),
+        'eval_comments':  eval_comments,
+    }
+
+
+def render_evaluation_markdown(report: dict) -> str:
+    """
+    Render a report dict (from build_evaluation_report) as a Markdown string.
+    """
+    c   = report['convert']
+    ov  = report['overall']
+    now = report['generated_at']
+
+    SCORE_EMOJI = {'very-low': '🔴', 'low': '🟠', 'moderate': '🟡', 'high': '🟢', 'very-high': '🔵'}
+
+    lines = []
+
+    # ── Header ───────────────────────────────────────────────────
+    lines += [
+        f'# CTI Evaluation Report',
+        f'',
+        f'## {c["name"]}',
+        f'',
+        f'| Field | Value |',
+        f'|---|---|',
+        f'| **Conversion type** | {c["source_fmt"]} → {c["target_fmt"]} |',
+        f'| **Conversion date** | {c["created_at"]} |',
+        f'| **Report generated** | {now} |',
+        f'| **UUID** | `{c["uuid"]}` |',
+        f'| **Visibility** | {"Public" if c["public"] else "Private"} |',
+        f'',
+    ]
+
+    if c['description']:
+        lines += [f'> {c["description"]}', f'']
+
+    lines += ['---', '']
+
+    # ── Overall score ─────────────────────────────────────────────
+    emoji = SCORE_EMOJI.get(ov['level'], '⚪') if ov['level'] else '⚪'
+    score_str = f'{ov["score"]}/100' if ov['score'] is not None else 'N/A'
+    level_str = ov['level'].upper() if ov['level'] else 'No data'
+
+    lines += [
+        f'## Overall Score: {emoji} {level_str} ({score_str})',
+        f'',
+        f'Community assessment based on **{ov["total_votes"]} vote(s)** '
+        f'from the CTI-Transmute platform.',
+        f'',
+        f'- 👍 **{ov["likes"]} like(s)**'
+        + (f' · 👎 **{ov["dislikes"]} dislike(s)**' if ov['dislikes'] else ''),
+    ]
+    if ov['like_ratio'] is not None:
+        lines.append(f'- Approval ratio: **{ov["like_ratio"]}%**')
+    lines += ['', '---', '']
+
+    # ── Dimension breakdown ───────────────────────────────────────
+    if report['dimensions']:
+        lines += ['## Dimension Scores', '']
+        lines += [
+            '| Dimension | Level | Score | Votes | Description |',
+            '|---|---|---|---|---|',
+        ]
+        for d in report['dimensions']:
+            emoji_d = SCORE_EMOJI.get(d['level'], '⚪')
+            lines.append(
+                f'| **{d["label"]}** | {emoji_d} {d["level"]} '
+                f'| {d["score"]}/100 | {d["votes"]} | {d["description"]} |'
+            )
+        lines += ['', '---', '']
+
+        # Detail bars per dimension
+        lines += ['## Vote Distribution per Dimension', '']
+        for d in report['dimensions']:
+            lines.append(f'### {d["label"]}')
+            lines.append(f'*{d["description"]}*')
+            lines.append('')
+            for level in VALUE_ORDER:
+                dist  = d['distribution'][level]
+                count = dist['count']
+                pct   = dist['pct']
+                bar   = '█' * (pct // 10) + '░' * (10 - pct // 10)
+                em    = SCORE_EMOJI.get(level, '⚪')
+                lines.append(f'- {em} `{level:10}` {bar} {pct:3}% ({count} vote(s))')
+            lines.append('')
+        lines += ['---', '']
+
+    # ── Consensus tags ────────────────────────────────────────────
+    if report['consensus_tags']:
+        lines += ['## Consensus Tags (≥ 2 votes)', '']
+        for t in report['consensus_tags']:
+            emoji_t = SCORE_EMOJI.get(t['level'], '⚪')
+            lines.append(f'- {emoji_t} `cti-evaluation:{t["category"]}="{t["level"]}"` — {t["votes"]} vote(s)')
+        lines += ['', '---', '']
+
+    # ── All applied tags ──────────────────────────────────────────
+    if report['all_tags']:
+        lines += ['## Applied MISP Taxonomy Tags', '']
+        for tag in report['all_tags']:
+            lines.append(f'- `{tag}`')
+        lines += ['', '---', '']
+
+    # ── Evaluation comments ───────────────────────────────────────
+    if report['eval_comments']:
+        lines += ['## Evaluation Comments', '']
+        for cm in report['eval_comments']:
+            lines.append(f'**{cm["author"]}** — *{cm["created_at"]}*')
+            lines.append(f'> {cm["content"]}')
+            lines.append('')
+        lines += ['---', '']
+
+    # ── Methodology note ──────────────────────────────────────────
+    lines += [
+        '## Methodology',
+        '',
+        'Scores are derived from community votes on the **CTI-Transmute** platform '
+        'using the [MISP cti-evaluation taxonomy]'
+        '(https://github.com/MISP/misp-taxonomies/blob/main/cti-evaluation/machinetag.json).',
+        '',
+        '| Level | Numeric score |',
+        '|---|---|',
+        '| very-low | 0/100 |',
+        '| low | 25/100 |',
+        '| moderate | 50/100 |',
+        '| high | 75/100 |',
+        '| very-high | 100/100 |',
+        '',
+        'The **overall score** is the mean of all dimension votes.',
+        'The **consensus level** for a dimension requires at least 2 votes on the same level.',
+        '',
+        '---',
+        '',
+        f'*Generated by [CTI-Transmute](https://cti-transmute.org) — {now}*',
+    ]
+
+    return '\n'.join(lines)
+
+
+def render_evaluation_pdf(report: dict) -> bytes:
+    """
+    Render a report dict as a PDF byte string using WeasyPrint.
+    Converts the Markdown to HTML first, then applies an embedded CSS stylesheet.
+    """
+    import markdown as md
+    from weasyprint import HTML as WP_HTML
+
+    md_text  = render_evaluation_markdown(report)
+    html_body = md.markdown(md_text, extensions=['tables', 'fenced_code'])
+
+    SCORE_COLORS = {
+        'very-low':  '#e05555',
+        'low':       '#d97706',
+        'moderate':  '#c9a900',
+        'high':      '#18a34a',
+        'very-high': '#2b6fe8',
+    }
+
+    # Build small colored level badges via inline style in the CSS
+    level_css = '\n'.join(
+        f'.lvl-{lvl} {{ background:{color}22; color:{color}; padding:2px 8px; border-radius:4px; font-weight:600; font-size:.82em; }}'
+        for lvl, color in SCORE_COLORS.items()
+    )
+
+    css = f"""
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @page {{
+        margin: 2cm 2.2cm;
+        @bottom-right {{ content: "Page " counter(page) " / " counter(pages); font-size: 9pt; color: #94a3b8; }}
+        @bottom-left  {{ content: "CTI-Transmute — Evaluation Report"; font-size: 9pt; color: #94a3b8; }}
+    }}
+    body   {{ font-family: 'Inter', Arial, sans-serif; font-size: 10.5pt; color: #1e293b; line-height: 1.65; }}
+    h1     {{ font-size: 20pt; color: #0f172a; border-bottom: 3px solid #2563eb; padding-bottom: .3em; margin-top: 0; }}
+    h2     {{ font-size: 14pt; color: #1e3a5f; border-bottom: 1px solid #e2e8f0; padding-bottom: .2em; margin-top: 1.6em; }}
+    h3     {{ font-size: 11pt; color: #334155; margin-top: 1.2em; margin-bottom: .3em; }}
+    table  {{ width: 100%; border-collapse: collapse; margin: .8em 0; font-size: 9.5pt; }}
+    th     {{ background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 10px; text-align: left; font-weight: 600; color: #334155; }}
+    td     {{ border: 1px solid #e2e8f0; padding: 5px 10px; vertical-align: top; }}
+    tr:nth-child(even) td {{ background: #f8fafc; }}
+    code   {{ background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: .88em; color: #334155; }}
+    pre    {{ background: #f1f5f9; padding: .7em 1em; border-radius: 6px; font-size: .82em; overflow-x: auto; }}
+    blockquote {{ border-left: 4px solid #2563eb; margin: .8em 0; padding: .4em 1em; background: #eff6ff; color: #1e3a5f; border-radius: 0 6px 6px 0; }}
+    hr     {{ border: none; border-top: 1px solid #e2e8f0; margin: 1.4em 0; }}
+    a      {{ color: #2563eb; }}
+    ul li  {{ margin-bottom: .2em; }}
+    {level_css}
+    """
+
+    full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <style>{css}</style>
+</head>
+<body>
+{html_body}
+</body>
+</html>"""
+
+    return WP_HTML(string=full_html).write_pdf()
+
+
 def get_recent_to_evaluate(viewer_id=None, limit=8) -> list:
     """Recent public converts, with their evaluation summary."""
     converts = (Convert.query

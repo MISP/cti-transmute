@@ -1,4 +1,4 @@
-from flask import Blueprint, request, render_template
+from flask import Blueprint, request, render_template, Response
 from flask_login import current_user, login_required
 from website.db_class.db import Convert
 from ..evaluate import evaluate_core as EvalModel
@@ -251,3 +251,49 @@ def activity_timeline():
     data = EvalModel.get_activity_timeline(days=days)
     return {"success": True, "timeline": data}, 200
 
+
+
+# ── Evaluation report exports ─────────────────────────────────
+
+@evaluate_blueprint.route("/export/<int:convert_id>/markdown")
+def export_evaluation_markdown(convert_id):
+    """Download the evaluation report as a .md file."""
+    convert = Convert.query.get(convert_id)
+    if not convert or not convert.is_active:
+        return {"success": False, "message": "Not found"}, 404
+    if not _can_view_convert(convert):
+        return {"success": False, "message": "Forbidden"}, 403
+
+    report = EvalModel.build_evaluation_report(convert_id)
+    if not report:
+        return {"success": False, "message": "No evaluation data"}, 404
+
+    md_text  = EvalModel.render_evaluation_markdown(report)
+    filename = f"cti-evaluation-{convert_id}.md"
+    return Response(
+        md_text,
+        mimetype="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@evaluate_blueprint.route("/export/<int:convert_id>/pdf")
+def export_evaluation_pdf(convert_id):
+    """Download the evaluation report as a .pdf file."""
+    convert = Convert.query.get(convert_id)
+    if not convert or not convert.is_active:
+        return {"success": False, "message": "Not found"}, 404
+    if not _can_view_convert(convert):
+        return {"success": False, "message": "Forbidden"}, 403
+
+    report = EvalModel.build_evaluation_report(convert_id)
+    if not report:
+        return {"success": False, "message": "No evaluation data"}, 404
+
+    pdf_bytes = EvalModel.render_evaluation_pdf(report)
+    filename  = f"cti-evaluation-{convert_id}.pdf"
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

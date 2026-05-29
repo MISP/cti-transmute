@@ -621,3 +621,30 @@
         padding-top: 0.75rem;
         margin-top: 0.875rem;
     }
+/* ── Filter type buttons with logos ─────────────────────────── */
+.filter-type-btn {
+    padding: 3px 8px;
+    font-size: .78rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    border-radius: var(--radius-sm, 6px);
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    transition: all var(--t);
+    line-height: 1.4;
+}
+.filter-type-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+}
+.filter-type-btn.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+}
+.filter-type-btn.active img {
+    filter: brightness(0) invert(1);
+}

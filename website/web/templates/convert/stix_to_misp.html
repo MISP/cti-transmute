@@ -5,7 +5,26 @@
 {% endblock %}
 {% block content %}
 <div id="main-container" class="container my-5">
-    <h2 class="mb-3">Convert STIX to MISP</h2>
+
+    <div class="custom-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h3 class="mb-1" style="font-weight:700; letter-spacing:-0.02em;">
+                    Convert STIX to MISP
+                </h3>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="type-pill type-stix">
+                        <img src="/static/image/logo_stix.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">STIX
+                        <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>
+                        <img src="/static/image/misp.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">MISP
+                    </span>
+                    <span class="author-badge">
+                        <i class="fas fa-code me-1" style="font-size:0.6rem;"></i> JSON conversion
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Help Panel -->
     <div class="card mb-4" style="background:var(--color-navbar); border:1px solid rgba(255,255,255,0.1);">

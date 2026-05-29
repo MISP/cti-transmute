@@ -1467,6 +1467,78 @@ def misp_test_connection():
     return {"success": True, "tags": tags, "count": len(tags)}, 200
 
 
+def _can_download(convert) -> bool:
+    """Return True if the current user is allowed to download this convert's data."""
+    if convert.public:
+        return True
+    from flask_login import current_user as cu
+    return cu.is_authenticated and (cu.id == convert.user_id or cu.is_admin())
+
+
+@convert_blueprint.route("/download/<int:convert_id>/input")
+def download_input(convert_id):
+    """Download the input file (MISP JSON for MISP→STIX, STIX JSON for STIX→MISP)."""
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not _can_download(convert):
+        return {"success": False, "error": "Forbidden"}, 403
+
+    label    = "misp" if convert.conversion_type == "MISP_TO_STIX" else "stix"
+    filename = f"{label}-input-{convert_id}.json"
+    return json.dumps(json.loads(convert.input_text), indent=2), 200, {
+        "Content-Type": "application/json",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+
+
+@convert_blueprint.route("/download/<int:convert_id>/output")
+def download_output(convert_id):
+    """Download the output file (STIX JSON for MISP→STIX, MISP JSON for STIX→MISP)."""
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not _can_download(convert):
+        return {"success": False, "error": "Forbidden"}, 403
+    if not convert.output_text:
+        return {"success": False, "error": "No output data"}, 404
+
+    label    = "stix" if convert.conversion_type == "MISP_TO_STIX" else "misp"
+    filename = f"{label}-output-{convert_id}.json"
+    return json.dumps(json.loads(convert.output_text), indent=2), 200, {
+        "Content-Type": "application/json",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+
+
+@convert_blueprint.route("/download/<int:convert_id>/misp-push")
+def download_misp_push(convert_id):
+    """
+    Download the full PyMISP-built event payload — identical to what
+    would be sent to a MISP instance during a push (includes the
+    cti-evaluation object and all community evaluation tags).
+    """
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not _can_download(convert):
+        return {"success": False, "error": "Forbidden"}, 403
+
+    summary        = EvalModel.get_summary(convert_id)
+    consensus_tags = EvalModel.get_consensus_tags(convert_id, threshold=2)
+    push_tags      = EvalModel.get_misp_push_tags(convert_id)
+
+    event_dict, _, _, error = _build_misp_payload(convert, push_tags, consensus_tags, summary)
+    if error:
+        return {"success": False, "error": error}, 400
+
+    filename = f"misp-push-payload-{convert_id}.json"
+    return json.dumps({"Event": event_dict}, indent=2), 200, {
+        "Content-Type": "application/json",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+
+
 @convert_blueprint.route("/push_to_misp", methods=['POST'])
 @login_required
 def push_to_misp():
