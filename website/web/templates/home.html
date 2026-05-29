@@ -396,7 +396,9 @@
             function scroll(dir) {
                 const track = document.getElementById('recent-track');
                 if (!track) return;
-                track.scrollBy({ left: dir * 260, behavior: 'smooth' });
+                const card = track.querySelector('.home-recent-card');
+                const step = card ? card.offsetWidth + 12 : track.clientWidth / 4;
+                track.scrollBy({ left: dir * step, behavior: 'smooth' });
                 setTimeout(updateScrollState, 350);
             }
 
@@ -404,13 +406,15 @@
                 if (pauseAuto.value) return;
                 const track = document.getElementById('recent-track');
                 if (!track) return;
+                const card = track.querySelector('.home-recent-card');
+                const step = card ? card.offsetWidth + 12 : track.clientWidth / 4;
                 const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 8;
                 if (atEnd) {
                     track.style.scrollBehavior = 'auto';
                     track.scrollLeft = 0;
                     requestAnimationFrame(() => { track.style.scrollBehavior = ''; });
                 } else {
-                    track.scrollBy({ left: 240, behavior: 'smooth' });
+                    track.scrollBy({ left: step, behavior: 'smooth' });
                 }
                 setTimeout(updateScrollState, 400);
             }

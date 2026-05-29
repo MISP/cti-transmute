@@ -261,7 +261,8 @@
 /* ── Recent convert card ─────────────────────────────────────── */
 .home-recent-card {
     flex-shrink: 0;
-    width: 230px;
+    width: calc(25% - 9px);
+    min-width: 220px;
     display: flex;
     flex-direction: column;
     gap: 6px;
