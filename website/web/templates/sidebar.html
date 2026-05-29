@@ -31,13 +31,17 @@
                 <div class="top-nav-dropdown-menu">
                     <a href="/convert/misp_to_stix"
                         class="top-nav-dropdown-item {% if request.path == '/convert/misp_to_stix' %}active{% endif %}">
-                        <i class="fas fa-arrow-right-arrow-left me-2"></i>
-                        MISP <span class="convert-arrow">→</span> STIX
+                        <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin-right:5px;">
+                        MISP <span class="convert-arrow">→</span>
+                        <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin:0 3px;">
+                        STIX
                     </a>
                     <a href="/convert/stix_to_misp"
                         class="top-nav-dropdown-item {% if request.path == '/convert/stix_to_misp' %}active{% endif %}">
-                        <i class="fas fa-arrow-right-arrow-left me-2"></i>
-                        STIX <span class="convert-arrow">→</span> MISP
+                        <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin-right:5px;">
+                        STIX <span class="convert-arrow">→</span>
+                        <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin:0 3px;">
+                        MISP
                     </a>
                 </div>
             </div>
@@ -47,6 +51,8 @@
                 class="top-nav-link {% if '/evaluate/overview' in request.path %}active{% endif %}">
                 <i class="fas fa-chart-bar"></i> Evaluations
             </a>
+
+            
 
             <!-- ── Mobile-only: account + theme ─────────────────── -->
             <div class="mobile-nav-section">
@@ -136,6 +142,11 @@
                     <span class="top-user-name">
                         {% if current_user.is_authenticated %}
                         {{ current_user.get_first_name() }}
+                        {% if current_user.is_admin() %}
+                        <span class="top-user-admin-badge" title="Administrator">
+                            <i class="fas fa-shield-halved"></i>
+                        </span>
+                        {% endif %}
                         {% else %}
                         Account
                         {% endif %}

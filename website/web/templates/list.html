@@ -72,6 +72,115 @@
                 </div>
             </div>
 
+            <!-- Tester toggle (POST only) -->
+            <div v-if="feature.method === 'POST'"
+                 style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+                <button class="at-toggle-btn" @click="toggleTester(path, feature)">
+                    <i class="fas" :class="testers[path] && testers[path].open ? 'fa-chevron-up' : 'fa-terminal'"></i>
+                    [[ testers[path] && testers[path].open ? 'Close tester' : 'Try it here' ]]
+                </button>
+            </div>
+
+            <!-- Tester panel -->
+            <div v-if="testers[path] && testers[path].open" class="at-panel">
+
+                <!-- Query params -->
+                <div v-if="queryParams(feature).length" class="at-block">
+                    <div class="at-block-title"><i class="fas fa-sliders me-1"></i>Parameters</div>
+                    <div class="at-params-grid">
+                        <template v-for="p in queryParams(feature)" :key="p.name">
+                            <label class="at-param-label">
+                                <code>[[ p.name ]]</code>
+                                <span class="at-param-type">[[ p.type || 'str' ]]</span>
+                            </label>
+                            <select v-if="p.enum" v-model="testers[path].params[p.name]" class="at-input">
+                                <option v-for="opt in p.enum" :key="opt" :value="opt">[[ opt ]]</option>
+                            </select>
+                            <div v-else-if="p.type === 'boolean'" class="at-check-wrap">
+                                <input type="checkbox" class="form-check-input" v-model="testers[path].params[p.name]">
+                            </div>
+                            <input v-else-if="p.type === 'integer'" type="number"
+                                   class="at-input" v-model.number="testers[path].params[p.name]">
+                            <input v-else type="text" class="at-input"
+                                   v-model="testers[path].params[p.name]"
+                                   :placeholder="p.default !== undefined ? String(p.default) : ''">
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Request body -->
+                <div class="at-block">
+                    <div class="at-block-title"><i class="fas fa-code me-1"></i>Request Body</div>
+                    <div class="at-editor">
+                        <div class="at-editor-head">
+                            <span class="at-editor-hint">JSON</span>
+                            <div style="display:flex;gap:4px;">
+                                <button type="button" class="at-btn" @click="formatBody(path)">
+                                    <i class="fas fa-align-left"></i>
+                                </button>
+                                <button type="button" class="at-btn" @click="clearBody(path)">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <textarea class="at-textarea"
+                            v-model="testers[path].body"
+                            @input="onBodyInput(path)"
+                            rows="7" spellcheck="false"
+                            :placeholder="bodyPlaceholder(path)">
+                        </textarea>
+                        <div class="at-editor-foot">
+                            <span :class="['at-json-status', testers[path].bodyStatus]">
+                                [[ bodyStatusText(path) ]]
+                            </span>
+                            <span class="at-json-chars">[[ testers[path].body.length ]] chars</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- cURL -->
+                <div class="at-block">
+                    <div class="at-block-title" style="display:flex;justify-content:space-between;align-items:center;">
+                        <span><i class="fas fa-terminal me-1"></i>cURL</span>
+                        <button type="button" class="at-btn" @click="copyCurl(path, feature)">
+                            <i class="fas" :class="copiedCurl[path] ? 'fa-check' : 'fa-copy'"></i>
+                            [[ copiedCurl[path] ? 'Copied!' : 'Copy' ]]
+                        </button>
+                    </div>
+                    <div class="at-curl-block">
+                        <pre class="at-curl-pre">$ [[ buildCurl(path, feature) ]]</pre>
+                    </div>
+                </div>
+
+                <!-- Send -->
+                <div class="at-send-row">
+                    <button type="button" class="btn btn-sm btn-primary"
+                        @click="sendRequest(path, feature)"
+                        :disabled="testers[path].loading || !testers[path].body.trim()">
+                        <span v-if="testers[path].loading"
+                              class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        <i v-else class="fas fa-paper-plane me-1"></i>
+                        [[ testers[path].loading ? 'Sending…' : 'Send Request' ]]
+                    </button>
+                </div>
+
+                <!-- Response -->
+                <div v-if="testers[path].response" class="at-response">
+                    <div class="at-resp-head">
+                        <span class="at-resp-badge"
+                              :style="{ background: testers[path].response.ok ? 'var(--success)' : '#dc3545' }">
+                            [[ testers[path].response.status ]] [[ testers[path].response.statusText ]]
+                        </span>
+                        <span class="at-resp-time">[[ testers[path].response.elapsed ]]ms</span>
+                        <button type="button" class="at-btn ms-auto" @click="copyResp(path)">
+                            <i class="fas" :class="copiedResp[path] ? 'fa-check' : 'fa-copy'"></i>
+                        </button>
+                    </div>
+                    <pre class="at-resp-pre">[[ testers[path].response.data ]]</pre>
+                </div>
+
+            </div>
+
         </div>
     </div>
 
@@ -80,14 +189,17 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref } = Vue
+    const { createApp, ref, reactive } = Vue
 
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const endpoints = ref({})
-            const loaded    = ref(false)
-            const copied    = ref(null)
+            const endpoints  = ref({})
+            const loaded     = ref(false)
+            const copied     = ref(null)
+            const testers    = reactive({})
+            const copiedCurl = reactive({})
+            const copiedResp = reactive({})
 
             const UI_MAP = {
                 '/api/convert/misp_to_stix': '/convert/misp_to_stix',
@@ -109,8 +221,151 @@
                 setTimeout(() => { if (copied.value === path) copied.value = null }, 1500)
             }
 
+            /* ── Tester ───────────────────────────────────────────── */
+
+            function queryParams(feature) {
+                return (feature.parameters || []).filter(p => p.in === 'query')
+            }
+
+            function toggleTester(path, feature) {
+                if (!testers[path]) {
+                    const params = {}
+                    for (const p of queryParams(feature)) {
+                        if (p.type === 'boolean') {
+                            params[p.name] = false
+                        } else if (p.type === 'integer') {
+                            params[p.name] = p.default !== undefined ? p.default : ''
+                        } else {
+                            params[p.name] = p.default !== undefined ? String(p.default) : ''
+                        }
+                    }
+                    testers[path] = { open: true, body: '', bodyStatus: '', params, loading: false, response: null }
+                } else {
+                    testers[path].open = !testers[path].open
+                }
+            }
+
+            function onBodyInput(path) {
+                const t = testers[path]
+                if (!t) return
+                const val = t.body.trim()
+                if (!val) { t.bodyStatus = ''; return }
+                try { JSON.parse(val); t.bodyStatus = 'valid' }
+                catch { t.bodyStatus = 'invalid' }
+            }
+
+            function bodyStatusText(path) {
+                const t = testers[path]
+                if (!t) return ''
+                if (t.bodyStatus === 'valid')   return '✓ Valid JSON'
+                if (t.bodyStatus === 'invalid') return '✗ Invalid JSON'
+                return ''
+            }
+
+            function bodyPlaceholder(path) {
+                if (path.includes('misp_to_stix')) return '{"Event": {"info": "...", "Attribute": [...]}}'
+                if (path.includes('stix_to_misp')) return '{"type": "bundle", "objects": [...]}'
+                return '{ ... }'
+            }
+
+            function formatBody(path) {
+                const t = testers[path]
+                if (!t) return
+                try { t.body = JSON.stringify(JSON.parse(t.body), null, 2); t.bodyStatus = 'valid' }
+                catch { t.bodyStatus = 'invalid' }
+            }
+
+            function clearBody(path) {
+                const t = testers[path]
+                if (t) { t.body = ''; t.bodyStatus = '' }
+            }
+
+            function buildUrl(path, feature) {
+                const t = testers[path]
+                if (!t) return path
+                const qs = new URLSearchParams()
+                for (const p of queryParams(feature)) {
+                    const val = t.params[p.name]
+                    if (p.type === 'boolean') {
+                        if (val === true) qs.set(p.name, 'true')
+                    } else if (val !== '' && val !== null && val !== undefined) {
+                        qs.set(p.name, String(val))
+                    }
+                }
+                const s = qs.toString()
+                return `${path}${s ? '?' + s : ''}`
+            }
+
+            function buildCurl(path, feature) {
+                const t = testers[path]
+                const url = buildUrl(path, feature)
+                const body = t?.body?.trim() || '{}'
+                const truncated = body.length > 200 ? body.slice(0, 197) + '...' : body
+                return `curl -X POST ${window.location.origin}${url} \\\n  -H "Content-Type: application/json" \\\n  -d '${truncated}'`
+            }
+
+            function copyCurl(path, feature) {
+                const t = testers[path]
+                const url = buildUrl(path, feature)
+                const body = t?.body?.trim() || '{}'
+                navigator.clipboard.writeText(
+                    `curl -X POST ${window.location.origin}${url} \\\n  -H "Content-Type: application/json" \\\n  -d '${body}'`
+                ).catch(() => {})
+                copiedCurl[path] = true
+                setTimeout(() => { copiedCurl[path] = false }, 1500)
+            }
+
+            function copyResp(path) {
+                const t = testers[path]
+                if (t?.response?.data) {
+                    navigator.clipboard.writeText(t.response.data).catch(() => {})
+                    copiedResp[path] = true
+                    setTimeout(() => { copiedResp[path] = false }, 1500)
+                }
+            }
+
+            async function sendRequest(path, feature) {
+                const t = testers[path]
+                if (!t || !t.body.trim()) return
+                let parsed
+                try { parsed = JSON.parse(t.body) }
+                catch { t.bodyStatus = 'invalid'; return }
+
+                t.loading = true
+                t.response = null
+
+                const url = buildUrl(path, feature)
+                const t0 = performance.now()
+                try {
+                    const resp = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(parsed),
+                    })
+                    const elapsed = Math.round(performance.now() - t0)
+                    const text = await resp.text()
+                    let data
+                    try { data = JSON.stringify(JSON.parse(text), null, 2) }
+                    catch { data = text }
+                    t.response = { ok: resp.ok, status: resp.status, statusText: resp.statusText, elapsed, data }
+                } catch (err) {
+                    const elapsed = Math.round(performance.now() - t0)
+                    t.response = { ok: false, status: 0, statusText: 'Network Error', elapsed, data: err.message }
+                } finally {
+                    t.loading = false
+                }
+            }
+
             fetchEndpoints()
-            return { endpoints, loaded, copied, UI_MAP, copyPath }
+            return {
+                endpoints, loaded, copied, UI_MAP,
+                copyPath,
+                testers, copiedCurl, copiedResp,
+                queryParams, toggleTester, onBodyInput,
+                bodyStatusText, bodyPlaceholder,
+                formatBody, clearBody, buildUrl, buildCurl,
+                copyCurl, copyResp, sendRequest,
+            }
         }
     }).mount('#main-containers')
 </script>

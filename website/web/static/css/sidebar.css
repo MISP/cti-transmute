@@ -622,3 +622,19 @@ html.ocean-mode .nav-sd-admin-tag {
     border-color: var(--accent);
   }
 }
+
+/* Admin badge in user button */
+.top-user-admin-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: rgba(124, 58, 237, 0.15);
+    border-radius: 50%;
+    margin-left: 5px;
+    vertical-align: middle;
+    font-size: 0.6rem;
+    color: #7c3aed;
+    flex-shrink: 0;
+}

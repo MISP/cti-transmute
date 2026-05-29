@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, abort
 from flask_login import current_user
 from sqlalchemy import and_, or_
 import requests
@@ -60,6 +60,7 @@ def get_public_activity():
     PUBLIC_EVENTS = [
         'convert_created', 'eval_like', 'eval_dislike',
         'eval_reaction', 'convert_edited', 'convert_visibility_changed',
+        'convert_favorited',
     ]
     try:
         logs = (
@@ -87,7 +88,12 @@ def get_public_activity():
         return jsonify({"success": False, "list": [], "message": str(e)}), 500
 
 
+@home_blueprint.route("/docs")
+def docs():
+    """Developer documentation page"""
+    return render_template("docs/index.html")
+
 @home_blueprint.route("/access_denied", methods=['GET'])
 def access_denied() -> jsonify:
     """Access denied page"""
-    return render_template("access_denied.html")
+    return abort(403)

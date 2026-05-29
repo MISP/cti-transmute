@@ -3,7 +3,7 @@ import io
 import ipaddress
 import json
 from urllib.parse import urlparse
-from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for
+from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for, abort
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
 from website.web.utils import extract_name_from_misp_json, extract_tag_names_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
@@ -469,7 +469,9 @@ def get_page_history():
     exact_match  = request.args.get('exact_match', 'false', type=str) == 'true'
     tag_names_raw = request.args.get('tag_names', '', type=str)
     tag_names = [t.strip() for t in tag_names_raw.split(',') if t.strip()] if tag_names_raw else None
-    vis_filter = request.args.get('vis_filter', '', type=str) or None
+    vis_filter      = request.args.get('vis_filter', '', type=str) or None
+    favorites_only  = request.args.get('favorites_only', 'false', type=str) == 'true'
+    favorites_user_id = current_user.id if (favorites_only and current_user.is_authenticated) else None
 
     pagination = ConvertModel.get_convert_page(
         page,
@@ -483,6 +485,8 @@ def get_page_history():
         exact_match=exact_match,
         tag_names=tag_names,
         vis_filter=vis_filter,
+        favorites_only=favorites_only,
+        favorites_user_id=favorites_user_id,
     )
     items = pagination.items
     convert_list = [item.to_json_list() for item in items]
@@ -490,13 +494,84 @@ def get_page_history():
     # Batch load tags for all returned converts
     ids = [item.id for item in items]
     tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+
+    # Batch load favorites for current user
+    fav_ids = ConvertModel.get_favorite_ids(current_user.id) if current_user.is_authenticated else set()
+
     for entry in convert_list:
-        entry['tags'] = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
+        entry['tags']        = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
+        entry['is_favorite'] = entry['id'] in fav_ids
 
     return {
         "list": convert_list,
         "total_page": pagination.pages,
     }, 200
+
+
+@convert_blueprint.route("/favorite/toggle", methods=['POST'])
+@login_required
+def toggle_favorite():
+    data       = request.get_json(silent=True) or {}
+    convert_id = data.get("convert_id")
+    if not convert_id:
+        return {"success": False, "error": "Missing convert_id"}, 400
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+        return {"success": False, "error": "Forbidden"}, 403
+    is_fav = ConvertModel.toggle_favorite(current_user.id, convert_id)
+    AccountModel.create_system_log(
+        "convert_favorited" if is_fav else "convert_unfavorited",
+        actor_id=current_user.id,
+        actor_name=current_user.first_name,
+        target_type="convert",
+        target_id=convert_id,
+        target_name=convert.name,
+        details=f"{'Added to' if is_fav else 'Removed from'} favorites by {current_user.first_name}",
+    )
+    return {"success": True, "is_favorite": is_fav}, 200
+
+
+@convert_blueprint.route("/favorite/status/<int:convert_id>", methods=['GET'])
+@login_required
+def favorite_status(convert_id):
+    is_fav = ConvertModel.is_favorite(current_user.id, convert_id)
+    return {"success": True, "is_favorite": is_fav}, 200
+
+
+@convert_blueprint.route("/most_favorited", methods=['GET'])
+def most_favorited():
+    """Return the most favorited public converts, ordered by favorite count desc."""
+    from website.db_class.db import ConvertFavorite
+    limit = request.args.get('limit', 10, type=int)
+
+    # Subquery: count favorites per convert (public only)
+    fav_counts = (
+        db.session.query(
+            ConvertFavorite.convert_id,
+            func.count(ConvertFavorite.id).label("fav_count"),
+        )
+        .group_by(ConvertFavorite.convert_id)
+        .subquery()
+    )
+
+    results = (
+        db.session.query(Convert, fav_counts.c.fav_count)
+        .join(fav_counts, Convert.id == fav_counts.c.convert_id)
+        .filter(Convert.is_active == True, Convert.public == True)
+        .order_by(fav_counts.c.fav_count.desc())
+        .limit(limit)
+        .all()
+    )
+
+    items = []
+    for convert, fav_count in results:
+        entry = convert.to_json_list()
+        entry["fav_count"] = fav_count
+        items.append(entry)
+
+    return {"success": True, "list": items}, 200
 
 
 @convert_blueprint.route("/search_in_content", methods=['GET'])
@@ -599,7 +674,7 @@ def edit(id):
 
             return render_template("convert/edit.html", form=form, convert_id=id )
     else:
-            return render_template("access_denied.html")
+            return abort(403)
         
         
 
@@ -666,7 +741,7 @@ def edit_public():
                     "message": "Error during the edit of the public/private section", 
                     "toast_class" : "danger"
                 }, 500
-            return redirect(url_for("access_denied"))
+            return abort(403)
         return {
             "success": False, 
             "message": "No convert history for this id", 
@@ -697,7 +772,7 @@ def get_share_key():
                     "message": "Share key found", 
                     "toast_class" : "success"
                     }, 200
-            return redirect(url_for("access_denied"))
+            return abort(403)
         return {
             "success": False, 
             "message": "No convert history for this id", 
@@ -732,7 +807,7 @@ def regenerate_share_key():
                     "message": "Error during the regeneration of the share key", 
                     "toast_class" : "danger"
                 }, 500
-            return redirect(url_for("access_denied"))
+            return abort(403)
         return {
             "success": False, 
             "message": "No convert history for this id", 
@@ -1467,15 +1542,87 @@ def misp_test_connection():
     return {"success": True, "tags": tags, "count": len(tags)}, 200
 
 
+def _can_download(convert) -> bool:
+    """Return True if the current user is allowed to download this convert's data."""
+    if convert.public:
+        return True
+    from flask_login import current_user as cu
+    return cu.is_authenticated and (cu.id == convert.user_id or cu.is_admin())
+
+
+@convert_blueprint.route("/download/<int:convert_id>/input")
+def download_input(convert_id):
+    """Download the input file (MISP JSON for MISP→STIX, STIX JSON for STIX→MISP)."""
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not _can_download(convert):
+        return {"success": False, "error": "Forbidden"}, 403
+
+    label    = "misp" if convert.conversion_type == "MISP_TO_STIX" else "stix"
+    filename = f"{label}-input-{convert_id}.json"
+    return json.dumps(json.loads(convert.input_text), indent=2), 200, {
+        "Content-Type": "application/json",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+
+
+@convert_blueprint.route("/download/<int:convert_id>/output")
+def download_output(convert_id):
+    """Download the output file (STIX JSON for MISP→STIX, MISP JSON for STIX→MISP)."""
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not _can_download(convert):
+        return {"success": False, "error": "Forbidden"}, 403
+    if not convert.output_text:
+        return {"success": False, "error": "No output data"}, 404
+
+    label    = "stix" if convert.conversion_type == "MISP_TO_STIX" else "misp"
+    filename = f"{label}-output-{convert_id}.json"
+    return json.dumps(json.loads(convert.output_text), indent=2), 200, {
+        "Content-Type": "application/json",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+
+
+@convert_blueprint.route("/download/<int:convert_id>/misp-push")
+def download_misp_push(convert_id):
+    """
+    Download the full PyMISP-built event payload — identical to what
+    would be sent to a MISP instance during a push (includes the
+    cti-evaluation object and all community evaluation tags).
+    """
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not _can_download(convert):
+        return {"success": False, "error": "Forbidden"}, 403
+
+    summary        = EvalModel.get_summary(convert_id)
+    consensus_tags = EvalModel.get_consensus_tags(convert_id, threshold=2)
+    push_tags      = EvalModel.get_misp_push_tags(convert_id)
+
+    event_dict, _, _, error = _build_misp_payload(convert, push_tags, consensus_tags, summary)
+    if error:
+        return {"success": False, "error": error}, 400
+
+    filename = f"misp-push-payload-{convert_id}.json"
+    return json.dumps({"Event": event_dict}, indent=2), 200, {
+        "Content-Type": "application/json",
+        "Content-Disposition": f'attachment; filename="{filename}"',
+    }
+
+
 @convert_blueprint.route("/push_to_misp", methods=['POST'])
 @login_required
 def push_to_misp():
-    """Push the MISP event associated with a convert to an external MISP instance."""
+    """Push the MISP event to an external MISP instance via PyMISP-built payload."""
     data = request.get_json(silent=True) or {}
-    convert_id = data.get("convert_id")
-    misp_url   = data.get("misp_url", "").strip().rstrip("/")
-    api_key    = data.get("api_key",  "").strip()
-    tags       = data.get("tags", [])
+    convert_id    = data.get("convert_id")
+    misp_url      = data.get("misp_url", "").strip().rstrip("/")
+    api_key       = data.get("api_key",  "").strip()
+    extra_tags    = data.get("tags", [])
 
     if not convert_id or not misp_url or not api_key:
         return {"success": False, "error": "Missing required fields (convert_id, misp_url, api_key)"}, 400
@@ -1490,49 +1637,21 @@ def push_to_misp():
     if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
         return {"success": False, "error": "Forbidden"}, 403
 
-    # Pick the MISP JSON: input for MISP→STIX, output for STIX→MISP
-    misp_text = convert.input_text if convert.conversion_type == "MISP_TO_STIX" else convert.output_text
-    if not misp_text:
-        return {"success": False, "error": "No MISP data found in this convert"}, 400
+    # Build the full PyMISP payload (event + cti-evaluation object + eval tags)
+    summary        = EvalModel.get_summary(convert_id)
+    consensus_tags = EvalModel.get_consensus_tags(convert_id, threshold=2)
+    push_tags      = EvalModel.get_misp_push_tags(convert_id)
 
-    try:
-        misp_data = json.loads(misp_text)
-    except json.JSONDecodeError:
-        return {"success": False, "error": "Invalid JSON in convert data"}, 400
+    event_dict, _, _, build_error = _build_misp_payload(convert, push_tags, consensus_tags, summary)
+    if build_error:
+        return {"success": False, "error": build_error}, 400
 
-    # Extract the Event object — handle all MISP JSON formats:
-    #   {"Event": {...}}
-    #   {"response": [{"Event": {...}}, ...]}
-    #   [{"Event": {...}}, ...]  or  [{raw_event}, ...]
-    #   {raw_event}  (STIX→MISP output: keys are uuid/info/Attribute/… directly)
-    _MISP_EVENT_KEYS = {'info', 'uuid', 'Attribute', 'Object', 'Tag', 'Galaxy'}
-    if isinstance(misp_data, list):
-        first = misp_data[0] if misp_data else {}
-        event_data = first.get("Event") or (first if isinstance(first, dict) and _MISP_EVENT_KEYS & first.keys() else None)
-    elif isinstance(misp_data, dict):
-        event_data = (
-            misp_data.get("Event")
-            or (misp_data.get("response") or [{}])[0].get("Event")
-            or (misp_data if _MISP_EVENT_KEYS & misp_data.keys() else None)
-        )
-    else:
-        event_data = None
-    if not event_data:
-        return {"success": False, "error": "No MISP Event found in convert data"}, 400
-
-    # Merge evaluation tags and user-selected tags into the event
-    eval_tags = EvalModel.get_misp_push_tags(convert_id)
-    all_tags_to_add = eval_tags + [t for t in (tags or []) if t]
-    if all_tags_to_add:
-        existing = {t.get("name", "") for t in (event_data.get("Tag") or [])}
-        for tag_name in all_tags_to_add:
-            if tag_name not in existing:
-                (event_data.setdefault("Tag", [])).append({"name": tag_name, "exportable": True})
-                existing.add(tag_name)
-
-    # Remove server-assigned fields that would conflict on a fresh import
-    for field in ("id", "uuid", "timestamp", "publish_timestamp", "published"):
-        event_data.pop(field, None)
+    # Merge any extra user-selected tags that are not already on the event
+    if extra_tags:
+        existing_names = {t.get("name", "") for t in (event_dict.get("Tag") or [])}
+        for tag_name in extra_tags:
+            if tag_name and tag_name not in existing_names:
+                event_dict.setdefault("Tag", []).append({"name": tag_name, "exportable": True})
 
     try:
         resp = requests.post(
@@ -1542,7 +1661,7 @@ def push_to_misp():
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },
-            json={"Event": event_data},
+            json={"Event": event_dict},
             timeout=30,
             verify=True,
             allow_redirects=False,
@@ -1583,6 +1702,205 @@ def push_to_misp():
         "message": f"Event pushed to MISP successfully!{' (event #' + str(new_event_id) + ')' if new_event_id else ''}",
         "event_id": new_event_id,
     }, 200
+
+
+def _build_misp_payload(convert, push_tags, consensus_tags, summary):
+    """
+    Build the final MISP event payload using PyMISP.
+
+    Loads the existing MISP event from the convert, injects the cti-evaluation
+    object (populated from community votes) and the evaluation tags, then
+    returns a dict with:
+      - event_dict     : the full MISPEvent as a dict (what is sent to MISP)
+      - cti_object     : just the cti-evaluation MISPObject dict
+      - attributes_meta: list of {object_relation, type, value, description}
+                         for the detail table in the modal
+      - error          : None or an error string
+    """
+    import re, uuid as uuid_mod, datetime as dt
+    from pymisp import MISPEvent, MISPObject
+
+    SCORE_MAP = {"very-low": 0, "low": 25, "moderate": 50, "high": 75, "very-high": 100}
+
+    def parse_tag(name):
+        m = re.match(r'^([\w-]+):([\w.-]+)="([\w.-]+)"$', name or '')
+        return (m.group(1), m.group(2), m.group(3)) if m else (None, None, None)
+
+    # ── 1. Extract the raw MISP event dict from the convert ──────────────
+    misp_text = convert.input_text if convert.conversion_type == "MISP_TO_STIX" else convert.output_text
+    try:
+        misp_data = json.loads(misp_text)
+    except (json.JSONDecodeError, TypeError):
+        return None, None, None, "Invalid JSON in convert data"
+
+    _MISP_EVENT_KEYS = {'info', 'uuid', 'Attribute', 'Object', 'Tag', 'Galaxy'}
+    if isinstance(misp_data, list):
+        first      = misp_data[0] if misp_data else {}
+        event_data = first.get("Event") or (first if isinstance(first, dict) and _MISP_EVENT_KEYS & first.keys() else None)
+    elif isinstance(misp_data, dict):
+        event_data = (
+            misp_data.get("Event")
+            or (misp_data.get("response") or [{}])[0].get("Event")
+            or (misp_data if _MISP_EVENT_KEYS & misp_data.keys() else None)
+        )
+    else:
+        event_data = None
+
+    if not event_data:
+        return None, None, None, "No MISP Event found in convert data"
+
+    # Remove server-assigned fields that would conflict on a fresh MISP import
+    for field in ("id", "timestamp", "publish_timestamp", "published"):
+        event_data.pop(field, None)
+
+    # ── 2. Load into a PyMISP MISPEvent ──────────────────────────────────
+    ev = MISPEvent()
+    ev.from_json(json.dumps(event_data))
+
+    # ── 3. Add the evaluation tags onto the event ─────────────────────────
+    existing_tag_names = {t.name for t in ev.tags}
+    for tag_name in push_tags:
+        if tag_name not in existing_tag_names:
+            ev.add_tag(tag_name)
+
+    # ── 4. Build the cti-evaluation MISPObject ───────────────────────────
+    source_fmt    = "MISP"     if convert.conversion_type == "MISP_TO_STIX" else "STIX 2.1"
+    target_fmt    = "STIX 2.1" if convert.conversion_type == "MISP_TO_STIX" else "MISP"
+    overall_level = next((parse_tag(t)[2] for t in push_tags if parse_tag(t)[1] == "overall-score"), None)
+    now_iso       = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    obj = MISPObject("cti-evaluation", standalone=False)
+
+    # Fixed identity attributes
+    obj.add_attribute("evaluation-id",               value=str(uuid_mod.uuid4()),                          type="text")
+    obj.add_attribute("evaluation-name",             value=f"CTI-Transmute evaluation of {convert.name}",  type="text")
+    obj.add_attribute("evaluated-artifact",          value=convert.name,                                   type="text")
+    obj.add_attribute("evaluation-date",             value=now_iso,                                        type="datetime")
+    obj.add_attribute("evaluator",                   value="CTI-Transmute platform (community)",            type="text")
+    obj.add_attribute("cti-transmute-conversion-id", value=convert.uuid,                                   type="text")
+    obj.add_attribute("cti-transmute-link",          value=f"https://cti-transmute.org/convert/{convert.id}", type="link")
+    obj.add_attribute("source-format",               value=source_fmt,                                     type="text")
+    obj.add_attribute("target-format",               value=target_fmt,                                     type="text")
+    obj.add_attribute("calculation-formula",         value="Mean of community votes mapped to 0-100 (very-low=0, low=25, moderate=50, high=75, very-high=100)", type="text")
+
+    # Scores
+    if overall_level:
+        obj.add_attribute("overall-score",       value=overall_level,                        type="text")
+    if summary.get("approval_score") is not None:
+        obj.add_attribute("overall-score-value", value=float(summary["approval_score"]),      type="float")
+
+    # Dimension scores from community consensus (threshold=2)
+    for tag in consensus_tags:
+        cat, level = tag["category"], tag["level"]
+        obj.add_attribute(cat,            value=level,                           type="text")
+        obj.add_attribute(f"{cat}-score", value=float(SCORE_MAP.get(level, 0)), type="float")
+
+    # One taxonomy-tag attribute per vote tag
+    for tag_name in sorted(push_tags):
+        obj.add_attribute("taxonomy-tag", value=tag_name, type="text")
+
+    obj.add_attribute("taxonomy-reference",
+                      value="https://github.com/MISP/misp-taxonomies/blob/main/cti-evaluation/machinetag.json",
+                      type="link")
+
+    ev.add_object(obj)
+
+    # ── 5. Serialize the full event via PyMISP ───────────────────────────
+    event_dict  = json.loads(ev.to_json())
+    cti_obj_dict = next((o for o in event_dict.get("Object", []) if o["name"] == "cti-evaluation"), None)
+
+    # ── 6. Build the human-readable attribute table ───────────────────────
+    # This mirrors the object attributes but adds a plain-English description
+    # so the modal can show a "Field / Type / Value / What it means" table.
+    attr_descriptions = {
+        "evaluation-id":               "Unique UUID generated at push time for this evaluation record",
+        "evaluation-name":             "Human-readable title — identifies the evaluation in MISP",
+        "evaluated-artifact":          "Name of the conversion that was evaluated",
+        "evaluation-date":             "UTC timestamp when the evaluation was recorded (= push time)",
+        "evaluator":                   "Who produced the evaluation — the CTI-Transmute platform and its community",
+        "cti-transmute-conversion-id": "Internal UUID of the source conversion on CTI-Transmute",
+        "cti-transmute-link":          "Direct URL to this conversion page on CTI-Transmute",
+        "source-format":               "Input CTI format of the conversion (e.g. MISP, STIX 2.1)",
+        "target-format":               "Output CTI format of the conversion (e.g. MISP, STIX 2.1)",
+        "calculation-formula":         "How the numeric overall-score-value was computed from votes",
+        "overall-score":               "Dominant quality level across all community votes",
+        "overall-score-value":         "Numeric overall quality score 0–100 (mean of all votes)",
+        "taxonomy-tag":                "cti-evaluation machine tag applied on the MISP event",
+        "taxonomy-reference":          "Link to the official MISP cti-evaluation taxonomy",
+    }
+    for tag in consensus_tags:
+        cat = tag["category"]
+        attr_descriptions[cat]            = f"Community consensus level for '{cat}' ({tag['votes']} vote(s))"
+        attr_descriptions[f"{cat}-score"] = f"Numeric score for '{cat}' mapped from its consensus level"
+
+    attributes_meta = []
+    if cti_obj_dict:
+        for a in cti_obj_dict["Attribute"]:
+            rel = a.get("object_relation", "")
+            attributes_meta.append({
+                "object_relation": rel,
+                "type":            a.get("type", ""),
+                "value":           a.get("value", ""),
+                "uuid":            a.get("uuid", ""),
+                "description":     attr_descriptions.get(rel, ""),
+            })
+
+    return event_dict, cti_obj_dict, attributes_meta, None
+
+
+@convert_blueprint.route("/misp_push_preview/<int:convert_id>", methods=["GET"])
+@login_required
+def misp_push_preview(convert_id):
+    """
+    JSON endpoint — builds the real PyMISP event payload and returns it for
+    preview in the push modal. Includes the full event JSON, the isolated
+    cti-evaluation object, and a human-readable attribute table.
+    """
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Convert not found"}, 404
+    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+        return {"success": False, "error": "Forbidden"}, 403
+
+    summary        = EvalModel.get_summary(convert_id)
+    consensus_tags = EvalModel.get_consensus_tags(convert_id, threshold=2)
+    push_tags      = EvalModel.get_misp_push_tags(convert_id)
+
+    event_dict, cti_obj_dict, attributes_meta, error = _build_misp_payload(
+        convert, push_tags, consensus_tags, summary
+    )
+
+    if error:
+        return {"success": False, "error": error}, 400
+
+    import re
+    def parse_tag(name):
+        m = re.match(r'^([\w-]+):([\w.-]+)="([\w.-]+)"$', name or '')
+        return (m.group(1), m.group(2), m.group(3)) if m else (None, None, None)
+
+    overall_level = next((parse_tag(t)[2] for t in push_tags if parse_tag(t)[1] == "overall-score"), None)
+
+    return {
+        "success":         True,
+        "has_evaluations": bool(push_tags),
+        # Full event as PyMISP built it — what would be sent to MISP
+        "event_dict":      event_dict,
+        # Just the cti-evaluation object, isolated for easy reading
+        "cti_object":      cti_obj_dict,
+        # Human-readable attribute table for the modal detail rows
+        "attributes":      attributes_meta,
+        # Summary stats
+        "eval_tags":       sorted(push_tags),
+        "approval_score":  summary.get("approval_score"),
+        "overall_level":   overall_level,
+        "vote_count":      sum(d["total"] for d in summary.get("cti_categories", {}).values()),
+        "event_stats": {
+            "attribute_count": len(event_dict.get("Attribute", [])),
+            "object_count":    len(event_dict.get("Object", [])),
+            "tag_count":       len(event_dict.get("Tag", [])),
+        },
+    }, 200
+
 
 
 @convert_blueprint.route("/admin/get_all_comments", methods=['GET'])

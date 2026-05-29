@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="nf-page">
+
+    <div class="nf-code" style="background: linear-gradient(90deg, #ef4444, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">403</div>
+
+    <div class="nf-icon">
+        <i class="fas fa-lock"></i>
+    </div>
+
+    <h1 class="nf-title">Access denied</h1>
+    <p class="nf-sub">
+        You don't have permission to access this page.<br>
+        Make sure you're logged in with the right account.
+    </p>
+
+    <div class="nf-path">
+        <span class="nf-path-origin">{{ request.host }}</span>
+        <span class="nf-path-slash">/</span>
+        <span class="nf-path-404">{{ request.path.lstrip('/') }}</span>
+    </div>
+
+    <div class="nf-actions">
+        <a href="/" class="nf-btn nf-btn-primary">
+            <i class="fas fa-house me-2"></i>Back to home
+        </a>
+        <a href="/account/login" class="nf-btn nf-btn-secondary">
+            <i class="fas fa-right-to-bracket me-2"></i>Sign in
+        </a>
+    </div>
+
+</div>
+
+<style>
+.nf-page {
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+    user-select: none;
+}
+
+.nf-code {
+    font-family: var(--font-mono);
+    font-size: clamp(5rem, 18vw, 9rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 0.5rem;
+    opacity: 0.9;
+}
+
+.nf-icon {
+    font-size: 2rem;
+    color: var(--text-3);
+    margin-bottom: 1rem;
+    opacity: 0.4;
+}
+
+.nf-title {
+    font-size: clamp(1.3rem, 3vw, 1.8rem);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.75rem;
+}
+
+.nf-sub {
+    font-size: 0.9rem;
+    color: var(--text-2);
+    line-height: 1.7;
+    max-width: 420px;
+    margin-bottom: 1.5rem;
+}
+
+.nf-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 5px 14px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    margin-bottom: 2rem;
+    max-width: 90vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nf-path-origin { color: var(--text-3); }
+.nf-path-slash  { color: var(--text-3); margin: 0 1px; }
+.nf-path-404    { color: #ef4444; font-weight: 600; }
+
+.nf-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.nf-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 9px 20px;
+    border-radius: var(--radius-md);
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background var(--t), box-shadow var(--t), transform var(--t);
+}
+
+.nf-btn:hover { transform: translateY(-1px); }
+
+.nf-btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+}
+
+.nf-btn-primary:hover {
+    background: var(--accent-hover, #2563eb);
+    box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+    color: #fff;
+}
+
+.nf-btn-secondary {
+    background: var(--surface);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+}
+
+.nf-btn-secondary:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface);
+}
+</style>
+{% endblock %}

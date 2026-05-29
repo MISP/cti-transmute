@@ -1,6 +1,9 @@
-from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash
+from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash, abort
+from datetime import datetime, timedelta
+from sqlalchemy import func
 
-from website.db_class.db import User
+from website.db_class.db import User, Convert, ConvertEvaluation
+from website.web import db
 from website.web.account.account_form import AddNewUserForm, EditUserForm, LoginForm
 from website.web.utils import form_to_dict, generate_api_key
 from . import account_core as AccountModel
@@ -65,7 +68,7 @@ def profil() -> render_template:
 @login_required
 def acces_denied() -> render_template:
     """acces_denied page"""
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route('/register', methods=['GET', 'POST'])
 def add_user() -> redirect:
@@ -117,7 +120,7 @@ def manage_user() -> redirect:
     """Manage user section"""
     if current_user.is_admin():
         return render_template("admin/manage_user.html")
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route("/get_users", methods=['GET'])
 @login_required
@@ -140,7 +143,7 @@ def get_users():
             "connected": total_connected
         }, 200
     else:
-        return render_template("access_denied.html")
+        return abort(403)
 
 @account_blueprint.route("/detail_user/<int:id>", methods=['GET', "POST"])
 @login_required
@@ -153,7 +156,7 @@ def detail_user(id) -> redirect:
         else:
             flash('No user with this id !', 'danger')
             return redirect("/admin/manage_user")
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route("/get_user", methods=['GET', "POST"])
 @login_required
@@ -175,7 +178,7 @@ def get_user() -> redirect:
                 "user": None,
                 "Message": " No user found with this id "
             }, 404
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 @account_blueprint.route("/get_user_convert", methods=['GET', "POST"])
@@ -211,7 +214,7 @@ def get_user_convert() -> redirect:
                 "user": None,
                 "Message": " No user found with this id "
             }, 404
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 
@@ -245,7 +248,7 @@ def delete_user(id) -> redirect:
 
         flash(f"Enable to delete User: {user.last_name} {user.first_name}!", 'danger')
         return redirect(f"/account/detail_user/{id}")
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 
@@ -400,7 +403,7 @@ def my_comments():
 @login_required
 def admin_comments():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_comments.html")
 
 
@@ -408,7 +411,7 @@ def admin_comments():
 @login_required
 def admin_reports():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_reports.html")
 
 
@@ -416,7 +419,7 @@ def admin_reports():
 @login_required
 def admin_logs():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_logs.html")
 
 
@@ -424,7 +427,7 @@ def admin_logs():
 @login_required
 def admin_deleted_converts():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/deleted_converts.html")
 
 
@@ -594,10 +597,93 @@ def edit_admin():
                 "toast_class" : "danger"
                 }, 500
         return {
-            "success": False, 
-            "message": "No id provided", 
+            "success": False,
+            "message": "No id provided",
             "toast_class" : "danger"
             }, 404
-                    
-    return render_template("access_denied.html")
+
+    return abort(403)
+
+
+@account_blueprint.route("/admin_edit_user", methods=['POST'])
+@login_required
+def admin_edit_user():
+    """Admin edits a user's first name, last name, or email."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Access denied", "toast_class": "danger"}, 403
+
+    data = request.get_json(silent=True) or {}
+    user_id    = data.get('id')
+    first_name = (data.get('first_name') or '').strip()
+    last_name  = (data.get('last_name')  or '').strip()
+    email      = (data.get('email')      or '').strip()
+
+    if not user_id or not first_name or not last_name or not email:
+        return {"success": False, "message": "All fields are required.", "toast_class": "danger"}, 400
+
+    user = AccountModel.get_user(int(user_id))
+    if not user:
+        return {"success": False, "message": "User not found.", "toast_class": "danger"}, 404
+
+    taken = User.query.filter_by(email=email).first()
+    if taken and taken.id != user.id:
+        return {"success": False, "message": "Email already in use.", "toast_class": "danger"}, 409
+
+    AccountModel.edit_user_core(
+        {"first_name": first_name, "last_name": last_name, "email": email},
+        user.id
+    )
+    AccountModel.create_system_log(
+        "user_edited",
+        actor_id=current_user.id, actor_name=current_user.first_name,
+        target_type="user", target_id=user.id,
+        target_name=f"{first_name} {last_name}"
+    )
+    return {"success": True, "message": "User updated.", "toast_class": "success", "user": user.to_json()}, 200
+
+
+@account_blueprint.route("/get_user_stats", methods=['GET'])
+@login_required
+def get_user_stats():
+    """Return aggregate stats for a user (admin only)."""
+    if not current_user.is_admin():
+        return {"success": False}, 403
+
+    user_id = request.args.get('user_id', type=int)
+    user = AccountModel.get_user(user_id)
+    if not user:
+        return {"success": False}, 404
+
+    total  = Convert.query.filter_by(user_id=user_id, is_active=True).count()
+    m2s    = Convert.query.filter_by(user_id=user_id, conversion_type='MISP_TO_STIX', is_active=True).count()
+    s2m    = Convert.query.filter_by(user_id=user_id, conversion_type='STIX_TO_MISP', is_active=True).count()
+    public = Convert.query.filter_by(user_id=user_id, is_active=True, public=True).count()
+
+    likes     = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='like').count()
+    dislikes  = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='dislike').count()
+    reactions = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='reaction').count()
+
+    since = datetime.utcnow() - timedelta(days=29)
+    rows = (
+        db.session.query(func.date(Convert.created_at).label('d'), func.count(Convert.id).label('n'))
+        .filter(Convert.user_id == user_id, Convert.is_active == True, Convert.created_at >= since)
+        .group_by(func.date(Convert.created_at))
+        .all()
+    )
+    activity = {str(r.d): r.n for r in rows}
+
+    return {
+        "success": True,
+        "stats": {
+            "total_converts": total,
+            "misp_to_stix":   m2s,
+            "stix_to_misp":   s2m,
+            "public":         public,
+            "private":        total - public,
+            "likes":          likes,
+            "dislikes":       dislikes,
+            "reactions":      reactions,
+            "activity":       activity,
+        }
+    }, 200
    

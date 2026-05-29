@@ -11,7 +11,7 @@ const PushConvertToMISP = {
     },
     template: `
 <div :id="'misp-push-modal-' + convertId" class="modal fade" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
 
             <!-- Header -->
@@ -49,6 +49,7 @@ const PushConvertToMISP = {
 
                 <!-- ── Step 2 : Push ───────────────────────────────── -->
                 <div v-else>
+
                     <!-- Connected banner -->
                     <div class="d-flex align-items-center justify-content-between p-2 rounded mb-3"
                         style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2); font-size:0.83rem;">
@@ -74,6 +75,136 @@ const PushConvertToMISP = {
                         <div v-else class="alert alert-warning py-2 px-3" style="font-size:0.84rem;">
                             <i class="fas fa-exclamation-triangle me-1"></i>
                             No MISP event found in this convert's data.
+                        </div>
+                    </div>
+
+                    <!-- ── CTI Evaluation Preview ──────────────────── -->
+                    <div class="misp-preview-section mb-3">
+                        <div class="misp-preview-header" @click="previewOpen = !previewOpen"
+                            style="cursor:pointer; user-select:none;">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-chart-bar" style="color:var(--accent); font-size:.9rem;"></i>
+                                <span style="font-weight:600; font-size:.9rem;">CTI Evaluation Data</span>
+                                <span v-if="preview" class="misp-preview-badge">
+                                    [[ preview.eval_tags.length ]] tag(s) &nbsp;·&nbsp; 1 object
+                                </span>
+                                <span v-if="previewLoading" style="font-size:.78rem; color:var(--text-3);">
+                                    <i class="fas fa-spinner fa-spin me-1"></i> Loading…
+                                </span>
+                                <span v-if="!preview && !previewLoading" style="font-size:.78rem; color:var(--text-3);">
+                                    No evaluation data yet
+                                </span>
+                            </div>
+                            <i class="fas" :class="previewOpen ? 'fa-chevron-up' : 'fa-chevron-down'"
+                                style="font-size:.78rem; color:var(--text-3);"></i>
+                        </div>
+
+                        <div v-if="previewOpen && preview" class="misp-preview-body">
+
+                            <!-- Overall score pill -->
+                            <div v-if="preview.overall_level" class="d-flex align-items-center gap-2 mb-3">
+                                <span style="font-size:.8rem; color:var(--text-3);">Overall score</span>
+                                <span class="misp-level-pill" :class="'lvl-' + preview.overall_level">
+                                    [[ preview.overall_level ]]
+                                </span>
+                                <span v-if="preview.approval_score !== null"
+                                    style="font-size:.8rem; color:var(--text-3);">
+                                    ([[ preview.approval_score ]]/100 — [[ preview.vote_count ]] vote(s))
+                                </span>
+                            </div>
+
+                            <!-- Evaluation tags -->
+                            <div class="mb-3">
+                                <div class="misp-preview-sublabel">Tags added to the Event</div>
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    <span v-for="t in preview.eval_tags" :key="t"
+                                        class="misp-level-pill"
+                                        :class="'lvl-' + levelFromTag(t)"
+                                        style="font-family:monospace; font-size:.75rem;">
+                                        [[ t ]]
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Detail rows table -->
+                            <div class="mb-3">
+                                <div class="misp-preview-sublabel">
+                                    cti-evaluation Object attributes
+                                    <span style="font-weight:400;">(injected into Event → Object[])</span>
+                                </div>
+                                <div class="misp-attr-table-wrap">
+                                    <table class="misp-attr-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Field</th>
+                                                <th>Type</th>
+                                                <th>Value</th>
+                                                <th>What it means</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="a in preview.attributes" :key="a.object_relation + a.value">
+                                                <td class="attr-relation">[[ a.object_relation ]]</td>
+                                                <td class="attr-type">[[ a.type ]]</td>
+                                                <td class="attr-value">[[ a.value ]]</td>
+                                                <td class="attr-desc">[[ a.description ]]</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- JSON tabs: cti-evaluation object  |  full event -->
+                            <div>
+                                <div class="d-flex gap-2 mb-2">
+                                    <button class="btn btn-sm"
+                                        :class="jsonTab === 'object' ? 'btn-primary' : 'btn-outline-secondary'"
+                                        style="font-size:.78rem;"
+                                        @click="jsonTab = 'object'; jsonOpen = true">
+                                        <i class="fas fa-cube me-1"></i> cti-evaluation object
+                                    </button>
+                                    <button class="btn btn-sm"
+                                        :class="jsonTab === 'event' ? 'btn-primary' : 'btn-outline-secondary'"
+                                        style="font-size:.78rem;"
+                                        @click="jsonTab = 'event'; jsonOpen = true">
+                                        <i class="fas fa-file-code me-1"></i>
+                                        Full Event
+                                        <span style="opacity:.65; font-size:.72rem;">
+                                            ([[ preview.event_stats.object_count ]] obj · [[ preview.event_stats.attribute_count ]] attr · [[ preview.event_stats.tag_count ]] tags)
+                                        </span>
+                                    </button>
+                                    <button v-if="jsonOpen" class="btn btn-sm btn-outline-secondary ms-auto"
+                                        style="font-size:.78rem;" @click="jsonOpen = false">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+
+                                <div v-if="jsonOpen" class="misp-json-block">
+                                    <button class="misp-json-copy" @click="copyJson()">
+                                        <i class="fas fa-copy"></i> [[ copied ? 'Copied!' : 'Copy' ]]
+                                    </button>
+                                    <!-- cti-evaluation object only -->
+                                    <pre v-if="jsonTab === 'object'"
+                                        style="margin:0; font-size:.78rem; max-height:320px; overflow-y:auto; white-space:pre-wrap;">[[ JSON.stringify(preview.cti_object, null, 2) ]]</pre>
+                                    <!-- full event — truncated above 80 KB for display performance -->
+                                    <template v-else>
+                                        <pre style="margin:0; font-size:.78rem; max-height:320px; overflow-y:auto; white-space:pre-wrap;">[[ fullEventDisplay ]]</pre>
+                                        <div v-if="fullEventTruncated"
+                                            style="padding:.4rem .6rem; font-size:.75rem; color:#f9a825; border-top:1px solid rgba(255,255,255,.1); margin-top:.25rem;">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                            Display truncated at 80 KB — use Copy to get the full JSON.
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- No evaluations notice -->
+                        <div v-if="previewOpen && !preview && !previewLoading"
+                            class="misp-preview-body" style="color:var(--text-3); font-size:.84rem;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            No community evaluations for this conversion yet. The event will be pushed
+                            without a <code>cti-evaluation</code> object.
                         </div>
                     </div>
 
@@ -164,14 +295,34 @@ const PushConvertToMISP = {
         const pushError   = ref('')
         const pushSuccess = ref('')
 
+        // Preview state
+        const { computed } = Vue
+        const preview             = ref(null)   // full response from /convert/misp_push_preview/<id>
+        const previewLoading      = ref(false)
+        const previewOpen         = ref(true)   // expanded by default when entering step 2
+        const jsonOpen            = ref(false)
+        const jsonTab             = ref('object')  // 'object' | 'event'
+        const copied              = ref(false)
+        const DISPLAY_LIMIT       = 80 * 1024  // 80 KB display cap for the full event JSON
+
+        // Computed: full event JSON string, truncated for display if very large
+        const fullEventJson = computed(() => preview.value?.event_dict
+            ? JSON.stringify(preview.value.event_dict, null, 2)
+            : ''
+        )
+        const fullEventTruncated = computed(() => fullEventJson.value.length > DISPLAY_LIMIT)
+        const fullEventDisplay   = computed(() =>
+            fullEventTruncated.value
+                ? fullEventJson.value.slice(0, DISPLAY_LIMIT) + '\n\n// … truncated, use Copy for full JSON'
+                : fullEventJson.value
+        )
+
         onMounted(() => {
-            // Credentials are never persisted — user must reconnect each time
             mispUrl.value = ''
             apiKey.value  = ''
         })
 
         function open() {
-            // Always reset everything — no credentials are persisted
             mispUrl.value      = ''
             apiKey.value       = ''
             connectError.value = ''
@@ -180,6 +331,10 @@ const PushConvertToMISP = {
             selectedTags.value = []
             tagSearch.value    = ''
             allMispTags.value  = []
+            preview.value      = null
+            previewOpen.value  = true
+            jsonOpen.value     = false
+            jsonTab.value      = 'object'
             step.value         = 'connect'
             parseMispEvent()
             const el = document.getElementById('misp-push-modal-' + props.convertId)
@@ -187,10 +342,9 @@ const PushConvertToMISP = {
         }
 
         function onClose() {
-            // Wipe credentials on close
-            mispUrl.value   = ''
-            apiKey.value    = ''
-            step.value      = 'connect'
+            mispUrl.value     = ''
+            apiKey.value      = ''
+            step.value        = 'connect'
             pushSuccess.value = ''
             pushError.value   = ''
         }
@@ -203,9 +357,7 @@ const PushConvertToMISP = {
             for (const text of candidates) {
                 try {
                     const parsed = JSON.parse(text)
-                    // Standard wrapped formats: {"Event":{}} or {"response":[{"Event":{}}]}
                     let ev = parsed?.Event ?? parsed?.response?.[0]?.Event
-                    // Raw event dict — STIX→MISP output has keys like uuid/info/Object/Tag directly
                     if (!ev && parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
                         if (Object.keys(parsed).some(k => MISP_EVENT_KEYS.has(k))) ev = parsed
                     }
@@ -215,6 +367,40 @@ const PushConvertToMISP = {
                     }
                 } catch {}
             }
+        }
+
+        // Fetch the preview data when entering the push step
+        async function loadPreview() {
+            previewLoading.value = true
+            preview.value        = null
+            try {
+                const res  = await fetch(`/convert/misp_push_preview/${props.convertId}`, {
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' },
+                })
+                const body = await res.json()
+                if (res.ok && body.success && body.has_evaluations) {
+                    preview.value = body
+                }
+            } catch {}
+            finally { previewLoading.value = false }
+        }
+
+        // Extract the level string from a cti-evaluation tag name
+        // e.g. 'cti-evaluation:accuracy="high"'  →  'high'
+        function levelFromTag(tagName) {
+            const m = tagName.match(/"([\w-]+)"$/)
+            return m ? m[1] : ''
+        }
+
+        async function copyJson() {
+            // Copy whichever tab is active — cti-evaluation object or full event
+            const text = jsonTab.value === 'object'
+                ? JSON.stringify(preview.value?.cti_object, null, 2)
+                : fullEventJson.value
+            if (!text) return
+            await navigator.clipboard.writeText(text)
+            copied.value = true
+            setTimeout(() => { copied.value = false }, 1800)
         }
 
         watch(() => props.convertData, parseMispEvent, { deep: true })
@@ -236,6 +422,7 @@ const PushConvertToMISP = {
                 if (res.ok && body.success) {
                     allMispTags.value = body.tags || []
                     step.value = 'push'
+                    loadPreview()  // fetch the CTI evaluation preview as soon as step 2 is reached
                 } else {
                     connectError.value = body.error || 'Connection failed'
                 }
@@ -253,7 +440,6 @@ const PushConvertToMISP = {
             const matches = allMispTags.value
                 .filter(t => t.name.toLowerCase().includes(q) && !already.has(t.name))
                 .slice(0, 8)
-            // Add free-entry option when no exact match
             const exact = allMispTags.value.find(t => t.name.toLowerCase() === q)
             if (!exact && tagSearch.value.trim()) {
                 matches.push({ name: tagSearch.value.trim(), colour: '#888888', _custom: true })
@@ -324,8 +510,10 @@ const PushConvertToMISP = {
             step, mispUrl, apiKey, connecting, connectError,
             mispEventInfo, tagSearch, tagSuggestions, selectedTags, allMispTags,
             pushing, pushError, pushSuccess,
+            preview, previewLoading, previewOpen, jsonOpen, jsonTab, copied,
+            fullEventDisplay, fullEventTruncated,
             open, onClose, testConnection, searchTags, hideSuggestionsDelayed,
-            addTag, removeTag, isLightColor, pushToMISP,
+            addTag, removeTag, isLightColor, pushToMISP, levelFromTag, copyJson,
         }
     },
 }

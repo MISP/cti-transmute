@@ -68,9 +68,6 @@
                     <i class="fas fa-clock"></i> Recent Public Converts
                 </span>
                 <div class="d-flex align-items-center gap-3">
-                    <span class="home-carousel-hint" v-show="!recent_loading && recent_list.length > 0">
-                        <i class="fas fa-rotate-right"></i> Auto-scroll
-                    </span>
                     <a href="{{ url_for('convert.history') }}" class="home-panel-link">
                         View all <i class="fas fa-arrow-right" style="font-size:0.55rem;"></i>
                     </a>
@@ -312,6 +309,7 @@
         eval_reaction:              { icon: 'fas fa-star',         dot: 'dot-amber'  },
         convert_edited:             { icon: 'fas fa-pen',          dot: 'dot-orange' },
         convert_visibility_changed: { icon: 'fas fa-globe',        dot: 'dot-teal'   },
+        convert_favorited:          { icon: 'fas fa-star',         dot: 'dot-amber'  },
     };
     const EVENT_VERBS = {
         convert_created:            'created',
@@ -320,6 +318,7 @@
         eval_reaction:              'reacted to',
         convert_edited:             'updated',
         convert_visibility_changed: 'made public',
+        convert_favorited:          'favorited',
     };
 
     function eventIcon(t)     { return (EVENT_CONFIG[t] || { icon: 'fas fa-circle' }).icon; }
@@ -377,6 +376,15 @@
                 }
             }
 
+            async function fetchMostFavorited() {
+                try {
+                    const res  = await fetch('/convert/most_favorited?limit=8');
+                    const data = await res.json();
+                    if (data.success) fav_list.value = data.list || [];
+                } catch (e) { console.error(e); }
+                finally { fav_loading.value = false; }
+            }
+
             async function fetchActivity() {
                 try {
                     const res  = await fetch('/get_public_activity');
@@ -396,7 +404,9 @@
             function scroll(dir) {
                 const track = document.getElementById('recent-track');
                 if (!track) return;
-                track.scrollBy({ left: dir * 260, behavior: 'smooth' });
+                const card = track.querySelector('.home-recent-card');
+                const step = card ? card.offsetWidth + 12 : track.clientWidth / 4;
+                track.scrollBy({ left: dir * step, behavior: 'smooth' });
                 setTimeout(updateScrollState, 350);
             }
 
@@ -404,13 +414,15 @@
                 if (pauseAuto.value) return;
                 const track = document.getElementById('recent-track');
                 if (!track) return;
+                const card = track.querySelector('.home-recent-card');
+                const step = card ? card.offsetWidth + 12 : track.clientWidth / 4;
                 const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 8;
                 if (atEnd) {
                     track.style.scrollBehavior = 'auto';
                     track.scrollLeft = 0;
                     requestAnimationFrame(() => { track.style.scrollBehavior = ''; });
                 } else {
-                    track.scrollBy({ left: 240, behavior: 'smooth' });
+                    track.scrollBy({ left: step, behavior: 'smooth' });
                 }
                 setTimeout(updateScrollState, 400);
             }

@@ -84,7 +84,7 @@
                             </button>
                         </template>
                         <a href="{{ url_for('convert.refresh', uuid=convert.uuid) }}"
-                            class="btn btn-sm btn-outline-secondary" title="Refresh">
+                            class="btn btn-sm btn-action" title="Refresh">
                             <i class="fas fa-sync-alt me-1"></i> Refresh
                         </a>
                         <a :href="'/convert/edit/'+convert.id" class="btn btn-sm btn-outline-secondary" title="Edit">
@@ -101,6 +101,86 @@
                         </button>
 
                         
+
+                        <!-- Download dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-action dropdown-toggle"
+                                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download me-1"></i> Download
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="min-width:230px; font-size:.83rem;">
+
+                                <!-- Raw conversion files -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-file-code me-1"></i> Conversion files
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/input'">
+                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                         <img v-else src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
+                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'MISP input' : 'STIX input' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/output'">
+                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">  
+                                        <img v-else src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'STIX output' : 'MISP output' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/misp-push'">
+                                        <img src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        MISP push payload
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">+ eval object</span>
+                                    </a>
+                                </li>
+
+                                <li><hr class="dropdown-divider"></li>
+
+                                <!-- Evaluation report -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-chart-bar me-1"></i> Evaluation report
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + convert.id + '/pdf'"
+                                       download>
+                                        <i class="fas fa-file-pdf me-2" style="color:#e05555; width:13px;"></i>
+                                        PDF report
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + convert.id + '/markdown'"
+                                       download>
+                                        <i class="fab fa-markdown me-2" style="color:var(--text-2); width:13px;"></i>
+                                        Markdown report
+                                    </a>
+                                </li>
+
+                            </ul>
+                        </div>
+                        <button class="btn btn-sm detail-favorite-btn"
+                            :class="is_favorite ? 'active' : ''"
+                            :title="is_favorite ? 'Remove from favorites' : 'Add to favorites'"
+                            @click="toggleFavorite()">
+                            <i :class="is_favorite ? 'fas fa-star' : 'far fa-star'"></i>
+                        </button>
                     </div>
                 </template>
                 {% else %}
@@ -190,6 +270,18 @@
                             :href="'#graph-pane-'+convert.id" role="tab"
                             onclick="onGraphTabClick()">
                             <i class="fas fa-diagram-project me-1"></i> Graph
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#sunburst-pane-'+convert.id" role="tab">
+                            <i class="fas fa-circle-dot me-1"></i> Sunburst
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#table-pane-'+convert.id" role="tab">
+                            <i class="fas fa-table me-1"></i> Table
                         </a>
                     </li>
                     <li class="nav-item">
@@ -526,6 +618,16 @@
                     </div>
                 </div>
 
+                <!-- ── Sunburst tab ──────────────────────────────── -->
+                <div class="tab-pane fade" :id="'sunburst-pane-'+convert.id" role="tabpanel">
+                    <convert-sunburst :convert-data="convert"></convert-sunburst>
+                </div>
+
+                <!-- ── Table tab ─────────────────────────────────── -->
+                <div class="tab-pane fade" :id="'table-pane-'+convert.id" role="tabpanel">
+                    <convert-table :convert-data="convert"></convert-table>
+                </div>
+
                 <!-- ── Evaluation tab ────────────────────────────── -->
                 <div class="tab-pane fade" :id="'eval-pane-'+convert.id" role="tabpanel">
                     <evaluation-panel
@@ -535,6 +637,25 @@
                         :is-public="convert.public">
                     </evaluation-panel>
                     <evaluation-charts :convert-id="{{ convert.id }}"></evaluation-charts>
+
+                    <!-- ── Export evaluation report ─────────────────── -->
+                    <div class="d-flex align-items-center gap-2 mt-3 mb-1 px-1" style="flex-wrap:wrap;">
+                        <span style="font-size:.8rem; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">
+                            <i class="fas fa-file-export me-1"></i> Export report
+                        </span>
+                        <a href="/evaluate/export/{{ convert.id }}/markdown"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fab fa-markdown me-1"></i> Markdown
+                        </a>
+                        <a href="/evaluate/export/{{ convert.id }}/pdf"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fas fa-file-pdf me-1" style="color:#e05555;"></i> PDF
+                        </a>
+                    </div>
 
                     <!-- ── Evaluation comments ───────────────────── -->
                     <div class="cs-separator" style="margin:1.25rem 0;"></div>
@@ -792,6 +913,8 @@
     import EvaluationPanel from '/static/js/evaluationPanel.js';
     import EvaluationCharts from '/static/js/evaluate/evaluationCharts.js';
     import PushConvertToMISP from '/static/js/misp/pushConvertToMISP.js';
+    import ConvertSunburst from '/static/js/graph/convertSunburst.js';
+    import ConvertTable from '/static/js/graph/convertTable.js';
     window.showGraphSide = showGraphSide;
     window.openGraphConfigModal = openGraphConfigModal;
 
@@ -984,6 +1107,7 @@
             const history_list = ref([])
             const is_loading = ref(true)
             const current_user_is_admin = ref()
+            const is_favorite = ref(false)
 
             // Comments state
             const comments = ref([])
@@ -1331,10 +1455,38 @@
                 }
             }, { immediate: true })
 
+            async function toggleFavorite() {
+                const res = await fetch('/convert/favorite/toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
+                    },
+                    body: JSON.stringify({ convert_id: parseInt(convert_id) }),
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    is_favorite.value = data.is_favorite
+                    create_message(
+                        data.is_favorite ? 'Added to favorites' : 'Removed from favorites',
+                        data.is_favorite ? 'success-subtle' : 'secondary-subtle'
+                    )
+                }
+            }
+
+            async function loadFavoriteStatus() {
+                const res = await fetch(`/convert/favorite/status/${convert_id}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    is_favorite.value = data.is_favorite
+                }
+            }
+
             onMounted(() => {
                 fetchCurrentUser()
                 getConvert()
                 getHistory()
+                loadFavoriteStatus()
                 fetch(`/convert/get_comments?convert_id=${convert_id}`)
                     .then(r => r.json())
                     .then(d => {
@@ -1368,6 +1520,7 @@
             return {
                 convert, share_key, history_list, is_loading,
                 current_user_is_admin, copyText, downloadText,
+                is_favorite, toggleFavorite,
                 togglePublic, deleteConvert, regenerateShareKey,
                 goToDiff, formatDate, message_list, formatJson,
                 getRawInput, getRawOutput,
@@ -1394,6 +1547,8 @@
     app.component('evaluation-panel', EvaluationPanel)
     app.component('evaluation-charts', EvaluationCharts)
     app.component('push-convert-to-misp', PushConvertToMISP)
+    app.component('convert-sunburst', ConvertSunburst)
+    app.component('convert-table', ConvertTable)
     app.mount('#main-containers')
 
     // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)
