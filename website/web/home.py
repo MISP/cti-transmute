@@ -88,6 +88,11 @@ def get_public_activity():
         return jsonify({"success": False, "list": [], "message": str(e)}), 500
 
 
+@home_blueprint.route("/docs")
+def docs():
+    """Developer documentation page"""
+    return render_template("docs/index.html")
+
 @home_blueprint.route("/access_denied", methods=['GET'])
 def access_denied() -> jsonify:
     """Access denied page"""
