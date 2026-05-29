@@ -1135,7 +1135,7 @@ html.dusk-mode .btn-action:focus {
     margin-top: 1rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    overflow: hidden;
+    overflow: visible;
 }
 .ctbl-json-panel-header,
 .csb-json-panel-header {
