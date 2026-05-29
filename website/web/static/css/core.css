@@ -518,6 +518,24 @@ a.nav-link:hover {
 /* ═══════════════════════════════════════════════════════════════
    BACK TO TOP
 ═══════════════════════════════════════════════════════════════ */
+
+@keyframes btt-ride {
+  0%   { transform: translateY(0px)   rotate(-1.5deg) scaleX(1);    }
+  20%  { transform: translateY(-2px)  rotate( 0.5deg) scaleX(1.01); }
+  40%  { transform: translateY(-1px)  rotate( 1.5deg) scaleX(1);    }
+  60%  { transform: translateY(-3px)  rotate( 0deg)   scaleX(0.99); }
+  80%  { transform: translateY(-1px)  rotate(-1deg)   scaleX(1);    }
+  100% { transform: translateY(0px)   rotate(-1.5deg) scaleX(1);    }
+}
+
+@keyframes btt-ride-fast {
+  0%   { transform: translateY(0px)  rotate(-2deg) scaleX(1);    }
+  25%  { transform: translateY(-3px) rotate( 1deg) scaleX(1.02); }
+  50%  { transform: translateY(-1px) rotate( 2deg) scaleX(1);    }
+  75%  { transform: translateY(-3px) rotate( 0deg) scaleX(0.98); }
+  100% { transform: translateY(0px)  rotate(-2deg) scaleX(1);    }
+}
+
 #backToTop {
   position: fixed;
   right: 24px;
@@ -526,60 +544,74 @@ a.nav-link:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 8px 12px;
+  gap: 1px;
+  width: 44px;
+  height: 40px;
   background: var(--surface);
-  color: var(--accent);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   opacity: 0;
   visibility: hidden;
   transform: translateY(10px);
   transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease,
-              background 0.18s ease, color 0.18s ease, border-color 0.18s ease,
-              box-shadow 0.18s ease;
+              background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
   z-index: 1050;
   font-size: 0;
 }
 
-#backToTop::after {
-  content: 'TOP';
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--text-3);
+/* flèche au-dessus du vélo */
+#backToTop::before {
+  content: '\f077';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  font-size: 9px;
+  color: var(--accent);
+  line-height: 1;
+  animation: btt-arrow-up 1.2s ease-in-out infinite;
   transition: color 0.18s ease;
 }
 
+@keyframes btt-arrow-up {
+  0%, 100% { transform: translateY(0); opacity: 0.85; }
+  50%      { transform: translateY(-3px); opacity: 1; }
+}
+
 #backToTop.show {
-  opacity: 1;
+  opacity: 0.65;
   visibility: visible;
   transform: translateY(0);
 }
 
 #backToTop:hover {
+  opacity: 1;
   background: var(--accent);
-  color: #fff;
   border-color: var(--accent);
-  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.28), var(--shadow-md);
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.25), var(--shadow-md);
 }
 
-#backToTop:hover::after {
-  color: rgba(255,255,255,0.75);
+#backToTop:hover::before {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-#backToTop .fa-chevron-up {
-  font-size: 13px;
+#backToTop .fa-bicycle {
+  font-size: 16px;
+  color: var(--accent);
+  animation: btt-ride 2.4s ease-in-out infinite;
+  transition: color 0.18s ease;
+}
+
+#backToTop:hover .fa-bicycle {
+  color: #fff;
+  animation-name: btt-ride-fast;
+  animation-duration: 0.9s;
 }
 
 @media (max-width: 480px) {
   #backToTop {
     right: 14px;
     bottom: 18px;
-    padding: 7px 10px;
   }
 }
 
