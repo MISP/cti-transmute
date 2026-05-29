@@ -279,6 +279,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#table-pane-'+convert.id" role="tab">
+                            <i class="fas fa-table me-1"></i> Table
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="comments">
                             <i class="fas fa-comments me-1"></i> Comments
                             <span v-if="discuss_comments.length > 0" class="badge bg-secondary ms-1">[[ discuss_comments.length ]]</span>
@@ -617,6 +623,11 @@
                     <convert-sunburst :convert-data="convert"></convert-sunburst>
                 </div>
 
+                <!-- ── Table tab ─────────────────────────────────── -->
+                <div class="tab-pane fade" :id="'table-pane-'+convert.id" role="tabpanel">
+                    <convert-table :convert-data="convert"></convert-table>
+                </div>
+
                 <!-- ── Evaluation tab ────────────────────────────── -->
                 <div class="tab-pane fade" :id="'eval-pane-'+convert.id" role="tabpanel">
                     <evaluation-panel
@@ -903,6 +914,7 @@
     import EvaluationCharts from '/static/js/evaluate/evaluationCharts.js';
     import PushConvertToMISP from '/static/js/misp/pushConvertToMISP.js';
     import ConvertSunburst from '/static/js/graph/convertSunburst.js';
+    import ConvertTable from '/static/js/graph/convertTable.js';
     window.showGraphSide = showGraphSide;
     window.openGraphConfigModal = openGraphConfigModal;
 
@@ -1536,6 +1548,7 @@
     app.component('evaluation-charts', EvaluationCharts)
     app.component('push-convert-to-misp', PushConvertToMISP)
     app.component('convert-sunburst', ConvertSunburst)
+    app.component('convert-table', ConvertTable)
     app.mount('#main-containers')
 
     // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)

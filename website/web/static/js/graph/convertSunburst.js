@@ -1,18 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  ConvertSunburst — CTI data distribution chart
-//  Visualises the distribution of object types / attribute categories
-//  from a MISP or STIX conversion using Apache ECharts (Apache 2.0).
-//  https://echarts.apache.org/
-//
-//  Two view modes:
-//    - sunburst : radial hierarchy (category → type → count)
-//    - treemap  : rectangular density map (same data, different feel)
-//
-//  Supports input/output side switching, dark/light theme, and both
-//  MISP_TO_STIX and STIX_TO_MISP conversion directions.
+//  Apache ECharts (Apache 2.0) — https://echarts.apache.org/
+//  Features: sunburst + treemap, input/output side, dark/light theme,
+//            click-slice → JsonViewer panel (highlight, tree, format, download, copy).
 // ─────────────────────────────────────────────────────────────────────────────
+import JsonViewer from '/static/js/graph/jsonViewer.js'
 
-// Colour palette used for the top-level ring slices.
 const PALETTE = [
     '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444',
     '#06b6d4', '#a855f7', '#f97316', '#14b8a6', '#6366f1',
@@ -20,31 +13,26 @@ const PALETTE = [
     '#f43f5e', '#0891b2', '#7c3aed', '#65a30d', '#ea580c',
 ]
 
-// ── ECharts loader ────────────────────────────────────────────────────────────
-// Loaded on first use — avoids an unnecessary script tag on pages that don't
-// open the Sunburst tab.
+// ── ECharts lazy loader ───────────────────────────────────────────────────────
 let _echartsPromise = null
 function loadECharts() {
     if (window.echarts) return Promise.resolve(window.echarts)
-    if (_echartsPromise)  return _echartsPromise
+    if (_echartsPromise) return _echartsPromise
     _echartsPromise = new Promise((resolve, reject) => {
         const s = document.createElement('script')
         s.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js'
-        s.onload  = () => resolve(window.echarts)
+        s.onload = () => resolve(window.echarts)
         s.onerror = () => reject(new Error('Failed to load ECharts from CDN'))
         document.head.appendChild(s)
     })
     return _echartsPromise
 }
 
-// ── MISP JSON parser ──────────────────────────────────────────────────────────
-// Returns { tree, stats } where tree is the ECharts hierarchy:
-//   Event → [categories] → [attribute types with counts]
+// ── MISP parser — returns { tree, stats, rows } ───────────────────────────────
 function parseMisp(text) {
     let data
     try { data = JSON.parse(text) } catch { return null }
 
-    // Unwrap all common MISP JSON wrapper shapes
     const _KEYS = new Set(['info', 'uuid', 'Attribute', 'Object', 'Tag'])
     let ev = data?.Event
         ?? data?.response?.[0]?.Event
@@ -52,19 +40,21 @@ function parseMisp(text) {
         ?? (typeof data === 'object' && [..._KEYS].some(k => k in data) ? data : null)
     if (!ev) return null
 
-    // Collect every attribute, whether standalone or inside an Object
-    const allAttrs = []
-    for (const a of (ev.Attribute || [])) allAttrs.push(a)
+    // Flat list of all raw attribute objects (with origin context for the viewer)
+    const rows = []
+    for (const a of (ev.Attribute || []))
+        rows.push({ ...a, _origin: 'attribute' })
     for (const obj of (ev.Object || []))
-        for (const a of (obj.Attribute || [])) allAttrs.push(a)
+        for (const a of (obj.Attribute || []))
+            rows.push({ ...a, _object_name: obj.name, _origin: 'object' })
 
-    if (!allAttrs.length) return null
+    if (!rows.length) return null
 
-    // Group by category → type
-    const catMap = {}   // { category: { type: count } }
-    for (const a of allAttrs) {
-        const cat  = a.category || 'Other'
-        const type = a.type     || 'unknown'
+    // Group by category → type for the tree
+    const catMap = {}
+    for (const a of rows) {
+        const cat = a.category || 'Other'
+        const type = a.type || 'unknown'
         if (!catMap[cat]) catMap[cat] = {}
         catMap[cat][type] = (catMap[cat][type] || 0) + 1
     }
@@ -74,7 +64,7 @@ function parseMisp(text) {
         .sort((a, b) => {
             const sa = Object.values(b[1]).reduce((x, y) => x + y, 0)
             const sb = Object.values(a[1]).reduce((x, y) => x + y, 0)
-            return sa - sb  // largest category first
+            return sa - sb
         })
         .map(([cat, types], ci) => {
             const color = PALETTE[ci % PALETTE.length]
@@ -82,58 +72,44 @@ function parseMisp(text) {
                 .sort((a, b) => b[1] - a[1])
                 .map(([type, count]) => {
                     total += count
-                    return { name: type, value: count, itemStyle: { color } }
+                    return { name: type, value: count, itemStyle: { color }, _category: cat }
                 })
-            return {
-                name:      cat,
-                itemStyle: { color },
-                children:  typeChildren,
-            }
+            return { name: cat, itemStyle: { color }, children: typeChildren }
         })
 
     return {
-        tree:  { name: 'MISP Event', children },
+        format: 'misp',
+        tree: { name: 'MISP Event', children },
         stats: { types: Object.keys(catMap).length, total },
+        rows,
     }
 }
 
-// ── STIX JSON parser ──────────────────────────────────────────────────────────
-// Returns { tree, stats } where tree is:
-//   Bundle → [STIX object types] → [sub-types / pattern types for indicators]
+// ── STIX parser — returns { tree, stats, rows } ───────────────────────────────
 function parseStix(text) {
     let data
     try { data = JSON.parse(text) } catch { return null }
 
-    // Handle both raw bundles and MISP-style {response:[{Event:{...}}]} output
     let objects = []
     if (data?.type === 'bundle' && Array.isArray(data.objects)) {
         objects = data.objects
     } else if (Array.isArray(data)) {
-        // Could be an array of bundles
-        for (const item of data) {
+        for (const item of data)
             if (item?.type === 'bundle') objects.push(...(item.objects || []))
-        }
     }
     if (!objects.length) return null
 
-    // Group by type, then optionally by sub-category
-    const typeMap = {}   // { stix_type: { sub: count } }
+    const typeMap = {}
     for (const obj of objects) {
         const t = obj.type || 'unknown'
-        if (!typeMap[t]) typeMap[t] = {}
-
-        let sub = 'object'
-        // For indicators: try to detect the SCO type from the pattern string
+        let sub = t
         if (t === 'indicator' && obj.pattern) {
             const m = obj.pattern.match(/\[(\S+):/)
             sub = m ? m[1] : 'indicator'
-        } else if (t === 'observed-data') {
-            sub = 'observed-data'
         } else if (t === 'relationship' && obj.relationship_type) {
             sub = obj.relationship_type
-        } else {
-            sub = t
         }
+        if (!typeMap[t]) typeMap[t] = {}
         typeMap[t][sub] = (typeMap[t][sub] || 0) + 1
     }
 
@@ -150,27 +126,21 @@ function parseStix(text) {
                 .sort((a, b) => b[1] - a[1])
                 .map(([sub, count]) => {
                     total += count
-                    return { name: sub, value: count, itemStyle: { color } }
+                    return { name: sub, value: count, itemStyle: { color }, _type: type }
                 })
-
-            // If there's only one sub equal to the type itself, flatten
-            if (subChildren.length === 1 && subChildren[0].name === type) {
+            if (subChildren.length === 1 && subChildren[0].name === type)
                 return { name: type, value: subChildren[0].value, itemStyle: { color } }
-            }
-            return {
-                name:      type,
-                itemStyle: { color },
-                children:  subChildren,
-            }
+            return { name: type, itemStyle: { color }, children: subChildren }
         })
 
     return {
-        tree:  { name: 'STIX Bundle', children },
+        format: 'stix',
+        tree: { name: 'STIX Bundle', children },
         stats: { types: Object.keys(typeMap).length, total },
+        rows: objects,
     }
 }
 
-// ── Detect JSON format from text ──────────────────────────────────────────────
 function detectFormat(text) {
     if (!text) return 'unknown'
     const s = text.trimStart()
@@ -182,13 +152,11 @@ function detectFormat(text) {
 // ── Vue component ─────────────────────────────────────────────────────────────
 const ConvertSunburst = {
     delimiters: ['[[', ']]'],
-    props: {
-        convertData: { type: Object, default: null },
-    },
+    components: { 'json-viewer': JsonViewer },
+    props: { convertData: { type: Object, default: null } },
     template: `
 <div class="csb-wrapper">
 
-    <!-- Toolbar: side + view mode + stats -->
     <div class="csb-toolbar">
         <div class="csb-btn-group">
             <button class="csb-tab-btn" :class="{active: side==='input'}"  @click="setSide('input')">
@@ -199,12 +167,10 @@ const ConvertSunburst = {
             </button>
         </div>
         <div class="csb-btn-group">
-            <button class="csb-tab-btn" :class="{active: viewMode==='sunburst'}" @click="setView('sunburst')"
-                title="Radial sunburst — hierarchy by ring">
+            <button class="csb-tab-btn" :class="{active: viewMode==='sunburst'}" @click="setView('sunburst')">
                 <i class="fas fa-circle-dot me-1"></i> Sunburst
             </button>
-            <button class="csb-tab-btn" :class="{active: viewMode==='treemap'}" @click="setView('treemap')"
-                title="Treemap — area proportional to count">
+            <button class="csb-tab-btn" :class="{active: viewMode==='treemap'}" @click="setView('treemap')">
                 <i class="fas fa-table-cells me-1"></i> Treemap
             </button>
         </div>
@@ -217,13 +183,10 @@ const ConvertSunburst = {
                 <i class="fas fa-hashtag" style="font-size:.7rem;"></i>
                 [[ stats.total ]] items
             </span>
-            <span class="csb-stat-chip csb-format-chip">
-                [[ detectedFormat ]]
-            </span>
+            <span class="csb-stat-chip csb-format-chip">[[ detectedFormat ]]</span>
         </div>
     </div>
 
-    <!-- Loading / error / chart -->
     <div v-if="loading" class="csb-state">
         <div class="spinner-border spinner-border-sm me-2" style="color:var(--accent);"></div>
         Building chart…
@@ -235,9 +198,10 @@ const ConvertSunburst = {
         <i class="fas fa-circle-dot me-2" style="opacity:.3; font-size:1.4rem;"></i>
         No data to display for this side.
     </div>
-    <div v-show="stats && !loading && !error" ref="chartEl" class="csb-chart"></div>
+    <div v-show="stats && !loading && !error" ref="chartEl" class="csb-chart"
+        style="cursor:pointer;" title="Click a slice to see the matching items"></div>
 
-    <!-- Legend: top-level categories -->
+    <!-- Legend -->
     <div class="csb-legend" v-if="legendItems.length">
         <span v-for="item in legendItems" :key="item.name" class="csb-legend-item">
             <span class="csb-legend-dot" :style="{background: item.color}"></span>
@@ -246,22 +210,54 @@ const ConvertSunburst = {
         </span>
     </div>
 
+    <!-- Powered by -->
+    <div class="mt-2 text-end" style="font-size:0.72rem; color:var(--text-3);">
+        Sunburst powered by <a href="https://echarts.apache.org/" target="_blank" rel="noopener"
+            style="color:var(--text-3); text-decoration:underline; text-underline-offset:2px;">Apache ECharts</a>
+        <span style="opacity:.5; margin:0 4px;">·</span>
+        <a href="https://github.com/apache/echarts" target="_blank" rel="noopener"
+            style="color:var(--text-3); text-decoration:underline; text-underline-offset:2px;">Apache 2.0</a>
+    </div>
+
+    <!-- Slice JSON viewer -->
+    <div v-if="selectedSlice" class="csb-json-panel">
+        <div class="csb-json-panel-header">
+            <span>
+                <i class="fas fa-code me-2" style="color:var(--accent);"></i>
+                <strong>[[ selectedSlice.name ]]</strong>
+                <span style="color:var(--text-3); font-size:.8rem; margin-left:.5rem;">
+                    — [[ selectedSlice.items.length ]] item(s)
+                    <span v-if="selectedSlice.truncated"> (first 200 shown)</span>
+                </span>
+            </span>
+            <button class="csb-json-close" @click="selectedSlice = null">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <json-viewer
+            :json="selectedSlice.items"
+            :filename="selectedSlice.name">
+        </json-viewer>
+    </div>
+
 </div>
     `,
 
     setup(props) {
         const { ref, watch, onMounted, onUnmounted, computed } = Vue
 
-        const side         = ref('input')
-        const viewMode     = ref('sunburst')
-        const loading      = ref(false)
-        const error        = ref('')
-        const stats        = ref(null)
-        const legendItems  = ref([])
-        const chartEl      = ref(null)
-        let   chartInst    = null   // ECharts instance
+        const side = ref('input')
+        const viewMode = ref('sunburst')
+        const loading = ref(false)
+        const error = ref('')
+        const stats = ref(null)
+        const legendItems = ref([])
+        const chartEl = ref(null)
+        const selectedSlice = ref(null)
+        let chartInst = null
+        let parsedData = null   // holds { format, tree, rows } for click handler
+        let resizeObs = null
 
-        // ── Detect format of the currently displayed side ─────────────────────
         const detectedFormat = computed(() => {
             if (!props.convertData) return ''
             const text = side.value === 'input'
@@ -271,197 +267,194 @@ const ConvertSunburst = {
             return f === 'misp' ? 'MISP' : f === 'stix' ? 'STIX' : ''
         })
 
-        // ── Detect current theme (dark / light) for ECharts ──────────────────
         function isDark() {
             const cls = document.documentElement.className
             return cls.includes('dark') || cls.includes('dusk')
         }
 
-        // ── Build ECharts option for sunburst ─────────────────────────────────
         function buildSunburstOption(tree, dark) {
             return {
                 backgroundColor: 'transparent',
                 tooltip: {
-                    trigger:   'item',
-                    formatter: p => {
-                        const val = p.data?.value ?? ''
-                        return `<strong>${p.name}</strong>${val ? '<br>' + val + ' item(s)' : ''}`
-                    },
+                    trigger: 'item',
+                    formatter: p => `<strong>${p.name}</strong>${p.data?.value ? '<br>' + p.data.value + ' item(s)' : ''}`,
                 },
                 series: [{
-                    type:           'sunburst',
-                    data:           tree.children,
-                    radius:         ['15%', '90%'],
-                    nodeClick:      'zoomToNode',
-                    sort:           undefined,
-                    emphasis:       { focus: 'ancestor' },
+                    type: 'sunburst',
+                    data: tree.children,
+                    radius: ['15%', '90%'],
+                    nodeClick: 'zoomToNode',
+                    sort: undefined,
+                    emphasis: { focus: 'ancestor' },
                     levels: [
                         {},
-                        {
-                            r0: '15%', r: '50%',
-                            label: { rotate: 'tangential', fontSize: 11, fontWeight: 600 },
-                            itemStyle: { borderWidth: 2 },
-                        },
-                        {
-                            r0: '50%', r: '90%',
-                            label: {
-                                align: 'right', fontSize: 10,
-                                formatter: p => p.data.value > 0 ? `${p.name}\n${p.data.value}` : p.name,
-                            },
-                            itemStyle: { borderWidth: 1 },
-                        },
+                        { r0: '15%', r: '50%', label: { rotate: 'tangential', fontSize: 11, fontWeight: 600 }, itemStyle: { borderWidth: 2 } },
+                        { r0: '50%', r: '90%', label: { align: 'right', fontSize: 10, formatter: p => p.data.value > 0 ? `${p.name}\n${p.data.value}` : p.name }, itemStyle: { borderWidth: 1 } },
                     ],
-                    label: {
-                        color: dark ? '#e2e8f0' : '#1e293b',
-                    },
+                    label: { color: dark ? '#e2e8f0' : '#1e293b' },
                 }],
             }
         }
 
-        // ── Build ECharts option for treemap ──────────────────────────────────
         function buildTreemapOption(tree, dark) {
-            // Flatten to one level for treemap legibility
-            const flatData = tree.children.map(cat => {
-                const subtotal = cat.children
-                    ? cat.children.reduce((s, c) => s + (c.value || 0), 0)
-                    : (cat.value || 0)
-                return {
-                    name:      cat.name,
-                    value:     subtotal,
-                    itemStyle: cat.itemStyle,
-                    children:  cat.children,
-                }
-            })
+            const flatData = tree.children.map(cat => ({
+                name: cat.name,
+                value: cat.children ? cat.children.reduce((s, c) => s + (c.value || 0), 0) : (cat.value || 0),
+                itemStyle: cat.itemStyle,
+                children: cat.children,
+            }))
             return {
                 backgroundColor: 'transparent',
-                tooltip: {
-                    formatter: p => `<strong>${p.name}</strong><br>${p.value} item(s)`,
-                },
+                tooltip: { formatter: p => `<strong>${p.name}</strong><br>${p.value} item(s)` },
                 series: [{
-                    type:           'treemap',
-                    data:           flatData,
-                    width:          '100%',
-                    height:         '100%',
-                    roam:           false,
-                    nodeClick:      'zoomToNode',
-                    breadcrumb:     { show: true, height: 24 },
-                    label: {
-                        show:     true,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color:    dark ? '#e2e8f0' : '#1e293b',
-                        formatter: p => `${p.name}\n${p.value}`,
-                    },
-                    upperLabel: {
-                        show:      true,
-                        height:    28,
-                        fontSize:  11,
-                        fontWeight: 700,
-                        color:     '#fff',
-                    },
+                    type: 'treemap',
+                    data: flatData,
+                    width: '100%',
+                    height: '100%',
+                    roam: false,
+                    nodeClick: 'zoomToNode',
+                    breadcrumb: { show: true, height: 24 },
+                    label: { show: true, fontSize: 12, fontWeight: 600, color: dark ? '#e2e8f0' : '#1e293b', formatter: p => `${p.name}\n${p.value}` },
+                    upperLabel: { show: true, height: 28, fontSize: 11, fontWeight: 700, color: '#fff' },
                     levels: [
-                        {
-                            itemStyle: { borderWidth: 3, borderColor: dark ? '#1a1f2e' : '#f1f5f9', gapWidth: 3 },
-                            upperLabel: { show: true },
-                        },
-                        {
-                            itemStyle: { borderWidth: 1, borderColor: dark ? '#252d3d' : '#e2e8f0', gapWidth: 1 },
-                        },
+                        { itemStyle: { borderWidth: 3, borderColor: dark ? '#1a1f2e' : '#f1f5f9', gapWidth: 3 }, upperLabel: { show: true } },
+                        { itemStyle: { borderWidth: 1, borderColor: dark ? '#252d3d' : '#e2e8f0', gapWidth: 1 } },
                     ],
                 }],
             }
         }
 
-        // ── Main render ───────────────────────────────────────────────────────
+        // ── Find rows matching a clicked slice name ───────────────────────────
+        function getSliceItems(name) {
+            if (!parsedData) return []
+            const { format, rows, tree } = parsedData
+
+            if (format === 'misp') {
+                // name could be a category or an attribute type
+                const isCat = tree.children.some(c => c.name === name)
+                return isCat
+                    ? rows.filter(r => r.category === name)
+                    : rows.filter(r => r.type === name)
+            } else {
+                // name could be a STIX object type or a sub-type (relationship_type / SCO)
+                const isType = tree.children.some(c => c.name === name)
+                if (isType) return rows.filter(r => r.type === name)
+                // sub-type: indicator pattern type or relationship type
+                return rows.filter(r => {
+                    if (r.type === 'indicator' && r.pattern) {
+                        const m = r.pattern.match(/\[(\S+):/)
+                        return m && m[1] === name
+                    }
+                    return r.relationship_type === name
+                })
+            }
+        }
+
         async function render() {
             if (!props.convertData) return
             loading.value = true
-            error.value   = ''
-            stats.value   = null
+            error.value = ''
+            stats.value = null
             legendItems.value = []
+            selectedSlice.value = null
+            parsedData = null
 
-            // Choose the right side
             const text = side.value === 'input'
                 ? props.convertData.input_text
                 : props.convertData.output_text
 
-            if (!text) {
-                loading.value = false
-                return
-            }
+            if (!text) { loading.value = false; return }
 
-            // Parse according to detected format
-            const fmt    = detectFormat(text)
+            const fmt = detectFormat(text)
             const parsed = fmt === 'misp' ? parseMisp(text)
-                         : fmt === 'stix' ? parseStix(text)
-                         : null
+                : fmt === 'stix' ? parseStix(text)
+                    : null
 
             if (!parsed) {
-                error.value   = 'Could not parse data — unsupported format or empty content.'
+                error.value = 'Could not parse data — unsupported format or empty content.'
                 loading.value = false
                 return
             }
 
+            parsedData = parsed
             stats.value = parsed.stats
 
-            // Build legend from top-level tree children
-            legendItems.value = (parsed.tree.children || []).map(c => {
-                const total = c.children
-                    ? c.children.reduce((s, cc) => s + (cc.value || 0), 0)
-                    : (c.value || 0)
-                return { name: c.name, color: c.itemStyle?.color ?? '#888', total }
-            })
+            legendItems.value = (parsed.tree.children || []).map(c => ({
+                name: c.name,
+                color: c.itemStyle?.color ?? '#888',
+                total: c.children ? c.children.reduce((s, cc) => s + (cc.value || 0), 0) : (c.value || 0),
+            }))
 
-            // Load ECharts (cached after first load)
             let ec
             try { ec = await loadECharts() }
-            catch (e) {
-                error.value   = 'Could not load ECharts from CDN. Check your internet connection.'
+            catch {
+                error.value = 'Could not load ECharts from CDN. Check your internet connection.'
                 loading.value = false
                 return
             }
 
             loading.value = false
-
-            // Wait for the DOM element to be visible (tab may be hidden)
             await Vue.nextTick()
             if (!chartEl.value) return
 
             const dark = isDark()
-
-            // Destroy previous instance if any, then create fresh
             if (chartInst) { chartInst.dispose(); chartInst = null }
             chartInst = ec.init(chartEl.value, dark ? 'dark' : null)
-            chartInst.showLoading({ text: '', color: 'var(--accent)', maskColor: 'transparent' })
 
             const option = viewMode.value === 'sunburst'
                 ? buildSunburstOption(parsed.tree, dark)
                 : buildTreemapOption(parsed.tree, dark)
 
-            chartInst.hideLoading()
             chartInst.setOption(option, true)
+
+            // Click handler — find raw items for the clicked slice
+            chartInst.on('click', params => {
+                const name = params.data?.name || params.name
+                if (!name || name === 'MISP Event' || name === 'STIX Bundle') return
+                const all = getSliceItems(name)
+                const items = all.slice(0, 200)
+                selectedSlice.value = all.length
+                    ? { name, items, truncated: all.length > 200 }
+                    : null
+            })
+
+            // If the tab was hidden on init, ECharts has 0 dimensions.
+            // ResizeObserver fires when the container becomes visible → resize.
+            if (resizeObs) resizeObs.disconnect()
+            resizeObs = new ResizeObserver(() => {
+                if (chartInst && chartEl.value?.offsetWidth > 0) {
+                    chartInst.resize()
+                }
+            })
+            resizeObs.observe(chartEl.value)
         }
 
-        function setSide(s)  { side.value = s;     render() }
-        function setView(v)  { viewMode.value = v; render() }
+        function setSide(s) { side.value = s; render() }
+        function setView(v) { viewMode.value = v; render() }
 
-        // Resize when window changes
         function onResize() { chartInst?.resize() }
         window.addEventListener('resize', onResize)
-
-        // Re-render when convert data arrives
-        watch(() => props.convertData, v => { if (v) render() }, { deep: false })
-
-        // Listen to theme changes
         document.documentElement.addEventListener('themechange', render)
 
         onUnmounted(() => {
             window.removeEventListener('resize', onResize)
             document.documentElement.removeEventListener('themechange', render)
+            resizeObs?.disconnect()
             chartInst?.dispose()
         })
 
-        return { side, viewMode, loading, error, stats, legendItems, detectedFormat, chartEl, setSide, setView }
+        // immediate: true — fires right on mount when convertData is already set
+        watch(
+            () => props.convertData,
+            v => { if (v?.input_text || v?.output_text) render() },
+            { immediate: true }
+        )
+
+        return {
+            side, viewMode, loading, error, stats, legendItems, detectedFormat,
+            chartEl, selectedSlice,
+            setSide, setView,
+        }
     },
 }
 
