@@ -469,7 +469,9 @@ def get_page_history():
     exact_match  = request.args.get('exact_match', 'false', type=str) == 'true'
     tag_names_raw = request.args.get('tag_names', '', type=str)
     tag_names = [t.strip() for t in tag_names_raw.split(',') if t.strip()] if tag_names_raw else None
-    vis_filter = request.args.get('vis_filter', '', type=str) or None
+    vis_filter      = request.args.get('vis_filter', '', type=str) or None
+    favorites_only  = request.args.get('favorites_only', 'false', type=str) == 'true'
+    favorites_user_id = current_user.id if (favorites_only and current_user.is_authenticated) else None
 
     pagination = ConvertModel.get_convert_page(
         page,
@@ -483,6 +485,8 @@ def get_page_history():
         exact_match=exact_match,
         tag_names=tag_names,
         vis_filter=vis_filter,
+        favorites_only=favorites_only,
+        favorites_user_id=favorites_user_id,
     )
     items = pagination.items
     convert_list = [item.to_json_list() for item in items]
@@ -490,13 +494,84 @@ def get_page_history():
     # Batch load tags for all returned converts
     ids = [item.id for item in items]
     tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+
+    # Batch load favorites for current user
+    fav_ids = ConvertModel.get_favorite_ids(current_user.id) if current_user.is_authenticated else set()
+
     for entry in convert_list:
-        entry['tags'] = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
+        entry['tags']        = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
+        entry['is_favorite'] = entry['id'] in fav_ids
 
     return {
         "list": convert_list,
         "total_page": pagination.pages,
     }, 200
+
+
+@convert_blueprint.route("/favorite/toggle", methods=['POST'])
+@login_required
+def toggle_favorite():
+    data       = request.get_json(silent=True) or {}
+    convert_id = data.get("convert_id")
+    if not convert_id:
+        return {"success": False, "error": "Missing convert_id"}, 400
+    convert = ConvertModel.get_convert(convert_id)
+    if not convert:
+        return {"success": False, "error": "Not found"}, 404
+    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+        return {"success": False, "error": "Forbidden"}, 403
+    is_fav = ConvertModel.toggle_favorite(current_user.id, convert_id)
+    AccountModel.create_system_log(
+        "convert_favorited" if is_fav else "convert_unfavorited",
+        actor_id=current_user.id,
+        actor_name=current_user.first_name,
+        target_type="convert",
+        target_id=convert_id,
+        target_name=convert.name,
+        details=f"{'Added to' if is_fav else 'Removed from'} favorites by {current_user.first_name}",
+    )
+    return {"success": True, "is_favorite": is_fav}, 200
+
+
+@convert_blueprint.route("/favorite/status/<int:convert_id>", methods=['GET'])
+@login_required
+def favorite_status(convert_id):
+    is_fav = ConvertModel.is_favorite(current_user.id, convert_id)
+    return {"success": True, "is_favorite": is_fav}, 200
+
+
+@convert_blueprint.route("/most_favorited", methods=['GET'])
+def most_favorited():
+    """Return the most favorited public converts, ordered by favorite count desc."""
+    from website.db_class.db import ConvertFavorite
+    limit = request.args.get('limit', 10, type=int)
+
+    # Subquery: count favorites per convert (public only)
+    fav_counts = (
+        db.session.query(
+            ConvertFavorite.convert_id,
+            func.count(ConvertFavorite.id).label("fav_count"),
+        )
+        .group_by(ConvertFavorite.convert_id)
+        .subquery()
+    )
+
+    results = (
+        db.session.query(Convert, fav_counts.c.fav_count)
+        .join(fav_counts, Convert.id == fav_counts.c.convert_id)
+        .filter(Convert.is_active == True, Convert.public == True)
+        .order_by(fav_counts.c.fav_count.desc())
+        .limit(limit)
+        .all()
+    )
+
+    items = []
+    for convert, fav_count in results:
+        entry = convert.to_json_list()
+        entry["fav_count"] = fav_count
+        items.append(entry)
+
+    return {"success": True, "list": items}, 200
 
 
 @convert_blueprint.route("/search_in_content", methods=['GET'])

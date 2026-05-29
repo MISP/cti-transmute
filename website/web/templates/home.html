@@ -312,6 +312,7 @@
         eval_reaction:              { icon: 'fas fa-star',         dot: 'dot-amber'  },
         convert_edited:             { icon: 'fas fa-pen',          dot: 'dot-orange' },
         convert_visibility_changed: { icon: 'fas fa-globe',        dot: 'dot-teal'   },
+        convert_favorited:          { icon: 'fas fa-star',         dot: 'dot-amber'  },
     };
     const EVENT_VERBS = {
         convert_created:            'created',
@@ -320,6 +321,7 @@
         eval_reaction:              'reacted to',
         convert_edited:             'updated',
         convert_visibility_changed: 'made public',
+        convert_favorited:          'favorited',
     };
 
     function eventIcon(t)     { return (EVENT_CONFIG[t] || { icon: 'fas fa-circle' }).icon; }
@@ -375,6 +377,15 @@
                     setTimeout(updateScrollState, 80);
                     startAutoScroll();
                 }
+            }
+
+            async function fetchMostFavorited() {
+                try {
+                    const res  = await fetch('/convert/most_favorited?limit=8');
+                    const data = await res.json();
+                    if (data.success) fav_list.value = data.list || [];
+                } catch (e) { console.error(e); }
+                finally { fav_loading.value = false; }
             }
 
             async function fetchActivity() {

@@ -3,7 +3,7 @@ import json
 from sqlite3 import IntegrityError
 import uuid
 from flask_login import AnonymousUserMixin, current_user
-from website.db_class.db import Comment, CommentReaction, Convert, ConvertHistory, ConvertReport, GraphConfig
+from website.db_class.db import Comment, CommentReaction, Convert, ConvertFavorite, ConvertHistory, ConvertReport, GraphConfig
 from website.web import db
 from sqlalchemy import desc, asc, or_, func
 import datetime
@@ -130,7 +130,7 @@ def list_all():
     return Convert.query.all()
 
 
-def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False, tag_names=None, vis_filter=None):
+def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False, tag_names=None, vis_filter=None, favorites_only=False, favorites_user_id=None):
     """
     Return paginated conversion history with optional filter, sort and ownership filtering.
     - search_scope: 'all' | 'name' | 'description' | 'content'
@@ -226,6 +226,15 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
                 .subquery()
             )
             query = query.filter(Convert.id.in_(subq))
+
+    # Favorites filter
+    if favorites_only and favorites_user_id:
+        fav_subq = (
+            db.session.query(ConvertFavorite.convert_id)
+            .filter(ConvertFavorite.user_id == favorites_user_id)
+            .subquery()
+        )
+        query = query.filter(Convert.id.in_(fav_subq))
 
     # Pagination
     return query.paginate(page=page, per_page=10)
@@ -952,3 +961,33 @@ def delete_graph_config(config_id, user_id, is_admin):
     except Exception as e:
         db.session.rollback()
         return False, str(e)
+
+
+###################################
+#   Favorites                     #
+###################################
+
+def toggle_favorite(user_id: int, convert_id: int) -> bool:
+    """Toggle favorite for a user on a convert. Returns True if now favorited, False if removed."""
+    existing = ConvertFavorite.query.filter_by(user_id=user_id, convert_id=convert_id).first()
+    if existing:
+        db.session.delete(existing)
+        db.session.commit()
+        return False
+    db.session.add(ConvertFavorite(
+        user_id=user_id,
+        convert_id=convert_id,
+        created_at=datetime.datetime.now(tz=datetime.timezone.utc),
+    ))
+    db.session.commit()
+    return True
+
+
+def get_favorite_ids(user_id: int) -> set:
+    """Return the set of convert IDs favorited by this user."""
+    rows = ConvertFavorite.query.filter_by(user_id=user_id).with_entities(ConvertFavorite.convert_id).all()
+    return {r.convert_id for r in rows}
+
+
+def is_favorite(user_id: int, convert_id: int) -> bool:
+    return ConvertFavorite.query.filter_by(user_id=user_id, convert_id=convert_id).first() is not None

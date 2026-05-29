@@ -751,3 +751,56 @@
      color: var(--text-2);
      font-size: 0.875rem;
  }
+/* ── Action buttons (Refresh, Download) ─────────────────────── */
+.btn-action {
+    color: #0f766e;
+    border-color: #0f766e;
+    background: transparent;
+    transition: background var(--t), color var(--t), border-color var(--t);
+}
+.btn-action:hover,
+.btn-action:focus {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #fff;
+}
+
+html.dark-mode .btn-action,
+html.dusk-mode .btn-action {
+    color: #2dd4bf;
+    border-color: #2dd4bf;
+}
+html.dark-mode .btn-action:hover,
+html.dark-mode .btn-action:focus,
+html.dusk-mode .btn-action:hover,
+html.dusk-mode .btn-action:focus {
+    background: #2dd4bf;
+    border-color: #2dd4bf;
+    color: #0f172a;
+}
+
+/* ── Favorite star button on detail page ─────────────────────── */
+.detail-favorite-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    transition: all var(--t);
+}
+.detail-favorite-btn:hover {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: rgba(245,158,11,.08);
+}
+.detail-favorite-btn.active {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: rgba(245,158,11,.12);
+}

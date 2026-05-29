@@ -35,6 +35,9 @@
                 <span v-if="filter_type" class="filter-chip-active">
                     [[ filter_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
                 </span>
+                <span v-if="favorites_only" class="filter-chip-active" style="color:#f59e0b; border-color:#f59e0b;">
+                    <i class="fas fa-star" style="font-size:0.65rem;"></i> Favorites
+                </span>
                 <span v-if="date_from || date_to" class="filter-chip-active">
                     <i class="fas fa-calendar-alt" style="font-size:0.65rem;"></i>
                     [[ date_from || '…' ]] / [[ date_to || '…' ]]
@@ -117,7 +120,7 @@
                 </div>
             </div>
 
-            <!-- Row 2: Dates + Mine -->
+            <!-- Row 2: Dates + Visibility + Toggles -->
             <div class="filter-row-dates mb-3">
 
                 <!-- Date from -->
@@ -136,7 +139,44 @@
                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
                 </div>
 
-                <!-- Mine only -->
+                {% if current_user.is_authenticated %}
+                <!-- Visibility — more room now -->
+                <div class="filter-mine-wrap">
+                    <div class="filter-label">Visibility</div>
+                    <select class="form-select form-select-sm" v-model="vis_filter" @change="onSearchInput"
+                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
+                        <option value="">All</option>
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                    </select>
+                </div>
+
+                <!-- Mine only + Favorites side by side -->
+                <div class="filter-toggles-group">
+                    <div class="filter-label">Filters</div>
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
+                            <input class="form-check-input" type="checkbox" id="myConvertsOnly"
+                                   v-model="only_mine" @change="onSearchInput"
+                                   style="width:2.2rem; height:1.2rem; cursor:pointer;">
+                            <label class="form-check-label" for="myConvertsOnly"
+                                   style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
+                                Mine only
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
+                            <input class="form-check-input" type="checkbox" id="favoritesOnly"
+                                   v-model="favorites_only" @change="onSearchInput"
+                                   style="width:2.2rem; height:1.2rem; cursor:pointer;">
+                            <label class="form-check-label" for="favoritesOnly"
+                                   style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
+                                Favorites
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <!-- Mine only (non-authenticated: no favorites) -->
                 <div class="filter-mine-wrap">
                     <div class="filter-label">Mine only</div>
                     <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
@@ -148,18 +188,6 @@
                             [[ only_mine ? 'On' : 'Off' ]]
                         </label>
                     </div>
-                </div>
-
-                {% if current_user.is_authenticated %}
-                <!-- Public/Private quick filter -->
-                <div class="filter-mine-wrap">
-                    <div class="filter-label">Visibility</div>
-                    <select class="form-select form-select-sm" v-model="vis_filter" @change="onSearchInput"
-                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
-                        <option value="">All</option>
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
-                    </select>
                 </div>
                 {% endif %}
             </div>
@@ -264,6 +292,13 @@
 
                     <!-- Right: actions -->
                     <div class="hc-actions" @click.stop>
+                        {% if current_user.is_authenticated %}
+                        <button class="hc-favorite-btn" @click.stop="toggleFavorite(item)"
+                            :class="{ active: item.is_favorite }"
+                            :title="item.is_favorite ? 'Remove from favorites' : 'Add to favorites'">
+                            <i :class="item.is_favorite ? 'fas fa-star' : 'far fa-star'"></i>
+                        </button>
+                        {% endif %}
                         <button class="hc-expand-btn" @click.stop="toggleExpand(item.id)"
                             :class="{ active: expandedIds.has(item.id) }"
                             :title="expandedIds.has(item.id) ? 'Collapse' : 'Show more'">
@@ -400,7 +435,7 @@
 <script type="module">
 import EvaluationPanel from '/static/js/evaluationPanel.js'
     const { createApp, ref, computed, watch } = Vue
-    import { display_toast, message_list } from '/static/js/toaster.js'
+    import { display_toast, create_message, message_list } from '/static/js/toaster.js'
     import AppPagination from '/static/js/pagination.js'
     import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js'
     import MultiTagFilter from '/static/js/tags/multiTagFilter.js'
@@ -436,6 +471,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             const snippets           = ref({})
             const selectedTagNames   = ref([])
             const vis_filter         = ref('')
+            const favorites_only     = ref(false)
             const filtersOpen        = ref(true)
             const expandedIds        = ref(new Set())
             const tagExpandedIds     = ref(new Set())
@@ -466,6 +502,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 if (date_to.value)               n++
                 if (only_mine.value)             n++
                 if (vis_filter.value)            n++
+                if (favorites_only.value)        n++
                 if (selectedTagNames.value.length > 0) n++
                 return n
             })
@@ -552,8 +589,9 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     exact_match:  exact_match.value  || false,
                     date_from:    date_from.value    || '',
                     date_to:      date_to.value      || '',
-                    tag_names:    selectedTagNames.value.join(','),
-                    vis_filter:   vis_filter.value || '',
+                    tag_names:      selectedTagNames.value.join(','),
+                    vis_filter:     vis_filter.value || '',
+                    favorites_only: favorites_only.value,
                 })
                 const res = await fetch('/convert/get_convert_page_history?' + params.toString())
                 if (res.ok) {
@@ -609,6 +647,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 date_from.value        = ''
                 date_to.value          = ''
                 vis_filter.value       = ''
+                favorites_only.value   = false
                 selectedTagNames.value = []
                 snippets.value         = {}
                 fetchConvertHistory(1)
@@ -619,6 +658,27 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 searchDebounce = setTimeout(() => fetchConvertHistory(1), 350)
             }
 
+            async function toggleFavorite(item) {
+                const res = await fetch('/convert/favorite/toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
+                    },
+                    body: JSON.stringify({ convert_id: item.id }),
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    item.is_favorite = data.is_favorite
+                    create_message(
+                        data.is_favorite ? 'Added to favorites' : 'Removed from favorites',
+                        data.is_favorite ? 'success-subtle' : 'secondary-subtle'
+                    )
+                    if (favorites_only.value && !data.is_favorite) {
+                        fetchConvertHistory(current_page.value)
+                    }
+                }
+            }
 
             return {
                 message_list, convert_history, current_page, total_pages,
@@ -627,6 +687,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
+                favorites_only, toggleFavorite,
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
             }
         }

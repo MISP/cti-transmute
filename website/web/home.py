@@ -60,6 +60,7 @@ def get_public_activity():
     PUBLIC_EVENTS = [
         'convert_created', 'eval_like', 'eval_dislike',
         'eval_reaction', 'convert_edited', 'convert_visibility_changed',
+        'convert_favorited',
     ]
     try:
         logs = (

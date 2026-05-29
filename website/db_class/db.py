@@ -495,6 +495,21 @@ class ConvertTagAssociation(db.Model):
         }
 
 
+class ConvertFavorite(db.Model):
+    """Stores user favorites on converts."""
+    __tablename__ = "convert_favorite"
+
+    id         = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("user.id",    ondelete="CASCADE"), nullable=False, index=True)
+    convert_id = db.Column(db.Integer, db.ForeignKey("convert.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = db.Column(db.DateTime)
+
+    __table_args__ = (db.UniqueConstraint("user_id", "convert_id", name="uq_favorite_user_convert"),)
+
+    user    = db.relationship("User",    backref=db.backref("favorites", lazy="dynamic"))
+    convert = db.relationship("Convert", backref=db.backref("favorited_by", lazy="dynamic", cascade="all, delete-orphan"))
+
+
 class ConvertEvaluation(db.Model):
     """Stores like/dislike/reaction evaluations on converts."""
     __tablename__ = "convert_evaluation"

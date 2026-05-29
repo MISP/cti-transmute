@@ -648,3 +648,35 @@
 .filter-type-btn.active img {
     filter: brightness(0) invert(1);
 }
+
+/* ── Favorite star button on cards ──────────────────────────── */
+.hc-favorite-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all var(--t);
+    flex-shrink: 0;
+}
+.hc-favorite-btn:hover {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: rgba(245,158,11,.08);
+}
+.hc-favorite-btn.active {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: rgba(245,158,11,.12);
+}
+
+/* ── Mine only + Favorites side-by-side group ───────────────── */
+.filter-toggles-group {
+    min-width: 0;
+}

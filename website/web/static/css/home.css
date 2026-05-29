@@ -690,3 +690,55 @@ html.dark-mode .dot-teal   { background: rgba(45,212,191,0.12);  border-color: r
     .home-carousel-btn   { display: none; }
     .home-recent-card    { width: 200px; }
 }
+
+/* ── Most Favorited grid ─────────────────────────────────────── */
+.home-fav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.home-fav-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 15px;
+    text-decoration: none;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: border-color var(--t), box-shadow var(--t);
+}
+.home-fav-card:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 1px #f59e0b, var(--shadow-sm);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.home-fav-count {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #f59e0b;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.home-fav-name {
+    font-size: .88rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.home-fav-desc {
+    font-size: .78rem;
+    color: var(--text-2);
+}
+
+.home-fav-author {
+    font-size: .72rem;
+    color: var(--text-3);
+    margin-top: 2px;
+}
