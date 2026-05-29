@@ -804,3 +804,101 @@ html.dusk-mode .btn-action:focus {
     border-color: #f59e0b;
     background: rgba(245,158,11,.12);
 }
+
+/* ── ConvertSunburst component ───────────────────────────────── */
+.csb-wrapper {
+    padding: 1rem;
+}
+.csb-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.csb-btn-group {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+.csb-tab-btn {
+    padding: 5px 13px;
+    font-size: .8rem;
+    font-weight: 600;
+    border: none;
+    background: var(--surface);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: background var(--t), color var(--t);
+    border-right: 1px solid var(--border);
+}
+.csb-tab-btn:last-child { border-right: none; }
+.csb-tab-btn:hover      { background: var(--surface-2); color: var(--text); }
+.csb-tab-btn.active     { background: var(--accent); color: #fff; }
+
+.csb-stats {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+.csb-stat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    font-size: .75rem;
+    font-weight: 600;
+    border-radius: 20px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+}
+.csb-format-chip {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.csb-chart {
+    width: 100%;
+    height: 520px;
+}
+
+.csb-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    font-size: .85rem;
+    color: var(--text-3);
+    gap: 6px;
+}
+.csb-state--error { color: var(--danger); }
+
+.csb-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem .75rem;
+    padding: .75rem 0 .25rem;
+    border-top: 1px solid var(--border);
+    margin-top: .5rem;
+}
+.csb-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: .78rem;
+    color: var(--text-2);
+}
+.csb-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.csb-legend-count {
+    color: var(--text-3);
+    font-size: .73rem;
+}
