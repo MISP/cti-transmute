@@ -23,7 +23,7 @@ A video walkthrough of CTI-Transmute is available on YouTube. It covers the main
 
 | Dashboard Overview | Component Details | Asset Management |
 | :---: | :---: | :---: |
-| <img src="https://github.com/user-attachments/assets/74f7c904-85f5-4ec5-8c87-83c1d3981c0a" width="400"> | <img src="https://github.com/user-attachments/assets/4cde5311-7c1a-4c09-9a99-08cb3c56b49f" width="400"> | <img src="https://github.com/user-attachments/assets/1fe782ca-91f2-4ab8-a563-8a5656a8cfac" width="400"> |
+| <img src="docs/screenshots/home.png" width="400"> | <img src="docs/screenshots/convert_detail.png" width="400"> | <img src="docs/screenshots/history.png" width="400"> |
 
 
 
