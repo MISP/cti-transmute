@@ -17,6 +17,8 @@ Commands:
 
 import datetime
 import os
+import secrets
+import string
 import subprocess
 import sys
 from pathlib import Path
@@ -107,6 +109,10 @@ def cmd_help() -> None:
               {D}→ uv run manage db          # same as flask db upgrade{R}
               {D}→ uv run manage db migrate  # generate a new migration{R}
               {D}→ uv run manage db downgrade{R}
+
+  {G}create_admin{R}  {D}Create an emergency admin account (first name, last name, email){R}
+              {D}Generates a random password and shows it once.{R}
+              {D}→ Use this if all admin accounts have been deleted{R}
 
   {G}help{R}      {D}Show this message{R}
 
@@ -265,6 +271,114 @@ def cmd_deploy() -> None:
     cmd_start()
 
 
+def cmd_create_admin() -> None:
+    """Create an emergency admin account when all admins have been deleted."""
+    W = "\033[1;37m"
+    G = "\033[1;32m"
+    Y = "\033[1;33m"
+    R = "\033[0m"
+
+    header("Create Emergency Admin Account")
+    print(f"  {W}This command creates a new admin user directly in the database.{R}")
+    print(f"  {Y}Use this only if all admin accounts have been deleted.{R}\n")
+
+    # ── Collect inputs ────────────────────────────────────────────────────────
+    first_name = input("  First name : ").strip()
+    if not first_name:
+        error("First name is required.")
+        sys.exit(1)
+
+    last_name = input("  Last name  : ").strip()
+
+    email = input("  Email      : ").strip()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        error("Invalid email address.")
+        sys.exit(1)
+
+    # ── Generate password & API key ───────────────────────────────────────────
+    alphabet = string.ascii_letters + string.digits + "!@#$%&*"
+    password = "".join(secrets.choice(alphabet) for _ in range(20))
+    api_key  = secrets.token_hex(30)
+
+    # Hash the password with werkzeug (same as the app)
+    try:
+        from werkzeug.security import generate_password_hash
+    except ImportError:
+        error("werkzeug is not installed. Run 'uv sync' first.")
+        sys.exit(1)
+    password_hash = generate_password_hash(password)
+
+    # ── Connect to PostgreSQL and insert ──────────────────────────────────────
+    try:
+        import psycopg2
+    except ImportError:
+        error("psycopg2 is not installed. Run 'uv sync' first.")
+        sys.exit(1)
+
+    info("Connecting to the database…")
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST, port=int(DB_PORT),
+            user=DB_USER, password=DB_PASSWORD,
+            dbname=DB_NAME,
+        )
+    except Exception as e:
+        error(f"Could not connect to the database: {e}")
+        sys.exit(1)
+
+    try:
+        cur = conn.cursor()
+
+        # Check if email already exists
+        cur.execute('SELECT id, admin FROM "user" WHERE email = %s', (email,))
+        existing = cur.fetchone()
+        if existing:
+            user_id, is_admin = existing
+            if is_admin:
+                error(f"An admin account with email '{email}' already exists (id={user_id}).")
+            else:
+                error(f"A non-admin account with email '{email}' already exists (id={user_id}).")
+                info("To promote it to admin, run:")
+                print(f'\n    UPDATE "user" SET admin = true WHERE email = \'{email}\';\n')
+            conn.close()
+            sys.exit(1)
+
+        cur.execute(
+            """
+            INSERT INTO "user"
+                (first_name, last_name, email, admin, password_hash, api_key, is_connected)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (first_name, last_name, email, True, password_hash, api_key, False),
+        )
+        new_id = cur.fetchone()[0]
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        error(f"Database error: {e}")
+        sys.exit(1)
+    finally:
+        conn.close()
+
+    # ── Display result ────────────────────────────────────────────────────────
+    border = "─" * 52
+    print(f"""
+\033[1;32m  {border}
+  ✓  Admin account created successfully
+  {border}\033[0m
+
+  {W}ID         :{R}  {new_id}
+  {W}Name       :{R}  {first_name} {last_name}
+  {W}Email      :{R}  {email}
+  {W}Password   :{R}  {G}{password}{R}
+  {W}Admin      :{R}  {G}yes{R}
+
+  {Y}⚠  Save this password now — it will not be shown again.{R}
+""")
+    ok("You can now log in at /account/login with the credentials above.")
+
+
 def cmd_db() -> None:
     """Run flask db commands with the correct app context.
     Usage: uv run manage db [upgrade|downgrade|migrate|...]
@@ -286,13 +400,14 @@ def cmd_db() -> None:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 COMMANDS = {
-    "init":   cmd_init,
-    "start":  cmd_start,
-    "backup": cmd_backup,
-    "update": cmd_update,
-    "deploy": cmd_deploy,
-    "db":     cmd_db,
-    "help":   cmd_help,
+    "init":         cmd_init,
+    "start":        cmd_start,
+    "backup":       cmd_backup,
+    "update":       cmd_update,
+    "deploy":       cmd_deploy,
+    "db":           cmd_db,
+    "create_admin": cmd_create_admin,
+    "help":         cmd_help,
 }
 
 
