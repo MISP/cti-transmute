@@ -57,10 +57,22 @@ def misp_to_stix():
             if not file_data or not file_data.filename:
                 error = "Please upload a MISP file"
                 flash(error, "danger")
+            elif not file_data.filename.lower().endswith('.json'):
+                error = "Only .json files are accepted"
+                flash(error, "danger")
             else:
-                file_content = file_data.read().decode('utf-8')
-                file_data.seek(0)
-                files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
+                try:
+                    file_content = file_data.read().decode('utf-8')
+                    json.loads(file_content)
+                except UnicodeDecodeError:
+                    error = "File must be UTF-8 encoded"
+                    flash(error, "danger")
+                except json.JSONDecodeError:
+                    error = "File is not valid JSON"
+                    flash(error, "danger")
+                else:
+                    file_data.seek(0)
+                    files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
         else:  # mode paste
             raw = request.form.get('misp_content', '') or ''
             if not raw.strip():
@@ -338,12 +350,24 @@ def stix_to_misp():
 
         # ── 1. Récupération de l'input (Fichier ou Paste converti) ──
         file_data = request.files.get('file')
-        
+
         if file_data and file_data.filename != '':
-            # Cas normal : Fichier uploadé OU Paste converti en fichier par JS
-            file_content = file_data.read().decode('utf-8')
-            file_data.seek(0) # Reset du curseur pour requests.post
-            files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
+            if not file_data.filename.lower().endswith('.json'):
+                error = "Only .json files are accepted"
+                flash(error, "danger")
+            else:
+                try:
+                    file_content = file_data.read().decode('utf-8')
+                    json.loads(file_content)
+                except UnicodeDecodeError:
+                    error = "File must be UTF-8 encoded"
+                    flash(error, "danger")
+                except json.JSONDecodeError:
+                    error = "File is not valid JSON"
+                    flash(error, "danger")
+                else:
+                    file_data.seek(0)
+                    files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
         
         elif input_mode == 'paste':
             # Fallback : Si le JS n'a pas fonctionné, on récupère le texte brut
