@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="pu-app" v-cloak>
+<div style="max-width:960px; margin:0 auto; padding:2rem 1rem 4rem;">
+
+  <!-- Profile hero -->
+  <div class="profile-hero">
+    <div class="profile-hero-avatar">{{ profile_user.first_name[0] | upper }}{{ profile_user.last_name[0] | upper }}</div>
+    <div class="profile-hero-info">
+      <h1 class="profile-hero-name">{{ profile_user.first_name }} {{ profile_user.last_name }}</h1>
+      <div style="font-size:.8rem; color:var(--text-3);">
+        <i class="fas fa-globe me-1"></i>Public profile
+      </div>
+    </div>
+    {% if is_auth and not is_own %}
+    <div class="profile-hero-actions">
+      <button class="follow-btn" :class="is_following ? 'following' : ''" @click="toggleFollow">
+        <i :class="is_following ? 'fas fa-user-minus' : 'fas fa-user-plus'"></i>
+        [[ is_following ? 'Unfollow' : 'Follow' ]]
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Two-column layout (same as account_index) -->
+  <div class="profile-grid">
+
+    <!-- Left: stats + chart -->
+    <div class="d-flex flex-column gap-3">
+
+      <div class="custom-card p-0 overflow-hidden">
+        <div class="profile-section-header"><i class="fas fa-chart-bar me-2"></i>Stats</div>
+        <div class="profile-field">
+          <span class="profile-field-label"><i class="fas fa-globe"></i> Public converts</span>
+          <span class="profile-field-value">[[ stats.total ]]</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-label">
+            <span class="cti-badge cti-badge-misp" style="font-size:.6rem;">MISP</span>
+            <i class="fas fa-arrow-right" style="font-size:.55rem; color:var(--text-3);"></i>
+            <span class="cti-badge cti-badge-stix" style="font-size:.6rem;">STIX</span>
+          </span>
+          <span class="profile-field-value">[[ stats.misp_to_stix ]]</span>
+        </div>
+        <div class="profile-field">
+          <span class="profile-field-label">
+            <span class="cti-badge cti-badge-stix" style="font-size:.6rem;">STIX</span>
+            <i class="fas fa-arrow-right" style="font-size:.55rem; color:var(--text-3);"></i>
+            <span class="cti-badge cti-badge-misp" style="font-size:.6rem;">MISP</span>
+          </span>
+          <span class="profile-field-value">[[ stats.stix_to_misp ]]</span>
+        </div>
+      </div>
+
+      <div class="custom-card p-0 overflow-hidden" v-if="stats.total > 0">
+        <div class="profile-section-header"><i class="fas fa-chart-pie me-2"></i>Breakdown</div>
+        <div style="padding:.75rem;">
+          <div ref="chartEl" style="height:170px;"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: converts list in a tabbed card -->
+    <div class="custom-card p-0 overflow-hidden">
+      <div class="detail-tabs-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; padding:.75rem 1rem .5rem;">
+        <span style="font-weight:600; font-size:.85rem; color:var(--text);">
+          <i class="fas fa-exchange-alt me-1" style="color:var(--accent);"></i> Public Conversions
+        </span>
+        <div class="d-flex gap-2 flex-wrap">
+          <input style="background:var(--surface-1); border:1px solid var(--border); border-radius:7px; padding:.3rem .65rem; font-size:.8rem; color:var(--text); outline:none; width:140px;"
+                 v-model="search" @input="debounceFetch" placeholder="Search…"
+                 @focus="$event.target.style.borderColor='var(--accent)'"
+                 @blur="$event.target.style.borderColor='var(--border)'">
+          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="filterType" @change="page=1;fetchConverts()">
+            <option value="">All types</option>
+            <option value="MISP_TO_STIX">MISP → STIX</option>
+            <option value="STIX_TO_MISP">STIX → MISP</option>
+          </select>
+          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="sortOrder" @change="page=1;fetchConverts()">
+            <option value="desc">Newest</option>
+            <option value="asc">Oldest</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="padding:.5rem 1rem 1rem;">
+
+        <!-- Loading -->
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="list.length === 0" class="text-center py-5" style="color:var(--text-3);">
+          <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+          No public conversions found.
+        </div>
+
+        <!-- List -->
+        <div v-else>
+          <a v-for="c in list" :key="c.id" :href="'/convert/detail/' + c.id"
+             class="following-item" style="text-decoration:none; color:var(--text);">
+            <div style="display:flex; align-items:center; gap:.6rem; min-width:0; flex:1;">
+              <div style="flex-shrink:0;">
+                <template v-if="c.conversion_type === 'STIX_TO_MISP'">
+                  <span class="cti-badge cti-badge-stix" style="font-size:.6rem;">STIX</span>
+                  <i class="fas fa-arrow-right" style="font-size:.5rem; color:var(--text-3); margin:0 2px;"></i>
+                  <span class="cti-badge cti-badge-misp" style="font-size:.6rem;">MISP</span>
+                </template>
+                <template v-else>
+                  <span class="cti-badge cti-badge-misp" style="font-size:.6rem;">MISP</span>
+                  <i class="fas fa-arrow-right" style="font-size:.5rem; color:var(--text-3); margin:0 2px;"></i>
+                  <span class="cti-badge cti-badge-stix" style="font-size:.6rem;">STIX</span>
+                </template>
+              </div>
+              <div style="min-width:0;">
+                <div style="font-weight:600; font-size:.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" :title="c.name">
+                  [[ c.name ]]
+                </div>
+                <div v-if="c.description" style="font-size:.75rem; color:var(--text-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  [[ c.description ]]
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:.5rem; flex-shrink:0;">
+              <div v-if="c.tags && c.tags.length" class="d-flex gap-1" @click.stop.prevent>
+                <single-tag :tag="adaptTag(c.tags[0])" :show-namespace="false"></single-tag>
+                <span v-if="c.tags.length > 1" class="badge rounded-pill"
+                      style="font-size:.58rem; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border);">
+                  +[[ c.tags.length - 1 ]]
+                </span>
+              </div>
+              <span style="font-size:.72rem; color:var(--text-3); white-space:nowrap;">[[ formatDate(c.created_at) ]]</span>
+              <i class="fas fa-chevron-right" style="font-size:.6rem; color:var(--text-3);"></i>
+            </div>
+          </a>
+        </div>
+
+        <!-- Pagination -->
+        <div v-if="totalPage > 1" style="display:flex; gap:.4rem; justify-content:center; margin-top:1rem; flex-wrap:wrap;">
+          <button style="background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer; color:var(--text);"
+                  :disabled="page === 1" @click="page--;fetchConverts()">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button v-for="p in pageRange" :key="p"
+                  @click="page=p;fetchConverts()"
+                  :style="p===page ? 'background:var(--accent);border-color:var(--accent);color:#fff;' : 'background:var(--surface-1);color:var(--text);'"
+                  style="border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer;">
+            [[ p ]]
+          </button>
+          <button style="background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer; color:var(--text);"
+                  :disabled="page === totalPage" @click="page++;fetchConverts()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+  const { createApp, ref, computed, onMounted, nextTick } = Vue;
+  import { create_message } from '/static/js/toaster.js';
+  import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js';
+
+  const USER_ID    = {{ profile_user.id }};
+  const IS_AUTH    = {{ 'true' if is_auth else 'false' }};
+  const IS_OWN     = {{ 'true' if is_own else 'false' }};
+
+  function adaptTag(t) {
+    return { id: t.tag_id, name: t.tag_name || '', color: t.tag_color || null,
+             icon: t.tag_icon || null, description: t.tag_description || '', visibility: t.tag_visibility || 'public' };
+  }
+  function formatDate(str) {
+    if (!str) return '';
+    const d = new Date(str.replace(' ', 'T'));
+    return isNaN(d) ? str : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  let _echartsPromise = null;
+  function loadECharts() {
+    if (window.echarts) return Promise.resolve(window.echarts);
+    if (_echartsPromise) return _echartsPromise;
+    _echartsPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js';
+      s.onload = () => resolve(window.echarts);
+      s.onerror = () => reject(new Error('ECharts failed'));
+      document.head.appendChild(s);
+    });
+    return _echartsPromise;
+  }
+
+  createApp({
+    components: { 'single-tag': SingleTagDisplay },
+    delimiters: ['[[', ']]'],
+    setup() {
+      const list        = ref([]);
+      const stats       = ref({ total: 0, misp_to_stix: 0, stix_to_misp: 0 });
+      const loading     = ref(true);
+      const page        = ref(1);
+      const totalPage   = ref(1);
+      const search      = ref('');
+      const filterType  = ref('');
+      const sortOrder   = ref('desc');
+      const chartEl     = ref(null);
+      const is_following = ref({{ 'true' if is_following_init else 'false' }});
+      let chartInst = null, debounceTimer = null;
+
+      const pageRange = computed(() => {
+        const range = [];
+        for (let i = Math.max(1, page.value - 2); i <= Math.min(totalPage.value, page.value + 2); i++) range.push(i);
+        return range;
+      });
+
+      async function fetchConverts() {
+        loading.value = true;
+        try {
+          const params = new URLSearchParams({ page: page.value, sort_order: sortOrder.value });
+          if (filterType.value) params.set('filter_type', filterType.value);
+          if (search.value)     params.set('search', search.value);
+          const res  = await fetch(`/account/public_converts/${USER_ID}?${params}`);
+          const data = await res.json();
+          if (data.success) {
+            list.value      = data.list || [];
+            totalPage.value = data.total_page || 1;
+            if (data.stats) { stats.value = data.stats; await nextTick(); renderChart(); }
+          }
+        } catch {}
+        loading.value = false;
+      }
+
+      function debounceFetch() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => { page.value = 1; fetchConverts(); }, 350);
+      }
+
+      async function toggleFollow() {
+        try {
+          const res  = await fetch(`/account/follow?user_id=${USER_ID}`);
+          const data = await res.json();
+          create_message(data.message, data.toast_class);
+          if (data.success) is_following.value = data.following;
+        } catch {}
+      }
+
+      async function renderChart() {
+        if (!chartEl.value || stats.value.total === 0) return;
+        try {
+          const ec  = await loadECharts();
+          const col = getComputedStyle(document.documentElement);
+          if (!chartInst) chartInst = ec.init(chartEl.value, null, { renderer: 'canvas' });
+          chartInst.setOption({
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+            legend: { bottom: 0, textStyle: { color: col.getPropertyValue('--text-3').trim() || '#999', fontSize: 11 } },
+            series: [{
+              type: 'pie', radius: ['45%', '72%'], center: ['50%', '44%'],
+              label: { show: false },
+              data: [
+                { value: stats.value.misp_to_stix, name: 'MISP → STIX', itemStyle: { color: '#6366f1' } },
+                { value: stats.value.stix_to_misp, name: 'STIX → MISP', itemStyle: { color: '#22c55e' } },
+              ],
+            }],
+          });
+        } catch {}
+      }
+
+      document.documentElement.addEventListener('themechange', renderChart);
+      window.addEventListener('resize', () => chartInst?.resize());
+      onMounted(fetchConverts);
+
+      return { list, stats, loading, page, totalPage, pageRange, search, filterType, sortOrder,
+               chartEl, is_following, fetchConverts, debounceFetch, toggleFollow, formatDate, adaptTag };
+    }
+  }).mount('#pu-app');
+</script>
+{% endblock %}

@@ -110,6 +110,68 @@ def edit_user() -> redirect:
         # form.password.data = "" # current_user.password_hash
     return render_template("account/edit_user.html", form=form)
 
+###########################
+#   Public user profile   #
+###########################
+
+@account_blueprint.route("/public/<int:user_id>")
+def public_profile(user_id):
+    """Public profile page — no login required, shows only public data."""
+    user = AccountModel.get_user(user_id)
+    if not user:
+        abort(404)
+    is_auth     = current_user.is_authenticated
+    is_own      = is_auth and current_user.id == user_id
+    is_following = AccountModel.is_following(current_user.id, user_id) if is_auth and not is_own else False
+    return render_template(
+        "account/public_user.html",
+        profile_user=user,
+        is_auth=is_auth,
+        is_own=is_own,
+        is_following_init=is_following,
+    )
+
+
+@account_blueprint.route("/public_converts/<int:user_id>")
+def public_converts(user_id):
+    """Paginated public converts for a user profile page."""
+    from website.db_class.db import Convert
+    from ..tags import tags_core as TagsModel
+
+    page        = request.args.get('page', 1, type=int)
+    filter_type = request.args.get('filter_type', type=str)
+    sort_order  = request.args.get('sort_order', 'desc', type=str)
+    search      = request.args.get('search', type=str)
+
+    user = AccountModel.get_user(user_id)
+    if not user:
+        return {"success": False, "message": "User not found"}, 404
+
+    pagination = ConvertModel.get_convert_by_user(
+        page, user_id, filter_type, sort_order, search, filter_public="PUBLIC"
+    )
+
+    total = Convert.query.filter_by(user_id=user_id, is_active=True, public=True).count()
+    m2s   = Convert.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='MISP_TO_STIX').count()
+    s2m   = Convert.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='STIX_TO_MISP').count()
+
+    items = []
+    if pagination:
+        ids = [c.id for c in pagination.items]
+        tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+        for c in pagination.items:
+            entry = c.to_json_list()
+            entry['tags'] = [a.to_json() for a in tags_by_convert.get(c.id, [])]
+            items.append(entry)
+
+    return {
+        "success": True,
+        "list": items,
+        "total_page": pagination.pages if pagination else 1,
+        "stats": {"total": total, "misp_to_stix": m2s, "stix_to_misp": s2m},
+    }, 200
+
+
 #####################
 #   Admin section   #
 #####################
@@ -288,6 +350,42 @@ def is_following():
     if not user_id:
         return {"success": False}, 400
     return {"success": True, "following": AccountModel.is_following(current_user.id, user_id)}, 200
+
+
+@account_blueprint.route("/get_followers", methods=['GET'])
+@login_required
+def get_followers():
+    page   = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '', type=str) or None
+    pagination = AccountModel.get_followers(current_user.id, page=page, search=search)
+    items = []
+    for f in pagination.items:
+        user = AccountModel.get_user(f.follower_id)
+        if user:
+            items.append({
+                "user_id": user.id,
+                "name":    f"{user.first_name} {user.last_name}",
+                "since":   f.created_at.strftime('%Y-%m-%d') if f.created_at else None,
+            })
+    return {"success": True, "list": items, "total_page": pagination.pages}, 200
+
+
+@account_blueprint.route("/search_users", methods=['GET'])
+@login_required
+def search_users():
+    query = (request.args.get('q', '', type=str) or '').strip()
+    page  = request.args.get('page', 1, type=int)
+    pagination = AccountModel.search_users_for_follow(query, current_user.id, page=page)
+    result = []
+    for u in pagination.items:
+        public_count = ConvertModel.get_convert_by_user(1, u.id, filter_public="PUBLIC")
+        result.append({
+            "user_id":      u.id,
+            "name":         f"{u.first_name} {u.last_name}",
+            "is_following": AccountModel.is_following(current_user.id, u.id),
+            "public_count": public_count.total if public_count else 0,
+        })
+    return {"success": True, "list": result, "total_page": pagination.pages}, 200
 
 
 @account_blueprint.route("/get_following", methods=['GET'])

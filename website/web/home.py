@@ -63,6 +63,7 @@ def get_public_activity():
         'convert_favorited',
     ]
     try:
+        from website.db_class.db import User
         logs = (
             SystemLog.query
             .join(Convert, and_(
@@ -83,7 +84,15 @@ def get_public_activity():
             .limit(20)
             .all()
         )
-        return jsonify({"success": True, "list": [l.to_json() for l in logs]}), 200
+        result = []
+        for log in logs:
+            data = log.to_json()
+            if log.actor_id:
+                user = User.query.get(log.actor_id)
+                if user:
+                    data['actor_name'] = user.first_name
+            result.append(data)
+        return jsonify({"success": True, "list": result}), 200
     except Exception as e:
         return jsonify({"success": False, "list": [], "message": str(e)}), 500
 

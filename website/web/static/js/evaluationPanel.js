@@ -225,7 +225,11 @@ const EvaluationPanel = {
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN() },
                 body: JSON.stringify(payload),
             })
-            return res.json()
+            try {
+                return await res.json()
+            } catch {
+                return { success: false, message: "Unable to display the server response." }
+            }
         }
 
         function notifyEvalUpdated() {
