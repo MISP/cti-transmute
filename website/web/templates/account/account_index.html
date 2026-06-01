@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
 {% endblock %}
 {% block content %}
-<div>
+<div v-cloak>
 
   <!-- Profile hero -->
   <div class="profile-hero">
@@ -406,7 +406,7 @@
       async function unfollow(user_id) {
         const res  = await fetch(`/account/follow?user_id=${user_id}`)
         const data = await res.json()
-        create_message(data.message, data.toast_class)
+        await create_message(data.message, data.toast_class)
         if (data.success) following_list.value = following_list.value.filter(f => f.user_id !== user_id)
       }
 
@@ -470,7 +470,7 @@
       async function toggleFollowModal(u) {
         const res  = await fetch(`/account/follow?user_id=${u.user_id}`)
         const data = await res.json()
-        create_message(data.message, data.toast_class)
+        await create_message(data.message, data.toast_class)
         if (data.success) {
           u.is_following = data.following
           following_loaded.value = false

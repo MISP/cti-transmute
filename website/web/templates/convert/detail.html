@@ -47,9 +47,14 @@
                                 <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
                                 [[ convert.public ? 'Public' : 'Private' ]]
                             </span>
-                            <span class="author-badge">
+                            <a v-if="convert.user_id" :href="'/account/public/' + convert.user_id"
+                               class="author-badge" style="text-decoration:none; color:inherit;">
                                 <i class="fas fa-user" style="font-size:0.65rem;"></i>
                                 [[ convert.author || 'Anonymous' ]]
+                            </a>
+                            <span v-else class="author-badge">
+                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
+                                Anonymous
                             </span>
                             {% if current_user.is_authenticated %}
                             <template v-if="convert.user_id && convert.user_id !== {{ current_user.id }}">

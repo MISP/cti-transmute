@@ -7,8 +7,7 @@
 {% endblock %}
 
 {% block content %}
-<div id="pu-app" v-cloak>
-<div style="max-width:960px; margin:0 auto; padding:2rem 1rem 4rem;">
+<div v-cloak style="max-width:960px; margin:0 auto; padding:2rem 1rem 4rem;">
 
   <!-- Profile hero -->
   <div class="profile-hero">
@@ -167,13 +166,12 @@
 
   </div>
 </div>
-</div>
 {% endblock %}
 
 {% block script %}
 <script type="module">
   const { createApp, ref, computed, onMounted, nextTick } = Vue;
-  import { create_message } from '/static/js/toaster.js';
+  import { create_message, message_list } from '/static/js/toaster.js';
   import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js';
 
   const USER_ID    = {{ profile_user.id }};
@@ -252,7 +250,7 @@
         try {
           const res  = await fetch(`/account/follow?user_id=${USER_ID}`);
           const data = await res.json();
-          create_message(data.message, data.toast_class);
+          await create_message(data.message, data.toast_class);
           if (data.success) is_following.value = data.following;
         } catch {}
       }
@@ -284,8 +282,9 @@
       onMounted(fetchConverts);
 
       return { list, stats, loading, page, totalPage, pageRange, search, filterType, sortOrder,
-               chartEl, is_following, fetchConverts, debounceFetch, toggleFollow, formatDate, adaptTag };
+               chartEl, is_following, fetchConverts, debounceFetch, toggleFollow, formatDate, adaptTag,
+               message_list };
     }
-  }).mount('#pu-app');
+  }).mount('#main-containers');
 </script>
 {% endblock %}
