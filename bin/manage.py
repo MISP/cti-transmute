@@ -110,6 +110,9 @@ def cmd_help() -> None:
               {D}→ uv run manage db migrate  # generate a new migration{R}
               {D}→ uv run manage db downgrade{R}
 
+  {G}psql{R}      {D}Open an interactive psql session on the project database{R}
+              {D}→ Connects as {DB_USER} to {DB_NAME} — no password needed{R}
+
   {G}create_admin{R}  {D}Create an emergency admin account (first name, last name, email){R}
               {D}Generates a random password and shows it once.{R}
               {D}→ Use this if all admin accounts have been deleted{R}
@@ -379,6 +382,23 @@ def cmd_create_admin() -> None:
     ok("You can now log in at /account/login with the credentials above.")
 
 
+def cmd_psql() -> None:
+    """Open an interactive psql session on the project database."""
+    header("Connecting to database")
+    info(f"Host: {DB_HOST}:{DB_PORT}  DB: {DB_NAME}  User: {DB_USER}")
+
+    env = os.environ.copy()
+    env["PGPASSWORD"] = DB_PASSWORD
+
+    result = subprocess.run(
+        ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", DB_USER, DB_NAME],
+        env=env,
+    )
+    if result.returncode not in (0, 1):
+        error("psql exited with an error.")
+        sys.exit(result.returncode)
+
+
 def cmd_db() -> None:
     """Run flask db commands with the correct app context.
     Usage: uv run manage db [upgrade|downgrade|migrate|...]
@@ -406,6 +426,7 @@ COMMANDS = {
     "update":       cmd_update,
     "deploy":       cmd_deploy,
     "db":           cmd_db,
+    "psql":         cmd_psql,
     "create_admin": cmd_create_admin,
     "help":         cmd_help,
 }
