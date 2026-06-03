@@ -223,6 +223,38 @@ def get_followers_ids(user_id):
     return [r.follower_id for r in rows]
 
 
+def get_followers(user_id, page=1, search=None):
+    """Return paginated list of users that follow user_id."""
+    if search:
+        matched_ids = [
+            u.id for u in User.query.filter(
+                User.first_name.ilike(f"%{search}%") | User.last_name.ilike(f"%{search}%")
+            ).all()
+        ]
+        return (
+            UserFollow.query
+            .filter_by(followed_id=user_id)
+            .filter(UserFollow.follower_id.in_(matched_ids))
+            .order_by(UserFollow.created_at.desc())
+            .paginate(page=page, per_page=20)
+        )
+    return (
+        UserFollow.query
+        .filter_by(followed_id=user_id)
+        .order_by(UserFollow.created_at.desc())
+        .paginate(page=page, per_page=20)
+    )
+
+
+def search_users_for_follow(query, exclude_id, page=1, per_page=10):
+    """Return paginated users filtered by name (all users when query is empty), excluding a given user id."""
+    base = User.query.filter(User.id != exclude_id)
+    if query:
+        q = f"%{query}%"
+        base = base.filter(User.first_name.ilike(q) | User.last_name.ilike(q))
+    return base.order_by(User.first_name).paginate(page=page, per_page=per_page, error_out=False)
+
+
 ###################################
 #   Notification service          #
 ###################################

@@ -3,7 +3,12 @@ const { nextTick, ref } = Vue
 export const message_list = ref([])
 
 export async function display_toast(res) {
-	let loc = await res.json()
+	let loc
+	try {
+		loc = await res.json()
+	} catch {
+		loc = { message: "An error occurred, unable to display details.", toast_class: "danger-subtle" }
+	}
 	let id = Math.random()
 	let message_loc = { "message": loc["message"], "toast_class": loc["toast_class"], "id": id }
 	message_list.value.push(message_loc)
@@ -19,7 +24,12 @@ export async function display_toast(res) {
 }
 
 export async function prepare_toast(res) {
-	let loc = await res.json()
+	let loc
+	try {
+		loc = await res.json()
+	} catch {
+		loc = { message: "An error occurred, unable to display details.", toast_class: "danger-subtle" }
+	}
 	return { "message": loc["message"], "toast_class": loc["toast_class"], "id": Math.random() }
 }
 

@@ -217,7 +217,8 @@
                         </div>
                         <div class="activity-body">
                             <div class="activity-line">
-                                <span class="activity-actor">[[ item.actor_name ]]</span>
+                                <a v-if="item.actor_id" :href="'/account/public/' + item.actor_id" class="activity-actor activity-actor-link">[[ item.actor_name ]]</a>
+                                <span v-else class="activity-actor">[[ item.actor_name ]]</span>
                                 <span class="activity-verb">[[ eventVerb(item.event_type) ]]</span>
                                 <a :href="'/convert/detail/' + item.target_id"
                                    class="activity-target" :title="item.target_name">

@@ -496,7 +496,9 @@ html.dark-mode .dot-teal   { background: rgba(45,212,191,0.12);  border-color: r
     align-items: baseline;
 }
 
-.activity-actor  { font-weight: 600; color: var(--text); flex-shrink: 0; }
+.activity-actor        { font-weight: 600; color: var(--text); flex-shrink: 0; }
+.activity-actor-link   { font-weight: 600; color: var(--accent); flex-shrink: 0; text-decoration: none; }
+.activity-actor-link:hover { text-decoration: underline; }
 .activity-verb   { color: var(--text-2); flex-shrink: 0; }
 
 .activity-target {

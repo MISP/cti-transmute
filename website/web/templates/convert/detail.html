@@ -47,9 +47,14 @@
                                 <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
                                 [[ convert.public ? 'Public' : 'Private' ]]
                             </span>
-                            <span class="author-badge">
+                            <a v-if="convert.user_id" :href="'/account/public/' + convert.user_id"
+                               class="author-badge" style="text-decoration:none; color:inherit;">
                                 <i class="fas fa-user" style="font-size:0.65rem;"></i>
                                 [[ convert.author || 'Anonymous' ]]
+                            </a>
+                            <span v-else class="author-badge">
+                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
+                                Anonymous
                             </span>
                             {% if current_user.is_authenticated %}
                             <template v-if="convert.user_id && convert.user_id !== {{ current_user.id }}">
@@ -1174,9 +1179,11 @@
             }
 
             async function fetchCurrentUser() {
-                const res = await fetch('/get_current_user')
-                const data = await res.json()
-                current_user_is_admin.value = data.user
+                try {
+                    const res = await fetch('/get_current_user')
+                    const data = await res.json()
+                    current_user_is_admin.value = data.user
+                } catch {}
             }
 
             async function fetchShareKey() {
@@ -1185,17 +1192,23 @@
                 const convertUserId = convert?.value?.user_id
                 if (!isAdmin && currentUserId !== convertUserId) return
                 if (!convert_id) return
-                const res = await fetch(`/convert/get_share_key?id=${convert_id}`)
-                if (!res.ok) return
-                const data = await res.json()
-                share_key.value = data.share_key
+                try {
+                    const res = await fetch(`/convert/get_share_key?id=${convert_id}`)
+                    if (!res.ok) return
+                    const data = await res.json()
+                    share_key.value = data.share_key
+                } catch {}
             }
 
             async function regenerateShareKey(convertId) {
-                const res = await fetch(`/convert/regenerate_share_key?id=${convertId}`)
-                const data = await res.json()
-                if (res.ok) share_key.value = data.share_key
-                create_message(data.message, data.toast_class)
+                try {
+                    const res = await fetch(`/convert/regenerate_share_key?id=${convertId}`)
+                    const data = await res.json()
+                    if (res.ok) share_key.value = data.share_key
+                    create_message(data.message, data.toast_class)
+                } catch {
+                    create_message('Unable to regenerate the share key.', 'danger-subtle')
+                }
             }
 
             async function togglePublic() {
@@ -1245,9 +1258,13 @@
             }
 
             async function getHistory() {
-                const res = await fetch(`/convert/get_history?id=${convert_id}`)
-                const data = await res.json()
-                history_list.value = res.ok ? data.history_convert : []
+                try {
+                    const res = await fetch(`/convert/get_history?id=${convert_id}`)
+                    const data = await res.json()
+                    history_list.value = res.ok ? data.history_convert : []
+                } catch {
+                    history_list.value = []
+                }
             }
 
             function goToDiff(id) { window.location.href = `/convert/difference/${id}` }
@@ -1413,11 +1430,13 @@
 
             async function checkFollowStatus() {
                 if (!IS_AUTH || !convert.value.user_id || convert.value.user_id === CURRENT_USER_ID) return
-                const res = await fetch(`/account/is_following?user_id=${convert.value.user_id}`)
-                if (res.ok) {
-                    const data = await res.json()
-                    is_following_author.value = data.following
-                }
+                try {
+                    const res = await fetch(`/account/is_following?user_id=${convert.value.user_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        is_following_author.value = data.following
+                    }
+                } catch {}
             }
 
             async function toggleFollow() {
@@ -1475,11 +1494,13 @@
             }
 
             async function loadFavoriteStatus() {
-                const res = await fetch(`/convert/favorite/status/${convert_id}`)
-                if (res.ok) {
-                    const data = await res.json()
-                    is_favorite.value = data.is_favorite
-                }
+                try {
+                    const res = await fetch(`/convert/favorite/status/${convert_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        is_favorite.value = data.is_favorite
+                    }
+                } catch {}
             }
 
             onMounted(() => {
