@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 import os
+from dotenv import load_dotenv
 from flask import  Flask
+
+load_dotenv()
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from flask_sqlalchemy import SQLAlchemy
