@@ -102,8 +102,13 @@ def get_users_page(page, searchQuery=None, filterConnection=None, filterAdmin=No
     elif filterAdmin == "user":
         query = query.filter(User.admin.is_(False))
 
+
+    # get totals admin and connected for stats
+    total_admin = query.filter(User.admin.is_(True)).count()
+    total_connected = query.filter(User.is_connected.is_(True)).count()
+
     # Pagination
-    return query.paginate(page=page, per_page=10)
+    return query.paginate(page=page, per_page=10) ,  total_admin, total_connected
 
 
 
@@ -218,6 +223,38 @@ def get_followers_ids(user_id):
     return [r.follower_id for r in rows]
 
 
+def get_followers(user_id, page=1, search=None):
+    """Return paginated list of users that follow user_id."""
+    if search:
+        matched_ids = [
+            u.id for u in User.query.filter(
+                User.first_name.ilike(f"%{search}%") | User.last_name.ilike(f"%{search}%")
+            ).all()
+        ]
+        return (
+            UserFollow.query
+            .filter_by(followed_id=user_id)
+            .filter(UserFollow.follower_id.in_(matched_ids))
+            .order_by(UserFollow.created_at.desc())
+            .paginate(page=page, per_page=20)
+        )
+    return (
+        UserFollow.query
+        .filter_by(followed_id=user_id)
+        .order_by(UserFollow.created_at.desc())
+        .paginate(page=page, per_page=20)
+    )
+
+
+def search_users_for_follow(query, exclude_id, page=1, per_page=10):
+    """Return paginated users filtered by name (all users when query is empty), excluding a given user id."""
+    base = User.query.filter(User.id != exclude_id)
+    if query:
+        q = f"%{query}%"
+        base = base.filter(User.first_name.ilike(q) | User.last_name.ilike(q))
+    return base.order_by(User.first_name).paginate(page=page, per_page=per_page, error_out=False)
+
+
 ###################################
 #   Notification service          #
 ###################################
@@ -327,6 +364,22 @@ def notify_admins_new_report(convert, reporter_id):
         )
 
 
+def notify_new_comment(convert, comment, actor_id):
+    """Notify convert owner that someone posted a comment on their convert."""
+    if not convert.user_id or convert.user_id == actor_id:
+        return
+    actor = get_user(actor_id)
+    actor_name = actor.first_name if actor else "Someone"
+    create_notification(
+        user_id=convert.user_id,
+        notif_type="new_comment",
+        message=f"{actor_name} commented on your convert \"{convert.name}\".",
+        related_id=comment.id,
+        related_type="comment",
+        actor_id=actor_id
+    )
+
+
 def notify_comment_reply(parent_comment, reply_comment, actor_id):
     """Notify original comment author that their comment received a reply."""
     if not parent_comment.user_id or parent_comment.user_id == actor_id:
@@ -337,8 +390,8 @@ def notify_comment_reply(parent_comment, reply_comment, actor_id):
         user_id=parent_comment.user_id,
         notif_type="comment_reply",
         message=f"{actor_name} replied to your comment.",
-        related_id=reply_comment.convert_id,
-        related_type="convert",
+        related_id=reply_comment.id,
+        related_type="comment",
         actor_id=actor_id
     )
 
@@ -414,3 +467,33 @@ def delete_system_log(log_id):
     db.session.delete(log)
     db.session.commit()
     return True
+
+
+def delete_logs_bulk(entries):
+    """Delete multiple logs. entries = list of {id, source} dicts."""
+    sys_ids   = [e['id'] for e in entries if e.get('source') == 'system']
+    notif_ids = [e['id'] for e in entries if e.get('source') != 'system']
+    count = 0
+    if sys_ids:
+        count += SystemLog.query.filter(SystemLog.id.in_(sys_ids)).delete(synchronize_session=False)
+    if notif_ids:
+        count += Notification.query.filter(Notification.id.in_(notif_ids)).delete(synchronize_session=False)
+    db.session.commit()
+    return count
+
+
+def delete_all_logs(log_type='all', date_from=None, date_to=None):
+    """Bulk-delete logs by type and optional date range."""
+    count = 0
+    if log_type in ('all', 'system'):
+        q = SystemLog.query
+        if date_from: q = q.filter(SystemLog.created_at >= date_from)
+        if date_to:   q = q.filter(SystemLog.created_at <= date_to)
+        count += q.delete(synchronize_session=False)
+    if log_type in ('all', 'notifications'):
+        q = Notification.query
+        if date_from: q = q.filter(Notification.created_at >= date_from)
+        if date_to:   q = q.filter(Notification.created_at <= date_to)
+        count += q.delete(synchronize_session=False)
+    db.session.commit()
+    return count

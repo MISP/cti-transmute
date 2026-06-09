@@ -1,6 +1,9 @@
-from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash
+from flask import Blueprint, jsonify, render_template, redirect, request, url_for, flash, abort
+from datetime import datetime, timedelta
+from sqlalchemy import func
 
-from website.db_class.db import User
+from website.db_class.db import User, Convert, ConvertEvaluation
+from website.web import db
 from website.web.account.account_form import AddNewUserForm, EditUserForm, LoginForm
 from website.web.utils import form_to_dict, generate_api_key
 from . import account_core as AccountModel
@@ -35,6 +38,7 @@ def login() -> redirect:
         if user is not None and user.password_hash is not None and user.verify_password(form.password.data):
             login_user(user, form.remember_me.data)
             AccountModel.connected(current_user)
+            AccountModel.create_system_log("user_login", actor_id=user.id, actor_name=user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
             flash('You are now logged in. Welcome back!', 'success')
             return redirect( "/")
         else:
@@ -45,9 +49,10 @@ def login() -> redirect:
 @login_required
 def logout() -> redirect:
     "Log out an User"
+    AccountModel.create_system_log("user_logout", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=current_user.id, target_name=f"{current_user.first_name} {current_user.last_name}")
     AccountModel.disconnected(current_user)
     logout_user()
-    
+
     flash('You have been logged out.', 'info')
     return redirect(url_for('home.home'))
 
@@ -63,7 +68,7 @@ def profil() -> render_template:
 @login_required
 def acces_denied() -> render_template:
     """acces_denied page"""
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route('/register', methods=['GET', 'POST'])
 def add_user() -> redirect:
@@ -72,7 +77,8 @@ def add_user() -> redirect:
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
         form_dict["key"] = generate_api_key()
-        AccountModel.add_user_core(form_dict)
+        user = AccountModel.add_user_core(form_dict)
+        AccountModel.create_system_log("user_registered", actor_id=user.id, actor_name=user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}", details=f"email: {user.email}")
         flash('You are now register. You can connect !', 'success')
         return redirect("/account/login")
     return render_template("account/register_user.html", form=form) 
@@ -84,7 +90,17 @@ def edit_user() -> redirect:
     form = EditUserForm()
     if form.validate_on_submit():
         form_dict = form_to_dict(form)
+        changed = []
+        if form_dict.get("first_name") != current_user.first_name:
+            changed.append("first_name")
+        if form_dict.get("last_name") != current_user.last_name:
+            changed.append("last_name")
+        if form_dict.get("email") != current_user.email:
+            changed.append("email")
+        if form_dict.get("password"):
+            changed.append("password")
         AccountModel.edit_user_core(form_dict, current_user.id)
+        AccountModel.create_system_log("user_profile_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=current_user.id, target_name=f"{current_user.first_name} {current_user.last_name}", details=f"changed: {', '.join(changed)}" if changed else "no changes")
         flash('Profil update with success!', 'success')
         return redirect("/account")
     else:
@@ -93,6 +109,68 @@ def edit_user() -> redirect:
         form.email.data = current_user.email
         # form.password.data = "" # current_user.password_hash
     return render_template("account/edit_user.html", form=form)
+
+###########################
+#   Public user profile   #
+###########################
+
+@account_blueprint.route("/public/<int:user_id>")
+def public_profile(user_id):
+    """Public profile page — no login required, shows only public data."""
+    user = AccountModel.get_user(user_id)
+    if not user:
+        abort(404)
+    is_auth     = current_user.is_authenticated
+    is_own      = is_auth and current_user.id == user_id
+    is_following = AccountModel.is_following(current_user.id, user_id) if is_auth and not is_own else False
+    return render_template(
+        "account/public_user.html",
+        profile_user=user,
+        is_auth=is_auth,
+        is_own=is_own,
+        is_following_init=is_following,
+    )
+
+
+@account_blueprint.route("/public_converts/<int:user_id>")
+def public_converts(user_id):
+    """Paginated public converts for a user profile page."""
+    from website.db_class.db import Convert
+    from ..tags import tags_core as TagsModel
+
+    page        = request.args.get('page', 1, type=int)
+    filter_type = request.args.get('filter_type', type=str)
+    sort_order  = request.args.get('sort_order', 'desc', type=str)
+    search      = request.args.get('search', type=str)
+
+    user = AccountModel.get_user(user_id)
+    if not user:
+        return {"success": False, "message": "User not found"}, 404
+
+    pagination = ConvertModel.get_convert_by_user(
+        page, user_id, filter_type, sort_order, search, filter_public="PUBLIC"
+    )
+
+    total = Convert.query.filter_by(user_id=user_id, is_active=True, public=True).count()
+    m2s   = Convert.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='MISP_TO_STIX').count()
+    s2m   = Convert.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='STIX_TO_MISP').count()
+
+    items = []
+    if pagination:
+        ids = [c.id for c in pagination.items]
+        tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+        for c in pagination.items:
+            entry = c.to_json_list()
+            entry['tags'] = [a.to_json() for a in tags_by_convert.get(c.id, [])]
+            items.append(entry)
+
+    return {
+        "success": True,
+        "list": items,
+        "total_page": pagination.pages if pagination else 1,
+        "stats": {"total": total, "misp_to_stix": m2s, "stix_to_misp": s2m},
+    }, 200
+
 
 #####################
 #   Admin section   #
@@ -104,7 +182,7 @@ def manage_user() -> redirect:
     """Manage user section"""
     if current_user.is_admin():
         return render_template("admin/manage_user.html")
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route("/get_users", methods=['GET'])
 @login_required
@@ -115,16 +193,19 @@ def get_users():
     filterConnection = request.args.get('filterConnection',  type=str)
     filterAdmin = request.args.get('filterAdmin',  type=str)
     if current_user.is_admin():
-        pagination = AccountModel.get_users_page(page, searchQuery=searchQuery, filterConnection=filterConnection, filterAdmin=filterAdmin)
+        pagination , total_admin, total_connected = AccountModel.get_users_page(page, searchQuery=searchQuery, filterConnection=filterConnection, filterAdmin=filterAdmin)
         users_list = [item.to_json() for item in pagination.items]
 
         return {
             "list": users_list,
-            "total_page": pagination.page,
-            "success": False, 
+            "total_page": pagination.pages,
+            "success": True,
+            "total_users": pagination.total,
+            "admin": total_admin,
+            "connected": total_connected
         }, 200
     else:
-        return render_template("access_denied.html")
+        return abort(403)
 
 @account_blueprint.route("/detail_user/<int:id>", methods=['GET', "POST"])
 @login_required
@@ -137,7 +218,7 @@ def detail_user(id) -> redirect:
         else:
             flash('No user with this id !', 'danger')
             return redirect("/admin/manage_user")
-    return render_template("access_denied.html")
+    return abort(403)
 
 @account_blueprint.route("/get_user", methods=['GET', "POST"])
 @login_required
@@ -159,7 +240,7 @@ def get_user() -> redirect:
                 "user": None,
                 "Message": " No user found with this id "
             }, 404
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 @account_blueprint.route("/get_user_convert", methods=['GET', "POST"])
@@ -195,7 +276,7 @@ def get_user_convert() -> redirect:
                 "user": None,
                 "Message": " No user found with this id "
             }, 404
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 
@@ -213,8 +294,11 @@ def delete_user(id) -> redirect:
             else:
                 _success = AccountModel.get_all_convert_own_by_user_id(id)
                 if _success:
+                    _deleted_name = f"{user.first_name} {user.last_name}"
+                    _deleted_id = user.id
                     success = AccountModel.delete(user.id)
                     if success:
+                        AccountModel.create_system_log("user_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=_deleted_id, target_name=_deleted_name)
                         flash(f"User {user.last_name} {user.first_name} deleted with success", 'success')
                         return redirect("/account/manage_user")
                     else:
@@ -226,7 +310,7 @@ def delete_user(id) -> redirect:
 
         flash(f"Enable to delete User: {user.last_name} {user.first_name}!", 'danger')
         return redirect(f"/account/detail_user/{id}")
-    return render_template("access_denied.html")
+    return abort(403)
 
 
 
@@ -266,6 +350,42 @@ def is_following():
     if not user_id:
         return {"success": False}, 400
     return {"success": True, "following": AccountModel.is_following(current_user.id, user_id)}, 200
+
+
+@account_blueprint.route("/get_followers", methods=['GET'])
+@login_required
+def get_followers():
+    page   = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '', type=str) or None
+    pagination = AccountModel.get_followers(current_user.id, page=page, search=search)
+    items = []
+    for f in pagination.items:
+        user = AccountModel.get_user(f.follower_id)
+        if user:
+            items.append({
+                "user_id": user.id,
+                "name":    f"{user.first_name} {user.last_name}",
+                "since":   f.created_at.strftime('%Y-%m-%d') if f.created_at else None,
+            })
+    return {"success": True, "list": items, "total_page": pagination.pages}, 200
+
+
+@account_blueprint.route("/search_users", methods=['GET'])
+@login_required
+def search_users():
+    query = (request.args.get('q', '', type=str) or '').strip()
+    page  = request.args.get('page', 1, type=int)
+    pagination = AccountModel.search_users_for_follow(query, current_user.id, page=page)
+    result = []
+    for u in pagination.items:
+        public_count = ConvertModel.get_convert_by_user(1, u.id, filter_public="PUBLIC")
+        result.append({
+            "user_id":      u.id,
+            "name":         f"{u.first_name} {u.last_name}",
+            "is_following": AccountModel.is_following(current_user.id, u.id),
+            "public_count": public_count.total if public_count else 0,
+        })
+    return {"success": True, "list": result, "total_page": pagination.pages}, 200
 
 
 @account_blueprint.route("/get_following", methods=['GET'])
@@ -381,7 +501,7 @@ def my_comments():
 @login_required
 def admin_comments():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_comments.html")
 
 
@@ -389,7 +509,7 @@ def admin_comments():
 @login_required
 def admin_reports():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_reports.html")
 
 
@@ -397,7 +517,7 @@ def admin_reports():
 @login_required
 def admin_logs():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/admin_logs.html")
 
 
@@ -405,7 +525,7 @@ def admin_logs():
 @login_required
 def admin_deleted_converts():
     if not current_user.is_admin():
-        return render_template("access_denied.html")
+        return abort(403)
     return render_template("admin/deleted_converts.html")
 
 
@@ -414,39 +534,68 @@ def admin_deleted_converts():
 def admin_get_all_notifications():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '', type=str) or None
-    log_type = request.args.get('log_type', 'all')  # all | notifications | system
+
+    from datetime import datetime
+    from website.db_class.db import SystemLog, Notification as NotifModel
+
+    page       = request.args.get('page', 1, type=int)
+    search     = request.args.get('search', '', type=str) or None
+    log_type   = request.args.get('log_type', 'all')
+    date_from_s = request.args.get('date_from', '', type=str)
+    date_to_s   = request.args.get('date_to',   '', type=str)
+
+    try:
+        date_from = datetime.strptime(date_from_s, '%Y-%m-%d') if date_from_s else None
+    except ValueError:
+        date_from = None
+    try:
+        date_to = datetime.strptime(date_to_s, '%Y-%m-%d').replace(hour=23, minute=59, second=59) if date_to_s else None
+    except ValueError:
+        date_to = None
+
+    def apply_date(q, model):
+        if date_from: q = q.filter(model.created_at >= date_from)
+        if date_to:   q = q.filter(model.created_at <= date_to)
+        return q
 
     if log_type == 'notifications':
-        pagination = AccountModel.get_all_notifications_admin(page=page, search=search)
-        items = [dict(n.to_json(), source='notification') for n in pagination.items]
-        return {"success": True, "list": items, "total_page": pagination.pages}, 200
+        q = NotifModel.query
+        if search: q = q.filter(NotifModel.message.ilike(f"%{search}%"))
+        q = apply_date(q, NotifModel)
+        p = q.order_by(NotifModel.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+        return {"success": True, "list": [dict(n.to_json(), source='notification') for n in p.items], "total_page": p.pages or 1}, 200
 
     if log_type == 'system':
-        pagination = AccountModel.get_system_logs(page=page, search=search)
-        items = [dict(l.to_json(), source='system') for l in pagination.items]
-        return {"success": True, "list": items, "total_page": pagination.pages}, 200
+        q = SystemLog.query
+        if search:
+            q = q.filter(
+                SystemLog.event_type.ilike(f"%{search}%") |
+                SystemLog.actor_name.ilike(f"%{search}%") |
+                SystemLog.target_name.ilike(f"%{search}%") |
+                SystemLog.details.ilike(f"%{search}%")
+            )
+        q = apply_date(q, SystemLog)
+        p = q.order_by(SystemLog.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+        return {"success": True, "list": [dict(l.to_json(), source='system') for l in p.items], "total_page": p.pages or 1}, 200
 
-    # Merge both, sort by date, paginate in Python
+    # Merge both
     per_page = 20
-    from website.db_class.db import SystemLog, Notification as NotifModel
-    notif_q = NotifModel.query
-    sys_q = SystemLog.query
+    nq = apply_date(NotifModel.query, NotifModel)
+    sq = apply_date(SystemLog.query, SystemLog)
     if search:
-        notif_q = notif_q.filter(NotifModel.message.ilike(f"%{search}%"))
-        sys_q = sys_q.filter(
+        nq = nq.filter(NotifModel.message.ilike(f"%{search}%"))
+        sq = sq.filter(
             SystemLog.event_type.ilike(f"%{search}%") |
             SystemLog.actor_name.ilike(f"%{search}%") |
             SystemLog.target_name.ilike(f"%{search}%") |
             SystemLog.details.ilike(f"%{search}%")
         )
-    notifs = [dict(n.to_json(), source='notification') for n in notif_q.all()]
-    syslogs = [dict(l.to_json(), source='system') for l in sys_q.all()]
-    merged = sorted(notifs + syslogs, key=lambda x: x.get('created_at', '') or '', reverse=True)
-    total = len(merged)
+    notifs  = [dict(n.to_json(), source='notification') for n in nq.all()]
+    syslogs = [dict(l.to_json(), source='system')       for l in sq.all()]
+    merged  = sorted(notifs + syslogs, key=lambda x: x.get('created_at', '') or '', reverse=True)
+    total      = len(merged)
     total_page = max(1, (total + per_page - 1) // per_page)
-    start = (page - 1) * per_page
+    start      = (page - 1) * per_page
     return {"success": True, "list": merged[start:start + per_page], "total_page": total_page}, 200
 
 
@@ -466,6 +615,40 @@ def admin_delete_log():
     if success:
         return {"success": True, "message": "Log deleted", "toast_class": "success"}, 200
     return {"success": False, "message": "Not found", "toast_class": "danger"}, 404
+
+
+@account_blueprint.route("/admin/delete_logs_bulk", methods=['POST'])
+@login_required
+def admin_delete_logs_bulk():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    entries = (request.get_json(silent=True) or {}).get('entries', [])
+    if not entries:
+        return {"success": False, "message": "Nothing to delete", "toast_class": "warning"}, 400
+    count = AccountModel.delete_logs_bulk(entries)
+    return {"success": True, "message": f"{count} log(s) deleted", "toast_class": "success", "count": count}, 200
+
+
+@account_blueprint.route("/admin/delete_logs_all", methods=['POST'])
+@login_required
+def admin_delete_logs_all():
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+    from datetime import datetime
+    data       = request.get_json(silent=True) or {}
+    log_type   = data.get('log_type', 'all')
+    date_from_s = data.get('date_from', '')
+    date_to_s   = data.get('date_to',   '')
+    try:
+        date_from = datetime.strptime(date_from_s, '%Y-%m-%d') if date_from_s else None
+    except ValueError:
+        date_from = None
+    try:
+        date_to = datetime.strptime(date_to_s, '%Y-%m-%d').replace(hour=23, minute=59, second=59) if date_to_s else None
+    except ValueError:
+        date_to = None
+    count = AccountModel.delete_all_logs(log_type=log_type, date_from=date_from, date_to=date_to)
+    return {"success": True, "message": f"{count} log(s) deleted", "toast_class": "success", "count": count}, 200
 
 
 @account_blueprint.route("/edit_admin", methods=['POST'])
@@ -491,8 +674,10 @@ def edit_admin():
                     if success:
                         if _bool == True:
                             message="This user has admin right now"
+                            AccountModel.create_system_log("user_admin_granted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
                         else:
                             message="This user has no more admin right now"
+                            AccountModel.create_system_log("user_admin_revoked", actor_id=current_user.id, actor_name=current_user.first_name, target_type="user", target_id=user.id, target_name=f"{user.first_name} {user.last_name}")
                         return {
                             "success": True, 
                             "admin": user.admin,
@@ -510,10 +695,93 @@ def edit_admin():
                 "toast_class" : "danger"
                 }, 500
         return {
-            "success": False, 
-            "message": "No id provided", 
+            "success": False,
+            "message": "No id provided",
             "toast_class" : "danger"
             }, 404
-                    
-    return render_template("access_denied.html")
+
+    return abort(403)
+
+
+@account_blueprint.route("/admin_edit_user", methods=['POST'])
+@login_required
+def admin_edit_user():
+    """Admin edits a user's first name, last name, or email."""
+    if not current_user.is_admin():
+        return {"success": False, "message": "Access denied", "toast_class": "danger"}, 403
+
+    data = request.get_json(silent=True) or {}
+    user_id    = data.get('id')
+    first_name = (data.get('first_name') or '').strip()
+    last_name  = (data.get('last_name')  or '').strip()
+    email      = (data.get('email')      or '').strip()
+
+    if not user_id or not first_name or not last_name or not email:
+        return {"success": False, "message": "All fields are required.", "toast_class": "danger"}, 400
+
+    user = AccountModel.get_user(int(user_id))
+    if not user:
+        return {"success": False, "message": "User not found.", "toast_class": "danger"}, 404
+
+    taken = User.query.filter_by(email=email).first()
+    if taken and taken.id != user.id:
+        return {"success": False, "message": "Email already in use.", "toast_class": "danger"}, 409
+
+    AccountModel.edit_user_core(
+        {"first_name": first_name, "last_name": last_name, "email": email},
+        user.id
+    )
+    AccountModel.create_system_log(
+        "user_edited",
+        actor_id=current_user.id, actor_name=current_user.first_name,
+        target_type="user", target_id=user.id,
+        target_name=f"{first_name} {last_name}"
+    )
+    return {"success": True, "message": "User updated.", "toast_class": "success", "user": user.to_json()}, 200
+
+
+@account_blueprint.route("/get_user_stats", methods=['GET'])
+@login_required
+def get_user_stats():
+    """Return aggregate stats for a user (admin only)."""
+    if not current_user.is_admin():
+        return {"success": False}, 403
+
+    user_id = request.args.get('user_id', type=int)
+    user = AccountModel.get_user(user_id)
+    if not user:
+        return {"success": False}, 404
+
+    total  = Convert.query.filter_by(user_id=user_id, is_active=True).count()
+    m2s    = Convert.query.filter_by(user_id=user_id, conversion_type='MISP_TO_STIX', is_active=True).count()
+    s2m    = Convert.query.filter_by(user_id=user_id, conversion_type='STIX_TO_MISP', is_active=True).count()
+    public = Convert.query.filter_by(user_id=user_id, is_active=True, public=True).count()
+
+    likes     = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='like').count()
+    dislikes  = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='dislike').count()
+    reactions = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='reaction').count()
+
+    since = datetime.utcnow() - timedelta(days=29)
+    rows = (
+        db.session.query(func.date(Convert.created_at).label('d'), func.count(Convert.id).label('n'))
+        .filter(Convert.user_id == user_id, Convert.is_active == True, Convert.created_at >= since)
+        .group_by(func.date(Convert.created_at))
+        .all()
+    )
+    activity = {str(r.d): r.n for r in rows}
+
+    return {
+        "success": True,
+        "stats": {
+            "total_converts": total,
+            "misp_to_stix":   m2s,
+            "stix_to_misp":   s2m,
+            "public":         public,
+            "private":        total - public,
+            "likes":          likes,
+            "dislikes":       dislikes,
+            "reactions":      reactions,
+            "activity":       activity,
+        }
+    }, 200
    

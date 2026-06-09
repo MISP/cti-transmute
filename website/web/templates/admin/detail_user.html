@@ -1,325 +1,575 @@
 {% extends "base.html" %}
 
-{% block content %}
-    {% if not current_user.is_admin() %}
-        <script>
-            window.location.href = "/access_denied";
-        </script>
-    {% else %}
-        <div class="container my-5" id="main-container">
-            <div id="user_id" data-user-id="{{ user.id }}"></div>
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail_user.css') }}">
+{% endblock %}
 
-            <div class="card shadow-lg border-0 mb-4" style="background-color: var(--color-sidebar);">
-                <div class="card-body ">
-                    <h3 class="mb-3 ">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="fa-solid fa-user-circle me-2"></i> Profil [[ user.first_name ]]
-                                <button type="button" class="btn btn-danger btn-sm" title="Delete the conversion" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'">
-                                    <i class="fa-solid fa-trash fa-fw"></i>
-                                </button>
-                            </div>
-                            
-                            <div class="d-flex align-items-center gap-2">
-                                <span  v-if="user.admin"  class="badge bg-secondary">Admin</span>
-                                <span  v-if="user.is_connected"  class="badge bg-success" >Online</span>
-                                <span  v-else class="badge bg-danger">Offline</span>
-                                <i class="bi bi-chevron-down small"></i>
-                            </div>
-                        </div>
-                    </h3>
-                    <div class="modal fade" :id="'delete_user_modal_'" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true" >
-                        <div class="modal-dialog modal-lg">
-                            <div style="background-color:var(--color-sidebar);" class="modal-content">
-                                <div class="modal-header">
-                                    <h2 id="delete_item_modal" style="color: var( --color-text);">
-                                        Delete [[ user.first_name ]] ?
-                                    </h2>
-                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <a :href="`/account/delete/${user.id}`" class="btn btn-danger">
-                                        <i class="fa-solid fa-trash"></i> Confirm
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                   <div v-if="user" class="row">
-                        <div class="col-md-6 mb-2">
-                            <strong><i class="fa-solid fa-id-badge me-2 "></i>Last_name :</strong>
-                            [[ user.last_name ]]
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <strong><i class="fa-solid fa-user me-2"></i>First_name :</strong>
-                            [[ user.first_name ]]
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <strong><i class="fa-solid fa-envelope me-2"></i>Email :</strong>
-                            [[ user.email ]]
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <strong><i class="fa-solid fa-user-gear me-2 "></i>Admin : </strong>
-                            <button class="btn btn-sm fw-semibold"
-                                :class="user.admin ? 'btn-success' : 'btn-danger'"
-                                :title="user.admin ? 'Remove admin right' : 'Give admin right'"
-                                @click="changeAdminRight()">
-                                [[ user.admin ? 'Yes' : 'No'  ]]
-                            </button>
-                        </div>
-                    </div>
+{% block content %}
+{% if not current_user.is_admin() %}
+<script>window.location.href = "/access_denied";</script>
+{% else %}
+<div id="user_id" data-user-id="{{ user.id }}" style="display:none;"></div>
+
+<div class="container du-page"  v-cloak>
+
+    <!-- Back -->
+    <div class="du-back">
+        <a href="/account/manage_user" class="du-back-link">
+            <i class="fas fa-arrow-left"></i> All users
+        </a>
+    </div>
+
+    <!-- Profile card + stat chips -->
+    <div class="du-top-row">
+
+        <!-- Profile card -->
+        <div class="custom-card du-profile-card">
+            <div class="du-avatar" v-if="user">
+                [[ (user.first_name?.[0] || '').toUpperCase() ]][[ (user.last_name?.[0] || '').toUpperCase() ]]
+            </div>
+            <div class="du-profile-info" v-if="user">
+                <div class="du-profile-name">[[ user.first_name ]] [[ user.last_name ]]</div>
+                <div class="du-profile-email">
+                    <i class="fas fa-envelope" style="font-size:0.72rem;opacity:0.5;"></i>
+                    [[ user.email ]]
+                </div>
+                <div class="du-profile-badges">
+                    <span v-if="user.admin" class="du-badge du-badge-admin">
+                        <i class="fas fa-shield-halved me-1"></i>Admin
+                    </span>
+                    <span v-if="user.is_connected" class="du-badge du-badge-online">
+                        <i class="fas fa-circle" style="font-size:0.45rem;vertical-align:middle;"></i> Online
+                    </span>
+                    <span v-else class="du-badge du-badge-offline">
+                        <i class="fas fa-circle" style="font-size:0.45rem;vertical-align:middle;"></i> Offline
+                    </span>
                 </div>
             </div>
-
-            <div class="card shadow-lg border-0" style="background-color: var(--color-sidebar);">
-                <div class="card-body ">
-                    
-                    <div class="mb-3 d-flex align-items-end flex-wrap g-2">
-                        <!-- Search input -->
-                        <div class="flex-fill me-2" style="min-width: 200px;">
-                            <label for="search" class="form-label">Search:</label>
-                            <input 
-                                id="search" 
-                                type="text" 
-                                v-model="searchQuery" 
-                                @input="onSearchInput" 
-                                @keyup.enter="onEnterKey" 
-                                class="form-control form-control-sm rounded-pill" 
-                                placeholder="Search by keywords..."
-                            >
-                        </div>
-
-                        <!-- Filter by conversion -->
-                        <div class="flex-fill me-2" style="min-width: 180px;">
-                            <label for="conversionFilter" class="form-label">Filter by conversion:</label>
-                            <select id="conversionFilter" class="form-select"  @change="onSearchInput" v-model="filter_type"  style="background-color:var(--color-sidebar); color: var(--color-text);" >
-                                <option value="">All</option>
-                                <option value="MISP_TO_STIX">MISP to STIX</option>
-                                <option value="STIX_TO_MISP">STIX to MISP</option>
-                            </select>
-                        </div>
-
-                        <!-- Filter by public -->
-                        <div class="flex-fill me-2" style="min-width: 180px;">
-                            <label for="publicFilter" class="form-label">Filter by conversion:</label>
-                            <select id="publicFilter" class="form-select"  @change="onSearchInput" v-model="filter_public"  style="background-color:var(--color-sidebar); color: var(--color-text);" >
-                                <option value="">All</option>
-                                <option value="PUBLIC">Public</option>
-                                <option value="PRIVATE">Private</option>
-                            </select>
-                        </div>
-
-                        <!-- Sort by date -->
-                        <div class="flex-fill me-2" style="min-width: 180px;">
-                            <label for="sortOrder" class="form-label">Sort by date:</label>
-                            <select 
-                                id="sortOrder" 
-                                class="form-select" 
-                                @change="onSearchInput"
-                                v-model="sort_order" 
-                                style="background-color:var(--color-sidebar); color: var(--color-text);"
-                            >
-                                <option value="desc">Newest first</option>
-                                <option value="asc">Oldest first</option>
-                            </select>
-                        </div>
-                    </div>
-
-
-
-                    <div v-if="user_convert.length > 0">
-                        <div class="table-responsive">
-                            <table class="table align-middle">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th><i class="fa-solid fa-hashtag me-1"></i>ID</th>
-                                        <th><i class="fa-solid fa-user me-1"></i>Name</th>
-                                        <th><i class="fa-solid fa-code-compare me-1"></i>Type</th>
-                                        <th><i class="fa-solid fa-align-left me-1"></i>Description</th>
-                                        <th><i class="fa-solid fa-calendar me-1"></i>Created at</th>
-                                        <th><i class="fa-solid fa-calendar me-1"></i>Public</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="conv in user_convert" :key="conv.id" @click="goTo(conv.id)" style="cursor: pointer; transition: background-color 0.3s; background-color:var(--color-navbar); color:var(--color-text);" id="card-item">
-
-                                        <td>[[ conv.id ]]</td>
-                                        <td>[[ conv.name ]]</td>
-                                        <td>
-                                            <span class="badge bg-info text-dark">[[ conv.conversion_type ]]</span>
-                                        </td>
-                                        <td>[[ conv.description ]]</td>
-                                        <td>[[ conv.created_at ]]</td>
-                                        <td>
-                                            <span class="badge" :class="conv.public ? 'bg-success' : 'bg-danger'">
-                                                [[ conv.public ? 'Public' : 'Private' ]]
-                                            </span></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div v-else class="text-center  py-4">
-                        <i class="fa-solid fa-circle-info fa-2x mb-2 "></i>
-                        <p>No convert found for <strong>[[ user.first_name]]</strong></p>
-                    </div>
-                </div>
-                <div v-if="user_convert.length > 0" >
-                    <nav aria-label="Page navigation" >
-                        <ul class="pagination justify-content-center mt-3">
-                            <li class="page-item" :class="{ disabled: current_page === 1 }">
-                                <button class="page-link" @click="current_page > 1 && fetchConvertuser(current_page - 1)">
-                                    <i class="fa-solid fa-angle-left"></i>
-                                </button>
-                            </li>
-
-                            <li class="page-item"
-                                v-for="page in visiblePages"
-                                :key="page"
-                                :class="{ active: page === current_page, disabled: page === '...' }">
-                                <button class="page-link" v-if="page !== '...'" @click="fetchConvertuser(page)">
-                                    [[ page ]]
-                                </button>
-                                <span class="page-link" v-else>...</span>
-                            </li>
-
-                            <li class="page-item" :class="{ disabled: current_page === total_pages }">
-                                <button class="page-link" @click="current_page < total_pages && fetchConvertuser(current_page + 1)">
-                                    <i class="fa-solid fa-angle-right"></i>
-                                </button>
-                            </li>
-                        </ul>
-                    </nav>
-                </div>
+            <div class="du-profile-actions" v-if="user">
+                <!-- Edit -->
+                <button class="du-action-btn du-action-edit" @click="openEditModal"
+                        title="Edit user">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <!-- Admin toggle -->
+                <button class="du-action-btn"
+                        :class="user.admin ? 'du-action-revoke' : 'du-action-grant'"
+                        :title="user.admin ? 'Revoke admin' : 'Grant admin'"
+                        @click="changeAdminRight">
+                    <i class="fas" :class="user.admin ? 'fa-user-minus' : 'fa-user-shield'"></i>
+                </button>
+                <!-- Delete -->
+                <button class="du-action-btn du-action-delete" @click="showDeleteModal = true"
+                        title="Delete user">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         </div>
-    {% endif %}
+
+        <!-- Stat chips -->
+        <div class="du-stats-grid" v-if="stats">
+            <div class="du-stat-chip">
+                <div class="du-stat-value">[[ stats.total_converts ]]</div>
+                <div class="du-stat-label">Conversions</div>
+            </div>
+            <div class="du-stat-chip">
+                <div class="du-stat-value" style="color:var(--accent)">[[ stats.misp_to_stix ]]</div>
+                <div class="du-stat-label">MISP → STIX</div>
+            </div>
+            <div class="du-stat-chip">
+                <div class="du-stat-value" style="color:#7c3aed">[[ stats.stix_to_misp ]]</div>
+                <div class="du-stat-label">STIX → MISP</div>
+            </div>
+            <div class="du-stat-chip">
+                <div class="du-stat-value" style="color:var(--success)">[[ stats.public ]]</div>
+                <div class="du-stat-label">Public</div>
+            </div>
+            <div class="du-stat-chip">
+                <div class="du-stat-value" style="color:#f59e0b">
+                    [[ (stats.likes || 0) + (stats.dislikes || 0) + (stats.reactions || 0) ]]
+                </div>
+                <div class="du-stat-label">Evaluations</div>
+            </div>
+        </div>
+
+    </div><!-- /du-top-row -->
+
+    <!-- Charts row -->
+    <div class="du-charts-row" v-if="stats">
+
+        <div class="custom-card du-chart-card">
+            <div class="du-chart-title">Conversion types</div>
+            <div class="du-chart-el" ref="chartType"></div>
+        </div>
+
+        <div class="custom-card du-chart-card">
+            <div class="du-chart-title">Visibility</div>
+            <div class="du-chart-el" ref="chartVisibility"></div>
+        </div>
+
+        <div class="custom-card du-chart-card">
+            <div class="du-chart-title">Evaluations given</div>
+            <div class="du-chart-el" ref="chartEvals"></div>
+        </div>
+
+        <div class="custom-card du-chart-card du-chart-activity">
+            <div class="du-chart-title">Activity — last 30 days</div>
+            <div class="du-chart-el" ref="chartActivity"></div>
+        </div>
+
+    </div>
+
+    <!-- Converts table -->
+    <div class="custom-card">
+        <div class="du-table-header">
+            <div class="du-table-title">
+                <i class="fas fa-exchange-alt me-2" style="color:var(--accent);"></i>Conversions
+            </div>
+            <div class="du-filters">
+                <input type="text" v-model="searchQuery" @input="onSearchInput" @keyup.enter="onSearchInput"
+                    class="du-filter-input" placeholder="Search…">
+                <select v-model="filter_type" @change="onSearchInput" class="du-filter-select">
+                    <option value="">All types</option>
+                    <option value="MISP_TO_STIX">MISP → STIX</option>
+                    <option value="STIX_TO_MISP">STIX → MISP</option>
+                </select>
+                <select v-model="filter_public" @change="onSearchInput" class="du-filter-select">
+                    <option value="">All</option>
+                    <option value="PUBLIC">Public</option>
+                    <option value="PRIVATE">Private</option>
+                </select>
+                <select v-model="sort_order" @change="onSearchInput" class="du-filter-select">
+                    <option value="desc">Newest first</option>
+                    <option value="asc">Oldest first</option>
+                </select>
+            </div>
+        </div>
+
+        <div v-if="user_convert.length > 0" class="du-table-wrap">
+            <table class="du-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Created</th>
+                        <th>Visibility</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="conv in user_convert" :key="conv.id"
+                        @click="goTo(conv.id)" class="du-table-row">
+                        <td class="du-td-id">[[ conv.id ]]</td>
+                        <td class="du-td-name">[[ conv.name || '—' ]]</td>
+                        <td>
+                            <span class="du-type-pill"
+                                  :class="conv.conversion_type === 'MISP_TO_STIX' ? 'du-type-m2s' : 'du-type-s2m'">
+                                [[ conv.conversion_type === 'MISP_TO_STIX' ? 'MISP → STIX' : 'STIX → MISP' ]]
+                            </span>
+                        </td>
+                        <td class="du-td-desc">[[ conv.description || '—' ]]</td>
+                        <td class="du-td-date">[[ conv.created_at ]]</td>
+                        <td>
+                            <span class="du-visibility-pill"
+                                  :class="conv.public ? 'du-vis-public' : 'du-vis-private'">
+                                <i class="fas" :class="conv.public ? 'fa-globe' : 'fa-lock'"
+                                   style="font-size:0.6rem;"></i>
+                                [[ conv.public ? 'Public' : 'Private' ]]
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div v-else class="du-empty">
+            <i class="fas fa-exchange-alt du-empty-icon"></i>
+            <p>No conversion found for <strong>[[ user?.first_name ]]</strong></p>
+        </div>
+
+        <div v-if="user_convert.length > 0">
+            <app-pagination :page="current_page" :total="total_pages"
+                            @change="fetchConverts"></app-pagination>
+        </div>
+    </div>
+
+</div><!-- /container -->
+
+<!-- Edit modal -->
+<teleport to="body">
+    <div v-if="showEditModal" class="du-modal-backdrop" @click.self="showEditModal = false">
+        <div class="du-modal">
+            <div class="du-modal-head">
+                <span><i class="fas fa-pen me-2"></i>Edit user</span>
+                <button class="du-modal-close" @click="showEditModal = false">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="du-modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label cf-label">First name</label>
+                        <input type="text" class="form-control" v-model="editForm.first_name"
+                               placeholder="First name">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label cf-label">Last name</label>
+                        <input type="text" class="form-control" v-model="editForm.last_name"
+                               placeholder="Last name">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label cf-label">Email</label>
+                        <input type="email" class="form-control" v-model="editForm.email"
+                               placeholder="email@example.com">
+                    </div>
+                </div>
+            </div>
+            <div class="du-modal-foot">
+                <button class="btn btn-secondary btn-sm" @click="showEditModal = false">Cancel</button>
+                <button class="btn btn-primary btn-sm" @click="saveEdit" :disabled="editSaving">
+                    <span v-if="editSaving" class="spinner-border spinner-border-sm me-1"></span>
+                    <i v-else class="fas fa-save me-1"></i>
+                    Save changes
+                </button>
+            </div>
+        </div>
+    </div>
+</teleport>
+
+<!-- Delete modal -->
+<teleport to="body">
+    <div v-if="showDeleteModal" class="du-modal-backdrop" @click.self="showDeleteModal = false">
+        <div class="du-modal du-modal-sm">
+            <div class="du-modal-head du-modal-head-danger">
+                <span><i class="fas fa-trash me-2"></i>Delete user</span>
+                <button class="du-modal-close" @click="showDeleteModal = false">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="du-modal-body" v-if="user">
+                <p style="font-size:0.88rem;color:var(--text-2);">
+                    Permanently delete <strong>[[ user.first_name ]] [[ user.last_name ]]</strong>
+                    and all their data? This action cannot be undone.
+                </p>
+            </div>
+            <div class="du-modal-foot">
+                <button class="btn btn-secondary btn-sm" @click="showDeleteModal = false">Cancel</button>
+                <a v-if="user" :href="`/account/delete/${user.id}`" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash me-1"></i> Confirm delete
+                </a>
+            </div>
+        </div>
+    </div>
+</teleport>
+
+{% endif %}
 {% endblock %}
 
 {% block script %}
-    <script type="module">
-        const user_id = document.getElementById('user_id').dataset.userId;
-        const { createApp, ref,computed } = Vue
-        import { display_toast, message_list, display_prepared_toast } from '/static/js/toaster.js'
+<script type="module">
+    const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue
+    import { display_prepared_toast, message_list } from '/static/js/toaster.js'
+    import AppPagination from '/static/js/pagination.js'
 
-        createApp({
-            delimiters: ['[[', ']]'],
-            setup() {
-                const user = ref([])
+    const user_id = document.getElementById('user_id')?.dataset.userId
 
-                const user_convert = ref([]) 
-                const current_page = ref(1)
-                const total_pages = ref(1)
+    /* ── ECharts lazy load ────────────────────────────────────── */
+    let _echartsPromise = null
+    function loadECharts() {
+        if (window.echarts) return Promise.resolve(window.echarts)
+        if (_echartsPromise) return _echartsPromise
+        _echartsPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script')
+            s.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js'
+            s.onload  = () => resolve(window.echarts)
+            s.onerror = () => reject(new Error('ECharts failed to load'))
+            document.head.appendChild(s)
+        })
+        return _echartsPromise
+    }
 
-                const filter_type = ref('')
-                const sort_order = ref('desc')
-                const searchQuery = ref('')
-                const filter_public = ref('')
+    function getThemeColors() {
+        const s = getComputedStyle(document.documentElement)
+        return {
+            text:    s.getPropertyValue('--text').trim()   || '#e2e8f0',
+            text2:   s.getPropertyValue('--text-2').trim() || '#94a3b8',
+            text3:   s.getPropertyValue('--text-3').trim() || '#64748b',
+            surface: s.getPropertyValue('--surface').trim()   || '#1e293b',
+            surface2:s.getPropertyValue('--surface-2').trim() || '#0f172a',
+            border:  s.getPropertyValue('--border').trim() || '#334155',
+            accent:  s.getPropertyValue('--accent').trim() || '#3b82f6',
+        }
+    }
 
-                async function fetchUser(){
-                    const params = new URLSearchParams({
-                        user_id:user_id
-                    })
-                    const res = await fetch(`/account/get_user?`+ params.toString());
-                    if (res.ok) {
-                        const data = await res.json();
-                        user.value = data.user;
-                    }
-                }
-                fetchUser(1)
+    createApp({
+        components: { 'app-pagination': AppPagination },
+        delimiters: ['[[', ']]'],
+        setup() {
+            const user          = ref(null)
+            const stats         = ref(null)
+            const user_convert  = ref([])
+            const current_page  = ref(1)
+            const total_pages   = ref(1)
+            const filter_type   = ref('')
+            const sort_order    = ref('desc')
+            const searchQuery   = ref('')
+            const filter_public = ref('')
 
+            const showEditModal   = ref(false)
+            const showDeleteModal = ref(false)
+            const editSaving      = ref(false)
+            const editForm = reactive({ first_name: '', last_name: '', email: '' })
 
-                async function fetchConvertuser(page) {
-                     const params = new URLSearchParams({
-                        user_id:user_id,
-                        page:page,
-                        filter_type: filter_type.value || '',
-                        sort_order: sort_order.value || 'desc',
-                        searchQuery: searchQuery.value || '',
-                        filter_public: filter_public.value || ''
-                    })
-                    const res = await fetch(`/account/get_user_convert?`+ params.toString());
-                    if (res.ok) {
-                        const data = await res.json();
-                        user_convert.value = data.list || []
-                        total_pages.value = data.total_page || 1
-                        current_page.value = page
-                    }
-                }
-                fetchConvertuser(1)
+            const chartType       = ref(null)
+            const chartVisibility = ref(null)
+            const chartEvals      = ref(null)
+            const chartActivity   = ref(null)
+            let charts = {}
 
-                function goTo(id){
-                    window.location.href = "/convert/detail/" + id;
-                }
-
-                const visiblePages = computed(() => {
-                    const pages = []
-                    const total = total_pages.value
-                    const current = current_page.value
-                    if (total <= 7) {
-                    for (let i = 1; i <= total; i++) pages.push(i)
-                    } else {
-                    if (current <= 4) {
-                        pages.push(1, 2, 3, 4, 5, '...', total)
-                    } else if (current >= total - 3) {
-                        pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                    } else {
-                        pages.push(1, '...', current - 1, current, current + 1, '...', total)
-                    }
-                    }
-                    return pages
-                })
-
-
-                async function onSearchInput() {
-                    await fetchConvertuser(1)
-                }
-
-                async function onEnterKey() {
-                    await fetchConvertuser(1)
-                }
-
-                async function changeAdminRight() {
-                    const res = await fetch('/account/edit_admin', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
-                        },
-                        body: JSON.stringify({ id: user_id })
-                    });
-                    const data = await res.json();
-                    if(res.ok){
-                        user.value.admin = data.admin
-                    }
-                    const message = {
-                        message: data.message,
-                        toast_class: data.toast_class,
-                        id: Math.random()
-                    };
-                    display_prepared_toast(message);
-                }
-
-                return {
-                    message_list,
-                    fetchConvertuser,
-                    fetchUser,
-                    user,
-                    user_convert,
-                    current_page,
-                    total_pages,
-                    visiblePages,
-                    goTo,
-                    onSearchInput,
-                    onEnterKey,
-                    filter_type,
-                    sort_order,
-                    searchQuery ,
-                    changeAdminRight,
-                    filter_public
+            /* ── fetch ─────────────────────────────────────────── */
+            async function fetchUser() {
+                const res = await fetch(`/account/get_user?user_id=${user_id}`)
+                if (res.ok) {
+                    const d = await res.json()
+                    user.value = d.user
                 }
             }
-        }).mount('#main-containers')
-    </script>
+
+            async function fetchStats() {
+                const res = await fetch(`/account/get_user_stats?user_id=${user_id}`)
+                if (res.ok) {
+                    const d = await res.json()
+                    if (d.success) {
+                        stats.value = d.stats
+                        await nextTick()
+                        await drawCharts(d.stats)
+                    }
+                }
+            }
+
+            async function fetchConverts(page = 1) {
+                const p = new URLSearchParams({
+                    user_id, page,
+                    filter_type:   filter_type.value   || '',
+                    sort_order:    sort_order.value     || 'desc',
+                    searchQuery:   searchQuery.value    || '',
+                    filter_public: filter_public.value  || '',
+                })
+                const res = await fetch(`/account/get_user_convert?${p}`)
+                if (res.ok) {
+                    const d = await res.json()
+                    user_convert.value = d.list  || []
+                    total_pages.value  = d.total_page || 1
+                    current_page.value = page
+                }
+            }
+
+            async function onSearchInput() { fetchConverts(1) }
+
+            function goTo(id) { window.location.href = `/convert/detail/${id}` }
+
+            /* ── admin right ───────────────────────────────────── */
+            async function changeAdminRight() {
+                const res = await fetch('/account/edit_admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json',
+                               'X-CSRFToken': document.getElementById('csrf_token')?.value || '' },
+                    body: JSON.stringify({ id: user_id })
+                })
+                const d = await res.json()
+                if (res.ok) user.value.admin = d.admin
+                display_prepared_toast({
+                    message: d.message,
+                    toast_class: d.toast_class,
+                    icon: d.admin ? 'fas fa-user-shield' : 'fas fa-user-minus',
+                    id: Math.random()
+                })
+            }
+
+            /* ── edit ──────────────────────────────────────────── */
+            function openEditModal() {
+                editForm.first_name = user.value?.first_name || ''
+                editForm.last_name  = user.value?.last_name  || ''
+                editForm.email      = user.value?.email      || ''
+                showEditModal.value = true
+            }
+
+            async function saveEdit() {
+                editSaving.value = true
+                const res = await fetch('/account/admin_edit_user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json',
+                               'X-CSRFToken': document.getElementById('csrf_token')?.value || '' },
+                    body: JSON.stringify({ id: parseInt(user_id), ...editForm })
+                })
+                const d = await res.json()
+                if (d.success) {
+                    user.value = d.user
+                    showEditModal.value = false
+                }
+                display_prepared_toast({
+                    message: d.message,
+                    toast_class: d.toast_class,
+                    icon: d.success ? 'fas fa-check' : 'fas fa-xmark',
+                    id: Math.random()
+                })
+                editSaving.value = false
+            }
+
+            /* ── charts ────────────────────────────────────────── */
+            async function drawCharts(s) {
+                const ec = await loadECharts()
+                const c  = getThemeColors()
+
+                /* destroy previous instances */
+                Object.values(charts).forEach(ch => ch?.dispose())
+                charts = {}
+
+                /* helper: common dark options */
+                const base = {
+                    backgroundColor: 'transparent',
+                    textStyle: { color: c.text2, fontFamily: 'inherit' },
+                    animation: true,
+                }
+
+                /* 1 — conversion types */
+                if (chartType.value) {
+                    const ch = ec.init(chartType.value, null, { renderer: 'svg' })
+                    charts.type = ch
+                    ch.setOption({
+                        ...base,
+                        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                        legend: { show: false },
+                        series: [{
+                            type: 'pie', radius: ['50%', '75%'],
+                            label: { color: c.text2, fontSize: 11 },
+                            itemStyle: { borderRadius: 4, borderWidth: 2, borderColor: c.surface },
+                            data: [
+                                { value: s.misp_to_stix, name: 'MISP → STIX', itemStyle: { color: c.accent } },
+                                { value: s.stix_to_misp, name: 'STIX → MISP', itemStyle: { color: '#7c3aed' } },
+                            ]
+                        }]
+                    })
+                }
+
+                /* 2 — visibility */
+                if (chartVisibility.value) {
+                    const ch = ec.init(chartVisibility.value, null, { renderer: 'svg' })
+                    charts.vis = ch
+                    ch.setOption({
+                        ...base,
+                        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                        legend: { show: false },
+                        series: [{
+                            type: 'pie', radius: ['50%', '75%'],
+                            label: { color: c.text2, fontSize: 11 },
+                            itemStyle: { borderRadius: 4, borderWidth: 2, borderColor: c.surface },
+                            data: [
+                                { value: s.public,  name: 'Public',  itemStyle: { color: '#10b981' } },
+                                { value: s.private, name: 'Private', itemStyle: { color: '#f59e0b' } },
+                            ]
+                        }]
+                    })
+                }
+
+                /* 3 — evaluations */
+                if (chartEvals.value) {
+                    const ch = ec.init(chartEvals.value, null, { renderer: 'svg' })
+                    charts.evals = ch
+                    ch.setOption({
+                        ...base,
+                        tooltip: { trigger: 'axis' },
+                        grid: { top: 10, bottom: 30, left: 28, right: 8 },
+                        xAxis: {
+                            type: 'category',
+                            data: ['Likes', 'Dislikes', 'Reactions'],
+                            axisLine: { lineStyle: { color: c.border } },
+                            axisLabel: { color: c.text3, fontSize: 11 },
+                        },
+                        yAxis: {
+                            type: 'value', splitLine: { lineStyle: { color: c.border, type: 'dashed' } },
+                            axisLabel: { color: c.text3, fontSize: 10 },
+                        },
+                        series: [{
+                            type: 'bar', barMaxWidth: 32, borderRadius: [4, 4, 0, 0],
+                            data: [
+                                { value: s.likes,     itemStyle: { color: '#10b981' } },
+                                { value: s.dislikes,  itemStyle: { color: '#ef4444' } },
+                                { value: s.reactions, itemStyle: { color: c.accent  } },
+                            ]
+                        }]
+                    })
+                }
+
+                /* 4 — activity last 30 days */
+                if (chartActivity.value && s.activity) {
+                    const ch = ec.init(chartActivity.value, null, { renderer: 'svg' })
+                    charts.activity = ch
+
+                    /* fill all 30 days */
+                    const days = [], counts = []
+                    for (let i = 29; i >= 0; i--) {
+                        const d = new Date(); d.setDate(d.getDate() - i)
+                        const key = d.toISOString().slice(0, 10)
+                        days.push(key.slice(5))   // MM-DD
+                        counts.push(s.activity[key] || 0)
+                    }
+
+                    ch.setOption({
+                        ...base,
+                        tooltip: { trigger: 'axis' },
+                        grid: { top: 10, bottom: 30, left: 28, right: 8 },
+                        xAxis: {
+                            type: 'category', data: days, boundaryGap: false,
+                            axisLine: { lineStyle: { color: c.border } },
+                            axisLabel: { color: c.text3, fontSize: 10,
+                                         interval: Math.floor(days.length / 6) },
+                        },
+                        yAxis: {
+                            type: 'value', splitLine: { lineStyle: { color: c.border, type: 'dashed' } },
+                            axisLabel: { color: c.text3, fontSize: 10 }, minInterval: 1,
+                        },
+                        series: [{
+                            type: 'line', smooth: true, symbol: 'none',
+                            areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: c.accent + '55' },
+                                    { offset: 1, color: c.accent + '00' },
+                                ]}},
+                            lineStyle: { color: c.accent, width: 2 },
+                            data: counts,
+                        }]
+                    })
+                }
+
+                /* resize on window change */
+                window.addEventListener('resize', () => {
+                    Object.values(charts).forEach(ch => ch?.resize())
+                })
+            }
+
+            /* re-render charts on theme change */
+            document.documentElement.addEventListener('themechange', () => {
+                if (stats.value) drawCharts(stats.value)
+            })
+
+            onMounted(() => {
+                fetchUser()
+                fetchStats()
+                fetchConverts(1)
+            })
+
+            return {
+                user, stats, user_convert, current_page, total_pages,
+                filter_type, sort_order, searchQuery, filter_public,
+                showEditModal, showDeleteModal, editSaving, editForm,
+                chartType, chartVisibility, chartEvals, chartActivity,
+                fetchConverts, onSearchInput, goTo,
+                changeAdminRight, openEditModal, saveEdit,
+                message_list,
+            }
+        }
+    }).mount('#main-containers')
+</script>
 {% endblock %}

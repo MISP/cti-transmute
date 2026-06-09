@@ -1,0 +1,49 @@
+{# ══════════════════════════════════════════════════════════════
+   evaluation_panel macro avec logs de débogage
+   ══════════════════════════════════════════════════════════════ #}
+
+{% macro evaluation_css() %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/evaluation.css') }}">
+{% endmacro %}
+
+{% macro evaluation_panel(convert, current_user) %}
+{# Log de contrôle pour vérifier que Jinja reçoit bien les données #}
+<script>
+    console.log("Jinja Debug - Tentative de rendu du panel pour convert ID:", "{{ convert.id if convert else 'NULL' }}");
+</script>
+
+<div class="eval-section">
+    <div class="eval-section-label">
+        <i class="fas fa-chart-bar"></i> Evaluation
+    </div>
+    <div class="eval-panel"
+         id="eval-panel-{{ convert.id }}"
+         data-convert-id="{{ convert.id }}"
+         data-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
+         data-owner="{{ 'true' if current_user.is_authenticated and convert.user_id == current_user.id else 'false' }}"
+         data-public="{{ 'true' if convert.public else 'false' }}">
+    </div>
+</div>
+{% endmacro %}
+
+{% macro evaluation_js() %}
+<script type="module">
+import { mountEvaluationPanels } from '/static/js/evaluationPanel.js'
+
+function init() {
+    console.log("Vue Debug - Initialisation du montage...");
+    const panels = document.querySelectorAll('.eval-panel');
+    console.log("Vue Debug - Panels trouvés dans le DOM:", panels.length);
+    
+    if (panels.length === 0) {
+        console.warn("Vue Debug - Aucune div avec la classe 'eval-panel' trouvée !");
+    }
+    
+    mountEvaluationPanels();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+// Exécution immédiate
+init();
+</script>
+{% endmacro %}

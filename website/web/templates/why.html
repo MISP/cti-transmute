@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/why.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
+{% block content %}
+
+<!-- ── Hero ─────────────────────────────────────────────────────── -->
+<section class="why-hero">
+    <div class="why-hero-eyebrow">
+        <i class="fas fa-circle-question me-1"></i> Why CTI-Transmute?
+    </div>
+    <h1 class="why-hero-title">Bridge the gap between<br>
+        <span class="">
+            <img src="/static/image/misp.svg" alt="MISP" style="height:.85em; vertical-align:middle; margin-right:.2em; position:relative; top:-.05em;"><a href="https://www.misp-project.org/" 
+            style="color: inherit; text-decoration: none; font-weight: 500; color: #1e3a8a;" target="_blank" rel="noopener noreferrer">MISP</a>
+        </span>
+        and
+        <span class="why-hero-gradient">
+            <a href="https://oasis-open.github.io/cti-documentation/stix/intro" style="color: inherit; text-decoration: none;" target="_blank" rel="noopener noreferrer">
+                <img src="/static/image/logo_stix.svg" alt="STIX" style="height:.85em; vertical-align:middle; margin-right:.2em; position:relative; top:-.05em;">
+            </a>
+        </span>
+    </h1>
+    <p class="why-hero-sub">
+        Cyber Threat Intelligence lives in many formats. CTI-Transmute is the open-source tool
+        that makes MISP and STIX speak the same language — instantly, reliably, and for free.
+    </p>
+    <div class="why-hero-actions">
+        <div class="dropdown">
+            <a href="#" class="btn-hero-primary dropdown-toggle" data-bs-toggle="dropdown" role="button">
+                <i class="fas fa-exchange-alt me-2"></i> Start Converting
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end mt-2 cti-dropdown-menu">
+                <li>
+                    <a class="dropdown-item cti-dropdown-item" href="/convert/misp_to_stix">
+                        <div class="cti-convert-row">
+                            <span class="cti-badge cti-badge-misp">MISP</span>
+                            <i class="fas fa-arrow-right cti-arrow"></i>
+                            <span class="cti-badge cti-badge-stix">STIX</span>
+                        </div>
+                        <span class="cti-convert-hint">Convert MISP event to STIX bundle</span>
+                    </a>
+                </li>
+                <li><hr class="cti-divider"></li>
+                <li>
+                    <a class="dropdown-item cti-dropdown-item" href="/convert/stix_to_misp">
+                        <div class="cti-convert-row">
+                            <span class="cti-badge cti-badge-stix">STIX</span>
+                            <i class="fas fa-arrow-right cti-arrow"></i>
+                            <span class="cti-badge cti-badge-misp">MISP</span>
+                        </div>
+                        <span class="cti-convert-hint">Convert STIX bundle to MISP event</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <a href="https://github.com/MISP/cti-transmute" target="_blank" rel="noopener" class="btn-why-secondary">
+            <i class="fab fa-github me-2"></i> View on GitHub
+        </a>
+    </div>
+</section>
+
+<!-- ── The Challenge ─────────────────────────────────────────────── -->
+<div class="why-wrap">
+    <div class="why-challenge-band reveal-up">
+        <div class="why-challenge-item">
+            <i class="fas fa-triangle-exclamation why-challenge-icon"></i>
+            <div>
+                <div class="why-challenge-label">The Problem</div>
+                <div class="why-challenge-text">MISP and STIX are the two dominant CTI standards — but they don't talk to each other natively, forcing teams to write fragile custom scripts or lose data in manual re-entry.</div>
+            </div>
+        </div>
+        <div class="why-challenge-sep"></div>
+        <div class="why-challenge-item">
+            <i class="fas fa-circle-check why-challenge-icon" style="color:var(--accent);"></i>
+            <div>
+                <div class="why-challenge-label">The Solution</div>
+                <div class="why-challenge-text">CTI-Transmute provides a battle-tested, community-maintained conversion engine exposed as a simple REST API and web interface — no scripts, no data loss.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── How It Works ──────────────────────────────────────────────── -->
+<div class="why-wrap">
+    <div class="why-section-label reveal-up"><i class="fas fa-gears me-1"></i> How It Works</div>
+    <p class="why-section-desc reveal-up">Three steps. No setup required.</p>
+    <div class="why-steps reveal-stagger">
+
+        <div class="why-step">
+            <div class="why-step-num">01</div>
+            <div class="why-step-icon-wrap why-step-icon--blue">
+                <i class="fas fa-file-code"></i>
+            </div>
+            <h3 class="why-step-title">Paste or upload your JSON</h3>
+            <p class="why-step-desc">Drop in a raw
+                <img src="/static/image/misp.svg" width="14" height="14" style="vertical-align:middle; margin:0 2px;">
+                MISP event or a
+                <img src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin:0 2px;">
+                STIX bundle — from a file, clipboard, or live MISP instance via the API.</p>
+        </div>
+
+        <div class="why-step-arrow"><i class="fas fa-arrow-right"></i></div>
+
+        <div class="why-step">
+            <div class="why-step-num">02</div>
+            <div class="why-step-icon-wrap why-step-icon--indigo">
+                <i class="fas fa-arrow-right-arrow-left"></i>
+            </div>
+            <h3 class="why-step-title">Choose your direction</h3>
+            <p class="why-step-desc">Select
+                <img src="/static/image/misp.svg" width="14" height="14" style="vertical-align:middle; margin:0 2px;">MISP →
+                <img src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin:0 2px;">STIX
+                or the reverse. Pick the STIX version (2.0 or 2.1) when converting from MISP.</p>
+        </div>
+
+        <div class="why-step-arrow"><i class="fas fa-arrow-right"></i></div>
+
+        <div class="why-step">
+            <div class="why-step-num">03</div>
+            <div class="why-step-icon-wrap why-step-icon--green">
+                <i class="fas fa-circle-check"></i>
+            </div>
+            <h3 class="why-step-title">Get your result instantly</h3>
+            <p class="why-step-desc">Download the converted JSON, push it to MISP, share it publicly, or keep it private in your history.</p>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Key Features ──────────────────────────────────────────────── -->
+<div class="why-wrap">
+    <div class="why-section-label reveal-up"><i class="fas fa-star me-1"></i> Key Features</div>
+    <p class="why-section-desc reveal-up">Everything a threat intelligence team needs, out of the box.</p>
+    <div class="why-features reveal-stagger">
+
+        <div class="why-feature-card">
+            <div class="why-feature-icon why-feature-icon--blue">
+                <i class="fas fa-code-branch"></i>
+            </div>
+            <div class="why-feature-body">
+                <h4 class="why-feature-title">Open Source</h4>
+                <p class="why-feature-desc">Maintained by the MISP Project community. Transparent, auditable, and free forever. Contributions welcome.</p>
+            </div>
+        </div>
+
+        <div class="why-feature-card">
+            <div class="why-feature-icon why-feature-icon--indigo">
+                <i class="fas fa-certificate"></i>
+            </div>
+            <div class="why-feature-body">
+                <h4 class="why-feature-title">Standards Compliant</h4>
+                <p class="why-feature-desc">Full support for
+                    <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin:0 2px;">STIX
+                    2.0 and 2.1, and the official
+                    <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin:0 2px;">MISP
+                    standard format — no proprietary extensions.</p>
+            </div>
+        </div>
+
+        <div class="why-feature-card">
+            <div class="why-feature-icon why-feature-icon--slate">
+                <i class="fas fa-plug"></i>
+            </div>
+            <div class="why-feature-body">
+                <h4 class="why-feature-title">REST API</h4>
+                <p class="why-feature-desc">Automate conversions at scale. Integrate CTI-Transmute into your SOAR, pipeline, or custom tooling with simple HTTP calls.</p>
+            </div>
+        </div>
+
+        <div class="why-feature-card">
+            <div class="why-feature-icon why-feature-icon--cyan">
+                <i class="fas fa-tags"></i>
+            </div>
+            <div class="why-feature-body">
+                <h4 class="why-feature-title">MISP Taxonomy Tags</h4>
+                <p class="why-feature-desc">Over 12 000 MISP taxonomy tags available. Tag your converts, auto-detect tags from JSON, and push them back to MISP.</p>
+            </div>
+        </div>
+
+        <div class="why-feature-card">
+            <div class="why-feature-icon why-feature-icon--amber">
+                <i class="fas fa-chart-bar"></i>
+            </div>
+            <div class="why-feature-body">
+                <h4 class="why-feature-title">Collaborative Evaluation</h4>
+                <p class="why-feature-desc">Rate converts on accuracy, quality, and completeness. Community consensus tags surface the best-validated intelligence.</p>
+            </div>
+        </div>
+
+        <div class="why-feature-card">
+            <div class="why-feature-icon why-feature-icon--green">
+                <i class="fas fa-history"></i>
+            </div>
+            <div class="why-feature-body">
+                <h4 class="why-feature-title">History &amp; Sharing</h4>
+                <p class="why-feature-desc">Every conversion is saved. Share publicly with the community or keep it private. Browse, search, and revisit past work.</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Who It's For ──────────────────────────────────────────────── -->
+<div class="why-wrap">
+    <div class="why-section-label reveal-up"><i class="fas fa-users me-1"></i> Who It's For</div>
+    <div class="why-audience reveal-stagger">
+
+        <div class="why-audience-card">
+            <div class="why-audience-icon">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h4 class="why-audience-title">SOC Analysts</h4>
+            <p class="why-audience-desc">Ingest
+                <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin:0 2px;">STIX
+                bundles from threat feeds directly into
+                <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin:0 2px;">MISP,
+                or export MISP events to share with partners who use STIX — without touching a single line of code.</p>
+            <a href="/convert/stix_to_misp" class="why-audience-link">
+                <img src="/static/image/logo_stix.svg" width="12" height="12" style="vertical-align:middle; margin-right:3px;">STIX →
+                <img src="/static/image/misp.svg" width="12" height="12" style="vertical-align:middle; margin:0 3px;">MISP
+                <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i>
+            </a>
+        </div>
+
+        <div class="why-audience-card">
+            <div class="why-audience-icon">
+                <i class="fas fa-magnifying-glass-chart"></i>
+            </div>
+            <h4 class="why-audience-title">Threat Intel Teams</h4>
+            <p class="why-audience-desc">Standardise your CTI output across teams and tools. Evaluate conversion quality collaboratively and maintain a searchable history of all your conversions.</p>
+            <a href="/convert/history" class="why-audience-link">Browse history <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i></a>
+        </div>
+
+        <div class="why-audience-card">
+            <div class="why-audience-icon">
+                <i class="fas fa-terminal"></i>
+            </div>
+            <h4 class="why-audience-title">Platform Developers</h4>
+            <p class="why-audience-desc">Integrate bidirectional MISP ↔ STIX conversion into your platform via the REST API. Simple HTTP endpoints, JSON in, JSON out.</p>
+            <a href="/api" target="_blank" rel="noopener" class="why-audience-link">API docs <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i></a>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── CTA strip ─────────────────────────────────────────────────── -->
+<div class="why-wrap why-wrap--last">
+    <div class="why-cta reveal-up">
+        <div class="why-cta-text">
+            <h2 class="why-cta-title">Ready to convert?</h2>
+            <p class="why-cta-sub">Free, open-source, and running right now. No account required to try it out.</p>
+        </div>
+        <div class="why-cta-actions">
+            <div class="dropdown">
+                <a href="#" class="btn-hero-primary dropdown-toggle" data-bs-toggle="dropdown" role="button">
+                    <i class="fas fa-exchange-alt me-2"></i> Start Converting
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end mt-2 cti-dropdown-menu">
+                    <li>
+                        <a class="dropdown-item cti-dropdown-item" href="/convert/misp_to_stix">
+                            <div class="cti-convert-row">
+                                <span class="cti-badge cti-badge-misp">
+                                    <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin-right:4px;">MISP
+                                </span>
+                                <i class="fas fa-arrow-right cti-arrow"></i>
+                                <span class="cti-badge cti-badge-stix">
+                                    <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin-right:4px;">STIX
+                                </span>
+                            </div>
+                            <span class="cti-convert-hint">Convert MISP event to STIX bundle</span>
+                        </a>
+                    </li>
+                    <li><hr class="cti-divider"></li>
+                    <li>
+                        <a class="dropdown-item cti-dropdown-item" href="/convert/stix_to_misp">
+                            <div class="cti-convert-row">
+                                <span class="cti-badge cti-badge-stix">
+                                    <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin-right:4px;">STIX
+                                </span>
+                                <i class="fas fa-arrow-right cti-arrow"></i>
+                                <span class="cti-badge cti-badge-misp">
+                                    <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin-right:4px;">MISP
+                                </span>
+                            </div>
+                            <span class="cti-convert-hint">Convert STIX bundle to MISP event</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <a href="/" class="btn-why-secondary">
+                <i class="fas fa-house me-2"></i> Back to Home
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script>
+    // Scroll-reveal animation
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('revealed'); });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.reveal-up, .reveal-stagger').forEach(el => observer.observe(el));
+    document.querySelectorAll('.reveal-stagger > *').forEach((el, i) => {
+        el.style.transitionDelay = (i * 80) + 'ms';
+    });
+</script>
+{% endblock %}

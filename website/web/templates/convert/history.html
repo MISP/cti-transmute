@@ -4,100 +4,209 @@
 {% endblock %}
 
 {% block content %}
-<div>
+<div v-cloak>
 
     <!-- Header -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <div>
-            <h2 class="mb-1" style="font-weight:700; letter-spacing:-0.02em;">Conversion History</h2>
-            <p class="mb-0" style="color: var(--text-2); font-size:0.85rem;">Browse and manage all past conversions</p>
+    <div class="list-header">
+        <div class="home-hero-badge">
+            <i class="fas fa-clock-rotate-left"></i> History
         </div>
+        <h1 class="list-title">Conversion History</h1>
+        <p class="list-subtitle">
+            Browse and manage all past conversions. Filter by type, date, tags or search inside JSON content.
+        </p>
     </div>
 
-    <!-- Filters bar -->
-    <div class="p-3 mb-4 rounded-3" style="background: var(--surface); border: 1px solid var(--border);">
-        <div class="d-flex align-items-end flex-wrap gap-3">
+    <!-- Filters panel -->
+    <div class="history-filter-panel mb-4">
 
-            <!-- Search with scope selector -->
-            <div style="min-width: 280px; flex:3;">
-                <label class="form-label">Search</label>
-                <div class="d-flex gap-2 align-items-center">
-                    <div class="d-flex flex-grow-1">
-                        <select class="form-select form-select-sm search-scope-select" v-model="search_scope" @change="onSearchInput"
-                            title="Search scope" style="min-width:0; width:90px; flex-shrink:0;">
+        <!-- ── Header (always visible) ──────────────────────────── -->
+        <div class="history-filter-header" :class="{ closed: !filtersOpen }" @click="filtersOpen = !filtersOpen">
+            <i class="fas fa-sliders" style="color:var(--accent); font-size:0.85rem; flex-shrink:0;"></i>
+            <span class="history-filter-title">Filters</span>
+            <span v-if="activeFilterCount > 0" class="filter-count-badge">[[ activeFilterCount ]]</span>
+
+            <!-- Summary chips when collapsed -->
+            <div v-if="!filtersOpen" class="d-flex flex-wrap gap-1 flex-grow-1 mx-2 overflow-hidden">
+                <span v-if="searchQuery" class="filter-chip-active">
+                    <i class="fas fa-search" style="font-size:0.65rem;"></i>
+                    [[ searchQuery.length > 18 ? searchQuery.slice(0,18)+'…' : searchQuery ]]
+                </span>
+                <span v-if="filter_type" class="filter-chip-active">
+                    [[ filter_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
+                </span>
+                <span v-if="favorites_only" class="filter-chip-active" style="color:#f59e0b; border-color:#f59e0b;">
+                    <i class="fas fa-star" style="font-size:0.65rem;"></i> Favorites
+                </span>
+                <span v-if="date_from || date_to" class="filter-chip-active">
+                    <i class="fas fa-calendar-alt" style="font-size:0.65rem;"></i>
+                    [[ date_from || '…' ]] / [[ date_to || '…' ]]
+                </span>
+                <span v-if="only_mine" class="filter-chip-active">
+                    <i class="fas fa-user" style="font-size:0.65rem;"></i> Mine
+                </span>
+                <span v-if="selectedTagNames.length > 0" class="filter-chip-active">
+                    <i class="fas fa-tags" style="font-size:0.65rem;"></i>
+                    [[ selectedTagNames.length ]] tag[[ selectedTagNames.length > 1 ? 's' : '' ]]
+                </span>
+            </div>
+
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <button v-if="activeFilterCount > 0"
+                        class="filter-reset-btn"
+                        @click.stop="resetFilters">
+                    <i class="fas fa-rotate-left"></i>
+                    <span class="d-none d-sm-inline">Reset</span>
+                </button>
+                <i class="fas fa-chevron-down filter-chevron" :class="{ open: filtersOpen }"></i>
+            </div>
+        </div>
+
+        <!-- ── Body (collapsible) ────────────────────────────────── -->
+        <div v-show="filtersOpen" class="history-filter-body">
+
+            <!-- Row 1: Search + Type + Sort -->
+            <div class="filter-row mb-3">
+
+                <!-- Search -->
+                <div>
+                    <div class="filter-label">Search</div>
+                    <div class="filter-search-group">
+                        <select class="filter-search-select form-select form-select-sm"
+                                v-model="search_scope" @change="onSearchInput"
+                                title="Search scope">
                             <option value="all">All</option>
                             <option value="name">Name</option>
                             <option value="description">Desc</option>
                             <option value="content">JSON</option>
                         </select>
-                        <div class="position-relative flex-grow-1">
-                            <i class="fas fa-search position-absolute"
-                                style="left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.8rem; z-index:1;"></i>
-                            <input type="text" v-model="searchQuery"
-                                @input="onSearchInput" @keyup.enter="onSearchInput"
-                                class="form-control form-control-sm search-input-joined"
-                                style="padding-left:30px;"
-                                :placeholder="searchPlaceholder">
+                        <input type="text"
+                               class="filter-search-input form-control form-control-sm"
+                               v-model="searchQuery"
+                               @input="onSearchInput" @keyup.enter="onSearchInput"
+                               :placeholder="searchPlaceholder">
+                        <label class="filter-exact-wrap" title="Match exact phrase">
+                            <input type="checkbox" v-model="exact_match" @change="onSearchInput"
+                                   class="form-check-input" style="width:.85rem;height:.85rem;cursor:pointer;margin:0;flex-shrink:0;">
+                            <span class="d-none d-md-inline">Exact</span>
+                        </label>
+                    </div>
+                    <div v-if="searchQuery" class="mt-1" style="font-size:0.7rem; color:var(--text-3);">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>[[ scopeLabel ]]</strong>
+                        <span v-if="exact_match"> · exact phrase</span>
+                    </div>
+                </div>
+
+                <!-- Type -->
+                <div>
+                    <div class="filter-label">Type</div>
+                    <select class="form-select form-select-sm" @change="onSearchInput" v-model="filter_type"
+                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
+                        <option value="">All types</option>
+                        <option value="MISP_TO_STIX">MISP → STIX</option>
+                        <option value="STIX_TO_MISP">STIX → MISP</option>
+                    </select>
+                </div>
+
+                <!-- Sort -->
+                <div>
+                    <div class="filter-label">Sort</div>
+                    <select class="form-select form-select-sm" v-model="sort_order" @change="onSearchInput"
+                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
+                        <option value="desc">Newest first</option>
+                        <option value="asc">Oldest first</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 2: Dates + Visibility + Toggles -->
+            <div class="filter-row-dates mb-3">
+
+                <!-- Date from -->
+                <div>
+                    <div class="filter-label">From</div>
+                    <input type="date" class="form-control form-control-sm" v-model="date_from"
+                           @change="onSearchInput"
+                           style="background:var(--surface); color:var(--text); border-color:var(--border);">
+                </div>
+
+                <!-- Date to -->
+                <div>
+                    <div class="filter-label">To</div>
+                    <input type="date" class="form-control form-control-sm" v-model="date_to"
+                           @change="onSearchInput"
+                           style="background:var(--surface); color:var(--text); border-color:var(--border);">
+                </div>
+
+                {% if current_user.is_authenticated %}
+                <!-- Visibility — more room now -->
+                <div class="filter-mine-wrap">
+                    <div class="filter-label">Visibility</div>
+                    <select class="form-select form-select-sm" v-model="vis_filter" @change="onSearchInput"
+                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
+                        <option value="">All</option>
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                    </select>
+                </div>
+
+                <!-- Mine only + Favorites side by side -->
+                <div class="filter-toggles-group">
+                    <div class="filter-label">Filters</div>
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
+                            <input class="form-check-input" type="checkbox" id="myConvertsOnly"
+                                   v-model="only_mine" @change="onSearchInput"
+                                   style="width:2.2rem; height:1.2rem; cursor:pointer;">
+                            <label class="form-check-label" for="myConvertsOnly"
+                                   style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
+                                Mine only
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
+                            <input class="form-check-input" type="checkbox" id="favoritesOnly"
+                                   v-model="favorites_only" @change="onSearchInput"
+                                   style="width:2.2rem; height:1.2rem; cursor:pointer;">
+                            <label class="form-check-label" for="favoritesOnly"
+                                   style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
+                                Favorites
+                            </label>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-1 flex-shrink-0" style="font-size:0.78rem; color:var(--text-2);" title="Match exact phrase">
-                        <input type="checkbox" id="exactMatch" v-model="exact_match" @change="onSearchInput"
-                            class="form-check-input" style="width:1rem;height:1rem;cursor:pointer;margin:0;">
-                        <label for="exactMatch" style="cursor:pointer; white-space:nowrap;">Exact</label>
+                </div>
+                {% else %}
+                <!-- Mine only (non-authenticated: no favorites) -->
+                <div class="filter-mine-wrap">
+                    <div class="filter-label">Mine only</div>
+                    <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
+                        <input class="form-check-input" type="checkbox" id="myConvertsOnly"
+                               v-model="only_mine" @change="onSearchInput"
+                               style="width:2.2rem; height:1.2rem; cursor:pointer;">
+                        <label class="form-check-label" for="myConvertsOnly"
+                               style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
+                            [[ only_mine ? 'On' : 'Off' ]]
+                        </label>
                     </div>
                 </div>
-                <div v-if="searchQuery" class="mt-1" style="font-size:0.72rem; color:var(--text-3);">
-                    <i class="fas fa-info-circle me-1"></i>
-                    <strong>[[ scopeLabel ]]</strong>
-                    <span v-if="exact_match"> · exact phrase</span>
+                {% endif %}
+            </div>
+
+            <!-- Divider -->
+            <hr class="filter-divider">
+
+            <!-- Row 3: Tag filter (full width) -->
+            <div class="filter-tag-row">
+                <div class="filter-label d-flex align-items-center gap-2">
+                     Tags
+                    <span v-if="selectedTagNames.length > 0"
+                          class="filter-count-badge">[[ selectedTagNames.length ]]</span>
                 </div>
-            </div>
-
-            <!-- Type filter -->
-            <div style="min-width: 160px; flex:1;">
-                <label class="form-label">Conversion type</label>
-                <select class="form-select form-select-sm" @change="onSearchInput" v-model="filter_type">
-                    <option value="">All types</option>
-                    <option value="MISP_TO_STIX">MISP → STIX</option>
-                    <option value="STIX_TO_MISP">STIX → MISP</option>
-                </select>
-            </div>
-
-            <!-- Sort -->
-            <div style="min-width: 150px; flex:1;">
-                <label class="form-label">Sort by date</label>
-                <select class="form-select form-select-sm" v-model="sort_order" @change="onSearchInput">
-                    <option value="desc">Newest first</option>
-                    <option value="asc">Oldest first</option>
-                </select>
-            </div>
-
-            <!-- Date from -->
-            <div style="min-width: 140px; flex:1;">
-                <label class="form-label">From</label>
-                <input type="date" class="form-control form-control-sm" v-model="date_from" @change="onSearchInput">
-            </div>
-
-            <!-- Date to -->
-            <div style="min-width: 140px; flex:1;">
-                <label class="form-label">To</label>
-                <input type="date" class="form-control form-control-sm" v-model="date_to" @change="onSearchInput">
-            </div>
-
-            <!-- Mine only -->
-            <div class="d-flex flex-column justify-content-end" style="padding-bottom: 2px;">
-                <label class="form-label mb-2">Mine only</label>
-                <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" id="myConvertsOnly" @change="onSearchInput"
-                        v-model="only_mine" style="width:2.5rem; height:1.3rem; cursor:pointer;">
-                </div>
-            </div>
-
-            <!-- Reset -->
-            <div class="d-flex flex-column justify-content-end" style="padding-bottom: 2px;">
-                <button class="btn btn-sm btn-outline-secondary" @click="resetFilters">
-                    <i class="fas fa-rotate-left me-1"></i> Reset
-                </button>
+                <multi-tag-filter
+                    v-model="selectedTagNames"
+                    @change="onSearchInput"
+                    placeholder="Filter by tags…">
+                </multi-tag-filter>
             </div>
 
         </div>
@@ -114,74 +223,165 @@
         </div>
     </div>
 
+    
     <!-- List -->
     <div v-else v-cloak>
+        <!-- Pagination -->
+        <app-pagination v-if="convert_history.length > 0"
+            :page="current_page" :total="total_pages"
+            @change="fetchConvertHistory" class="mb-4">
+        </app-pagination>
         <div v-if="convert_history.length > 0">
 
-            <div v-for="item in convert_history" :key="item.id" class="history-card"
-                @click="seeDetails(item.id)">
-                <div class="history-card-inner">
+            <div v-for="item in convert_history" :key="item.id"
+                class="history-card" :class="{ 'hc-expanded': expandedIds.has(item.id) }">
+
+                <!-- ── Summary row (always visible) ── -->
+                <div class="history-card-inner" @click="seeDetails(item.id)">
 
                     <!-- Left: type -->
                     <div class="history-type-badge">
                         <span v-if="item.conversion_type === 'MISP_TO_STIX'" class="type-pill type-misp">
-                            MISP<i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>STIX
+                            <img src="/static/image/misp.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">MISP<i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i><img src="/static/image/logo_stix.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">STIX
                         </span>
                         <span v-else-if="item.conversion_type === 'STIX_TO_MISP'" class="type-pill type-stix">
-                            STIX<i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>MISP
+                            <img src="/static/image/logo_stix.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">STIX<i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i><img src="/static/image/misp.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">MISP
                         </span>
                         <span v-else class="type-pill type-default">—</span>
                     </div>
 
-                    <!-- Center: content + snippets -->
+                    <!-- Center: content -->
                     <div class="history-card-content">
-                        <div class="d-flex align-items-center gap-2 mb-1">
+                        <!-- Title + visibility -->
+                        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                             <span class="history-card-title" v-html="highlight(item.name)"></span>
                             <span class="vis-badge" :class="item.public ? 'vis-public' : 'vis-private'">
                                 <i :class="item.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
                                 [[ item.public ? 'Public' : 'Private' ]]
                             </span>
                         </div>
+                        <!-- Description (truncated) -->
                         <p class="history-card-desc mb-0" v-html="highlight(item.description || 'No description.')"></p>
+                        <!-- Meta line: author · date · tags preview · match hint -->
+                        <div class="hc-meta-line" @click.stop>
+                            <span class="hc-meta-item">
+                                <i class="fas fa-user" style="font-size:0.6rem;"></i> [[ item.author || 'Anonymous' ]]
+                            </span>
+                            <span class="hc-meta-sep">·</span>
+                            <span class="hc-meta-item">
+                                <i class="fas fa-clock" style="font-size:0.6rem;"></i> [[ item.created_at ]]
+                            </span>
+                            <template v-if="item.tags && item.tags.length > 0">
+                                <span class="hc-meta-sep">·</span>
+                                <single-tag v-for="tag in item.tags.slice(0, 3)" :key="tag.tag_id"
+                                    :tag="adaptTag(tag)" :show-namespace="false">
+                                </single-tag>
+                                <span v-if="item.tags.length > 3" class="hc-tag-overflow">
+                                    +[[ item.tags.length - 3 ]]
+                                </span>
+                            </template>
+                            <template v-if="searchQuery && (search_scope==='content'||search_scope==='all') && snippets[item.id]?.length > 0">
+                                <span class="hc-meta-sep">·</span>
+                                <span class="hc-match-hint" @click.stop="openExpand(item.id)">
+                                    <i class="fas fa-search" style="font-size:0.6rem;"></i>
+                                    [[ snippets[item.id].length ]] match[[ snippets[item.id].length > 1 ? 'es' : '' ]]
+                                </span>
+                            </template>
+                        </div>
+                    </div>
 
-                        <!-- Snippets from JSON content (shown when search_scope includes content) -->
-                        <div v-if="searchQuery && (search_scope === 'content' || search_scope === 'all')"
-                            class="snippet-block" @click.stop>
-                            <div v-if="snippets[item.id] === undefined" class="snippet-loading">
-                                <i class="fas fa-spinner fa-spin me-1"></i> Loading matches…
-                            </div>
-                            <div v-else-if="snippets[item.id].length === 0" class="snippet-loading">
-                                No matches in JSON content.
-                            </div>
-                            <div v-else>
-                                <div v-for="(s, idx) in snippets[item.id]" :key="idx" class="snippet-item">
-                                    <span class="snippet-field-badge">[[ s.field ]]</span><span v-html="highlightSnippet(s)"></span>
-                                </div>
+                    <!-- Right: actions -->
+                    <div class="hc-actions" @click.stop>
+                        {% if current_user.is_authenticated %}
+                        <button class="hc-favorite-btn" @click.stop="toggleFavorite(item)"
+                            :class="{ active: item.is_favorite }"
+                            :title="item.is_favorite ? 'Remove from favorites' : 'Add to favorites'">
+                            <i :class="item.is_favorite ? 'fas fa-star' : 'far fa-star'"></i>
+                        </button>
+                        {% endif %}
+                        <button class="hc-expand-btn" @click.stop="toggleExpand(item.id)"
+                            :class="{ active: expandedIds.has(item.id) }"
+                            :title="expandedIds.has(item.id) ? 'Collapse' : 'Show more'">
+                            <i class="fas fa-chevron-down hc-expand-icon"></i>
+                        </button>
+                        {% if current_user.is_authenticated %}
+                        <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
+                            <button class="hc-delete-btn btn btn-sm btn-danger" data-bs-toggle="modal"
+                                :data-bs-target="'#del_modal_'+item.id" @click.stop>
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </template>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- ── Expanded details ── -->
+                <div v-if="expandedIds.has(item.id)" class="hc-details" @click.stop>
+
+                    <!-- Description (full) -->
+                    <div v-if="item.description" class="hcd-section">
+                        <div class="hcd-label"><i class="fas fa-align-left me-1"></i>Description</div>
+                        <p class="hcd-text mb-0">[[ item.description ]]</p>
+                    </div>
+
+                    <!-- Tags -->
+                    <div v-if="item.tags && item.tags.length > 0" class="hcd-section">
+                        <div class="hcd-label">
+                            <i class="fas fa-tags me-1"></i>Tags
+                            <span class="hcd-count">[[ item.tags.length ]]</span>
+                            <button v-if="item.tags.length > 10" class="hcd-toggle-btn ms-2"
+                                @click.stop="toggleTagExpand(item.id)">
+                                [[ tagExpandedIds.has(item.id) ? 'Fewer' : 'Show all' ]]
+                                <i class="fas ms-1" :class="tagExpandedIds.has(item.id) ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size:0.6rem;"></i>
+                            </button>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            <single-tag
+                                v-for="tag in (tagExpandedIds.has(item.id) ? item.tags : item.tags.slice(0, 10))"
+                                :key="tag.tag_id" :tag="adaptTag(tag)" :show-namespace="true">
+                            </single-tag>
+                            <span v-if="!tagExpandedIds.has(item.id) && item.tags.length > 10"
+                                class="hc-tag-overflow">
+                                +[[ item.tags.length - 10 ]] more
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Evaluation (only for public converts or own) -->
+                    <div v-if="item.public || {{ 'true' if current_user.is_authenticated else 'false' }}"
+                         class="hcd-section">
+                        <div class="hcd-label"><i class="fas fa-chart-bar me-1"></i>Evaluation</div>
+                        <evaluation-panel
+                            :convert-id="item.id"
+                            :is-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
+                            :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && item.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
+                            :is-public="item.public">
+                        </evaluation-panel>
+                    </div>
+
+                    <!-- JSON snippets -->
+                    <div v-if="searchQuery && (search_scope === 'content' || search_scope === 'all')"
+                        class="hcd-section">
+                        <div class="hcd-label"><i class="fas fa-code me-1"></i>JSON matches</div>
+                        <div v-if="snippets[item.id] === undefined" class="snippet-loading">
+                            <i class="fas fa-spinner fa-spin me-1"></i> Loading…
+                        </div>
+                        <div v-else-if="snippets[item.id].length === 0" class="snippet-loading">
+                            No matches in JSON content.
+                        </div>
+                        <div v-else class="snippet-block mt-1">
+                            <div v-for="(s, idx) in snippets[item.id]" :key="idx" class="snippet-item">
+                                <span class="snippet-field-badge">[[ s.field ]]</span>
+                                <span v-html="highlightSnippet(s)"></span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Right: meta -->
-                    <div class="history-card-meta">
-                        <div class="d-flex align-items-center gap-2 mb-2 justify-content-end">
-                            <span class="author-badge">
-                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
-                                [[ item.author || 'Anonymous' ]]
-                            </span>
-                        </div>
-                        <div class="history-card-date">
-                            <i class="fas fa-clock me-1" style="opacity:0.5;"></i>[[ item.created_at ]]
-                        </div>
-                        <div class="mt-2 d-flex justify-content-end" @click.stop>
-                            {% if current_user.is_authenticated %}
-                            <template v-if="parseInt('{{current_user.id}}') == item.user_id || current_user_is_admin">
-                                <button class="btn btn-danger btn-sm" data-bs-toggle="modal"
-                                    :data-bs-target="'#del_modal_'+item.id" @click.stop>
-                                    <i class="fas fa-trash fa-fw"></i>
-                                </button>
-                            </template>
-                            {% endif %}
-                        </div>
+                    <!-- Footer -->
+                    <div class="hcd-footer">
+                        <button class="btn btn-sm btn-primary" @click.stop="seeDetails(item.id)">
+                            <i class="fas fa-arrow-right me-1"></i>View details
+                        </button>
                     </div>
                 </div>
             </div>
@@ -223,36 +423,36 @@
         </div>
 
         <!-- Pagination -->
-        <nav v-if="convert_history.length > 0" aria-label="Page navigation" class="mt-4 mb-5">
-            <ul class="pagination justify-content-center">
-                <li class="page-item" :class="{ disabled: current_page === 1 }">
-                    <button class="page-link" @click="current_page > 1 && fetchConvertHistory(current_page - 1)">
-                        <i class="fas fa-angle-left"></i>
-                    </button>
-                </li>
-                <li class="page-item" v-for="page in visiblePages" :key="page"
-                    :class="{ active: page === current_page, disabled: page === '...' }">
-                    <button class="page-link" v-if="page !== '...'" @click="fetchConvertHistory(page)">[[ page ]]</button>
-                    <span class="page-link" v-else>…</span>
-                </li>
-                <li class="page-item" :class="{ disabled: current_page === total_pages }">
-                    <button class="page-link"
-                        @click="current_page < total_pages && fetchConvertHistory(current_page + 1)">
-                        <i class="fas fa-angle-right"></i>
-                    </button>
-                </li>
-            </ul>
-        </nav>
+        <app-pagination v-if="convert_history.length > 0"
+            :page="current_page" :total="total_pages"
+            @change="fetchConvertHistory">
+        </app-pagination>
     </div>
 </div>
 {% endblock %}
 
 {% block script %}
 <script type="module">
+import EvaluationPanel from '/static/js/evaluationPanel.js'
     const { createApp, ref, computed, watch } = Vue
-    import { display_toast, message_list } from '/static/js/toaster.js'
+    import { display_toast, create_message, message_list } from '/static/js/toaster.js'
+    import AppPagination from '/static/js/pagination.js'
+    import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js'
+    import MultiTagFilter from '/static/js/tags/multiTagFilter.js'
 
-    createApp({
+    function adaptTag(t) {
+        return {
+            id: t.tag_id,
+            name: t.tag_name || '',
+            color: t.tag_color || null,
+            icon: t.tag_icon || null,
+            description: t.tag_description || '',
+            visibility: t.tag_visibility || 'public',
+        };
+    }
+
+    const app = createApp({
+        components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay, 'multi-tag-filter': MultiTagFilter },
         delimiters: ['[[', ']]'],
         setup() {
             const convert_history    = ref([])
@@ -268,8 +468,44 @@
             const date_to            = ref('')
             const current_user_is_admin = ref()
             const is_loading         = ref(false)
-            const snippets           = ref({})   // { convert_id: [ { field, snippet, match_start, match_end } ] }
+            const snippets           = ref({})
+            const selectedTagNames   = ref([])
+            const vis_filter         = ref('')
+            const favorites_only     = ref(false)
+            const filtersOpen        = ref(true)
+            const expandedIds        = ref(new Set())
+            const tagExpandedIds     = ref(new Set())
             let   searchDebounce     = null
+
+            function toggleExpand(id) {
+                const s = new Set(expandedIds.value)
+                s.has(id) ? s.delete(id) : s.add(id)
+                expandedIds.value = s
+            }
+            function openExpand(id) {
+                const s = new Set(expandedIds.value)
+                s.add(id)
+                expandedIds.value = s
+            }
+            function toggleTagExpand(id) {
+                const s = new Set(tagExpandedIds.value)
+                s.has(id) ? s.delete(id) : s.add(id)
+                tagExpandedIds.value = s
+            }
+
+            const activeFilterCount = computed(() => {
+                let n = 0
+                if (searchQuery.value)           n++
+                if (filter_type.value)           n++
+                if (sort_order.value !== 'desc') n++
+                if (date_from.value)             n++
+                if (date_to.value)               n++
+                if (only_mine.value)             n++
+                if (vis_filter.value)            n++
+                if (favorites_only.value)        n++
+                if (selectedTagNames.value.length > 0) n++
+                return n
+            })
 
             const scopeLabel = computed(() => ({
                 all: 'all fields',
@@ -353,6 +589,9 @@
                     exact_match:  exact_match.value  || false,
                     date_from:    date_from.value    || '',
                     date_to:      date_to.value      || '',
+                    tag_names:      selectedTagNames.value.join(','),
+                    vis_filter:     vis_filter.value || '',
+                    favorites_only: favorites_only.value,
                 })
                 const res = await fetch('/convert/get_convert_page_history?' + params.toString())
                 if (res.ok) {
@@ -399,15 +638,18 @@
             function seeDetails(id) { window.location.href = '/convert/detail/' + id }
 
             function resetFilters() {
-                exact_match.value  = false
-                searchQuery.value  = ''
-                search_scope.value = 'all'
-                filter_type.value  = ''
-                sort_order.value   = 'desc'
-                only_mine.value    = false
-                date_from.value    = ''
-                date_to.value      = ''
-                snippets.value     = {}
+                exact_match.value      = false
+                searchQuery.value      = ''
+                search_scope.value     = 'all'
+                filter_type.value      = ''
+                sort_order.value       = 'desc'
+                only_mine.value        = false
+                date_from.value        = ''
+                date_to.value          = ''
+                vis_filter.value       = ''
+                favorites_only.value   = false
+                selectedTagNames.value = []
+                snippets.value         = {}
                 fetchConvertHistory(1)
             }
 
@@ -416,25 +658,41 @@
                 searchDebounce = setTimeout(() => fetchConvertHistory(1), 350)
             }
 
-
-            const visiblePages = computed(() => {
-                const pages = [], total = total_pages.value, current = current_page.value
-                if (total <= 7) { for (let i = 1; i <= total; i++) pages.push(i) }
-                else if (current <= 4) pages.push(1, 2, 3, 4, 5, '...', total)
-                else if (current >= total - 3) pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                else pages.push(1, '...', current - 1, current, current + 1, '...', total)
-                return pages
-            })
+            async function toggleFavorite(item) {
+                const res = await fetch('/convert/favorite/toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
+                    },
+                    body: JSON.stringify({ convert_id: item.id }),
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    item.is_favorite = data.is_favorite
+                    create_message(
+                        data.is_favorite ? 'Added to favorites' : 'Removed from favorites',
+                        data.is_favorite ? 'success-subtle' : 'secondary-subtle'
+                    )
+                    if (favorites_only.value && !data.is_favorite) {
+                        fetchConvertHistory(current_page.value)
+                    }
+                }
+            }
 
             return {
-                visiblePages, message_list, convert_history, current_page, total_pages,
+                message_list, convert_history, current_page, total_pages,
                 fetchConvertHistory, filter_type, sort_order, deleteItem, current_user_is_admin,
                 only_mine, seeDetails, searchQuery, search_scope, exact_match, date_from, date_to,
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
-                highlight, highlightSnippet, resetFilters,
-
+                highlight, highlightSnippet, resetFilters, adaptTag,
+                selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
+                favorites_only, toggleFavorite,
+                expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
             }
         }
-    }).mount('#main-containers')
+    })
+    app.component('evaluation-panel', EvaluationPanel)
+    app.mount('#main-containers')
 </script>
 {% endblock %}

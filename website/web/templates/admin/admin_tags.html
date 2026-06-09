@@ -1,0 +1,882 @@
+{% extends "base.html" %}
+{% block head %}
+<style>
+.vendor-panel {
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.82rem;
+}
+.vendor-panel-label {
+  font-size: 0.71rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.vendor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+.vendor-chip code {
+  font-size: 0.74rem;
+  color: var(--accent);
+  background: none;
+  padding: 0;
+}
+.vendor-chip-date {
+  color: var(--text-3);
+  font-size: 0.72rem;
+}
+.vendor-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+}
+.vendor-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.79rem;
+  color: var(--text-3);
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.vendor-step.step-active { border-color: var(--accent); color: var(--text); }
+.vendor-step.step-done   { color: #059669; border-color: rgba(5,150,105,.3); background: rgba(5,150,105,.06); }
+.vendor-step .step-stat  { font-weight: 700; margin-left: 2px; }
+.vendor-result-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+.vendor-git-output {
+  margin-top: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.73rem;
+  color: var(--text-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 72px;
+  overflow-y: auto;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div v-cloak>
+  <div class="list-header">
+    <div class="home-hero-badge"><i class="fas fa-tags"></i> Admin</div>
+    <h1 class="list-title">Tag Management</h1>
+    <p class="list-subtitle">Manage taxonomy tags, custom tags, and vulnerabilities.</p>
+  </div>
+
+  <div class="custom-card p-3">
+
+    <!-- ── GitHub vendor update ─────────────────────────────────── -->
+    <div class="vendor-panel mb-3">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="vendor-panel-label"><i class="fab fa-github me-1"></i>MISP Data Sources</span>
+        <template v-if="vendorStatus">
+          <span class="vendor-chip">
+            <i class="fas fa-book-open"></i>
+            <strong>misp-taxonomies</strong>
+            <code>[[ vendorStatus.taxonomies.sha ]]</code>
+            <span v-if="vendorStatus.taxonomies.date" class="vendor-chip-date">[[ vendorStatus.taxonomies.date ]]</span>
+          </span>
+          <span class="vendor-chip">
+            <i class="fas fa-globe"></i>
+            <strong>misp-galaxy</strong>
+            <code>[[ vendorStatus.galaxies.sha ]]</code>
+            <span v-if="vendorStatus.galaxies.date" class="vendor-chip-date">[[ vendorStatus.galaxies.date ]]</span>
+          </span>
+        </template>
+        <span v-else style="font-size:0.8rem;color:var(--text-3);">
+          <i class="fas fa-spinner fa-spin me-1"></i>Loading…
+        </span>
+        <button class="btn btn-sm btn-primary ms-auto"
+                @click="startPullAndImport()"
+                :disabled="pullJob && pullJob.status === 'running'">
+          <i class="fas fa-arrows-rotate me-1"
+             :class="{'fa-spin': pullJob && pullJob.status === 'running'}"></i>
+          <span v-if="pullJob && pullJob.status === 'running'">Updating…</span>
+          <span v-else>Pull &amp; Import</span>
+        </button>
+      </div>
+
+      <!-- Job progress / result -->
+      <div v-if="pullJob" class="vendor-progress">
+
+        <!-- Running -->
+        <template v-if="pullJob.status === 'running'">
+          <span class="vendor-step"
+                :class="{ 'step-active': pullJob.phase === 'pulling',
+                          'step-done':   pullJob.progress >= 1 }">
+            <i class="fas fa-fw"
+               :class="pullJob.progress >= 1
+                 ? 'fa-check' : (pullJob.phase === 'pulling' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+            Pull
+          </span>
+          <span class="vendor-step"
+                :class="{ 'step-active': pullJob.phase === 'importing_taxonomies',
+                          'step-done':   pullJob.progress >= 2 }">
+            <i class="fas fa-fw"
+               :class="pullJob.progress >= 2
+                 ? 'fa-check' : (pullJob.phase === 'importing_taxonomies' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+            Taxonomies
+            <span v-if="pullJob.progress >= 2" class="step-stat">+[[ pullJob.taxo_imported ]]</span>
+          </span>
+          <span class="vendor-step"
+                :class="{ 'step-active': pullJob.phase === 'importing_galaxies',
+                          'step-done':   pullJob.phase === 'done' }">
+            <i class="fas fa-fw"
+               :class="pullJob.phase === 'done'
+                 ? 'fa-check' : (pullJob.phase === 'importing_galaxies' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
+            Galaxies <span style="font-size:0.7rem;opacity:.7;">(~1 min)</span>
+          </span>
+        </template>
+
+        <!-- Done -->
+        <template v-else-if="pullJob.status === 'done' && pullJob.phase !== 'failed'">
+          <div class="w-100">
+            <div class="vendor-result-row">
+              <i class="fas fa-circle-check text-success"></i>
+              <strong>Update complete</strong>
+              <span class="ms-2">
+                <i class="fas fa-book-open me-1" style="color:var(--accent);"></i>
+                Taxonomies: <strong>+[[ pullJob.taxo_imported ]]</strong> new, [[ pullJob.taxo_skipped ]] skipped
+              </span>
+              <span class="ms-2">
+                <i class="fas fa-globe me-1" style="color:var(--accent);"></i>
+                Galaxies: <strong>+[[ pullJob.galaxy_imported ]]</strong> new, [[ pullJob.galaxy_skipped ]] skipped
+              </span>
+              <span v-if="pullJob.errors?.length" class="ms-2 text-warning">
+                <i class="fas fa-exclamation-triangle me-1"></i>[[ pullJob.errors.length ]] warning(s)
+              </span>
+            </div>
+            <div v-if="pullJob.pull_output" class="vendor-git-output">[[ pullJob.pull_output ]]</div>
+          </div>
+        </template>
+
+        <!-- Failed -->
+        <template v-else-if="pullJob.phase === 'failed'">
+          <div class="w-100">
+            <div class="vendor-result-row text-danger">
+              <i class="fas fa-circle-xmark"></i>
+              <strong>Update failed:</strong>
+              [[ pullJob.errors?.[0] || 'Unknown error' ]]
+            </div>
+            <div v-if="pullJob.pull_output" class="vendor-git-output">[[ pullJob.pull_output ]]</div>
+          </div>
+        </template>
+
+      </div>
+    </div>
+
+    <!-- ── Toolbar ───────────────────────────────────────────────── -->
+    <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+      <input class="form-control form-control-sm tags-filter-select" style="width:180px;" type="text" v-model="search" @input="debounceSearch" placeholder="Search…">
+      <select class="form-select form-select-sm tags-filter-select" v-model="filterApproved" @change="resetPage">
+        <option value="all">All statuses</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+      </select>
+      <select class="form-select form-select-sm tags-filter-select" v-model="filterSource" @change="resetPage">
+        <option value="">All sources</option>
+        <option value="Taxonomy">Taxonomy</option>
+        <option value="Galaxy">Galaxy</option>
+        <option value="Manual">Manual</option>
+        <option value="Vulnerability">Vulnerability</option>
+      </select>
+      <select class="form-select form-select-sm tags-filter-select" v-model="filterVisibility" @change="resetPage">
+        <option value="">All visibility</option>
+        <option value="public">Public</option>
+        <option value="private">Private</option>
+      </select>
+      <select class="form-select form-select-sm tags-filter-select" style="width:80px;" v-model.number="perPage" @change="resetPage">
+        <option :value="20">20</option>
+        <option :value="50">50</option>
+        <option :value="100">100</option>
+      </select>
+      <span v-if="!loading" style="font-size:0.78rem;color:var(--text-3);white-space:nowrap;"><i class="fas fa-tags me-1"></i>[[ tags.length ]] tags</span>
+      <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-sm btn-outline-secondary" :class="{active:viewMode==='table'}"   @click="viewMode='table';resetPage()"  title="Table view"><i class="fas fa-table-list"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" :class="{active:viewMode==='grouped'}" @click="switchGrouped()"               title="Group by namespace"><i class="fas fa-layer-group"></i></button>
+        </div>
+        <button class="btn btn-sm btn-outline-success" @click="openCreate()"><i class="fas fa-plus me-1"></i>New Tag</button>
+        <div class="btn-group btn-group-sm">
+          <button class="btn btn-sm btn-outline-secondary" @click="importTaxonomies" :disabled="importing" title="Import MISP Taxonomies">
+            <span v-if="importing && importingSource==='taxonomy'"><i class="fas fa-spinner fa-spin me-1"></i>Importing…</span>
+            <span v-else><i class="fas fa-download me-1"></i>Taxonomies</span>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" @click="importGalaxies" :disabled="importing" title="Import MISP Galaxies">
+            <span v-if="importing && importingSource==='galaxy'"><i class="fas fa-spinner fa-spin me-1"></i>Importing…</span>
+            <span v-else><i class="fas fa-globe me-1"></i>Galaxies</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Bulk bar ─────────────────────────────────────── -->
+    <transition name="slide-up">
+      <div v-if="selectedIds.size>0" class="bulk-bar">
+        <span class="bulk-bar-count"><i class="fas fa-check-square me-1"></i>[[ selectedIds.size ]] selected</span>
+        <div class="d-flex gap-1 flex-wrap">
+          <button v-if="hasPendingSelected" class="btn btn-sm btn-warning" @click="bulkApprovePending()">
+            <i class="fas fa-check-double me-1"></i>Accept pending ([[ pendingSelectedCount ]])
+          </button>
+          <button class="btn btn-sm btn-outline-success"   @click="bulkAction('activate')">  <i class="fas fa-play me-1"></i>Activate</button>
+          <button class="btn btn-sm btn-outline-secondary" @click="bulkAction('deactivate')"><i class="fas fa-pause me-1"></i>Deactivate</button>
+          <button class="btn btn-sm btn-outline-primary"   @click="bulkAction('approve')">   <i class="fas fa-check me-1"></i>Approve</button>
+          <button class="btn btn-sm btn-outline-warning"   @click="bulkAction('disapprove')"><i class="fas fa-ban me-1"></i>Disapprove</button>
+          <button class="btn btn-sm btn-outline-info"      @click="bulkAction('make_public')"><i class="fas fa-eye me-1"></i>Public</button>
+          <button class="btn btn-sm btn-outline-secondary" @click="bulkAction('make_private')"><i class="fas fa-eye-slash me-1"></i>Private</button>
+          <button class="btn btn-sm btn-outline-primary"   @click="bulkAction('enable_evaluation')"><i class="fas fa-chart-bar me-1"></i>Enable eval</button>
+          <button class="btn btn-sm btn-outline-secondary" @click="bulkAction('disable_evaluation')"><i class="fas fa-chart-bar me-1"></i>Disable eval</button>
+          <button class="btn btn-sm btn-outline-danger"    @click="bulkAction('delete')">    <i class="fas fa-trash me-1"></i>Delete</button>
+          <button class="btn btn-sm btn-link text-secondary" @click="selectedIds=new Set()" style="font-size:0.75rem;">Clear</button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- ── Loading ─────────────────────────────────────── -->
+    <div v-if="loading" class="text-center py-5"><div class="spinner-border" style="color:var(--accent);"></div></div>
+    <div v-else-if="tags.length===0" class="text-center py-5" style="color:var(--text-3);">
+      <i class="fas fa-tags fa-2x mb-2 d-block"></i>No tags found.
+    </div>
+
+    <!-- ── TABLE VIEW ──────────────────────────────────── -->
+    <div v-else-if="viewMode==='table'">
+      <div class="table-responsive">
+      <table class="table table-hover align-middle tag-table">
+        <thead>
+          <tr class="tag-table-head">
+            <th style="width:32px;"><input type="checkbox" class="form-check-input" :checked="allSelected" :indeterminate.prop="someSelected" @change="toggleSelectAll"></th>
+            <th>Tag</th>
+            <th class="d-none d-sm-table-cell">Visibility</th>
+            <th class="d-none d-sm-table-cell">Status</th>
+            <th class="d-none d-md-table-cell">Source</th>
+            <th class="d-none d-md-table-cell">Active</th>
+            <th class="d-none d-lg-table-cell">Creator</th>
+            <th style="width:80px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="tag in tags" :key="tag.id" :class="{'table-row-selected': selectedIds.has(tag.id)}">
+            <td><input type="checkbox" class="form-check-input" :checked="selectedIds.has(tag.id)" @change="toggleSelect(tag.id)"></td>
+
+            <td>
+              <tag-chip :tag="tag" :highlight="search" @click="openEdit(tag)" style="cursor:pointer;"></tag-chip>
+              <div v-if="tag.description" class="tag-desc" :title="tag.description">[[ tag.description ]]</div>
+              <!-- Mobile-only inline badges -->
+              <div class="d-flex d-sm-none gap-1 mt-1 flex-wrap">
+                <span class="admin-status-badge badge-clickable"
+                  :style="tag.visibility==='public'?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(239,68,68,0.12);color:var(--danger)'"
+                  @click="toggleVisibility(tag)" :title="tag.visibility==='public'?'Click to make private':'Click to make public'">
+                  <i class="fas me-1" :class="tag.visibility==='public'?'fa-eye':'fa-eye-slash'"></i>[[ tag.visibility||'—' ]]
+                </span>
+                <span class="admin-status-badge badge-clickable"
+                  :style="tag.is_approved_by_admin?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(245,158,11,0.12);color:var(--warning)'"
+                  @click="approveSingle(tag, !tag.is_approved_by_admin)" :title="tag.is_approved_by_admin?'Click to revoke':'Click to approve'">
+                  <i class="fas me-1" :class="tag.is_approved_by_admin?'fa-check':'fa-clock'"></i>[[ tag.is_approved_by_admin?'Approved':'Pending' ]]
+                </span>
+              </div>
+            </td>
+
+            <td class="d-none d-sm-table-cell">
+              <span class="admin-status-badge badge-clickable"
+                :style="tag.visibility==='public'?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(239,68,68,0.12);color:var(--danger)'"
+                @click="toggleVisibility(tag)" :title="tag.visibility==='public'?'Click to make private':'Click to make public'">
+                <i class="fas me-1" :class="tag.visibility==='public'?'fa-eye':'fa-eye-slash'"></i>[[ tag.visibility||'—' ]]
+              </span>
+            </td>
+
+            <td class="d-none d-sm-table-cell">
+              <span class="admin-status-badge badge-clickable"
+                :style="tag.is_approved_by_admin?'background:rgba(16,185,129,0.12);color:var(--success)':'background:rgba(245,158,11,0.12);color:var(--warning)'"
+                @click="approveSingle(tag, !tag.is_approved_by_admin)" :title="tag.is_approved_by_admin?'Click to revoke':'Click to approve'">
+                <i class="fas me-1" :class="tag.is_approved_by_admin?'fa-check':'fa-clock'"></i>[[ tag.is_approved_by_admin?'Approved':'Pending' ]]
+              </span>
+            </td>
+
+            <td class="d-none d-md-table-cell">
+              <span class="admin-status-badge" :style="sourceStyle(tag.source)">
+                <i class="me-1" :class="sourceIcon(tag.source)"></i>[[ tag.source||'—' ]]
+              </span>
+            </td>
+
+            <td class="d-none d-md-table-cell">
+              <button class="btn btn-sm" :class="tag.is_active?'btn-success':'btn-outline-secondary'" style="font-size:0.72rem;padding:2px 8px;" @click="toggleActive(tag)">[[ tag.is_active?'ON':'OFF' ]]</button>
+            </td>
+
+            <td class="d-none d-lg-table-cell" style="font-size:0.78rem;color:var(--text-3);">[[ tag.created_by_user_name||'—' ]]</td>
+
+            <td>
+              <div class="d-flex gap-1 justify-content-end">
+                <button class="btn btn-sm btn-outline-secondary" title="Edit" @click="openEdit(tag)"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-sm btn-outline-danger"  title="Delete" @click="deleteSingle(tag)"><i class="fas fa-trash"></i></button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <!-- ── GROUPED VIEW ────────────────────────────────── -->
+    <div v-else>
+      <div v-for="(group, ns) in groupedTags" :key="ns" class="ns-card mb-3">
+        <div class="ns-card-header" @click="toggleGroup(ns)">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-chevron-right ns-caret" :class="{open:!collapsedGroups.has(ns)}"></i>
+            <span class="ns-label" v-html="hlNs(ns)"></span>
+            <span class="ns-pill">[[ group.length ]]</span>
+          </div>
+          <label class="d-flex align-items-center gap-1 ns-select-all" @click.stop style="cursor:pointer;">
+            <input type="checkbox" class="form-check-input" style="margin:0;"
+              :checked="groupAllSelected(group)"
+              :indeterminate.prop="groupSomeSelected(group)"
+              @change="toggleSelectGroup(group)">
+            <span>Select all</span>
+          </label>
+        </div>
+        <div v-if="!collapsedGroups.has(ns)" class="ns-card-body">
+          <tag-chip class="p-2"
+            v-for="tag in group" :key="tag.id"
+            :tag="tag"
+            :selected="selectedIds.has(tag.id)"
+            :highlight="search"
+            @click="toggleSelect(tag.id)"
+            @dblclick="openEdit(tag)"
+            style="cursor:pointer;"
+          ></tag-chip>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Pagination ──────────────────────────────────── -->
+    <app-pagination v-if="viewMode==='table' && !loading && tags.length>0"
+      :page="page" :total="total_page"
+      @change="p => { page = p; load() }">
+    </app-pagination>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- EDIT MODAL                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="editTagModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content tag-modal">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-pen me-2"></i>Edit Tag</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" v-if="editForm">
+        <div class="mb-3">
+          <label class="tag-modal-label">Preview</label>
+          <div class="tag-preview-box"><tag-chip :tag="editForm"></tag-chip></div>
+        </div>
+        <div v-if="editForm.source==='Taxonomy' || editForm.source==='Galaxy'" class="alert alert-info py-2 px-3 mb-3" style="font-size:0.82rem;">
+          <i class="fas fa-info-circle me-1"></i>[[ editForm.source ]] tag — name is read-only.
+        </div>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="tag-modal-label">Name</label>
+            <input type="text" class="form-control tag-modal-input" v-model="editForm.name"
+              :disabled="editForm.source==='Taxonomy' || editForm.source==='Galaxy'" :class="{'is-invalid':editErrors.name}">
+            <div class="invalid-feedback">[[ editErrors.name ]]</div>
+          </div>
+          <div class="col-12">
+            <label class="tag-modal-label">Description</label>
+            <textarea class="form-control tag-modal-input" rows="2" v-model="editForm.description" placeholder="Optional…"></textarea>
+          </div>
+          <!-- Color -->
+          <div class="col-md-6">
+            <label class="tag-modal-label">Color</label>
+            <div class="d-flex gap-2 align-items-center">
+              <input type="color" class="form-control form-control-color flex-shrink-0" v-model="editForm.color" style="width:40px;height:36px;padding:2px;border-radius:var(--radius-sm);">
+              <input type="text" class="form-control tag-modal-input" v-model="editForm.color" placeholder="#6366f1" :class="{'is-invalid':editErrors.color}">
+            </div>
+          </div>
+          <!-- Icon picker -->
+          <div class="col-md-6">
+            <label class="tag-modal-label">Icon <small style="color:var(--text-3);">(FontAwesome)</small></label>
+            <div class="icon-picker">
+              <div class="icon-picker-trigger" @click="editIconOpen=!editIconOpen">
+                <span class="icon-trigger-icon"><i :class="'fas fa-'+(editForm.icon||'tag')"></i></span>
+                <span class="icon-trigger-label">[[ editForm.icon||'tag' ]]</span>
+                <i class="fas fa-chevron-down icon-trigger-caret" :class="{open: editIconOpen}"></i>
+              </div>
+              <div v-show="editIconOpen" class="icon-picker-panel">
+                <input class="icon-picker-search-input" v-model="iconSearch"
+                  :placeholder="'Search ' + (faIcons.length || '…') + ' icons'"
+                  @click.stop>
+                <div class="icon-picker-meta">[[ filteredIcons.length ]] shown / [[ faIcons.length || '?' ]] total</div>
+                <div class="icon-picker-grid-new">
+                  <button v-for="ic in filteredIcons" :key="ic" type="button"
+                    class="icon-picker-btn" :class="{active: editForm.icon===ic}"
+                    :title="ic" @click.stop="editForm.icon=ic;editIconOpen=false;iconSearch=''">
+                    <i :class="'fas fa-'+ic"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Admin fields -->
+          <div class="col-md-4">
+            <label class="tag-modal-label">Source</label>
+            <select class="form-select tag-modal-input" v-model="editForm.source">
+              <option value="Manual">Manual</option>
+              <option value="Taxonomy">Taxonomy</option>
+              <option value="Galaxy">Galaxy</option>
+              <option value="Vulnerability">Vulnerability</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="tag-modal-label">Visibility</label>
+            <select class="form-select tag-modal-input" v-model="editForm.visibility">
+              <option value="public">Public</option>
+              <option value="private">Private</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="tag-modal-label">Flags</label>
+            <div class="d-flex flex-column gap-1" style="padding-top:4px;">
+              <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_active"> Active</label>
+              <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_approved_by_admin"> Approved</label>
+              <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;" title="Allow users to apply this tag as an evaluation on a convert">
+                <input type="checkbox" class="form-check-input" v-model="editForm.is_evaluation_tag">
+                <i class="fas fa-chart-bar" style="font-size:0.72rem;color:var(--accent);"></i> Evaluation
+              </label>
+            </div>
+          </div>
+          <!-- Galaxy metadata (read-only) -->
+          <div v-if="editForm.galaxy_meta && Object.keys(editForm.galaxy_meta).length" class="col-12">
+            <label class="tag-modal-label">Galaxy metadata</label>
+            <div style="background:var(--bg-2);border-radius:var(--radius-sm);padding:8px 10px;font-size:0.75rem;max-height:120px;overflow-y:auto;font-family:monospace;color:var(--text-2);">
+              <div v-for="(v, k) in editForm.galaxy_meta" :key="k" class="mb-1">
+                <span style="color:var(--accent);font-weight:600;">[[ k ]]:</span>
+                <span v-if="Array.isArray(v)"> [[ v.join(', ') ]]</span>
+                <span v-else> [[ v ]]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" @click="saveEdit" :disabled="editSaving">
+          <span v-if="editSaving"><i class="fas fa-spinner fa-spin me-1"></i>Saving…</span>
+          <span v-else><i class="fas fa-save me-1"></i>Save</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<create-tag-modal ref="createModal" :is-admin="true" @created="onTagCreated" @toast="onToast"></create-tag-modal>
+
+{% endblock %}
+
+{% block script %}
+<script type="module">
+const { createApp, ref, computed, onMounted, onUnmounted } = Vue
+import { create_message, message_list } from '/static/js/toaster.js'
+import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js'
+import CreateTagModal from '/static/js/tags/createTagModal.js'
+import AppPagination from '/static/js/pagination.js'
+
+/* ── FA icon featured (edit modal, security-focused) ─────────── */
+const FA_FEATURED = [
+  'tag','tags','shield','shield-halved','shield-virus','shield-check','bug','fire','bolt','skull',
+  'skull-crossbones','virus','lock','lock-open','key','fingerprint','eye','eye-slash','biohazard',
+  'radiation','bomb','crosshairs','bullseye','magnifying-glass','magnifying-glass-chart','satellite',
+  'globe','server','database','microchip','memory','network-wired','code','terminal','file-code',
+  'file-shield','user-secret','id-card','flag','bell','star','bookmark','triangle-exclamation',
+  'circle-exclamation','circle-xmark','circle-check','circle-info','robot','gears','wrench',
+  'cloud','wifi','tower-broadcast','hard-drive','usb','earth-americas','sitemap','layer-group',
+  'user','users','building','landmark','scroll','brackets-curly','chart-bar','chart-line',
+  'link','link-slash','map-pin','clock','calendar','boxes-stacked','radar','toolbox',
+]
+
+/* ── App ──────────────────────────────────────────────────────── */
+createApp({
+  components: { 'tag-chip': SingleTagDisplay, 'create-tag-modal': CreateTagModal, 'app-pagination': AppPagination },
+  delimiters: ['[[',']]'],
+  setup() {
+    const CSRF = () => document.getElementById('csrf_token')?.value || ''
+
+    /* state */
+    const tags       = ref([])
+    const loading    = ref(true)
+    const importing  = ref(false)
+    const importingSource = ref('')
+    const page       = ref(1)
+    const total_page = ref(1)
+    const search     = ref('')
+    const filterSource     = ref('')
+    const filterApproved   = ref('all')
+    const filterVisibility = ref('')
+    const perPage          = ref(20)
+    const viewMode   = ref('table')
+    const selectedIds = ref(new Set())
+    const collapsedGroups = ref(new Set())
+    const createModal = ref(null)
+
+    /* ── Vendor / GitHub update ──────── */
+    const vendorStatus = ref(null)
+    const pullJob      = ref(null)
+    let   _pullPollTimer = null
+
+    async function loadVendorStatus() {
+      try {
+        const r = await fetch('/tags/admin/vendor_status')
+        const d = await r.json()
+        if (d.success) vendorStatus.value = d
+      } catch {}
+    }
+
+    async function startPullAndImport() {
+      if (!confirm(
+        'Pull latest MISP taxonomies & galaxies from GitHub and import new tags?\n\n' +
+        '• Step 1 — git submodule update (vendor/misp-taxonomies + vendor/misp-galaxy)\n' +
+        '• Step 2 — Import new taxonomy tags (existing skipped)\n' +
+        '• Step 3 — Import new galaxy tags, ~55k entries (~1 min)\n\n' +
+        'Existing tags are never modified or deleted.'
+      )) return
+      try {
+        const r = await fetch('/tags/admin/pull_and_import', {
+          method: 'POST', headers: { 'X-CSRFToken': CSRF() }
+        })
+        const d = await r.json()
+        if (d.success) {
+          pullJob.value = { status: 'running', phase: 'pulling', progress: 0, total: 3,
+                            taxo_imported: 0, galaxy_imported: 0, errors: [], pull_output: '' }
+          _startPollPullJob(d.job_id)
+        } else {
+          create_message(d.message || 'Failed to start', 'danger')
+        }
+      } catch { create_message('Network error', 'danger') }
+    }
+
+    function _startPollPullJob(jid) {
+      clearInterval(_pullPollTimer)
+      _pullPollTimer = setInterval(async () => {
+        try {
+          const r = await fetch(`/tags/admin/bulk_converts/job/${jid}`)
+          const d = await r.json()
+          if (d.success) {
+            pullJob.value = d.job
+            if (d.job.status === 'done') {
+              clearInterval(_pullPollTimer)
+              await loadVendorStatus()
+              if (d.job.phase !== 'failed') resetPage()
+            }
+          }
+        } catch {}
+      }, 1500)
+    }
+
+    /* ── Selection ───────────────────── */
+    function toggleSelect(id) {
+      const s = new Set(selectedIds.value)
+      s.has(id) ? s.delete(id) : s.add(id)
+      selectedIds.value = s
+    }
+    function toggleSelectAll() {
+      selectedIds.value = allSelected.value ? new Set() : new Set(tags.value.map(t=>t.id))
+    }
+    function toggleSelectGroup(group) {
+      const s = new Set(selectedIds.value)
+      group.every(t=>s.has(t.id)) ? group.forEach(t=>s.delete(t.id)) : group.forEach(t=>s.add(t.id))
+      selectedIds.value = s
+    }
+    const allSelected  = computed(()=>tags.value.length>0&&tags.value.every(t=>selectedIds.value.has(t.id)))
+    const someSelected = computed(()=>tags.value.some(t=>selectedIds.value.has(t.id))&&!allSelected.value)
+    const pendingSelected = computed(()=>tags.value.filter(t=>selectedIds.value.has(t.id)&&!t.is_approved_by_admin))
+    const hasPendingSelected = computed(()=>pendingSelected.value.length>0)
+    const pendingSelectedCount = computed(()=>pendingSelected.value.length)
+    const groupAllSelected  = g=>g.every(t=>selectedIds.value.has(t.id))
+    const groupSomeSelected = g=>g.some(t=>selectedIds.value.has(t.id))&&!g.every(t=>selectedIds.value.has(t.id))
+    function toggleGroup(ns) {
+      const s = new Set(collapsedGroups.value)
+      s.has(ns)?s.delete(ns):s.add(ns)
+      collapsedGroups.value = s
+    }
+
+    /* ── Grouped tags ────────────────── */
+    const groupedTags = computed(()=>{
+      const m={}
+      for (const t of tags.value) {
+        const ns = t.name.split(':')[0]||'(other)'
+        if (!m[ns]) m[ns]=[]
+        m[ns].push(t)
+      }
+      return Object.fromEntries(Object.entries(m).sort(([a],[b])=>a.localeCompare(b)))
+    })
+
+    /* ── Load ────────────────────────── */
+    let debounceTimer = null
+    async function load() {
+      loading.value = true
+      try {
+        const params = new URLSearchParams({
+          page: page.value,
+          approved: filterApproved.value,
+          per_page: viewMode.value==='grouped' ? 600 : perPage.value,
+        })
+        if (search.value) params.set('search', search.value)
+        if (filterSource.value) params.set('source', filterSource.value)
+        if (filterVisibility.value) params.set('visibility', filterVisibility.value)
+        const res = await fetch(`/tags/admin/list?${params}`)
+        if (res.ok) {
+          const data = await res.json()
+          tags.value = data.list||[]
+          total_page.value = data.total_page||1
+        }
+      } catch {}
+      loading.value = false
+    }
+    function resetPage() { page.value=1; selectedIds.value=new Set(); load() }
+    function debounceSearch() {
+      clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(resetPage, 350)
+    }
+    function switchGrouped() { viewMode.value='grouped'; resetPage() }
+
+    /* ── Row actions ─────────────────── */
+    async function approveSingle(tag, approve) {
+      const res = await fetch(`/tags/admin/approve/${tag.id}`, {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF()},
+        body:JSON.stringify({approve}),
+      })
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) { tag.is_approved_by_admin=approve; if(approve){tag.is_active=true;tag.visibility='public'} }
+    }
+    async function toggleActive(tag) {
+      const res = await fetch(`/tags/admin/toggle_active/${tag.id}`,{method:'POST',headers:{'X-CSRFToken':CSRF()}})
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) tag.is_active=data.is_active
+    }
+    async function toggleVisibility(tag) {
+      const res = await fetch(`/tags/admin/toggle_visibility/${tag.id}`,{method:'POST',headers:{'X-CSRFToken':CSRF()}})
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) tag.visibility=data.visibility
+    }
+    async function deleteSingle(tag) {
+      if (!confirm(`Delete tag "${tag.name}"?`)) return
+      const res = await fetch(`/tags/admin/delete/${tag.id}`,{method:'POST',headers:{'X-CSRFToken':CSRF()}})
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) {
+        tags.value = tags.value.filter(t=>t.id!==tag.id)
+        const s=new Set(selectedIds.value); s.delete(tag.id); selectedIds.value=s
+      }
+    }
+
+    /* ── Bulk actions ────────────────── */
+    async function bulkAction(action) {
+      const ids = [...selectedIds.value]
+      if (!ids.length) return
+      if (action==='delete' && !confirm(`Delete ${ids.length} tag(s)?`)) return
+      const res = await fetch('/tags/admin/bulk',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':CSRF()},
+        body:JSON.stringify({ids,action}),
+      })
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) { selectedIds.value=new Set(); await load() }
+    }
+
+    /* ── Accept all pending from selection ─────── */
+    async function bulkApprovePending() {
+      const ids = pendingSelected.value.map(t=>t.id)
+      if (!ids.length) return
+      const res = await fetch('/tags/admin/bulk',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':CSRF()},
+        body:JSON.stringify({ids,action:'approve'}),
+      })
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) { selectedIds.value=new Set(); await load() }
+    }
+
+    /* ── Import taxonomies ───────────── */
+    async function importTaxonomies() {
+      if (!confirm('Import all MISP taxonomy tags? Existing tags will be skipped.')) return
+      importing.value = true
+      importingSource.value = 'taxonomy'
+      try {
+        const res = await fetch('/tags/admin/import_taxonomies',{method:'POST',headers:{'X-CSRFToken':CSRF()}})
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.errors?.length) data.errors.forEach(e=>create_message(e,'warning'))
+        resetPage()
+      } catch { create_message('Import failed','danger') }
+      importing.value = false
+      importingSource.value = ''
+    }
+
+    /* ── Import galaxies ─────────────── */
+    async function importGalaxies() {
+      if (!confirm('Import all MISP Galaxy tags (~55 000 entries)?\nThis may take a minute. Existing tags will be skipped.')) return
+      importing.value = true
+      importingSource.value = 'galaxy'
+      try {
+        const res = await fetch('/tags/admin/import_galaxies',{method:'POST',headers:{'X-CSRFToken':CSRF()}})
+        const data = await res.json()
+        create_message(data.message, data.toast_class)
+        if (data.errors?.length) data.errors.forEach(e=>create_message(e,'warning'))
+        resetPage()
+      } catch { create_message('Import failed','danger') }
+      importing.value = false
+      importingSource.value = ''
+    }
+
+    /* ── Edit modal ──────────────────── */
+    let editModalInst = null
+    const editForm   = ref(null)
+    const editErrors = ref({})
+    const editSaving = ref(false)
+    const editTarget = ref(null)
+    const editIconOpen = ref(false)
+
+    function openEdit(tag) {
+      editTarget.value = tag
+      editForm.value = { name:tag.name, description:tag.description||'', color:tag.color||'#6366f1', icon:tag.icon||'', source:tag.source, visibility:tag.visibility, is_active:tag.is_active, is_approved_by_admin:tag.is_approved_by_admin, is_evaluation_tag:tag.is_evaluation_tag||false, galaxy_meta:tag.galaxy_meta||null }
+      editErrors.value = {}
+      editModalInst?.show()
+    }
+    async function saveEdit() {
+      const e = {}
+      if (!editForm.value.name?.trim()) e.name='Name is required'
+      if (editForm.value.color && !/^#[0-9a-fA-F]{6}$/.test(editForm.value.color)) e.color='Invalid hex color'
+      editErrors.value = e
+      if (Object.keys(e).length) return
+      editSaving.value = true
+      const res = await fetch(`/tags/admin/edit/${editTarget.value.id}`,{
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF()},
+        body:JSON.stringify(editForm.value),
+      })
+      const data = await res.json()
+      create_message(data.message, data.toast_class)
+      if (data.success) { Object.assign(editTarget.value,data.tag); editModalInst?.hide() }
+      editSaving.value = false
+    }
+
+    /* ── Icon picker (edit modal) ───────── */
+    const iconSearch    = ref('')
+    const faIcons       = ref([])
+
+    const filteredIcons = computed(()=>{
+      const q   = iconSearch.value.toLowerCase().trim()
+      const all = faIcons.value.length ? faIcons.value : FA_FEATURED
+      if (!q) return [...new Set([...FA_FEATURED, ...all])].slice(0, 180)
+      return all.filter(ic => ic.includes(q)).slice(0, 200)
+    })
+
+    // close edit icon picker on outside click
+    function onDocClick(e) {
+      if (!e.target.closest('.icon-picker')) editIconOpen.value = false
+    }
+    onMounted(()=>document.addEventListener('click',onDocClick))
+    onUnmounted(()=>document.removeEventListener('click',onDocClick))
+
+    /* ── Create modal ────────────────── */
+    function openCreate() { createModal.value?.openModal() }
+    function onTagCreated() { resetPage() }
+    function onToast(msg, cls) { create_message(msg, cls) }
+
+    /* ── Search highlight helper ─────── */
+    function hlNs(ns) {
+      const safe = (ns || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      if (!search.value) return safe
+      const esc = search.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return safe.replace(new RegExp(`(${esc})`, 'gi'), '<mark class="tag-highlight">$1</mark>')
+    }
+
+    /* ── Style helpers ───────────────── */
+    function sourceStyle(s) {
+      if (s==='Taxonomy')      return 'background:rgba(37,99,235,0.12);color:var(--accent)'
+      if (s==='Galaxy')        return 'background:rgba(124,58,237,0.12);color:#7c3aed'
+      if (s==='Manual')        return 'background:rgba(100,116,139,0.12);color:var(--text-2)'
+      if (s==='Vulnerability') return 'background:rgba(239,68,68,0.12);color:var(--danger)'
+      return 'background:rgba(100,116,139,0.08);color:var(--text-3)'
+    }
+    function sourceIcon(s) {
+      if (s==='Taxonomy')      return 'fas fa-sitemap'
+      if (s==='Galaxy')        return 'fas fa-globe'
+      if (s==='Manual')        return 'fas fa-pen'
+      if (s==='Vulnerability') return 'fas fa-bug'
+      return 'fas fa-tag'
+    }
+
+    /* ── Init ────────────────────────── */
+    onMounted(async ()=>{
+      const urlSearch = new URLSearchParams(window.location.search).get('search')
+      if (urlSearch) search.value = urlSearch
+      editModalInst = new bootstrap.Modal(document.getElementById('editTagModal'))
+      load()
+      loadVendorStatus()
+      try {
+        const r = await fetch('/tags/fa-icons')
+        if (r.ok) { const d = await r.json(); faIcons.value = d.icons || [] }
+      } catch {}
+    })
+
+    onUnmounted(()=>{ clearInterval(_pullPollTimer) })
+
+    return {
+      tags, loading, importing, importingSource, page, total_page,
+      search, filterSource, filterApproved, filterVisibility, perPage, viewMode,
+      selectedIds, allSelected, someSelected,
+      hasPendingSelected, pendingSelectedCount,
+      groupedTags, collapsedGroups,
+      createModal,
+      vendorStatus, pullJob, startPullAndImport,
+      editForm, editErrors, editSaving, editIconOpen,
+      iconSearch, filteredIcons, faIcons,
+      message_list,
+      // methods
+      load, resetPage, debounceSearch, switchGrouped,
+      toggleSelect, toggleSelectAll, toggleSelectGroup, toggleGroup,
+      groupAllSelected, groupSomeSelected,
+      approveSingle, toggleActive, toggleVisibility, deleteSingle,
+      bulkAction, bulkApprovePending, importTaxonomies, importGalaxies,
+      openEdit, saveEdit,
+      openCreate, onTagCreated, onToast,
+      sourceStyle, sourceIcon, hlNs,
+    }
+  }
+}).mount('#main-containers')
+</script>
+{% endblock %}

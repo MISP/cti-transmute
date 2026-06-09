@@ -7,64 +7,6 @@
 <script src="/static/pivotick/pivotick.iife.js"></script>
 <script>window.dispatchEvent(new Event('pivotick-ready'))</script>
 
-<style>
-    html.light-mode #graph-container,
-    html.light-mode #graph-container-output {
-        --pvt-bg: #ffffff; --pvt-ui-bg: #ffffff;
-        --pvt-bg-color-0: #fff; --pvt-bg-color-1: #fafafa; --pvt-bg-color-2: #f3f3f3;
-        --pvt-bg-color-3: #ededed; --pvt-bg-color-4: #e6e6e6; --pvt-bg-color-5: #e0e0e0;
-        --pvt-bg-color-6: #d6d6d6; --pvt-bg-color-7: #cccccc; --pvt-bg-color-8: #c2c2c2;
-        --pvt-border-color: #cccccc; --pvt-text-color-5: #333; --pvt-text-color-6: #000;
-        --pvt-graph-grid-color: #f5f5f5;
-        --pvt-graph-background-image: repeating-linear-gradient(0deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px);
-        --pvt-edge-label-color: #000; --pvt-edge-label-bg: #e6e6e6;
-        --pvt-menu-bg-color: #fafafa; --pvt-tooltip-floating-bg-color: #d6d6d6; --pvt-sidebar-bg: #fff;
-    }
-    html.dark-mode #graph-container,
-    html.dark-mode #graph-container-output {
-        --pvt-bg: #0F0F10; --pvt-ui-bg: #202023;
-        --pvt-bg-color-0: #0F0F10; --pvt-bg-color-1: #131314; --pvt-bg-color-2: #171719;
-        --pvt-bg-color-3: #1A1A1D; --pvt-bg-color-4: #1D1D20; --pvt-bg-color-5: #202023;
-        --pvt-bg-color-6: #252528; --pvt-bg-color-7: #343437; --pvt-bg-color-8: #464649;
-        --pvt-border-color: #1A1A1D; --pvt-text-color-5: #e0e0e0; --pvt-text-color-6: #fff;
-        --pvt-graph-grid-color: #1D1D20;
-        --pvt-graph-background-image: repeating-linear-gradient(0deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px);
-        --pvt-edge-label-color: #e0e0e0; --pvt-edge-label-bg: #202023;
-        --pvt-menu-bg-color: #343437; --pvt-tooltip-floating-bg-color: #464649; --pvt-sidebar-bg: #0F0F10;
-    }
-    html.dark-mode .pvt-modal__body, html.dark-mode .pvt-searchbox { background: #131314; color: #e0e0e0; }
-    html.dark-mode .pvt-searchbox .search-container { background: #1A1A1D; border-bottom: 1px solid #343437; }
-    html.dark-mode #pvt-search-input { background: transparent; color: #e0e0e0; border: none; outline: none; }
-    html.dark-mode #pvt-search-input::placeholder { color: #464649; }
-    html.dark-mode .pvt-search-results { background: #131314; color: #e0e0e0; }
-    html.dark-mode .pvt-search-hints { background: #0F0F10; border-top: 1px solid #343437; color: #64748b; }
-    html.dark-mode .pvt-search-icon { background: #1D1D20; border: 1px solid #343437; color: #94a3b8; }
-    html.dark-mode .pvt-search-summary { background: #131314; color: #64748b; }
-
-    /* Large-file notice (shown instead of syntax highlighting) */
-    .hljs-size-notice {
-        padding: 6px 14px;
-        font-size: 0.75rem;
-        color: var(--text-3);
-        background: var(--surface-2);
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    /* Graph spinner overlay */
-    .graph-spinner-overlay {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.75rem;
-        width: 100%;
-        height: 100%;
-        color: var(--text-2);
-        font-size: 0.875rem;
-    }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -105,9 +47,14 @@
                                 <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
                                 [[ convert.public ? 'Public' : 'Private' ]]
                             </span>
-                            <span class="author-badge">
+                            <a v-if="convert.user_id" :href="'/account/public/' + convert.user_id"
+                               class="author-badge" style="text-decoration:none; color:inherit;">
                                 <i class="fas fa-user" style="font-size:0.65rem;"></i>
                                 [[ convert.author || 'Anonymous' ]]
+                            </a>
+                            <span v-else class="author-badge">
+                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
+                                Anonymous
                             </span>
                             {% if current_user.is_authenticated %}
                             <template v-if="convert.user_id && convert.user_id !== {{ current_user.id }}">
@@ -142,7 +89,7 @@
                             </button>
                         </template>
                         <a href="{{ url_for('convert.refresh', uuid=convert.uuid) }}"
-                            class="btn btn-sm btn-outline-secondary" title="Refresh">
+                            class="btn btn-sm btn-action" title="Refresh">
                             <i class="fas fa-sync-alt me-1"></i> Refresh
                         </a>
                         <a :href="'/convert/edit/'+convert.id" class="btn btn-sm btn-outline-secondary" title="Edit">
@@ -151,6 +98,93 @@
                         <button class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal"
                             :data-bs-target="'#delete_modal_'+convert.id">
                             <i class="fas fa-trash me-1"></i> Delete
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" title="Push to MISP"
+                            @click="$refs.mispModal.open()">
+                            <img src="/static/image/misp.svg" width="14" height="14"
+                                style="vertical-align:middle; margin-right:4px;"> MISP
+                        </button>
+
+                        
+
+                        <!-- Download dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-action dropdown-toggle"
+                                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download me-1"></i> Download
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="min-width:230px; font-size:.83rem;">
+
+                                <!-- Raw conversion files -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-file-code me-1"></i> Conversion files
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/input'">
+                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                         <img v-else src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
+                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'MISP input' : 'STIX input' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/output'">
+                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">  
+                                        <img v-else src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'STIX output' : 'MISP output' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/convert/download/' + convert.id + '/misp-push'">
+                                        <img src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        MISP push payload
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">+ eval object</span>
+                                    </a>
+                                </li>
+
+                                <li><hr class="dropdown-divider"></li>
+
+                                <!-- Evaluation report -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-chart-bar me-1"></i> Evaluation report
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + convert.id + '/pdf'"
+                                       download>
+                                        <i class="fas fa-file-pdf me-2" style="color:#e05555; width:13px;"></i>
+                                        PDF report
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + convert.id + '/markdown'"
+                                       download>
+                                        <i class="fab fa-markdown me-2" style="color:var(--text-2); width:13px;"></i>
+                                        Markdown report
+                                    </a>
+                                </li>
+
+                            </ul>
+                        </div>
+                        <button class="btn btn-sm detail-favorite-btn"
+                            :class="is_favorite ? 'active' : ''"
+                            :title="is_favorite ? 'Remove from favorites' : 'Add to favorites'"
+                            @click="toggleFavorite()">
+                            <i :class="is_favorite ? 'fas fa-star' : 'far fa-star'"></i>
                         </button>
                     </div>
                 </template>
@@ -205,6 +239,12 @@
             </div>
         </div>
 
+        <tag-input
+            :convert-id="{{ convert.id }}"
+            :can-edit="false"
+            class="mb-4">
+        </tag-input>
+
         <div class="custom-card mb-4">
             <div class="detail-tabs-header">
                 <ul class="nav nav-underline px-3 pt-2" :id="'tabs-'+convert.id" role="tablist">
@@ -238,9 +278,27 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#sunburst-pane-'+convert.id" role="tab">
+                            <i class="fas fa-circle-dot me-1"></i> Sunburst
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#table-pane-'+convert.id" role="tab">
+                            <i class="fas fa-table me-1"></i> Table
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="comments">
                             <i class="fas fa-comments me-1"></i> Comments
-                            <span v-if="comments_total > 0" class="badge bg-secondary ms-1">[[ comments_total ]]</span>
+                            <span v-if="discuss_comments.length > 0" class="badge bg-secondary ms-1">[[ discuss_comments.length ]]</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#eval-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="eval">
+                            <i class="fas fa-chart-bar me-1"></i> Evaluation
+                            <span v-if="eval_comments.length > 0" class="badge ms-1" style="background:var(--cs-eval); color:#fff;">[[ eval_comments.length ]]</span>
                         </a>
                     </li>
                 </ul>
@@ -257,6 +315,9 @@
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-input" onclick="toggleTree('input')">
+                                    <i class="fas fa-sitemap me-1"></i> Tree
+                                </button>
                                 <button class="btn btn-sm btn-outline-secondary" @click="formatJson('input', $event)">
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
@@ -276,6 +337,7 @@
                         </div>
                         <pre class="code-panel-pre d-none"
                             id="pre-input"><code class="language-json" id="input-code"></code></pre>
+                        <div class="jt-root d-none" id="tree-input"></div>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
@@ -291,6 +353,9 @@
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-output" onclick="toggleTree('output')">
+                                    <i class="fas fa-sitemap me-1"></i> Tree
+                                </button>
                                 <button class="btn btn-sm btn-outline-secondary" @click="formatJson('output', $event)">
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
@@ -310,6 +375,7 @@
                         </div>
                         <pre class="code-panel-pre d-none"
                             id="pre-output"><code class="language-json" id="output-code"></code></pre>
+                        <div class="jt-root d-none" id="tree-output"></div>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
                         </div>
@@ -372,6 +438,10 @@
                                     <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
                                     <template v-else>STIX Output</template>
                                 </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="openGraphConfigModal()" title="Configure graph display">
+                                    <i class="fas fa-sliders"></i>
+                                </button>
                             </div>
                         </div>
                         <!-- graph-container starts with a spinner, replaced once Pivotick renders -->
@@ -399,12 +469,14 @@
                                 </div>
                                 <div class="graph-legend-section">
                                     <h6>MISP graph</h6>
-                                    <p>The <strong>Event</strong> is the root. It connects to <strong>Objects</strong> (groups like <em>file</em>, <em>domain-ip</em>) and standalone <strong>Attributes</strong>. Object references (<em>contains</em>, <em>related-to</em>) are shown as labeled arrows.</p>
+                                    <p>The <strong>Event</strong> is the root. It connects to <strong>Objects</strong> (groups like <em>file</em>, <em>domain-ip</em>) and standalone <strong>Attributes</strong>. When 3 or more attributes share the same type, they are collapsed under a <strong>type group node</strong> (hexagon) for readability. Object references (<em>contains</em>, <em>related-to</em>) are shown as labeled arrows.</p>
                                     <div class="graph-legend-chips">
                                         <span class="chip" style="--c:#2563eb">■ Event</span>
                                         <span class="chip" style="--c:#7c3aed">⬡ Object</span>
-                                        <span class="chip" style="--c:#0ea5e9">● Network (IP, domain, URL)</span>
-                                        <span class="chip" style="--c:#f97316">● Payload (hash, file)</span>
+                                        <span class="chip" style="--c:#0ea5e9">⬡ Network group</span>
+                                        <span class="chip" style="--c:#0ea5e9">● Network attr (IP, domain, URL)</span>
+                                        <span class="chip" style="--c:#f97316">⬡ Payload group</span>
+                                        <span class="chip" style="--c:#f97316">● Payload attr (hash, file)</span>
                                         <span class="chip" style="--c:#10b981">● External analysis</span>
                                         <span class="chip" style="--c:#64748b">● Other</span>
                                     </div>
@@ -440,122 +512,256 @@
                 <div class="tab-pane fade" :id="'comments-pane-'+convert.id" role="tabpanel">
                     <div class="comments-section">
 
-                        <!-- Visibility banner when convert is private -->
+                        <!-- Visibility banner -->
                         <div v-if="!convert.public" class="visibility-info-banner private-banner">
                             <i class="fas fa-lock mt-1"></i>
                             <span>This convert is <strong>private</strong>. Only you and admins can see the comments below, regardless of their individual visibility.</span>
                         </div>
 
-                        <!-- Write comment (logged-in only) -->
+                        <!-- Loading -->
+                        <div v-if="comments_loading" class="text-center py-5">
+                            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+                        </div>
+
+                        <template v-else>
+
+                            <!-- ══ DISCUSSION ══════════════════════════════════ -->
+                            <div class="cs-section">
+                                <div class="cs-section-header">
+                                    <span class="cs-section-icon cs-section-icon--discuss"><i class="fas fa-comments"></i></span>
+                                    <span class="cs-section-title">Discussion</span>
+                                    <span v-if="discuss_comments.length" class="cs-section-count">[[ discuss_comments.length ]]</span>
+                                </div>
+
+                                {% if current_user.is_authenticated %}
+                                <div class="comment-form-wrapper">
+                                    <textarea class="comment-textarea" v-model="new_discuss_text"
+                                        placeholder="Share your thoughts, ask a question…"
+                                        maxlength="2000" rows="2"></textarea>
+                                    <div class="comment-form-footer">
+                                        <label class="comment-privacy-toggle">
+                                            <input type="checkbox" v-model="new_discuss_private">
+                                            <i class="fas fa-lock" style="font-size:0.75rem;"></i> Private
+                                        </label>
+                                        <button class="btn btn-sm btn-primary" @click="postComment(false)" :disabled="!new_discuss_text.trim()">
+                                            <i class="fas fa-paper-plane me-1"></i> Post
+                                        </button>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="cs-login-hint">
+                                    <a href="/account/login">Log in</a> to join the discussion.
+                                </div>
+                                {% endif %}
+
+                                <div v-if="discuss_comments.length === 0" class="comments-empty" style="padding:1.25rem 0 0.5rem;">
+                                    <i class="fas fa-comments" style="font-size:1.3rem; opacity:0.28; display:block; margin-bottom:0.4rem;"></i>
+                                    <p style="font-size:0.82rem; margin:0;">No discussion yet. Start the conversation.</p>
+                                </div>
+                                <div v-else class="cs-comment-list">
+                                    <div v-for="comment in discuss_comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                            <span class="comment-author">[[ comment.author ]]</span>
+                                            <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
+                                            <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                        </div>
+                                        <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
+                                        <div class="comment-actions" v-if="!comment.is_deleted">
+                                            {% if current_user.is_authenticated %}
+                                            <button class="comment-action-btn" @click="toggleReplyForm(comment.id)"><i class="fas fa-reply"></i> Reply</button>
+                                            <button v-if="comment.can_edit" class="comment-action-btn" @click="startEdit(comment)"><i class="fas fa-pen"></i> Edit</button>
+                                            <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
+                                                <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
+                                            </button>
+                                            <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)"><i class="fas fa-trash"></i> Delete</button>
+                                            {% endif %}
+                                        </div>
+                                        {% if current_user.is_authenticated %}
+                                        <div v-if="edit_comment_id === comment.id" class="replies-section reply-form">
+                                            <textarea class="reply-textarea" v-model="edit_comment_text" maxlength="2000" rows="2"></textarea>
+                                            <div class="d-flex justify-content-end gap-2 mt-2">
+                                                <button class="btn btn-sm btn-secondary" @click="cancelEdit()">Cancel</button>
+                                                <button class="btn btn-sm btn-primary" @click="submitEdit(comment.id)" :disabled="!edit_comment_text.trim()"><i class="fas fa-check me-1"></i> Save</button>
+                                            </div>
+                                        </div>
+                                        <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
+                                            <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
+                                            <div class="d-flex justify-content-end gap-2 mt-2">
+                                                <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
+                                                <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()"><i class="fas fa-paper-plane me-1"></i> Reply</button>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
+                                            <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
+                                                <div class="comment-header">
+                                                    <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                                    <span class="comment-author">[[ reply.author ]]</span>
+                                                    <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
+                                                    <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                                </div>
+                                                <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
+                                                <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
+                                                    {% if current_user.is_authenticated %}
+                                                    <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
+                                                        <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                        [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
+                                                    </button>
+                                                    <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)"><i class="fas fa-trash"></i> Delete</button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </template>
+
+                    </div>
+                </div>
+
+                <!-- ── Sunburst tab ──────────────────────────────── -->
+                <div class="tab-pane fade" :id="'sunburst-pane-'+convert.id" role="tabpanel">
+                    <convert-sunburst :convert-data="convert"></convert-sunburst>
+                </div>
+
+                <!-- ── Table tab ─────────────────────────────────── -->
+                <div class="tab-pane fade" :id="'table-pane-'+convert.id" role="tabpanel">
+                    <convert-table :convert-data="convert"></convert-table>
+                </div>
+
+                <!-- ── Evaluation tab ────────────────────────────── -->
+                <div class="tab-pane fade" :id="'eval-pane-'+convert.id" role="tabpanel">
+                    <evaluation-panel
+                        :convert-id="{{ convert.id }}"
+                        :is-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
+                        :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && convert.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
+                        :is-public="convert.public">
+                    </evaluation-panel>
+                    <evaluation-charts :convert-id="{{ convert.id }}"></evaluation-charts>
+
+                    <!-- ── Export evaluation report ─────────────────── -->
+                    <div class="d-flex align-items-center gap-2 mt-3 mb-1 px-1" style="flex-wrap:wrap;">
+                        <span style="font-size:.8rem; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">
+                            <i class="fas fa-file-export me-1"></i> Export report
+                        </span>
+                        <a href="/evaluate/export/{{ convert.id }}/markdown"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fab fa-markdown me-1"></i> Markdown
+                        </a>
+                        <a href="/evaluate/export/{{ convert.id }}/pdf"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fas fa-file-pdf me-1" style="color:#e05555;"></i> PDF
+                        </a>
+                    </div>
+
+                    <!-- ── Evaluation comments ───────────────────── -->
+                    <div class="cs-separator" style="margin:1.25rem 0;"></div>
+
+                    <div class="cs-section cs-section--eval">
+                        <div class="cs-section-header">
+                            <span class="cs-section-icon cs-section-icon--eval"><i class="fas fa-comment-alt"></i></span>
+                            <span class="cs-section-title">Evaluation Comments</span>
+                            <span v-if="eval_comments.length" class="cs-section-count cs-section-count--eval">[[ eval_comments.length ]]</span>
+                            <span class="cs-eval-hint">Qualitative feedback on this convert</span>
+                        </div>
+
                         {% if current_user.is_authenticated %}
-                        <div class="comment-form-wrapper">
-                            <textarea class="comment-textarea" v-model="new_comment_text" placeholder="Write a comment…" maxlength="2000" rows="2"></textarea>
+                        <div class="comment-form-wrapper comment-form-wrapper--eval">
+                            <textarea class="comment-textarea" v-model="new_eval_text"
+                                placeholder="Share your evaluation — quality, accuracy, completeness…"
+                                maxlength="2000" rows="2"></textarea>
                             <div class="comment-form-footer">
                                 <label class="comment-privacy-toggle">
-                                    <input type="checkbox" v-model="new_comment_private">
-                                    <i class="fas fa-lock" style="font-size:0.75rem;"></i>
-                                    Private (only visible to you and the convert owner)
+                                    <input type="checkbox" v-model="new_eval_private">
+                                    <i class="fas fa-lock" style="font-size:0.75rem;"></i> Private
                                 </label>
-                                <button class="btn btn-sm btn-primary" @click="postComment()" :disabled="!new_comment_text.trim()">
-                                    <i class="fas fa-paper-plane me-1"></i> Post
+                                <span class="cs-eval-form-label">
+                                    <i class="fas fa-chart-bar"></i> Marked as evaluation
+                                </span>
+                                <button class="btn btn-sm cs-eval-post-btn" @click="postComment(true)" :disabled="!new_eval_text.trim()">
+                                    <i class="fas fa-paper-plane me-1"></i> Post Evaluation
                                 </button>
                             </div>
                         </div>
                         {% else %}
-                        <div class="text-center py-3 mb-3" style="font-size:0.85rem; color:var(--text-3);">
-                            <a href="/account/login" style="color:var(--accent); font-weight:600;">Log in</a> to leave a comment.
+                        <div class="cs-login-hint">
+                            <a href="/account/login">Log in</a> to post an evaluation.
                         </div>
                         {% endif %}
 
-                        <!-- Comments list -->
-                        <div v-if="comments_loading" class="text-center py-4">
-                            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+                        <div v-if="comments_loading" class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm" style="color:var(--cs-eval);"></div>
                         </div>
-
-                        <div v-else-if="comments.length === 0" class="comments-empty">
-                            <i class="fas fa-comments"></i>
-                            <p class="mb-0" style="font-weight:500;">No comments yet</p>
-                            <p style="font-size:0.8rem;">Be the first to share your thoughts.</p>
+                        <div v-else-if="eval_comments.length === 0" class="comments-empty" style="padding:1.25rem 0 0.5rem;">
+                            <i class="fas fa-comment-alt" style="font-size:1.3rem; opacity:0.28; display:block; margin-bottom:0.4rem;"></i>
+                            <p style="font-size:0.82rem; margin:0;">No evaluation comments yet.</p>
                         </div>
-
-                        <template v-else>
-                            <div v-for="comment in comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card">
-
-                                <!-- Comment header -->
+                        <div v-else class="cs-comment-list">
+                            <div v-for="comment in eval_comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card comment-card--eval">
                                 <div class="comment-header">
-                                    <div class="comment-avatar">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                    <div class="comment-avatar comment-avatar--eval">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
                                     <span class="comment-author">[[ comment.author ]]</span>
                                     <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
-                                    <span v-if="comment.is_private" class="comment-private-badge">
-                                        <i class="fas fa-lock"></i> Private
-                                    </span>
+                                    <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                                 </div>
-
-                                <!-- Content -->
-                                <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">
-                                    [[ comment.content ]]
-                                </div>
-
-                                <!-- Actions -->
+                                <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
                                 <div class="comment-actions" v-if="!comment.is_deleted">
                                     {% if current_user.is_authenticated %}
-                                    <button class="comment-action-btn" @click="toggleReplyForm(comment.id)">
-                                        <i class="fas fa-reply"></i> Reply
-                                    </button>
+                                    <button class="comment-action-btn" @click="toggleReplyForm(comment.id)"><i class="fas fa-reply"></i> Reply</button>
+                                    <button v-if="comment.can_edit" class="comment-action-btn" @click="startEdit(comment)"><i class="fas fa-pen"></i> Edit</button>
                                     <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
                                         <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
                                         [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
                                     </button>
-                                    <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
+                                    <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)"><i class="fas fa-trash"></i> Delete</button>
                                     {% endif %}
                                 </div>
-
-                                <!-- Reply form -->
                                 {% if current_user.is_authenticated %}
+                                <div v-if="edit_comment_id === comment.id" class="replies-section reply-form">
+                                    <textarea class="reply-textarea" v-model="edit_comment_text" maxlength="2000" rows="2"></textarea>
+                                    <div class="d-flex justify-content-end gap-2 mt-2">
+                                        <button class="btn btn-sm btn-secondary" @click="cancelEdit()">Cancel</button>
+                                        <button class="btn btn-sm btn-primary" @click="submitEdit(comment.id)" :disabled="!edit_comment_text.trim()"><i class="fas fa-check me-1"></i> Save</button>
+                                    </div>
+                                </div>
                                 <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
                                     <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
                                     <div class="d-flex justify-content-end gap-2 mt-2">
                                         <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
-                                        <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()">
-                                            <i class="fas fa-paper-plane me-1"></i> Reply
-                                        </button>
+                                        <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()"><i class="fas fa-paper-plane me-1"></i> Reply</button>
                                     </div>
                                 </div>
                                 {% endif %}
-
-                                <!-- Replies -->
                                 <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
                                     <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
                                         <div class="comment-header">
                                             <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
                                             <span class="comment-author">[[ reply.author ]]</span>
                                             <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
-                                            <span v-if="reply.is_private" class="comment-private-badge">
-                                                <i class="fas fa-lock"></i> Private
-                                            </span>
+                                            <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                                         </div>
-                                        <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">
-                                            [[ reply.content ]]
-                                        </div>
+                                        <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
                                         <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
                                             {% if current_user.is_authenticated %}
                                             <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
                                                 <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
                                                 [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
                                             </button>
-                                            <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)">
-                                                <i class="fas fa-trash"></i> Delete
-                                            </button>
+                                            <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)"><i class="fas fa-trash"></i> Delete</button>
                                             {% endif %}
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
-                        </template>
-
+                        </div>
                     </div>
                 </div>
 
@@ -692,35 +898,160 @@
     </div>
 
     <div id="convert_id" data-convert-id="{{ convert.id }}"></div>
+
+    <!-- MISP push modal (component mounted by Vue) -->
+    <push-convert-to-misp
+        ref="mispModal"
+        :convert-id="{{ convert.id }}"
+        :convert-data="convert">
+    </push-convert-to-misp>
 </div>
 {% endblock %}
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, onMounted, watch, nextTick } = Vue
+    const { createApp, ref, computed, onMounted, watch, nextTick } = Vue
     import { create_message, message_list } from '/static/js/toaster.js';
+    import TagInput from '/static/js/tags/tagInput.js';
+    import { initConvertGraph, showGraphSide } from '/static/js/graph/convertGraph.js';
+    import { openGraphConfigModal } from '/static/js/graph/graphConfigModal.js';
+    import EvaluationPanel from '/static/js/evaluationPanel.js';
+    import EvaluationCharts from '/static/js/evaluate/evaluationCharts.js';
+    import PushConvertToMISP from '/static/js/misp/pushConvertToMISP.js';
+    import ConvertSunburst from '/static/js/graph/convertSunburst.js';
+    import ConvertTable from '/static/js/graph/convertTable.js';
+    window.showGraphSide = showGraphSide;
+    window.openGraphConfigModal = openGraphConfigModal;
 
     const convert_id = document.getElementById('convert_id').dataset.convertId;
-    const IS_AUTH = {{ 'true' if current_user.is_authenticated else 'false' }};
-    const CURRENT_USER_ID = {{ current_user.id if current_user.is_authenticated else 'null' }};
-    const IS_ADMIN = {{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }};
+    const IS_AUTH = "{{ 'true' if current_user.is_authenticated else 'false' }}";
+    const CURRENT_USER_ID = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
+    const IS_ADMIN = "{{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}";
 
-    function applyHljsTheme() {
-        const isDark = document.documentElement.classList.contains('dark-mode')
+    const _LIGHT_THEMES = ['light', 'ocean']
+    function applyHljsTheme(theme) {
+        const t = theme || ['light','dark','dusk','forest'].find(
+            x => document.documentElement.classList.contains(x + '-mode')
+        ) || 'light'
+        const isDark = !_LIGHT_THEMES.includes(t)
         document.getElementById('hljs-theme').href = isDark
             ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
             : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css'
     }
 
     applyHljsTheme()
-    document.getElementById('theme-toggle')?.addEventListener('click', () => {
-        setTimeout(() => { applyHljsTheme(); highlightAll() }, 50)
+    document.documentElement.addEventListener('themechange', (e) => {
+        setTimeout(() => { applyHljsTheme(e.detail?.theme); highlightAll() }, 50)
     })
 
     // Raw text lives outside Vue to avoid reactivity overhead on large strings
     let rawInput = '', rawOutput = ''
 
     const HLJS_LIMIT = 200 * 1024   // 200 KB — skip highlighting above this
+
+    // ── JSON Tree viewer ──────────────────────────────────────────────────────
+    const treeState = {}
+
+    function jtEl(tag, cls, text) {
+        const e = document.createElement(tag)
+        if (cls) e.className = cls
+        if (text !== undefined) e.textContent = text
+        return e
+    }
+
+    function jtPrimitive(val) {
+        if (val === null)              return jtEl('span', 'jt-null',  'null')
+        if (typeof val === 'boolean')  return jtEl('span', 'jt-bool',  String(val))
+        if (typeof val === 'number')   return jtEl('span', 'jt-num',   String(val))
+        return jtEl('span', 'jt-str', JSON.stringify(val))
+    }
+
+    function jtBuildNode(val, key, isLast, depth) {
+        const isPrim = val === null || typeof val !== 'object'
+        const isArr  = !isPrim && Array.isArray(val)
+        const open   = isArr ? '[' : '{'
+        const close  = isArr ? ']' : '}'
+        const entries = isPrim ? null : (isArr ? val.map((v, i) => [null, v]) : Object.entries(val))
+
+        // Empty collection or primitive — render as a single row
+        if (isPrim || !entries.length) {
+            const row = document.createElement('div')
+            row.className = 'jt-row'
+            if (key !== null) {
+                row.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
+                row.appendChild(jtEl('span', 'jt-punct', ': '))
+            }
+            row.appendChild(isPrim ? jtPrimitive(val) : jtEl('span', 'jt-punct', open + close))
+            if (!isLast) row.appendChild(jtEl('span', 'jt-punct', ','))
+            return row
+        }
+
+        // Collapsible object / array
+        const n   = entries.length
+        const lbl = isArr ? `${n} item${n !== 1 ? 's' : ''}` : `${n} key${n !== 1 ? 's' : ''}`
+        const det = document.createElement('details')
+        if (depth < 2) det.open = true
+
+        const sum = document.createElement('summary')
+        sum.appendChild(jtEl('span', 'jt-toggle', '▶'))
+        if (key !== null) {
+            sum.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
+            sum.appendChild(jtEl('span', 'jt-punct', ': '))
+        }
+        sum.appendChild(jtEl('span', 'jt-punct', open))
+        sum.appendChild(jtEl('span', 'jt-preview', ` ${lbl} ${close}`))
+        det.appendChild(sum)
+
+        const body = document.createElement('div')
+        body.className = 'jt-body'
+        entries.forEach(([k, v], i) => body.appendChild(jtBuildNode(v, k, i === n - 1, depth + 1)))
+        det.appendChild(body)
+
+        const footer = jtEl('div', 'jt-footer')
+        footer.appendChild(jtEl('span', 'jt-punct', close))
+        if (!isLast) footer.appendChild(jtEl('span', 'jt-punct', ','))
+        det.appendChild(footer)
+        return det
+    }
+
+    function jtRender(jsonText, container) {
+        container.innerHTML = ''
+        if (jsonText.length > 800 * 1024) {
+            container.innerHTML = `<p style="padding:2rem;text-align:center;color:var(--text-3)"><i class="fas fa-info-circle me-2"></i>File too large for tree view (${Math.round(jsonText.length / 1024)} KB)</p>`
+            return
+        }
+        try {
+            const wrap = document.createElement('div')
+            wrap.appendChild(jtBuildNode(JSON.parse(jsonText), null, true, 0))
+            container.appendChild(wrap)
+        } catch {
+            container.innerHTML = '<p style="padding:1.5rem;color:var(--danger)"><i class="fas fa-xmark me-2"></i>Invalid JSON</p>'
+        }
+    }
+
+    function toggleTree(side) {
+        const pre     = document.getElementById(`pre-${side}`)
+        const treeDiv = document.getElementById(`tree-${side}`)
+        const btn     = document.getElementById(`tree-btn-${side}`)
+        if (!pre || !treeDiv || !btn) return
+        const active = !treeState[side]
+        treeState[side] = active
+        if (active) {
+            jtRender(side === 'input' ? rawInput : rawOutput, treeDiv)
+            pre.classList.add('d-none')
+            treeDiv.classList.remove('d-none')
+            btn.classList.replace('btn-outline-secondary', 'btn-primary')
+            btn.innerHTML = '<i class="fas fa-align-left me-1"></i> Raw'
+        } else {
+            treeDiv.classList.add('d-none')
+            pre.classList.remove('d-none')
+            btn.classList.replace('btn-primary', 'btn-outline-secondary')
+            btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Tree'
+        }
+    }
+    window.toggleTree = toggleTree
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     function highlightSide(side) {
         const spinner = document.getElementById(`spinner-${side}`)
@@ -738,11 +1069,15 @@
             // File too large — skip hljs, show plain text immediately
             spinner?.classList.add('d-none')
             spinner?.classList.remove('d-flex')
-            pre.classList.remove('d-none')
+            if (!treeState[side]) pre.classList.remove('d-none')
             const notice = document.createElement('div')
             notice.className = 'hljs-size-notice'
             notice.innerHTML = '<i class="fas fa-info-circle me-1"></i>Syntax highlighting disabled for large files (' + Math.round(size / 1024) + ' KB)'
             pre.parentElement.insertBefore(notice, pre)
+            if (treeState[side]) {
+                const td = document.getElementById(`tree-${side}`)
+                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
+            }
             return
         }
 
@@ -754,7 +1089,11 @@
             hljs.highlightElement(block)
             spinner?.classList.add('d-none')
             spinner?.classList.remove('d-flex')
-            pre.classList.remove('d-none')
+            if (!treeState[side]) pre.classList.remove('d-none')
+            if (treeState[side]) {
+                const td = document.getElementById(`tree-${side}`)
+                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
+            }
         }, 50)
     }
 
@@ -765,7 +1104,7 @@
 
     document.addEventListener('shown.bs.tab', highlightAll)
 
-    createApp({
+    const app = createApp({
         delimiters: ['[[', ']]'],
         setup() {
             const convert = ref({})
@@ -773,16 +1112,24 @@
             const history_list = ref([])
             const is_loading = ref(true)
             const current_user_is_admin = ref()
+            const is_favorite = ref(false)
 
             // Comments state
             const comments = ref([])
             const comments_total = ref(0)
             const comments_loading = ref(false)
             const comments_loaded = ref(false)
-            const new_comment_text = ref('')
-            const new_comment_private = ref(false)
-            const reply_open_for = ref(null)
-            const reply_texts = ref({})
+            const new_discuss_text    = ref('')
+            const new_discuss_private = ref(false)
+            const new_eval_text       = ref('')
+            const new_eval_private    = ref(false)
+            const reply_open_for    = ref(null)
+            const reply_texts       = ref({})
+            const edit_comment_id   = ref(null)
+            const edit_comment_text = ref('')
+
+            const discuss_comments = computed(() => comments.value.filter(c => !c.is_evaluation))
+            const eval_comments    = computed(() => comments.value.filter(c =>  c.is_evaluation))
             const is_following_author = ref(false)
 
             // Report state
@@ -794,6 +1141,8 @@
             const pending_visibility_action = ref(null)
             const pending_comment_count = ref(0)
 
+
+            
             async function getConvert() {
                 const res = await fetch(`/convert/get_convert?id=${convert_id}`)
                 if (res.ok) {
@@ -821,17 +1170,20 @@
                         try { rawInput = JSON.stringify(JSON.parse(rawInput), null, 2); if (elIn) elIn.textContent = rawInput } catch {}
                         try { rawOutput = JSON.stringify(JSON.parse(rawOutput), null, 2); if (elOut) elOut.textContent = rawOutput } catch {}
                         highlightAll()
-                        window.__onConvertLoaded?.(c)
+                        initConvertGraph(c)
                     }, 0)
+
                 } else {
                     is_loading.value = false
                 }
             }
 
             async function fetchCurrentUser() {
-                const res = await fetch('/get_current_user')
-                const data = await res.json()
-                current_user_is_admin.value = data.user
+                try {
+                    const res = await fetch('/get_current_user')
+                    const data = await res.json()
+                    current_user_is_admin.value = data.user
+                } catch {}
             }
 
             async function fetchShareKey() {
@@ -840,17 +1192,23 @@
                 const convertUserId = convert?.value?.user_id
                 if (!isAdmin && currentUserId !== convertUserId) return
                 if (!convert_id) return
-                const res = await fetch(`/convert/get_share_key?id=${convert_id}`)
-                if (!res.ok) return
-                const data = await res.json()
-                share_key.value = data.share_key
+                try {
+                    const res = await fetch(`/convert/get_share_key?id=${convert_id}`)
+                    if (!res.ok) return
+                    const data = await res.json()
+                    share_key.value = data.share_key
+                } catch {}
             }
 
             async function regenerateShareKey(convertId) {
-                const res = await fetch(`/convert/regenerate_share_key?id=${convertId}`)
-                const data = await res.json()
-                if (res.ok) share_key.value = data.share_key
-                create_message(data.message, data.toast_class)
+                try {
+                    const res = await fetch(`/convert/regenerate_share_key?id=${convertId}`)
+                    const data = await res.json()
+                    if (res.ok) share_key.value = data.share_key
+                    create_message(data.message, data.toast_class)
+                } catch {
+                    create_message('Unable to regenerate the share key.', 'danger-subtle')
+                }
             }
 
             async function togglePublic() {
@@ -900,9 +1258,13 @@
             }
 
             async function getHistory() {
-                const res = await fetch(`/convert/get_history?id=${convert_id}`)
-                const data = await res.json()
-                history_list.value = res.ok ? data.history_convert : []
+                try {
+                    const res = await fetch(`/convert/get_history?id=${convert_id}`)
+                    const data = await res.json()
+                    history_list.value = res.ok ? data.history_convert : []
+                } catch {
+                    history_list.value = []
+                }
             }
 
             function goToDiff(id) { window.location.href = `/convert/difference/${id}` }
@@ -982,19 +1344,26 @@
                 }
             }
 
-            async function postComment() {
-                const content = new_comment_text.value.trim()
+            async function postComment(isEval = false) {
+                const text    = isEval ? new_eval_text.value    : new_discuss_text.value
+                const isPriv  = isEval ? new_eval_private.value : new_discuss_private.value
+                const content = text.trim()
                 if (!content) return
                 const res = await fetch('/convert/comment', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
-                    body: JSON.stringify({convert_id: parseInt(convert_id), content, is_private: new_comment_private.value})
+                    body: JSON.stringify({
+                        convert_id:    parseInt(convert_id),
+                        content,
+                        is_private:    isPriv,
+                        is_evaluation: isEval,
+                    })
                 })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (res.status === 201) {
-                    new_comment_text.value = ''
-                    new_comment_private.value = false
+                    if (isEval) { new_eval_text.value = '';    new_eval_private.value = false }
+                    else        { new_discuss_text.value = ''; new_discuss_private.value = false }
                     await refreshComments()
                     window.__refreshNotifCount?.()
                 }
@@ -1035,15 +1404,39 @@
                 reply_open_for.value = reply_open_for.value === comment_id ? null : comment_id
             }
 
+            function startEdit(comment) {
+                edit_comment_id.value   = comment.id
+                edit_comment_text.value = comment.content
+                reply_open_for.value    = null
+            }
+            function cancelEdit() {
+                edit_comment_id.value   = null
+                edit_comment_text.value = ''
+            }
+            async function submitEdit(comment_id) {
+                const content = edit_comment_text.value.trim()
+                if (!content) return
+                const res = await fetch('/convert/edit_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({ comment_id, content }),
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) { cancelEdit(); await refreshComments() }
+            }
+
             // ── Follow functions ─────────────────────────────
 
             async function checkFollowStatus() {
                 if (!IS_AUTH || !convert.value.user_id || convert.value.user_id === CURRENT_USER_ID) return
-                const res = await fetch(`/account/is_following?user_id=${convert.value.user_id}`)
-                if (res.ok) {
-                    const data = await res.json()
-                    is_following_author.value = data.following
-                }
+                try {
+                    const res = await fetch(`/account/is_following?user_id=${convert.value.user_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        is_following_author.value = data.following
+                    }
+                } catch {}
             }
 
             async function toggleFollow() {
@@ -1081,10 +1474,40 @@
                 }
             }, { immediate: true })
 
+            async function toggleFavorite() {
+                const res = await fetch('/convert/favorite/toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
+                    },
+                    body: JSON.stringify({ convert_id: parseInt(convert_id) }),
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    is_favorite.value = data.is_favorite
+                    create_message(
+                        data.is_favorite ? 'Added to favorites' : 'Removed from favorites',
+                        data.is_favorite ? 'success-subtle' : 'secondary-subtle'
+                    )
+                }
+            }
+
+            async function loadFavoriteStatus() {
+                try {
+                    const res = await fetch(`/convert/favorite/status/${convert_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        is_favorite.value = data.is_favorite
+                    }
+                } catch {}
+            }
+
             onMounted(() => {
                 fetchCurrentUser()
                 getConvert()
                 getHistory()
+                loadFavoriteStatus()
                 fetch(`/convert/get_comments?convert_id=${convert_id}`)
                     .then(r => r.json())
                     .then(d => {
@@ -1093,14 +1516,19 @@
                             comments_total.value = comments.value.length
                             comments_loaded.value = true
                         }
-                        const hash = window.location.hash
+                        const hash     = window.location.hash
+                        const params   = new URLSearchParams(window.location.search)
+                        const openTab  = params.get('open_tab')
                         if (hash && hash.startsWith('#comment-')) {
-                            const tabEl = document.querySelector('[data-tab="comments"]')
+                            const tabSel = openTab === 'eval' ? '[data-tab="eval"]' : '[data-tab="comments"]'
+                            const tabEl  = document.querySelector(tabSel)
                             if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show()
                             const tryScroll = (attempts = 0) => {
                                 const el = document.querySelector(hash)
                                 if (el) {
                                     el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                    el.classList.add('comment-highlight')
+                                    setTimeout(() => el.classList.remove('comment-highlight'), 2500)
                                 } else if (attempts < 10) {
                                     setTimeout(() => tryScroll(attempts + 1), 150)
                                 }
@@ -1113,15 +1541,20 @@
             return {
                 convert, share_key, history_list, is_loading,
                 current_user_is_admin, copyText, downloadText,
+                is_favorite, toggleFavorite,
                 togglePublic, deleteConvert, regenerateShareKey,
                 goToDiff, formatDate, message_list, formatJson,
                 getRawInput, getRawOutput,
                 // Comments
                 comments, comments_total, comments_loading,
-                new_comment_text, new_comment_private,
+                discuss_comments, eval_comments,
+                new_discuss_text, new_discuss_private,
+                new_eval_text, new_eval_private,
                 reply_open_for, reply_texts,
+                edit_comment_id, edit_comment_text,
                 loadComments, postComment, postReply, deleteComment,
                 toggleCommentPrivate, toggleReplyForm,
+                startEdit, cancelEdit, submitEdit,
                 // Follow
                 is_following_author, toggleFollow,
                 // Report
@@ -1130,434 +1563,38 @@
                 pending_visibility_action, pending_comment_count, confirmTogglePublic,
             }
         }
-    }).mount('#main-containers')
+    })
+    app.component('tag-input', TagInput)
+    app.component('evaluation-panel', EvaluationPanel)
+    app.component('evaluation-charts', EvaluationCharts)
+    app.component('push-convert-to-misp', PushConvertToMISP)
+    app.component('convert-sunburst', ConvertSunburst)
+    app.component('convert-table', ConvertTable)
+    app.mount('#main-containers')
+
+    // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)
+    const _evalTarget = '{{ convert.id }}'
+    const _evalSession = sessionStorage.getItem('open_eval_tab')
+    const _evalHash = window.location.hash === '#eval-tab'
+    if (_evalSession === _evalTarget || _evalHash) {
+        if (_evalSession) sessionStorage.removeItem('open_eval_tab')
+        if (_evalHash) history.replaceState(null, '', window.location.pathname)
+        // :href is a Vue binding — wait for Vue to render before querying
+        const _activateEvalTab = () => {
+            const link = document.querySelector('[data-tab="eval"]')
+            if (link) { new bootstrap.Tab(link).show(); return true }
+            return false
+        }
+        if (!_activateEvalTab()) {
+            // Retry up to ~500 ms in case Vue is slow to mount
+            let _tries = 0
+            const _iv = setInterval(() => {
+                if (_activateEvalTab() || ++_tries > 10) clearInterval(_iv)
+            }, 50)
+        }
+    }
+
 </script>
 
-<script>
-// ── Graph viewer ──────────────────────────────────────────────────────────────
-
-const STIX_STYLE_MAP = {
-    'report':             { shape: 'square',   color: '#1d4ed8', size: 24 },
-    'grouping':           { shape: 'square',   color: '#2563eb', size: 24 },
-    'indicator':          { shape: 'hexagon',  color: '#7c3aed', size: 18 },
-    'malware':            { shape: 'hexagon',  color: '#ef4444', size: 20 },
-    'threat-actor':       { shape: 'square',   color: '#f97316', size: 22 },
-    'attack-pattern':     { shape: 'triangle', color: '#eab308', size: 18 },
-    'campaign':           { shape: 'square',   color: '#f59e0b', size: 20 },
-    'course-of-action':   { shape: 'circle',   color: '#10b981', size: 16 },
-    'identity':           { shape: 'square',   color: '#8b5cf6', size: 16 },
-    'vulnerability':      { shape: 'hexagon',  color: '#ec4899', size: 17 },
-    'tool':               { shape: 'triangle', color: '#a855f7', size: 16 },
-    'infrastructure':     { shape: 'hexagon',  color: '#6366f1', size: 18 },
-    'intrusion-set':      { shape: 'square',   color: '#14b8a6', size: 20 },
-    'ipv4-addr':          { shape: 'circle',   color: '#0ea5e9', size: 13 },
-    'ipv6-addr':          { shape: 'circle',   color: '#0284c7', size: 13 },
-    'domain-name':        { shape: 'circle',   color: '#06b6d4', size: 13 },
-    'url':                { shape: 'circle',   color: '#22d3ee', size: 12 },
-    'file':               { shape: 'circle',   color: '#f97316', size: 13 },
-    'email-addr':         { shape: 'circle',   color: '#fb923c', size: 12 },
-    'network-traffic':    { shape: 'circle',   color: '#38bdf8', size: 11 },
-    'marking-definition': { shape: 'square',   color: '#dc2626', size: 11 },
-    '_default':           { shape: 'circle',   color: '#64748b', size: 13 },
-}
-
-const MISP_STYLE_MAP = {
-    'Event':         { shape: 'square',   color: '#2563eb', size: 26 },
-    'Object':        { shape: 'hexagon',  color: '#7c3aed', size: 18 },
-    'attr-network':  { shape: 'circle',   color: '#0ea5e9', size: 13 },
-    'attr-payload':  { shape: 'circle',   color: '#f97316', size: 13 },
-    'attr-external': { shape: 'circle',   color: '#10b981', size: 12 },
-    'attr-other':    { shape: 'circle',   color: '#64748b', size: 12 },
-    '_default':      { shape: 'circle',   color: '#64748b', size: 12 },
-}
-
-const MISP_NETWORK = new Set(['ip-src','ip-dst','domain','hostname','url','uri','email-src','email-dst'])
-const MISP_PAYLOAD = new Set(['md5','sha1','sha256','sha512','filename','malware-sample'])
-
-function mispAttrStyle(attr) {
-    if (MISP_NETWORK.has(attr.type)) return 'attr-network'
-    if (MISP_PAYLOAD.has(attr.type)) return 'attr-payload'
-    if (attr.category === 'External analysis') return 'attr-external'
-    return 'attr-other'
-}
-
-function safeId(id) {
-    return String(id).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '_')
-}
-
-function parseMisp(json) {
-    const nodes = [], edges = []
-    let raw = Array.isArray(json) ? json[0] : json
-    const event = raw?.Event ?? raw
-    if (!event) return { nodes, edges }
-
-    const uuidToSafe = {}
-    const evId = safeId(event.uuid || 'event-root')
-    uuidToSafe[event.uuid || 'event-root'] = evId
-    const tlp = (event.Tag || []).find(t => t.name?.startsWith('tlp:'))?.name || ''
-    nodes.push({ id: evId, data: {
-        label: event.info || `Event #${event.id || '?'}`,
-        sublabel: tlp ? 'TLP:' + tlp.split(':')[1].toUpperCase() : 'Event',
-        type: 'Event', raw: event
-    }})
-
-    for (const attr of event.Attribute ?? []) {
-        const nId = safeId(attr.uuid || attr.id)
-        uuidToSafe[attr.uuid || attr.id] = nId
-        nodes.push({ id: nId, data: {
-            label: String(attr.value).slice(0, 60),
-            sublabel: attr.type,
-            type: mispAttrStyle(attr), raw: attr
-        }})
-        edges.push({ from: evId, to: nId, data: { label: attr.type || '' } })
-    }
-
-    const referencedByObject = new Set()
-    for (const obj of event.Object ?? []) {
-        const oId = safeId(obj.uuid || obj.id)
-        uuidToSafe[obj.uuid || obj.id] = oId
-        const childAttrs = (obj.Attribute ?? []).reduce((acc, a) => {
-            if (a.object_relation && a.value) acc[a.object_relation] = a.value
-            return acc
-        }, {})
-        nodes.push({ id: oId, data: {
-            label: obj.name || `Object #${obj.id}`,
-            sublabel: obj['meta-category'] || '',
-            type: 'Object', raw: obj, childAttrs
-        }})
-        edges.push({ from: evId, to: oId, data: { label: '', _default: true } })
-
-        for (const attr of obj.Attribute ?? []) {
-            const aId = safeId(attr.uuid || attr.id)
-            uuidToSafe[attr.uuid || attr.id] = aId
-            nodes.push({ id: aId, data: {
-                label: String(attr.value).slice(0, 60),
-                sublabel: attr.object_relation || attr.type,
-                type: mispAttrStyle(attr), raw: attr
-            }})
-            edges.push({ from: oId, to: aId, data: { label: attr.object_relation || '' } })
-        }
-
-        for (const ref of obj.ObjectReference ?? []) {
-            const srcId = uuidToSafe[ref.object_uuid || obj.uuid]
-            const dstId = uuidToSafe[ref.referenced_uuid]
-            if (!srcId || !dstId) continue
-            edges.push({ from: srcId, to: dstId, data: { label: ref.relationship_type || '' } })
-            referencedByObject.add(dstId)
-        }
-    }
-
-    for (let i = edges.length - 1; i >= 0; i--) {
-        if (edges[i].data?._default && referencedByObject.has(edges[i].to))
-            edges.splice(i, 1)
-    }
-
-    return { nodes, edges }
-}
-
-function parseStix(json) {
-    const bundle = Array.isArray(json) ? json[0] : json
-    const objects = bundle?.objects ?? []
-    const nodes = [], edges = []
-    const SKIP = new Set(['observed-data'])
-    const idMap = {}
-
-    for (const obj of objects) {
-        if (!obj.id || obj.type === 'relationship' || SKIP.has(obj.type)) continue
-        const sid = safeId(obj.id)
-        idMap[obj.id] = sid
-        const label = obj.name || obj.value
-            || (obj.pattern ? obj.pattern.slice(0,55)+'…' : null)
-            || (obj.definition?.tlp ? 'TLP:'+obj.definition.tlp.toUpperCase() : null)
-            || obj.type
-        const mispType = (obj.labels||[]).find(l=>l.startsWith('misp:type='))
-        nodes.push({ id: sid, data: {
-            label: String(label).slice(0, 60),
-            sublabel: mispType ? mispType.replace('misp:type=','').replace(/"/g,'') : obj.type,
-            type: obj.type, raw: obj
-        }})
-    }
-
-    const nodeIds = new Set(nodes.map(n => n.id))
-    const linked  = new Set()
-
-    for (const obj of objects) {
-        if (obj.type !== 'relationship') continue
-        const from = idMap[obj.source_ref]
-        const to   = idMap[obj.target_ref]
-        if (!from || !to || !nodeIds.has(from) || !nodeIds.has(to)) continue
-        edges.push({ from, to, data: { label: obj.relationship_type || '' } })
-        linked.add(from)
-        linked.add(to)
-    }
-
-    for (const obj of objects) {
-        if (obj.type !== 'report') continue
-        const fromId = idMap[obj.id]
-        if (!fromId) continue
-        for (const ref of obj.object_refs ?? []) {
-            const toId = idMap[ref]
-            if (!toId || !nodeIds.has(toId) || linked.has(toId)) continue
-            edges.push({ from: fromId, to: toId, data: { label: '' } })
-        }
-    }
-
-    return { nodes, edges }
-}
-
-function nodeProperties(node) {
-    const d   = node.getData()
-    const raw = d?.raw ?? {}
-    const props = []
-
-    if (d?.childAttrs && Object.keys(d.childAttrs).length) {
-        for (const [key, val] of Object.entries(d.childAttrs))
-            props.push({ name: key, value: String(val) })
-        props.push({ name: '─────', value: '' })
-    }
-
-    if (raw.value)            props.push({ name: 'Value',         value: String(raw.value) })
-    if (raw.type)             props.push({ name: 'Type',          value: raw.type })
-    if (raw.category)         props.push({ name: 'Category',      value: raw.category })
-    if (raw.object_relation)  props.push({ name: 'Relation',      value: raw.object_relation })
-    if (raw.to_ids !== undefined) props.push({ name: 'To IDS',    value: raw.to_ids ? 'Yes' : 'No' })
-    if (raw['meta-category']) props.push({ name: 'Meta-category', value: raw['meta-category'] })
-    if (raw.date)             props.push({ name: 'Date',          value: raw.date })
-    if (raw.name)             props.push({ name: 'Name',          value: raw.name })
-    if (raw.description)      props.push({ name: 'Description',   value: raw.description })
-    if (raw.pattern)          props.push({ name: 'Pattern',       value: raw.pattern })
-    if (raw.created)          props.push({ name: 'Created',       value: raw.created })
-    if (raw.modified)         props.push({ name: 'Modified',      value: raw.modified })
-    if (raw.valid_from)       props.push({ name: 'Valid from',    value: raw.valid_from })
-    if (raw.aliases?.length)  props.push({ name: 'Aliases',       value: raw.aliases.join(', ') })
-    if (raw.labels?.length)   props.push({ name: 'Labels',        value: raw.labels.filter(l=>!l.startsWith('misp:')).join(', ') })
-    if (raw.definition?.tlp)  props.push({ name: 'TLP',           value: raw.definition.tlp.toUpperCase() })
-    if (raw.hashes && typeof raw.hashes === 'object') {
-        for (const [algo, hash] of Object.entries(raw.hashes))
-            props.push({ name: algo, value: String(hash) })
-    }
-
-    return props.filter(p => p.value !== undefined && p.value !== '')
-}
-
-function buildTooltip(node) {
-    const d   = node.getData()
-    const raw = d?.raw ?? {}
-    const wrap = document.createElement('div')
-    wrap.style.cssText = 'font-size:0.78rem;max-width:300px;line-height:1.6;'
-
-    const addRow = (key, val) => {
-        if (!val) return
-        const row = document.createElement('div')
-        row.style.cssText = 'display:flex;gap:6px;padding:1px 0;'
-        const k = document.createElement('span')
-        k.style.cssText = 'color:#94a3b8;min-width:80px;flex-shrink:0;font-size:0.72rem;padding-top:1px;'
-        k.textContent = key
-        const v = document.createElement('span')
-        v.style.cssText = 'word-break:break-all;font-weight:500;'
-        v.textContent = String(val).slice(0, 120) + (String(val).length > 120 ? '…' : '')
-        row.appendChild(k)
-        row.appendChild(v)
-        wrap.appendChild(row)
-    }
-
-    if (d?.childAttrs && Object.keys(d.childAttrs).length) {
-        for (const [key, val] of Object.entries(d.childAttrs)) addRow(key, val)
-        return wrap
-    }
-
-    if (raw.value)           addRow('value',    raw.value)
-    if (raw.category)        addRow('category', raw.category)
-    if (raw.object_relation) addRow('relation', raw.object_relation)
-    if (raw.hashes) {
-        for (const [algo, hash] of Object.entries(raw.hashes)) addRow(algo, hash)
-    }
-    if (raw.pattern)         addRow('pattern',  raw.pattern)
-    if (raw.description)     addRow('desc',     raw.description)
-    if (raw.aliases?.length) addRow('aliases',  raw.aliases.join(', '))
-
-    return wrap.children.length ? wrap : null
-}
-
-function showGraphSpinner(containerId, message) {
-    const container = document.getElementById(containerId)
-    if (!container) return
-    container.innerHTML =
-        `<div class="graph-spinner-overlay">
-            <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
-            <span>${message}</span>
-        </div>`
-}
-
-function initGraphViewer(containerId, jsonText, format) {
-    const container = document.getElementById(containerId)
-    if (!container) return
-
-    if (typeof window.Pivotick !== 'function') {
-        showGraphSpinner(containerId, 'Loading Pivotick…')
-        const retry = () => initGraphViewer(containerId, jsonText, format)
-        window.addEventListener('pivotick-ready', retry, { once: true })
-        let attempts = 0
-        const poll = setInterval(() => {
-            attempts++
-            if (typeof window.Pivotick === 'function') {
-                clearInterval(poll)
-                window.removeEventListener('pivotick-ready', retry)
-                initGraphViewer(containerId, jsonText, format)
-            } else if (attempts > 15) {
-                clearInterval(poll)
-                container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not load Pivotick.</p>'
-            }
-        }, 200)
-        return
-    }
-
-    showGraphSpinner(containerId, 'Parsing data…')
-
-    let parsed
-    try {
-        parsed = format === 'misp' ? parseMisp(JSON.parse(jsonText)) : parseStix(JSON.parse(jsonText))
-    } catch(e) {
-        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not parse JSON.</p>'
-        return
-    }
-
-    if (!parsed.nodes.length) {
-        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">No graph data found.</p>'
-        return
-    }
-
-    const MAX_NODES = 1000
-    if (parsed.nodes.length > MAX_NODES) {
-        const degree = {}
-        for (const e of parsed.edges) {
-            degree[e.from] = (degree[e.from] || 0) + 1
-            degree[e.to]   = (degree[e.to]   || 0) + 1
-        }
-        parsed.nodes.sort((a, b) => (degree[b.id]||0) - (degree[a.id]||0))
-        const kept = new Set(parsed.nodes.slice(0, MAX_NODES).map(n => n.id))
-        parsed.nodes = parsed.nodes.filter(n => kept.has(n.id))
-        parsed.edges = parsed.edges.filter(e => kept.has(e.from) && kept.has(e.to))
-        container.insertAdjacentHTML('beforebegin',
-            `<div class="alert alert-warning py-1 px-3 mb-2" style="font-size:0.8rem">
-                <i class="fas fa-triangle-exclamation me-1"></i>
-                Large graph — showing the ${MAX_NODES} most connected nodes.
-            </div>`)
-    }
-
-    showGraphSpinner(containerId, 'Building graph…')
-
-    // Let the spinner paint before Pivotick blocks the thread
-    setTimeout(() => {
-        container.innerHTML = ''
-        const styleMap = format === 'misp' ? MISP_STYLE_MAP : STIX_STYLE_MAP
-
-        new window.Pivotick(container, parsed, {
-            isDirected: true,
-            layout: { type: 'force' },
-            render: {
-                nodeTypeAccessor: (node) => node.getData()?.type ?? '_default',
-                nodeStyleMap:     styleMap,
-                defaultNodeStyle: styleMap['_default'],
-                defaultEdgeStyle: { markerEnd: 'arrow' },
-                nodeHeaderMap: {
-                    title:    (node) => node.getData()?.label    ?? '',
-                    subtitle: (node) => node.getData()?.sublabel ?? '',
-                },
-            },
-            UI: {
-                mode: 'full',
-                sidebar: { collapsed: 'auto' },
-                mainHeader: {
-                    nodeHeaderMap: {
-                        title:    (node) => node.getData()?.label    ?? String(node.id),
-                        subtitle: (node) => node.getData()?.sublabel ?? node.getData()?.type ?? '',
-                    },
-                    edgeHeaderMap: {
-                        title:    (edge) => edge.getData()?.label || 'Relationship',
-                        subtitle: (edge) => `${edge.from} → ${edge.to}`,
-                    },
-                },
-                propertiesPanel: {
-                    nodePropertiesMap: (node) => nodeProperties(node),
-                    edgePropertiesMap: (edge) => [
-                        { name: 'Relationship', value: edge.getData()?.label || '—' },
-                        { name: 'From',         value: String(edge.from) },
-                        { name: 'To',           value: String(edge.to)   },
-                    ],
-                },
-                tooltip: {
-                    nodeHeaderMap: {
-                        title:    (node) => node.getData()?.label    ?? '',
-                        subtitle: (node) => node.getData()?.sublabel ?? '',
-                    },
-                    renderNodeExtra: (node) => buildTooltip(node),
-                },
-                contextMenu: {
-                    menuNode: {
-                        topbar: [
-                            {
-                                text: 'Copy value',
-                                iconClass: 'fas fa-copy',
-                                onclick: (evt, node) => {
-                                    const d = node.getData()
-                                    const raw = d?.raw ?? {}
-                                    let val
-                                    if (d?.childAttrs && Object.keys(d.childAttrs).length) {
-                                        val = Object.entries(d.childAttrs).map(([k,v]) => `${k}: ${v}`).join('\n')
-                                    } else {
-                                        val = raw.value || raw.name || raw.pattern || d?.label || String(node.id)
-                                    }
-                                    navigator.clipboard.writeText(val).catch(() => {})
-                                },
-                            },
-                        ],
-                        menu: [
-                            {
-                                text: 'Open raw JSON',
-                                iconClass: 'fas fa-code',
-                                onclick: (evt, node) => {
-                                    const raw = node.getData()?.raw ?? {}
-                                    const isDark = document.documentElement.classList.contains('dark-mode')
-                                    const win = window.open('', '_blank')
-                                    win.document.write(`<html><body style="margin:0;background:${isDark?'#0f0f10':'#fff'};color:${isDark?'#e0e0e0':'#000'}"><pre style="font-family:monospace;font-size:13px;padding:1.5rem;white-space:pre-wrap;word-break:break-all">${JSON.stringify(raw, null, 2)}</pre></body></html>`)
-                                },
-                            },
-                        ],
-                    },
-                },
-            },
-        })
-    }, 30)
-}
-
-function showGraphSide(side) {
-    const inEl   = document.getElementById('graph-container')
-    const outEl  = document.getElementById('graph-container-output')
-    const btnIn  = document.getElementById('graph-view-input')
-    const btnOut = document.getElementById('graph-view-output')
-    inEl.style.display  = side === 'input'  ? '' : 'none'
-    outEl.style.display = side === 'output' ? '' : 'none'
-    btnIn.className  = 'btn btn-sm ' + (side === 'input'  ? 'btn-primary' : 'btn-outline-secondary')
-    btnOut.className = 'btn btn-sm ' + (side === 'output' ? 'btn-primary' : 'btn-outline-secondary')
-}
-
-let _graphData = null, _graphRendered = false
-
-window.__onConvertLoaded = function(convert) { _graphData = convert }
-
-window.onGraphTabClick = function() {
-    if (!_graphData || _graphRendered) return
-    _graphRendered = true
-    showGraphSpinner('graph-container', 'Building graph…')
-    setTimeout(() => {
-        const isStixToMisp = _graphData.conversion_type === 'STIX_TO_MISP'
-        initGraphViewer('graph-container',        _graphData.input_text,  isStixToMisp ? 'stix' : 'misp')
-        initGraphViewer('graph-container-output', _graphData.output_text, isStixToMisp ? 'misp' : 'stix')
-        showGraphSide('input')
-    }, 50)
-}
-
-window.showGraphSide = showGraphSide
-</script>
+<!-- graph logic lives in /static/js/graph/convertGraph.js -->
 {% endblock %}

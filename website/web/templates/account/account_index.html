@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
 {% endblock %}
 {% block content %}
-<div>
+<div v-cloak>
 
   <!-- Profile hero -->
   <div class="profile-hero">
@@ -60,8 +60,8 @@
 
     <!-- Right: activity tabs -->
     <div class="custom-card p-0 overflow-hidden">
-      <div class="detail-tabs-header">
-        <ul class="nav nav-underline px-3 pt-2" role="tablist">
+      <div class="detail-tabs-header" style="display:flex; align-items:flex-end; justify-content:space-between;">
+        <ul class="nav nav-underline px-3 pt-2 flex-grow-1" role="tablist">
           <li class="nav-item">
             <a class="nav-link active" data-bs-toggle="tab" href="#tab-comments" role="tab" @click="loadMyComments()">
               <i class="fas fa-comments me-1"></i> My Comments
@@ -72,7 +72,18 @@
               <i class="fas fa-user-check me-1"></i> Following
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tab-followers" role="tab" @click="loadFollowers()">
+              <i class="fas fa-users me-1"></i> Followers
+            </a>
+          </li>
         </ul>
+        <div class="px-3 pb-2 pt-2 d-flex align-items-center">
+          <button class="btn btn-sm btn-outline-secondary" style="font-size:.78rem; white-space:nowrap;"
+                  data-bs-toggle="modal" data-bs-target="#follow-search-modal">
+            <i class="fas fa-user-plus me-1"></i> Follow someone
+          </button>
+        </div>
       </div>
 
       <div class="tab-content p-3">
@@ -161,15 +172,9 @@
               </div>
             </div>
           </div>
-          <div v-if="comments_total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
-            <button class="btn btn-sm btn-outline-secondary" :disabled="comments_page <= 1" @click="comments_page--; loadMyComments(true)">
-              <i class="fas fa-chevron-left"></i>
-            </button>
-            <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ comments_page ]] / [[ comments_total_page ]]</span>
-            <button class="btn btn-sm btn-outline-secondary" :disabled="comments_page >= comments_total_page" @click="comments_page++; loadMyComments(true)">
-              <i class="fas fa-chevron-right"></i>
-            </button>
-          </div>
+          <app-pagination :page="comments_page" :total="comments_total_page"
+            @change="p => { comments_page = p; loadMyComments(true) }">
+          </app-pagination>
         </div>
 
         <!-- Following -->
@@ -192,7 +197,12 @@
               <div class="d-flex align-items-center gap-2">
                 <div class="following-avatar">[[ (f.name || 'A').charAt(0).toUpperCase() ]]</div>
                 <div>
-                  <div style="font-weight:600; font-size:0.875rem;">[[ f.name ]]</div>
+                  <a :href="'/account/public/' + f.user_id"
+                     style="font-weight:600; font-size:0.875rem; color:var(--accent); text-decoration:none;"
+                     onmouseover="this.style.textDecoration='underline'"
+                     onmouseout="this.style.textDecoration='none'">
+                    [[ f.name ]]
+                  </a>
                   <div style="font-size:0.72rem; color:var(--text-3);">Following since [[ f.since ]]</div>
                 </div>
               </div>
@@ -201,20 +211,102 @@
               </button>
             </div>
           </div>
-          <div v-if="following_total_page > 1" class="d-flex justify-content-center gap-2 mt-3">
-            <button class="btn btn-sm btn-outline-secondary" :disabled="following_page <= 1" @click="following_page--; loadFollowing(true)">
-              <i class="fas fa-chevron-left"></i>
-            </button>
-            <span style="font-size:0.82rem; color:var(--text-2); line-height:2;">Page [[ following_page ]] / [[ following_total_page ]]</span>
-            <button class="btn btn-sm btn-outline-secondary" :disabled="following_page >= following_total_page" @click="following_page++; loadFollowing(true)">
-              <i class="fas fa-chevron-right"></i>
-            </button>
+          <app-pagination :page="following_page" :total="following_total_page"
+            @change="p => { following_page = p; loadFollowing(true) }">
+          </app-pagination>
+        </div>
+
+        <!-- Followers -->
+        <div class="tab-pane fade" id="tab-followers" role="tabpanel">
+          <div class="mb-3">
+            <div class="search-bar-wrapper">
+              <i class="fas fa-search search-bar-icon"></i>
+              <input class="search-bar-input" type="text" v-model="followers_search" @input="debounceFollowers" placeholder="Search followers…">
+            </div>
           </div>
+          <div v-if="followers_loading" class="text-center py-4">
+            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+          </div>
+          <div v-else-if="followers_list.length === 0" class="text-center py-4" style="color:var(--text-3);">
+            <i class="fas fa-user-slash fa-2x mb-2 d-block"></i>
+            No followers yet.
+          </div>
+          <div v-else>
+            <div v-for="f in followers_list" :key="f.user_id" class="following-item">
+              <div class="d-flex align-items-center gap-2">
+                <div class="following-avatar">[[ (f.name || 'A').charAt(0).toUpperCase() ]]</div>
+                <div>
+                  <a :href="'/account/public/' + f.user_id"
+                     style="font-weight:600; font-size:0.875rem; color:var(--accent); text-decoration:none;"
+                     onmouseover="this.style.textDecoration='underline'"
+                     onmouseout="this.style.textDecoration='none'">
+                    [[ f.name ]]
+                  </a>
+                  <div style="font-size:0.72rem; color:var(--text-3);">Follower since [[ f.since ]]</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <app-pagination :page="followers_page" :total="followers_total_page"
+            @change="p => { followers_page = p; loadFollowers(true) }">
+          </app-pagination>
         </div>
 
       </div>
     </div>
 
+  </div>
+
+  <!-- Follow search modal (Bootstrap) -->
+  <div class="modal fade" id="follow-search-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
+      <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+        <div class="modal-header" style="border-bottom:1px solid var(--border);">
+          <h5 class="modal-title" style="font-size:.95rem;">
+            <i class="fas fa-user-plus me-2" style="color:var(--accent);"></i>Follow someone
+          </h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" style="padding:1rem;">
+          <div class="search-bar-wrapper mb-3">
+            <i class="fas fa-search search-bar-icon"></i>
+            <input class="search-bar-input" id="follow-search-input" type="text" v-model="followSearch"
+                   @input="debounceFollowSearch" placeholder="Search by name…">
+          </div>
+          <div style="min-height:80px;">
+            <div v-if="followSearchLoading" class="text-center py-3">
+              <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+            </div>
+            <div v-else-if="followResults.length === 0" class="text-center py-3" style="color:var(--text-3); font-size:.85rem;">
+              <i class="fas fa-user-slash mb-2 d-block"></i>No users found.
+            </div>
+            <div v-else>
+              <div v-for="u in followResults" :key="u.user_id" class="following-item">
+                <div class="d-flex align-items-center gap-2" style="min-width:0;">
+                  <div class="following-avatar">[[ (u.name || 'A').charAt(0).toUpperCase() ]]</div>
+                  <div style="min-width:0;">
+                    <a :href="'/account/public/' + u.user_id" target="_blank"
+                       style="font-weight:600; font-size:.875rem; color:var(--accent); text-decoration:none;"
+                       onmouseover="this.style.textDecoration='underline'"
+                       onmouseout="this.style.textDecoration='none'">
+                      [[ u.name ]]
+                    </a>
+                    <div style="font-size:.72rem; color:var(--text-3);">[[ u.public_count ]] public convert[[ u.public_count !== 1 ? 's' : '' ]]</div>
+                  </div>
+                </div>
+                <button class="follow-btn" :class="u.is_following ? 'following' : ''" @click="toggleFollowModal(u)">
+                  <i :class="u.is_following ? 'fas fa-user-minus' : 'fas fa-user-plus'"></i>
+                  [[ u.is_following ? 'Unfollow' : 'Follow' ]]
+                </button>
+              </div>
+              <app-pagination :page="followPage" :total="followTotalPage"
+                @change="p => { followPage = p; runFollowSearch() }">
+              </app-pagination>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -224,8 +316,10 @@
 <script type="module">
   const { createApp, ref, onMounted } = Vue
   import { create_message, message_list } from '/static/js/toaster.js';
+  import AppPagination from '/static/js/pagination.js'
 
   createApp({
+    components: { 'app-pagination': AppPagination },
     delimiters: ['[[', ']]'],
     setup() {
       function copyApiKey() {
@@ -279,12 +373,12 @@
       }
 
       // ── Following ─────────────────────────────────────
-      const following_list = ref([])
-      const following_loading = ref(false)
-      const following_loaded = ref(false)
-      const following_page = ref(1)
-      const following_total_page = ref(1)
-      const following_search = ref('')
+      const following_list        = ref([])
+      const following_loading     = ref(false)
+      const following_loaded      = ref(false)
+      const following_page        = ref(1)
+      const following_total_page  = ref(1)
+      const following_search      = ref('')
       let followingTimer = null
 
       function debounceFollowing() {
@@ -301,22 +395,100 @@
           const res = await fetch(`/account/get_following?${params}`)
           if (res.ok) {
             const data = await res.json()
-            following_list.value = data.list || []
+            following_list.value       = data.list || []
             following_total_page.value = data.total_page || 1
-            following_loaded.value = true
+            following_loaded.value     = true
           }
         } catch {}
         following_loading.value = false
       }
 
       async function unfollow(user_id) {
-        const res = await fetch(`/account/follow?user_id=${user_id}`)
+        const res  = await fetch(`/account/follow?user_id=${user_id}`)
         const data = await res.json()
-        create_message(data.message, data.toast_class)
+        await create_message(data.message, data.toast_class)
         if (data.success) following_list.value = following_list.value.filter(f => f.user_id !== user_id)
       }
 
-      onMounted(() => { loadMyComments() })
+      // ── Followers ─────────────────────────────────────
+      const followers_list        = ref([])
+      const followers_loading     = ref(false)
+      const followers_loaded      = ref(false)
+      const followers_page        = ref(1)
+      const followers_total_page  = ref(1)
+      const followers_search      = ref('')
+      let followersTimer = null
+
+      function debounceFollowers() {
+        clearTimeout(followersTimer)
+        followersTimer = setTimeout(() => { followers_page.value = 1; followers_loaded.value = false; loadFollowers(true) }, 350)
+      }
+
+      async function loadFollowers(force = false) {
+        if (followers_loaded.value && !force) return
+        followers_loading.value = true
+        try {
+          const params = new URLSearchParams({ page: followers_page.value })
+          if (followers_search.value) params.set('search', followers_search.value)
+          const res = await fetch(`/account/get_followers?${params}`)
+          if (res.ok) {
+            const data = await res.json()
+            followers_list.value       = data.list || []
+            followers_total_page.value = data.total_page || 1
+            followers_loaded.value     = true
+          }
+        } catch {}
+        followers_loading.value = false
+      }
+
+      // ── Follow search modal ───────────────────────────
+      const followSearch        = ref('')
+      const followResults       = ref([])
+      const followSearchLoading = ref(false)
+      const followPage          = ref(1)
+      const followTotalPage     = ref(1)
+      let followSearchTimer = null
+
+      function debounceFollowSearch() {
+        followPage.value = 1
+        clearTimeout(followSearchTimer)
+        followSearchTimer = setTimeout(runFollowSearch, 300)
+      }
+
+      async function runFollowSearch() {
+        followSearchLoading.value = true
+        try {
+          const params = new URLSearchParams({ q: followSearch.value, page: followPage.value })
+          const res  = await fetch(`/account/search_users?${params}`)
+          const data = await res.json()
+          followResults.value   = data.list || []
+          followTotalPage.value = data.total_page || 1
+        } catch {}
+        followSearchLoading.value = false
+      }
+
+      async function toggleFollowModal(u) {
+        const res  = await fetch(`/account/follow?user_id=${u.user_id}`)
+        const data = await res.json()
+        await create_message(data.message, data.toast_class)
+        if (data.success) {
+          u.is_following = data.following
+          following_loaded.value = false
+        }
+      }
+
+      onMounted(() => {
+        loadMyComments()
+        const modalEl = document.getElementById('follow-search-modal')
+        if (modalEl) {
+          modalEl.addEventListener('show.bs.modal', () => {
+            followSearch.value  = ''
+            followPage.value    = 1
+            runFollowSearch()
+            setTimeout(() => document.getElementById('follow-search-input')?.focus(), 300)
+          })
+        }
+      })
 
       return {
         copyApiKey, message_list,
@@ -324,6 +496,10 @@
         comments_search, debounceComments, loadMyComments, deleteMyComment,
         following_list, following_loading, following_page, following_total_page,
         following_search, debounceFollowing, loadFollowing, unfollow,
+        followers_list, followers_loading, followers_page, followers_total_page,
+        followers_search, debounceFollowers, loadFollowers,
+        followSearch, followResults, followSearchLoading, followPage, followTotalPage,
+        debounceFollowSearch, runFollowSearch, toggleFollowModal,
       }
     }
   }).mount('#main-containers')

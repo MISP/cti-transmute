@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/overview.css') }}">
+{% endblock %}
+
+{% block content %}
+<div id="ov-app" v-cloak>
+
+    <!-- ── Hero ───────────────────────────────────────────────── -->
+    <section class="ov-hero">
+        <div class="home-hero-badge">
+            <i class="fas fa-chart-bar"></i> Community Evaluations
+        </div>
+        <h1 class="home-hero-title" style="margin-bottom:0.6rem;">Platform Insights</h1>
+        <p class="home-hero-sub">
+            Explore how the community rates public CTI conversions,
+            leave your own review, and browse the most-evaluated converts.
+        </p>
+    </section>
+
+    <!-- ── KPI Cards ──────────────────────────────────────────── -->
+    <div class="ov-wrap">
+        <div v-if="stats_loading" class="ov-loading">
+            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+            Loading stats…
+        </div>
+        <div v-else class="ov-kpi-grid">
+            <div class="ov-kpi-card">
+                <div class="ov-kpi-icon"><i class="fas fa-star"></i></div>
+                <div class="ov-kpi-value">[[ kpi_evaluations !== null ? kpi_evaluations.toLocaleString() : '—' ]]</div>
+                <div class="ov-kpi-label">Total Evaluations</div>
+            </div>
+            <div class="ov-kpi-card">
+                <div class="ov-kpi-icon"><i class="fas fa-file-alt"></i></div>
+                <div class="ov-kpi-value">[[ kpi_converts !== null ? kpi_converts.toLocaleString() : '—' ]]</div>
+                <div class="ov-kpi-label">Converts Rated</div>
+            </div>
+            <div class="ov-kpi-card">
+                <div class="ov-kpi-icon"><i class="fas fa-thumbs-up"></i></div>
+                <div class="ov-kpi-value">
+                    <span v-if="kpi_like_ratio !== null">[[ kpi_like_ratio ]]<span style="font-size:1.2rem; font-weight:500;">%</span></span>
+                    <span v-else class="ov-kpi-null">—</span>
+                </div>
+                <div class="ov-kpi-label">Like Ratio</div>
+            </div>
+            <div class="ov-kpi-card">
+                <div class="ov-kpi-icon"><i class="fas fa-gauge-high"></i></div>
+                <div class="ov-kpi-value">
+                    <span v-if="kpi_avg_score !== null">[[ kpi_avg_score ]]<span style="font-size:1.2rem; font-weight:500;">/100</span></span>
+                    <span v-else class="ov-kpi-null">—</span>
+                </div>
+                <div class="ov-kpi-label">Avg Score</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Charts ─────────────────────────────────────────────── -->
+    <div class="ov-wrap">
+        <div class="ov-charts-grid">
+
+            <!-- Donut: like vs dislike -->
+            <div class="ov-chart-card">
+                <div class="ov-chart-title"><i class="fas fa-circle-half-stroke"></i> Helpful vs Not</div>
+                <div class="ov-chart-canvas-wrap" style="min-height:220px;">
+                    <canvas id="ov-donut" v-show="has_donut_data"></canvas>
+                    <div v-if="!stats_loading && !has_donut_data" class="ov-chart-empty">
+                        <i class="fas fa-chart-pie"></i>
+                        No like/dislike data yet
+                    </div>
+                </div>
+            </div>
+
+            <!-- Horizontal bar: top tags -->
+            <div class="ov-chart-card">
+                <div class="ov-chart-title"><i class="fas fa-tags"></i> Top Reaction Tags</div>
+                <div class="ov-chart-canvas-wrap" style="min-height:220px;">
+                    <canvas id="ov-bar" v-show="has_bar_data"></canvas>
+                    <div v-if="!stats_loading && !has_bar_data" class="ov-chart-empty">
+                        <i class="fas fa-tag"></i>
+                        No tag reaction data yet
+                    </div>
+                </div>
+            </div>
+
+            <!-- Radar: category breakdown -->
+            <div class="ov-chart-card">
+                <div class="ov-chart-title"><i class="fas fa-spider"></i> Category Breakdown</div>
+                <div class="ov-chart-canvas-wrap" style="min-height:220px;">
+                    <canvas id="ov-radar" v-show="has_radar_data"></canvas>
+                    <div v-if="!stats_loading && !has_radar_data" class="ov-chart-empty">
+                        <i class="fas fa-chart-radar"></i>
+                        No category data yet
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── Recent converts to evaluate ───────────────────────── -->
+    <div class="ov-wrap">
+        <div class="ov-panel">
+            <div class="ov-panel-hd">
+                <span class="ov-panel-label">
+                    <i class="fas fa-clock"></i> Recent Public Converts
+                </span>
+                <a href="/convert/history" class="home-panel-link">
+                    View all <i class="fas fa-arrow-right" style="font-size:0.55rem;"></i>
+                </a>
+            </div>
+            <div class="ov-panel-body">
+                <div v-if="recent_loading" class="ov-loading">
+                    <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+                    Loading…
+                </div>
+                <div v-else-if="recent.length === 0" class="ov-chart-empty" style="padding:2rem;">
+                    <i class="fas fa-file-alt"></i>
+                    No public converts yet
+                </div>
+                <div v-else class="ov-converts-strip">
+                    <div v-for="c in recent" :key="c.id"
+                         class="ov-convert-card"
+                         @click="openConvert(c.id)"
+                         style="cursor:pointer;">
+                        <div class="ov-convert-name" :title="c.name">[[ c.name || `Convert #${c.id}` ]]</div>
+                        <div class="ov-convert-meta">
+                            <span class="ov-convert-type">[[ conversionLabel(c.conversion_type) ]]</span>
+                            <span class="ov-convert-date">[[ formatDate(c.created_at) ]]</span>
+                        </div>
+                        <div class="ov-convert-stats">
+                            <span class="ov-convert-stat">
+                                <i class="fas fa-thumbs-up like-icon"></i>
+                                [[ c.eval_summary ? c.eval_summary.likes : 0 ]]
+                            </span>
+                            <span class="ov-convert-stat">
+                                <i class="fas fa-thumbs-down dislike-icon"></i>
+                                [[ c.eval_summary ? c.eval_summary.dislikes : 0 ]]
+                            </span>
+                            <span v-if="c.eval_summary && c.eval_summary.approval_score !== null" class="ov-convert-stat" style="margin-left:auto;">
+                                <i class="fas fa-gauge-high" style="color:var(--accent); font-size:0.7rem;"></i>
+                                [[ c.eval_summary.approval_score ]]/100
+                            </span>
+                        </div>
+                        <span class="ov-convert-link">
+                            Evaluate <i class="fas fa-arrow-right" style="font-size:0.6rem;"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Global Activity Timeline ──────────────────────────── -->
+    <div class="ov-wrap ov-wrap--last">
+        <div class="ov-panel">
+            <div class="ov-panel-hd">
+                <span class="ov-panel-label">
+                    <i class="fas fa-chart-line"></i> Evaluation Activity
+                </span>
+                <span style="font-size:0.72rem; color:var(--text-3);">Last 30 days — public converts only</span>
+            </div>
+            <div class="ov-panel-body">
+                <div v-if="timeline_loading" class="ov-loading" style="min-height:180px;">
+                    <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+                    Loading…
+                </div>
+                <div v-else-if="timeline_total === 0" class="ov-chart-empty" style="min-height:180px;">
+                    <i class="fas fa-chart-line"></i>
+                    No evaluation activity yet
+                </div>
+                <div v-else class="ov-chart-canvas-wrap" style="min-height:220px; padding:0.5rem 0;">
+                    <canvas id="ov-timeline"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    import OverviewApp from '/static/js/evaluate/overview.js'
+    const { createApp } = Vue
+    createApp(OverviewApp).mount('#ov-app')
+</script>
+{% endblock %}

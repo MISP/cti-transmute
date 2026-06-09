@@ -470,3 +470,252 @@ html.dark-mode .api-try-btn {
     font-size: 0.7rem;
     color: var(--text-3);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   API TESTER
+═══════════════════════════════════════════════════════════════ */
+
+.at-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 4px 12px;
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: border-color var(--t), color var(--t), background var(--t);
+}
+
+.at-toggle-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+}
+
+.at-panel {
+    margin-top: 14px;
+    border-top: 1px dashed var(--border);
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.at-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.at-block-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-3);
+}
+
+.at-params-grid {
+    display: grid;
+    grid-template-columns: minmax(150px, auto) 1fr;
+    gap: 6px 12px;
+    align-items: center;
+}
+
+.at-param-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+}
+
+.at-param-label code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text);
+    background: none;
+    padding: 0;
+}
+
+.at-param-type {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    color: var(--text-3);
+}
+
+.at-input {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    color: var(--text);
+    font-size: 0.8rem;
+    padding: 4px 8px;
+    width: 100%;
+    max-width: 280px;
+    font-family: var(--font-mono);
+    transition: border-color var(--t);
+}
+
+.at-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.at-check-wrap {
+    display: flex;
+    align-items: center;
+    height: 28px;
+}
+
+.at-editor {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.at-editor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 10px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+}
+
+.at-editor-hint {
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.at-textarea {
+    display: block;
+    width: 100%;
+    background: var(--surface);
+    border: none;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.55;
+    padding: 10px 12px;
+    resize: vertical;
+    outline: none;
+}
+
+.at-editor-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 10px;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+}
+
+.at-json-status {
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+}
+
+.at-json-status.valid   { color: var(--success); }
+.at-json-status.invalid { color: #dc3545; }
+
+.at-json-chars {
+    font-size: 0.7rem;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+}
+
+.at-curl-block {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    overflow-x: auto;
+}
+
+.at-curl-pre {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-2);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.at-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 3px 8px;
+    font-size: 0.7rem;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: color var(--t), border-color var(--t);
+    white-space: nowrap;
+}
+
+.at-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.at-send-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.at-response {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.at-resp-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+}
+
+.at-resp-badge {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.at-resp-time {
+    font-size: 0.7rem;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+}
+
+.at-resp-pre {
+    margin: 0;
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    line-height: 1.55;
+    color: var(--text-2);
+    max-height: 420px;
+    overflow-y: auto;
+    overflow-x: auto;
+    white-space: pre;
+    background: var(--surface);
+}
