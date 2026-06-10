@@ -11,7 +11,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_login import LoginManager
-from cti_transmute.transmute import Transmute
 
 
 application = Flask(__name__)
@@ -48,5 +47,3 @@ login_manager.init_app(application)
 
 application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
-
-transmute: Transmute = Transmute()

@@ -1,59 +1,74 @@
-#!/usr/bin/env python3
+"""Transmute — the conversion engine's hub and public library API.
 
-import json
-import logging
-from flask_restx import reqparse
-from io import BytesIO
+`cti_transmute` is importable on its own (ADR-0001); `Transmute` is its front
+door. It is the runtime source of truth for the supported directions: concrete
+Converters self-register into it, it resolves a ``(source, target)`` family to
+its Converter, and ``convert`` runs one in a single call — accepting parameters
+as a plain dict (validated through the Converter's own schema), an already-built
+params model, or nothing (defaults).
 
-from misp_stix_converter import MISPtoSTIX20Parser, MISPtoSTIX21Parser
-from misp_stix_converter.tools import (
-    get_stix2_parser, is_stix2_from_misp, load_stix2_content)
+Use the module-level ``transmute`` singleton, into which the concrete Converters
+register themselves on import.
+"""
 
-from .default import get_config
+from typing import Any
+
+from pydantic import BaseModel, ValidationError
+
+from .converter import Converter
+from .exceptions import InvalidParameters, UnknownConverter
 
 
 class Transmute:
     def __init__(self) -> None:
-        self.logger = logging.getLogger(f'{self.__class__.__name__}')
-        self.logger.setLevel(get_config('generic', 'loglevel'))
+        self._converters: dict[tuple[str, str], Converter] = {}
 
-    @property
-    def stix_version(self) -> str:
-        return self.__stix_version
+    def register(self, converter: Converter) -> None:
+        key = (converter.source_format, converter.target_format)
+        if key in self._converters:
+            raise ValueError(f"Converter already registered for {key}")
+        self._converters[key] = converter
 
-    def misp_to_stix(self, version: str,
-                     misp_content: BytesIO | dict | list | str) -> dict:
-        parser = (
-            MISPtoSTIX20Parser() if version == '2.0' else MISPtoSTIX21Parser()
-        )
-        if isinstance(misp_content, BytesIO):
-            misp_content = misp_content.getvalue().decode('utf-8')
-        parser.parse_json_content(misp_content)
-        return json.loads(parser.bundle.serialize())
-
-    def stix_to_misp(self, stix_content: BytesIO | dict | list | str,
-                     args: reqparse.RequestParser):
+    def lookup(self, source_format: str, target_format: str) -> Converter:
         try:
-            bundle = load_stix2_content(
-                stix_content, invalid_objects := {}
-            )
-        except Exception as e:
-            return {'error': f'Error loading STIX content: {str(e)}'}
-        parser, arguments = get_stix2_parser(
-            is_stix2_from_misp(bundle.objects), args.distribution,
-            args.sharing_group_id, args.title, args.producer,
-            (not args.no_force_contextual_data), args.galaxies_as_tags,
-            args.single_event, args.organisation_uuid,
-            args.cluster_distribution, args.cluster_sharing_group_id
-        )
-        stix_parser = parser()
-        stix_parser.load_stix_bundle(bundle, invalid_objects=invalid_objects)
-        stix_parser.parse_stix_bundle(**arguments)
-        if args.single_event:
-            return json.loads(stix_parser.misp_event.to_json())
-        if isinstance(stix_parser.misp_events, list):
-            return [
-                json.loads(event.to_json())
-                for event in stix_parser.misp_events
-            ]
-        return json.loads(stix_parser.misp_event.to_json())
+            return self._converters[(source_format, target_format)]
+        except KeyError:
+            raise UnknownConverter(
+                f"No converter registered for {source_format} -> {target_format}"
+            ) from None
+
+    def list(self) -> list[Converter]:
+        return list(self._converters.values())
+
+    def convert(
+        self,
+        source_format: str,
+        target_format: str,
+        payload: Any,
+        params: BaseModel | dict | None = None,
+    ) -> dict | list:
+        """Convert ``payload`` from ``source_format`` to ``target_format``.
+
+        Raises ``UnknownConverter`` for an unsupported pair, ``InvalidParameters``
+        for a params dict that fails the Converter's schema, and propagates the
+        Converter's own ``InvalidPayload`` / ``ConverterFailed``.
+        """
+        converter = self.lookup(source_format, target_format)
+        return converter.execute(payload, self._coerce_params(converter, params))
+
+    @staticmethod
+    def _coerce_params(
+        converter: Converter, params: BaseModel | dict | None
+    ) -> BaseModel:
+        if isinstance(params, BaseModel):
+            return params
+        try:
+            return converter.params_class(**(params or {}))
+        except ValidationError as exc:
+            raise InvalidParameters(str(exc)) from exc
+
+
+transmute = Transmute()
+
+# Side-effect import: registers concrete Converters into the singleton.
+from . import converters  # noqa: E402,F401

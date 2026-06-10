@@ -6,7 +6,10 @@ from flask import request
 from flask_restx import Namespace, Resource, reqparse
 from io import BytesIO
 
-from website.web import transmute
+from cti_transmute import transmute
+from cti_transmute.converters.misp_to_stix import MispToStixParams
+from cti_transmute.converters.stix_to_misp import StixToMispParams
+from cti_transmute.exceptions import ConverterFailed, InvalidPayload
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +65,33 @@ class MispStixConverter(Resource):
             "Unsupported input type; expected Bytes object, array, or string."
         )
 
+    def _run(self, source: str, target: str, params):
+        """Load the payload, look up the Converter, and run it.
+
+        Maps the typed conversion errors to HTTP status codes: a bad payload
+        (input parsing or `InvalidPayload`) is 400; a library failure
+        (`ConverterFailed`) is 422.
+        """
+        try:
+            payload = self._load_input_from_request()
+        except ValueError as e:
+            return (
+                {'message': 'Input validation failed', 'errors': {'input': str(e)}},
+                400
+            )
+        try:
+            return transmute.convert(source, target, payload, params)
+        except InvalidPayload as e:
+            return (
+                {'message': 'Input validation failed', 'errors': {'input': str(e)}},
+                400
+            )
+        except ConverterFailed as e:
+            return (
+                {'message': 'Conversion failed', 'errors': {'converter': str(e)}},
+                422
+            )
+
 
 misp_to_stix_parser = reqparse.RequestParser()
 misp_to_stix_parser.add_argument(
@@ -76,18 +106,8 @@ class MISPtoSTIX(MispStixConverter):
     @convert_ns.expect(misp_to_stix_parser)
     def post(self):
         args = misp_to_stix_parser.parse_args()
-        try:
-            misp_content = self._load_input_from_request()
-        except ValueError as e:
-            return (
-                {
-                    'message': 'Input validation failed',
-                    'errors': {'input': str(e)}
-                },
-                400
-            )
-        version = args.get('version', '2.1')
-        return transmute.misp_to_stix(version, misp_content)
+        params = MispToStixParams(version=args.get('version', '2.1'))
+        return self._run('misp', 'stix', params)
 
 
 stix_to_misp_parser = reqparse.RequestParser()
@@ -157,14 +177,8 @@ class STIXtoMISP(MispStixConverter):
     @convert_ns.expect(stix_to_misp_parser)
     def post(self):
         args = stix_to_misp_parser.parse_args()
-        try:
-            stix_content = self._load_input_from_request()
-        except ValueError as e:
-            return (
-                {
-                    'message': 'Input validation failed',
-                    'errors': {'input': str(e)}
-                },
-                400
-            )
-        return transmute.stix_to_misp(stix_content, args)
+        # reqparse leaves unset args as None; drop them so the params model
+        # falls back to its own defaults (store_true flags -> False, etc.).
+        supplied = {k: v for k, v in args.items() if v is not None}
+        params = StixToMispParams(**supplied)
+        return self._run('stix', 'misp', params)
