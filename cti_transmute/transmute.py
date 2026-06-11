@@ -54,7 +54,7 @@ class Transmute:
         Converter's own ``InvalidPayload`` / ``ConverterFailed``.
         """
         converter = self.lookup(source_format, target_format)
-        return converter.execute(payload, self._coerce_params(converter, params))
+        return converter.process(payload, self._coerce_params(converter, params))
 
     @staticmethod
     def _coerce_params(

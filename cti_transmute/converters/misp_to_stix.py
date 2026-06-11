@@ -33,7 +33,7 @@ class MispToStix(Converter):
     output_format = "application/json"
     params_class = MispToStixParams
 
-    def execute(self, payload: Any, params: BaseModel) -> dict:
+    def process(self, payload: Any, params: BaseModel) -> dict:
         content = _coerce_to_str(payload)
         try:
             decoded = json.loads(content)
