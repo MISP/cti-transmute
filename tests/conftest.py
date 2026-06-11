@@ -44,3 +44,33 @@ def client():
         with application.app_context():
             application.register_blueprint(api_blueprint)
     return application.test_client()
+
+
+@pytest.fixture
+def app_db():
+    """Function-scoped, SQLite-backed app context for persistence/use-case tests.
+
+    Points the app at in-memory SQLite and creates the schema, so the use-case
+    exercises the real ORM/session/transaction without a live Postgres.
+    """
+    from website.web import application, db
+
+    application.config["TESTING"] = True
+    application.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"
+    # The app was initialised with the Postgres URI at import; re-init so the
+    # SQLite URI builds a fresh in-memory engine (flask-sqlalchemy applies the
+    # StaticPool that keeps an in-memory DB alive for the session). flask-sqlalchemy
+    # supports re-init (it disposes old engines); the only blocker is Flask's guard
+    # against registering setup methods once a request has been served (the `client`
+    # fixture may have served one), so clear that flag for the re-init.
+    db._app_engines.pop(application, None)
+    application.extensions.pop("sqlalchemy", None)
+    application._got_first_request = False
+    db.init_app(application)
+    with application.app_context():
+        db.create_all()
+        try:
+            yield db
+        finally:
+            db.session.remove()
+            db.drop_all()
