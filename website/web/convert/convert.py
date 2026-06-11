@@ -33,6 +33,23 @@ def _validate_misp_url(misp_url: str) -> str | None:
         pass  # it's a domain name — OK
     return None
 
+
+def _api_error_message(data: dict | None, status_code: int) -> str:
+    """Extract a human-readable error from a /api/convert error response.
+
+    The API returns ``{'message': ..., 'errors': {field: reason}}``; older
+    responses used a flat ``{'error': ...}``. Fall back to the HTTP status.
+    """
+    if not data:
+        return f"Conversion failed (HTTP {status_code})"
+    message = data.get("error") or data.get("message")
+    details = data.get("errors")
+    if details:
+        detail_text = "; ".join(str(v) for v in details.values())
+        return f"{message}: {detail_text}" if message else detail_text
+    return message or f"Conversion failed (HTTP {status_code})"
+
+
 convert_blueprint = Blueprint(
     "convert",
     __name__,
@@ -138,7 +155,7 @@ def misp_to_stix():
                         flash("Error during registering the convert!", "danger")
 
                 else:
-                    error_msg = data.get("error") if data else f"Conversion failed with status {response.status_code}"
+                    error_msg = _api_error_message(data, response.status_code)
                     error = error_msg
                     flash(error_msg, "danger")
 
@@ -463,7 +480,7 @@ def stix_to_misp():
                         flash("Error during registering in database", "danger")
 
                 else:
-                    error = data.get("error") if data else f"Conversion failed (HTTP {response.status_code})"
+                    error = _api_error_message(data, response.status_code)
                     flash(error, "danger")
 
             except requests.RequestException as e:

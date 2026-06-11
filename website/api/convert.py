@@ -5,11 +5,13 @@ import logging
 from flask import request
 from flask_restx import Namespace, Resource, reqparse
 from io import BytesIO
+from pydantic import ValidationError
 
 from cti_transmute import transmute
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
-from cti_transmute.exceptions import ConverterFailed, InvalidPayload
+from cti_transmute.exceptions import (
+    ConverterFailed, InvalidParameters, InvalidPayload)
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +67,32 @@ class MispStixConverter(Resource):
             "Unsupported input type; expected Bytes object, array, or string."
         )
 
-    def _run(self, source: str, target: str, params):
-        """Load the payload, look up the Converter, and run it.
+    @staticmethod
+    def _build_params(params_class, args: dict):
+        """Build a Converter's params model from parsed reqparse args.
 
-        Maps the typed conversion errors to HTTP status codes: a bad payload
-        (input parsing or `InvalidPayload`) is 400; a library failure
-        (`ConverterFailed`) is 422.
+        reqparse leaves unset args as ``None`` (dropped here, so the model uses
+        its own defaults), and yields the *raw query value* for ``store_true``
+        flags rather than a bool — so a present boolean flag (the web UI sends it
+        as an empty string) is coerced to ``True``. Raises ``ValidationError`` on
+        a value the model rejects; the caller maps that to 400.
+        """
+        bool_fields = {
+            name for name, field in params_class.model_fields.items()
+            if field.annotation is bool
+        }
+        supplied = {}
+        for key, value in args.items():
+            if value is None:
+                continue
+            supplied[key] = True if key in bool_fields else value
+        return params_class(**supplied)
+
+    def _run(self, source: str, target: str, params_class, args: dict):
+        """Load the payload, build + validate params, look up the Converter, run it.
+
+        Maps the typed errors to HTTP status codes: a bad payload or invalid
+        parameters is 400; a library failure (`ConverterFailed`) is 422.
         """
         try:
             payload = self._load_input_from_request()
@@ -80,7 +102,13 @@ class MispStixConverter(Resource):
                 400
             )
         try:
+            params = self._build_params(params_class, args)
             return transmute.convert(source, target, payload, params)
+        except (ValidationError, InvalidParameters) as e:
+            return (
+                {'message': 'Input validation failed', 'errors': {'params': str(e)}},
+                400
+            )
         except InvalidPayload as e:
             return (
                 {'message': 'Input validation failed', 'errors': {'input': str(e)}},
@@ -105,9 +133,9 @@ misp_to_stix_parser.add_argument(
 class MISPtoSTIX(MispStixConverter):
     @convert_ns.expect(misp_to_stix_parser)
     def post(self):
-        args = misp_to_stix_parser.parse_args()
-        params = MispToStixParams(version=args.get('version', '2.1'))
-        return self._run('misp', 'stix', params)
+        return self._run(
+            'misp', 'stix', MispToStixParams, misp_to_stix_parser.parse_args()
+        )
 
 
 stix_to_misp_parser = reqparse.RequestParser()
@@ -176,9 +204,6 @@ stix_to_misp_parser.add_argument(
 class STIXtoMISP(MispStixConverter):
     @convert_ns.expect(stix_to_misp_parser)
     def post(self):
-        args = stix_to_misp_parser.parse_args()
-        # reqparse leaves unset args as None; drop them so the params model
-        # falls back to its own defaults (store_true flags -> False, etc.).
-        supplied = {k: v for k, v in args.items() if v is not None}
-        params = StixToMispParams(**supplied)
-        return self._run('stix', 'misp', params)
+        return self._run(
+            'stix', 'misp', StixToMispParams, stix_to_misp_parser.parse_args()
+        )

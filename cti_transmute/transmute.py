@@ -61,6 +61,11 @@ class Transmute:
         converter: Converter, params: BaseModel | dict | None
     ) -> BaseModel:
         if isinstance(params, BaseModel):
+            if not isinstance(params, converter.params_class):
+                raise InvalidParameters(
+                    f"{type(params).__name__} is not the params model for "
+                    f"{converter.source_format} -> {converter.target_format}"
+                )
             return params
         try:
             return converter.params_class(**(params or {}))

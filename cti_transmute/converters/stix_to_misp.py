@@ -44,7 +44,7 @@ class StixToMisp(Converter):
     output_format = "application/json"
     params_class = StixToMispParams
 
-    def process(self, payload: Any, params: BaseModel) -> dict:
+    def process(self, payload: Any, params: BaseModel) -> dict | list:
         invalid_objects: dict = {}
         try:
             bundle = load_stix2_content(payload, invalid_objects)

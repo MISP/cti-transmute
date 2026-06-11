@@ -22,5 +22,7 @@ class Converter(ABC):
     params_class: ClassVar[type[BaseModel]]
 
     @abstractmethod
-    def process(self, payload: Any, params: BaseModel) -> dict:
-        """Run the conversion. Raises ``ConverterFailed`` on library errors."""
+    def process(self, payload: Any, params: BaseModel) -> dict | list:
+        """Run the conversion. Returns the document in its native shape — a dict,
+        or a list when one input yields several documents (e.g. multiple MISP
+        events). Raises ``ConverterFailed`` on library errors."""
