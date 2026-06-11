@@ -3,7 +3,7 @@
 import pytest
 
 from cti_transmute import transmute
-from cti_transmute.converters.misp_to_stix import MispToStix
+from cti_transmute.converters.misp_to_stix import MispToStix, MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMisp, StixToMispParams
 from cti_transmute.exceptions import (
     InvalidParameters,
@@ -63,3 +63,13 @@ def test_convert_invalid_params_dict_raises_invalid_parameters(misp_event):
 def test_convert_propagates_invalid_payload():
     with pytest.raises(InvalidPayload):
         transmute.convert("stix", "misp", {"not": "stix"})
+
+
+def test_convert_rejects_mismatched_params_model(misp_event, stix_bundle):
+    # A params model built for the wrong converter must surface as a typed
+    # InvalidParameters at the hub, not a leaked AttributeError / mislabeled
+    # ConverterFailed.
+    with pytest.raises(InvalidParameters):
+        transmute.convert("misp", "stix", misp_event, StixToMispParams())
+    with pytest.raises(InvalidParameters):
+        transmute.convert("stix", "misp", stix_bundle, MispToStixParams())
