@@ -24,6 +24,7 @@ dependencies = [
     "markdown>=3.10.2",
     "misp-stix>=2025.3.13",
     "psycopg2-binary>=2.9.10",
+    "pydantic>=2.13.4",
     "python-dotenv>=1.2.2",
     "sqlalchemy>=2.0.43",
     "weasyprint>=68.1",
@@ -34,3 +35,8 @@ dependencies = [
 start_website  = "bin.start_website:main"
 build_assets   = "bin.build_assets:main"
 manage         = "bin.manage:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
