@@ -3,6 +3,7 @@ import os
 import datetime
 import subprocess
 import sys
+from pathlib import Path
 
 def backup_database():
     """
@@ -18,12 +19,12 @@ def backup_database():
     DB_NAME = "cti_db"
 
     # Output directory
-    backup_dir = "backups"
-    os.makedirs(backup_dir, exist_ok=True)
+    backup_dir = Path(os.environ.get("BACKUP_DIR", "backups")).expanduser()
+    backup_dir.mkdir(parents=True, exist_ok=True)
 
     # Filename with timestamp
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    backup_file = os.path.join(backup_dir, f"{DB_NAME}_backup_{timestamp}.sql.gz")
+    backup_file = backup_dir / f"{DB_NAME}_backup_{timestamp}.sql.gz"
 
     # Environment variable for password
     env = os.environ.copy()

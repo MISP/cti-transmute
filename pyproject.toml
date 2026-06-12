@@ -34,3 +34,4 @@ dependencies = [
 start_website  = "bin.start_website:main"
 build_assets   = "bin.build_assets:main"
 manage         = "bin.manage:main"
+incus-dev      = "bin.incus_dev:main"

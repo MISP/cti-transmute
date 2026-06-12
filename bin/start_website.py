@@ -42,13 +42,8 @@ def main():
         # db.create_all()
     import os
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    application.run(host=ip, port=port, debug=True)#debug)
-
-
-
-
+    application.run(host=ip, port=port, debug=debug)
 
 
 if __name__ == '__main__':
     main()
-
