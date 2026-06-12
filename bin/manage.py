@@ -218,7 +218,9 @@ def cmd_start() -> None:
 def cmd_backup() -> None:
     header("Backing up database")
 
-    backup_dir = ROOT / "website" / "db_class" / "backups"
+    backup_dir = Path(
+        os.environ.get("BACKUP_DIR", ROOT / "website" / "db_class" / "backups")
+    ).expanduser()
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp   = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -234,7 +236,11 @@ def cmd_backup() -> None:
         DB_NAME
     ]
 
-    info(f"Writing to {backup_file.relative_to(ROOT)}")
+    try:
+        display_path = backup_file.relative_to(ROOT)
+    except ValueError:
+        display_path = backup_file
+    info(f"Writing to {display_path}")
     try:
         with open(backup_file, "wb") as f_out:
             dump = subprocess.Popen(pg_cmd, stdout=subprocess.PIPE, env=env)
