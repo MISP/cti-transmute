@@ -220,21 +220,3 @@ def extract_tag_names_from_misp_json(json_text: str) -> list[str]:
             _collect_tags_from_event(data, names)
 
     return list(names)
-
-
-def sanitazed_params(params):
-    """
-    Sanitize the params dictionary by changing values.
-
-    Args:
-        params (dict): The dictionary to sanitize.
-
-    Returns:
-        dict: The sanitized dictionary.
-
-    """
-    for key, value in params.items():
-        if isinstance(value, str):
-            params[key] = value.strip()
-    return params
-    

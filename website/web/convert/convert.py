@@ -6,8 +6,15 @@ from urllib.parse import urlparse
 from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for, abort
 from flask_login import current_user, login_required
 from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
-from website.web.utils import extract_name_from_misp_json, extract_tag_names_from_misp_json, form_to_dict, parse_stix_reports, sanitazed_params
+from website.web.utils import extract_name_from_misp_json, extract_tag_names_from_misp_json, form_to_dict, parse_stix_reports
 import requests
+from cti_transmute.exceptions import (
+    ConversionError, InvalidParameters, InvalidPayload, UnknownConverter,
+)
+from cti_transmute.converters.misp_to_stix import MispToStixParams
+from cti_transmute.converters.stix_to_misp import StixToMispParams
+from website.lib.conversions import submit_conversion
+from website.lib.exceptions import PersistenceFailed
 from ..convert import convert_core as ConvertModel
 from ..account import account_core as AccountModel
 from ..tags import tags_core as TagsModel
@@ -34,20 +41,53 @@ def _validate_misp_url(misp_url: str) -> str | None:
     return None
 
 
-def _api_error_message(data: dict | None, status_code: int) -> str:
-    """Extract a human-readable error from a /api/convert error response.
+def _conversion_error_message(exc) -> str:
+    """Map a ConversionError to a human-readable flash message."""
+    if isinstance(exc, InvalidPayload):
+        return f"Invalid input: {exc}"
+    if isinstance(exc, InvalidParameters):
+        return f"Invalid parameters: {exc}"
+    if isinstance(exc, UnknownConverter):
+        return f"Unsupported conversion: {exc}"
+    if isinstance(exc, PersistenceFailed):
+        return "The conversion succeeded but could not be saved. Please try again."
+    return f"Conversion failed: {exc}"
 
-    The API returns ``{'message': ..., 'errors': {field: reason}}``; older
-    responses used a flat ``{'error': ...}``. Fall back to the HTTP status.
+
+def _build_misp_to_stix_params(form) -> MispToStixParams:
+    """Build the MISP→STIX Converter params from the WTForm's cleaned data."""
+    return MispToStixParams(version=form.version.data)
+
+
+def _build_stix_to_misp_params(form) -> StixToMispParams:
+    """Build the STIX→MISP Converter params from the WTForm's cleaned data.
+
+    Strings are stripped; blanks (``""`` / whitespace) and ``None`` are dropped
+    so Pydantic applies the field default. Real ``bool``/``int`` values pass
+    through — no more ``""``-means-true convention.
     """
-    if not data:
-        return f"Conversion failed (HTTP {status_code})"
-    message = data.get("error") or data.get("message")
-    details = data.get("errors")
-    if details:
-        detail_text = "; ".join(str(v) for v in details.values())
-        return f"{message}: {detail_text}" if message else detail_text
-    return message or f"Conversion failed (HTTP {status_code})"
+    raw = {
+        "distribution": form.distribution.data,
+        "sharing_group_id": form.sharing_group_id.data,
+        "galaxies_as_tags": form.galaxies_as_tags.data,
+        "no_force_contextual_data": form.no_force_contextual_data.data,
+        "cluster_distribution": form.cluster_distribution.data,
+        "cluster_sharing_group_id": form.cluster_sharing_group_id.data,
+        "organisation_uuid": form.organisation_uuid.data,
+        "single_event": form.single_event.data,
+        "producer": form.producer.data,
+        "title": form.title.data,
+    }
+    supplied = {}
+    for key, value in raw.items():
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                continue
+        if value is None:
+            continue
+        supplied[key] = value
+    return StixToMispParams(**supplied)
 
 
 convert_blueprint = Blueprint(
@@ -66,7 +106,6 @@ def misp_to_stix():
     if form.validate_on_submit():
         input_mode = request.form.get('input_mode', 'paste')
         file_content = None
-        files = None
 
         # ── Récupération de l'input selon le mode ──────────────────
         if input_mode == 'file':
@@ -82,14 +121,13 @@ def misp_to_stix():
                     file_content = file_data.read().decode('utf-8')
                     json.loads(file_content)
                 except UnicodeDecodeError:
+                    file_content = None
                     error = "File must be UTF-8 encoded"
                     flash(error, "danger")
                 except json.JSONDecodeError:
+                    file_content = None
                     error = "File is not valid JSON"
                     flash(error, "danger")
-                else:
-                    file_data.seek(0)
-                    files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
         else:  # mode paste
             raw = request.form.get('misp_content', '') or ''
             if not raw.strip():
@@ -97,71 +135,36 @@ def misp_to_stix():
                 flash(error, "danger")
             else:
                 file_content = raw
-                files = {'file': ('misp.json', raw.encode('utf-8'), 'application/json')}
 
-        # ── Conversion ─────────────────────────────────────────────
-        if file_content and files:
-            params = {'version': form.version.data}
+        if file_content:
+            auto_name = extract_name_from_misp_json(file_content)
+            name = form.name.data or auto_name
+            if form.description.data:
+                description = form.description.data
+            elif auto_name:
+                description = f"MISP to STIX conversion, version {form.version.data} - {auto_name}"
+            else:
+                description = f"MISP to STIX conversion, version {form.version.data}"
+
+            user = None if current_user.is_anonymous() else current_user
             try:
-                response = requests.post(
-                    "http://127.0.0.1:6868/api/convert/misp_to_stix",
-                    files=files,
-                    params=params
+                convert = submit_conversion(
+                    user, "misp", "stix",
+                    payload=file_content,
+                    params=_build_misp_to_stix_params(form),
+                    name=name, description=description, public=form.public.data,
                 )
-                try:
-                    data = response.json()
-                except Exception:
-                    data = None
-
-                if response.status_code == 200 and data and not data.get("error"):
-                    result = data
-                    flash("Converted to STIX successfully!", "success")
-
-                    # ── Auto-remplissage name / description ─────────
-                    auto_name = extract_name_from_misp_json(file_content)
-                    if not form.name.data and auto_name:
-                        form.name.data = auto_name
-                    if not form.description.data and auto_name:
-                        form.description.data = (
-                            f"MISP to STIX conversion, version {form.version.data} - {auto_name}"
-                        )
-
-                    # ── Sauvegarde en base ──────────────────────────
-                    output_text = json.dumps(data, indent=2)
-                    _user_id = None if current_user.is_anonymous() else current_user.id
-
-                    saved = ConvertModel.create_convert(
-                        user_id=_user_id,
-                        input_text=file_content,
-                        output_text=output_text,
-                        convert_choice="MISP_TO_STIX",
-                        name=form.name.data,
-                        description=form.description.data or f"MISP to STIX conversion, version {form.version.data}",
-                        public=form.public.data
-                    )
-                    if saved:
-                        flash("Convert registered successfully!", "success")
-                        _actor_name = current_user.first_name if not current_user.is_anonymous() else "Anonymous"
-                        AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: MISP→STIX, Public: {saved.public}")
-                        if saved.public and not current_user.is_anonymous():
-                            AccountModel.notify_followers_new_convert(saved, current_user.id)
-                        if not current_user.is_anonymous():
-                            raw_ids = request.form.get('tag_ids', '')
-                            manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
-                            if manual_ids:
-                                TagsModel.save_convert_tags(saved.id, manual_ids, current_user.id)
-                        return redirect(url_for("convert.detail", id=saved.id))
-                    else:
-                        flash("Error during registering the convert!", "danger")
-
-                else:
-                    error_msg = _api_error_message(data, response.status_code)
-                    error = error_msg
-                    flash(error_msg, "danger")
-
-            except requests.RequestException as e:
-                error = f"Conversion failed: {e}"
+            except ConversionError as exc:
+                error = _conversion_error_message(exc)
                 flash(error, "danger")
+            else:
+                flash("Converted to STIX successfully!", "success")
+                if not current_user.is_anonymous():
+                    raw_ids = request.form.get('tag_ids', '')
+                    manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                    if manual_ids:
+                        TagsModel.save_convert_tags(convert.id, manual_ids, current_user.id)
+                return redirect(url_for("convert.detail", id=convert.id))
 
     return render_template("convert/misp_to_stix.html", form=form, result=result, error=error)
 
@@ -363,7 +366,6 @@ def stix_to_misp():
         # Le JS transforme le mode 'paste' en 'file' juste avant le submit
         input_mode = request.form.get('input_mode', 'paste')
         file_content = None
-        files = None
 
         # ── 1. Récupération de l'input (Fichier ou Paste converti) ──
         file_data = request.files.get('file')
@@ -377,15 +379,14 @@ def stix_to_misp():
                     file_content = file_data.read().decode('utf-8')
                     json.loads(file_content)
                 except UnicodeDecodeError:
+                    file_content = None
                     error = "File must be UTF-8 encoded"
                     flash(error, "danger")
                 except json.JSONDecodeError:
+                    file_content = None
                     error = "File is not valid JSON"
                     flash(error, "danger")
-                else:
-                    file_data.seek(0)
-                    files = {'file': (file_data.filename, file_data.stream, file_data.mimetype)}
-        
+
         elif input_mode == 'paste':
             # Fallback : Si le JS n'a pas fonctionné, on récupère le texte brut
             raw = form.stix_content.data or ''
@@ -394,98 +395,50 @@ def stix_to_misp():
                 flash(error, "danger")
             else:
                 file_content = raw
-                files = {'file': ('stix.json', raw.encode('utf-8'), 'application/json')}
-        
+
         if not file_content:
             if not error: # Évite d'écraser une erreur déjà flashée
                 error = "No STIX content provided"
                 flash(error, "danger")
 
-        # ── 2. Conversion via l'API ─────────────────────────────────
-        if file_content and files:
-            # Préparation des paramètres de conversion
-            raw_params = form_to_dict(form)
-            params = {
-                key: value
-                for key, value in raw_params.items()
-                if value not in [None, "", False, "False"]
-                and key not in ['stix_content', 'name', 'description', 'csrf_token']
-            }
-            
-            # Flags booléens spécifiques
-            if form.galaxies_as_tags.data: params["galaxies_as_tags"] = ""
-            if form.no_force_contextual_data.data: params["no_force_contextual_data"] = ""
-            if form.single_event.data: params["single_event"] = ""
+        if file_content:
+            parsed_reports = parse_stix_reports(file_content)
+            parsed_name = None
+            parsed_description = None
+            if parsed_reports:
+                parsed_name, parsed_description = parsed_reports[0]
 
+            name_to_use = (
+                (form.name.data or "").strip()
+                or (parsed_name.strip() if parsed_name else None)
+                or "STIX Conversion"
+            )
+            description_to_use = (
+                (form.description.data or "").strip()
+                or (parsed_description.strip() if parsed_description else None)
+                or "STIX to MISP conversion"
+            )
+
+            user = None if current_user.is_anonymous() else current_user
             try:
-                response = requests.post(
-                    "http://127.0.0.1:6868/api/convert/stix_to_misp",
-                    files=files,
-                    params=params
+                convert = submit_conversion(
+                    user, "stix", "misp",
+                    payload=file_content,
+                    params=_build_stix_to_misp_params(form),
+                    name=name_to_use, description=description_to_use,
+                    public=form.public.data,
                 )
-                
-                try:
-                    data = response.json()
-                except Exception:
-                    data = None
-
-                if response.status_code == 200 and data and not data.get("error"):
-                    result = data
-                    flash("Converted to MISP successfully!", "success")
-
-                    # ── 3. Extraction métadonnées & Sauvegarde ──────
-                    parsed_reports = parse_stix_reports(file_content)
-                    parsed_name = None
-                    parsed_description = None
-                    if parsed_reports:
-                        parsed_name, parsed_description = parsed_reports[0]
-
-                    name_to_use = (
-                        form.name.data.strip() 
-                        or (parsed_name.strip() if parsed_name else None) 
-                        or "STIX Conversion"
-                    )
-                    description_to_use = (
-                        form.description.data.strip() 
-                        or (parsed_description.strip() if parsed_description else None) 
-                        or "STIX to MISP conversion"
-                    )
-
-                    output_text = json.dumps(data, indent=2)
-                    _user_id = None if current_user.is_anonymous() else current_user.id
-
-                    saved = ConvertModel.create_convert(
-                        user_id=_user_id,
-                        input_text=file_content,
-                        output_text=output_text,
-                        convert_choice="STIX_TO_MISP",
-                        name=name_to_use,
-                        description=description_to_use,
-                        public=form.public.data
-                    )
-
-                    if saved:
-                        flash("Convert registered successfully!", "success")
-                        _actor_name = current_user.first_name if not current_user.is_anonymous() else "Anonymous"
-                        AccountModel.create_system_log("convert_created", actor_id=None if current_user.is_anonymous() else current_user.id, actor_name=_actor_name, target_type="convert", target_id=saved.id, target_name=saved.name, details=f"Type: STIX→MISP, Public: {saved.public}")
-                        if saved.public and not current_user.is_anonymous():
-                            AccountModel.notify_followers_new_convert(saved, current_user.id)
-                        if not current_user.is_anonymous():
-                            raw_ids = request.form.get('tag_ids', '')
-                            manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
-                            if manual_ids:
-                                TagsModel.save_convert_tags(saved.id, manual_ids, current_user.id)
-                        return redirect(url_for("convert.detail", id=saved.id))
-                    else:
-                        flash("Error during registering in database", "danger")
-
-                else:
-                    error = _api_error_message(data, response.status_code)
-                    flash(error, "danger")
-
-            except requests.RequestException as e:
-                error = f"API Connection error: {e}"
+            except ConversionError as exc:
+                error = _conversion_error_message(exc)
                 flash(error, "danger")
+            else:
+                flash("Converted to MISP successfully!", "success")
+                if not current_user.is_anonymous():
+                    raw_ids = request.form.get('tag_ids', '')
+                    manual_ids = [int(i) for i in raw_ids.split(',') if i.strip().isdigit()]
+                    if manual_ids:
+                        TagsModel.save_convert_tags(convert.id, manual_ids, current_user.id)
+                return redirect(url_for("convert.detail", id=convert.id))
 
     return render_template("convert/stix_to_misp.html", form=form, result=result, error=error)
 
