@@ -30,7 +30,7 @@
 
 
     <div class="custom-card p-4 mb-4">
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" novalidate>
             {{ form.hidden_tag() }}
 
             <div class="row mb-3">
@@ -294,7 +294,7 @@
             {% endif %}
 
             <button type="submit" name="convert" class="btn btn-primary fw-semibold">
-                <i class="fas fa-exchange-alt me-1"></i> {{ form.convert.label }}
+                <i class="fas fa-exchange-alt me-1"></i> {{ form.convert.label.text }}
             </button>
         </form>
     </div>
