@@ -74,7 +74,7 @@ class Convert(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, nullable=True) # the user who made the convert
-    name = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
     conversion_type = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)  # optional description
     uuid = db.Column(db.String(36), index=True)
