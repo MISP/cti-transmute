@@ -11,6 +11,8 @@ Use the module-level ``transmute`` singleton, into which the concrete Converters
 register themselves on import.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
