@@ -49,7 +49,7 @@ class Transmute:
         payload: Any,
         params: BaseModel | dict | None = None,
     ) -> dict | list:
-        """Convert ``payload`` from ``source_format`` to ``target_format``.
+        """Run the ``source_format`` -> ``target_format`` conversion on ``payload``.
 
         Raises ``UnknownConverter`` for an unsupported pair, ``InvalidParameters``
         for a params dict that fails the Converter's schema, and propagates the

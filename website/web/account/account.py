@@ -167,9 +167,9 @@ def public_converts(user_id):
         page, user_id, filter_type, sort_order, search, filter_public="PUBLIC"
     )
 
-    total = Convert.query.filter_by(user_id=user_id, is_active=True, public=True).count()
-    m2s   = Convert.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='MISP_TO_STIX').count()
-    s2m   = Convert.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='STIX_TO_MISP').count()
+    total = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True).count()
+    m2s   = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='MISP_TO_STIX').count()
+    s2m   = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='STIX_TO_MISP').count()
 
     items = []
     if pagination:
@@ -500,10 +500,10 @@ def my_comments():
     pagination = AccountModel.get_user_comments(current_user.id, page=page, search=search, is_admin=current_user.is_admin())
     items = []
     for c in pagination.items:
-        convert = ConvertModel.get_convert(c.convert_id, include_deleted=True)
+        convert = ConvertModel.get_convert(c.conversion_id, include_deleted=True)
         item = c.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())
         item["convert_name"] = convert.name if convert else "Unknown"
-        item["convert_id"] = c.convert_id
+        item["conversion_id"] = c.conversion_id
         item["convert_active"] = bool(convert and convert.is_active)
         item["has_replies"] = c.replies.count() > 0
         item["is_reply"] = bool(c.parent_id)
@@ -777,20 +777,20 @@ def get_user_stats():
     if not user:
         return {"success": False}, 404
 
-    total  = Convert.query.filter_by(user_id=user_id, is_active=True).count()
-    m2s    = Convert.query.filter_by(user_id=user_id, conversion_type='MISP_TO_STIX', is_active=True).count()
-    s2m    = Convert.query.filter_by(user_id=user_id, conversion_type='STIX_TO_MISP', is_active=True).count()
-    public = Convert.query.filter_by(user_id=user_id, is_active=True, public=True).count()
+    total  = Conversion.query.filter_by(user_id=user_id, is_active=True).count()
+    m2s    = Conversion.query.filter_by(user_id=user_id, conversion_type='MISP_TO_STIX', is_active=True).count()
+    s2m    = Conversion.query.filter_by(user_id=user_id, conversion_type='STIX_TO_MISP', is_active=True).count()
+    public = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True).count()
 
-    likes     = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='like').count()
-    dislikes  = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='dislike').count()
-    reactions = ConvertEvaluation.query.filter_by(user_id=user_id, eval_type='reaction').count()
+    likes     = ConversionEvaluation.query.filter_by(user_id=user_id, eval_type='like').count()
+    dislikes  = ConversionEvaluation.query.filter_by(user_id=user_id, eval_type='dislike').count()
+    reactions = ConversionEvaluation.query.filter_by(user_id=user_id, eval_type='reaction').count()
 
     since = datetime.now(timezone.utc) - timedelta(days=29)
     rows = (
-        db.session.query(func.date(Convert.created_at).label('d'), func.count(Convert.id).label('n'))
-        .filter(Convert.user_id == user_id, Convert.is_active == True, Convert.created_at >= since)
-        .group_by(func.date(Convert.created_at))
+        db.session.query(func.date(Conversion.created_at).label('d'), func.count(Conversion.id).label('n'))
+        .filter(Conversion.user_id == user_id, Conversion.is_active, Conversion.created_at >= since)
+        .group_by(func.date(Conversion.created_at))
         .all()
     )
     activity = {str(r.d): r.n for r in rows}

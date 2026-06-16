@@ -728,7 +728,7 @@
                     miShowTableState('loading');
                     const body = { misp_url: miSt.url, api_key: miSt.apiKey, limit: miSt.limit, page: miSt.page, ...miSt.filters };
                     try {
-                        const resp = await fetch('/convert/misp_search_events', {
+                        const resp = await fetch('/conversions/misp_search_events', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF() },
                             body: JSON.stringify(body),
@@ -761,7 +761,7 @@
 
                 async function miFetchAndLoad(id, btn, orig) {
                     try {
-                        const resp = await fetch('/convert/fetch_misp_event', {
+                        const resp = await fetch('/conversions/fetch_misp_event', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF() },
                             body: JSON.stringify({ misp_url: miSt.url, api_key: miSt.apiKey, event_id: String(id) }),
@@ -796,7 +796,7 @@
                     importBtn.disabled = true;
                     importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importing…';
                     try {
-                        const resp = await fetch('/convert/fetch_misp_event', {
+                        const resp = await fetch('/conversions/fetch_misp_event', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF() },
                             body: JSON.stringify({ misp_url: miSt.url, api_key: miSt.apiKey, event_ids: ids }),

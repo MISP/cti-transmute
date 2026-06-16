@@ -40,7 +40,7 @@
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ c.id ]]</td>
             <td style="font-weight:600;">[[ c.author ]]</td>
             <td style="font-size:0.8rem;">
-              <a v-if="c.convert_active" :href="'/convert/detail/'+c.convert_id" style="color:var(--accent);">
+              <a v-if="c.convert_active" :href="'/conversions/detail/'+c.conversion_id" style="color:var(--accent);">
                 [[ c.convert_name ]]
               </a>
               <span v-else style="color:var(--text-3);">[[ c.convert_name ]]</span>
@@ -48,7 +48,7 @@
                 style="font-size:0.72rem; color:var(--danger);">
                 <i class="fas fa-triangle-exclamation"></i>
                 Deactivated —
-                <a :href="'/account/admin/deleted_converts?highlight='+c.convert_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
+                <a :href="'/account/admin/deleted_converts?highlight='+c.conversion_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
                   View in Trash <i class="fas fa-arrow-right" style="font-size:0.65rem;"></i>
                 </a>
               </div>
@@ -92,7 +92,7 @@
             <td>
               <div class="d-flex gap-1">
                 <a v-if="c.is_reply && c.convert_active"
-                  :href="'/convert/detail/'+c.convert_id+'#comment-'+c.id"
+                  :href="'/conversions/detail/'+c.conversion_id+'#comment-'+c.id"
                   class="btn btn-sm btn-outline-secondary py-0 px-2"
                   style="font-size:0.72rem; color:var(--text-3);"
                   title="View in context">
@@ -135,7 +135,7 @@
         try {
           const params = new URLSearchParams({ page: page.value })
           if (search.value) params.set('search', search.value)
-          const res = await fetch(`/convert/admin/get_all_comments?${params}`)
+          const res = await fetch(`/conversions/admin/get_all_comments?${params}`)
           if (res.ok) {
             const data = await res.json()
             comments.value = (data.list || []).map(c => ({ ...c, _expanded: false }))
@@ -152,7 +152,7 @@
 
       async function deleteComment(c) {
         if (!confirm(`Delete comment #${c.id}?`)) return
-        const res = await fetch(`/convert/delete_comment?comment_id=${c.id}`)
+        const res = await fetch(`/conversions/delete_comment?comment_id=${c.id}`)
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) comments.value = comments.value.filter(x => x.id !== c.id)

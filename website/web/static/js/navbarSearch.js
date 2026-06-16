@@ -1,8 +1,8 @@
 const SECTIONS_USER = [
     { icon: 'fa-home',                    label: 'Home',          url: '/' },
-    { icon: 'fa-book',                    label: 'History',       url: '/convert/history' },
-    { icon: 'fa-arrow-right-arrow-left',  label: 'MISP → STIX',  url: '/convert/misp_to_stix' },
-    { icon: 'fa-arrow-right-arrow-left',  label: 'STIX → MISP',  url: '/convert/stix_to_misp' },
+    { icon: 'fa-book',                    label: 'History',       url: '/conversions/history' },
+    { icon: 'fa-arrow-right-arrow-left',  label: 'MISP → STIX',  url: '/conversions/misp_to_stix' },
+    { icon: 'fa-arrow-right-arrow-left',  label: 'STIX → MISP',  url: '/conversions/stix_to_misp' },
     { icon: 'fa-plug',                    label: 'API Endpoints', url: '/list' },
 ]
 const SECTIONS_AUTH  = [
@@ -77,7 +77,7 @@ const NavbarSearch = {
             if (ma.length) g.push({ id: 's-admin', type: 'section', icon: 'fa-shield-halved', label: 'Admin',    items: ma })
 
             try {
-                const res   = await fetch('/convert/get_convert_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
+                const res   = await fetch('/conversions/get_convert_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
                 const data  = res.ok ? await res.json() : { list: [] }
                 const items = (data.list || []).slice(0, 5)
                 if (items.length) {
@@ -85,7 +85,7 @@ const NavbarSearch = {
                         id: 'converts', type: 'convert',
                         icon: 'fa-exchange-alt', label: 'Converts',
                         items,
-                        seeAll: '/convert/history?search=' + encodeURIComponent(q),
+                        seeAll: '/conversions/history?search=' + encodeURIComponent(q),
                     })
                 }
             } catch {}
@@ -163,7 +163,7 @@ const NavbarSearch = {
     },
 
     template: `
-<form class="top-nav-search" action="/convert/history" method="get" @submit="onSubmit">
+<form class="top-nav-search" action="/conversions/history" method="get" @submit="onSubmit">
   <div class="top-nav-search-wrap">
     <i class="fas fa-search top-nav-search-icon"></i>
     <input
@@ -204,7 +204,7 @@ const NavbarSearch = {
           <div class="nav-sd-group-header">
             <i class="fas fa-exchange-alt me-1"></i>{{ g.label }}
           </div>
-          <a v-for="c in g.items" :key="c.id" class="nav-sd-item nav-sd-focusable" :href="'/convert/detail/'+c.id">
+          <a v-for="c in g.items" :key="c.id" class="nav-sd-item nav-sd-focusable" :href="'/conversions/detail/'+c.id">
             <span class="nav-sd-badge" :class="typeClass(c.conversion_type)">{{ typeLabel(c.conversion_type) }}</span>
             <span class="nav-sd-name">{{ c.name }}</span>
           </a>

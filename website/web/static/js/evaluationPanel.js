@@ -29,7 +29,7 @@ const CATEGORY_ORDER = [
 const EvaluationPanel = {
     delimiters: ['[[', ']]'],
     props: {
-        convertId: { type: Number, required: true },
+        conversionId: { type: Number, required: true },
         isAuth:    { type: Boolean, default: false },
         isOwner:   { type: Boolean, default: false },
         isPublic:  { type: Boolean, default: true },
@@ -209,7 +209,7 @@ const EvaluationPanel = {
 
         async function fetchSummary() {
             try {
-                const res  = await fetch(`/evaluate/summary/${props.convertId}`)
+                const res  = await fetch(`/evaluate/summary/${props.conversionId}`)
                 const body = await res.json()
                 if (body.success) data.value = body
             } catch (e) {
@@ -233,25 +233,25 @@ const EvaluationPanel = {
         }
 
         function notifyEvalUpdated() {
-            document.dispatchEvent(new CustomEvent('evaluate:updated', { detail: { convertId: props.convertId } }))
+            document.dispatchEvent(new CustomEvent('evaluate:updated', { detail: { conversionId: props.conversionId } }))
         }
 
         async function toggleLike() {
             if (!data.value.can_evaluate) return
-            const body = await apiPost('/evaluate/toggle_like', { convert_id: props.convertId })
+            const body = await apiPost('/evaluate/toggle_like', { conversion_id: props.conversionId })
             if (body.success && body.summary) { data.value = { ...data.value, ...body.summary }; notifyEvalUpdated() }
         }
 
         async function toggleDislike() {
             if (!data.value.can_evaluate) return
-            const body = await apiPost('/evaluate/toggle_dislike', { convert_id: props.convertId })
+            const body = await apiPost('/evaluate/toggle_dislike', { conversion_id: props.conversionId })
             if (body.success && body.summary) { data.value = { ...data.value, ...body.summary }; notifyEvalUpdated() }
         }
 
         async function toggleReaction(key) {
             if (!data.value.can_evaluate) return
             const body = await apiPost('/evaluate/toggle_reaction', {
-                convert_id: props.convertId, reaction_key: key,
+                conversion_id: props.conversionId, reaction_key: key,
             })
             if (body.success && body.summary) { data.value = { ...data.value, ...body.summary }; notifyEvalUpdated() }
         }

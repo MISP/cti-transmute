@@ -18,7 +18,7 @@
     </div>
     <div class="eval-panel"
          id="eval-panel-{{ convert.id }}"
-         data-convert-id="{{ convert.id }}"
+         data-conversion-id="{{ convert.id }}"
          data-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
          data-owner="{{ 'true' if current_user.is_authenticated and convert.user_id == current_user.id else 'false' }}"
          data-public="{{ 'true' if convert.public else 'false' }}">

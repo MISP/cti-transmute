@@ -90,7 +90,7 @@
                 </thead>
                 <tbody>
                     <tr v-for="c in list" :key="c.id"
-                        :data-convert-id="c.id"
+                        :data-conversion-id="c.id"
                         :class="{ 'row-highlight': c.id === highlight_id }"
                         :style="selected.includes(c.id) && c.id !== highlight_id ? 'background:rgba(37,99,235,0.05)' : ''">
                         <td style="padding-left:12px;">
@@ -173,7 +173,7 @@
                 try {
                     const params = new URLSearchParams({ page: page.value, all: 'true' })
                     if (search.value) params.set('search', search.value)
-                    const res = await fetch(`/convert/get_trash?${params}`)
+                    const res = await fetch(`/conversions/get_trash?${params}`)
                     if (res.ok) {
                         const data = await res.json()
                         list.value        = (data.list || []).map(c => ({ ...c, _action: '' }))
@@ -205,7 +205,7 @@
             async function doAction(c) {
                 if (!c._action) return
                 if (c._action === 'hard_delete' && !confirm(`Permanently delete "${c.name}"? This cannot be undone.`)) return
-                const url = c._action === 'restore' ? '/convert/restore' : '/convert/hard_delete'
+                const url = c._action === 'restore' ? '/conversions/restore' : '/conversions/hard_delete'
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -226,7 +226,7 @@
             async function bulkAction(action) {
                 if (!selected.value.length) return
                 if (action === 'hard_delete' && !confirm(`Permanently delete ${selected.value.length} convert(s)? This cannot be undone.`)) return
-                const res = await fetch('/convert/bulk_action', {
+                const res = await fetch('/conversions/bulk_action', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -251,7 +251,7 @@
                 await load()
                 if (highlight_id.value) {
                     await nextTick()
-                    const el = document.querySelector(`[data-convert-id="${highlight_id.value}"]`)
+                    const el = document.querySelector(`[data-conversion-id="${highlight_id.value}"]`)
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                 }
             })

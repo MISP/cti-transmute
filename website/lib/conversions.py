@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from cti_transmute import transmute
-from website.db_class.db import Convert, SystemLog
+from website.db_class.db import Conversion, SystemLog
 from website.lib.exceptions import PersistenceFailed
 from website.web import db
 from website.web.account import account_core as AccountModel
@@ -30,13 +30,13 @@ def _to_text(value: Any) -> str:
 def submit_conversion(
     user, source: str, target: str, payload: Any, params, *,
     name: str | None = None, description: str | None = None,
-    public: bool = True) -> Convert:
-    """Convert ``payload`` and persist the result as a ``Convert`` row."""
+    public: bool = True) -> Conversion:
+    """Conversion ``payload`` and persist the result as a ``Conversion`` row."""
     # ADR-0009: the converter runs outside the DB transaction.
     result = transmute.convert(source, target, payload, params)
 
     now = datetime.now(timezone.utc)
-    convert = Convert(
+    convert = Conversion(
         user_id=None if user is None else user.id,
         name=name or f"{source}_to_{target}_{now.strftime('%Y%m%d%H%M%S')}".upper(),
         conversion_type=f"{source}_to_{target}".upper(),
@@ -67,7 +67,7 @@ def submit_conversion(
     return convert
 
 
-def _record_creation(convert: Convert, user, now: datetime.datetime) -> None:
+def _record_creation(convert: Conversion, user, now: datetime) -> None:
     """Add the `convert_created` audit log inside the conversion's transaction."""
     db.session.add(
         SystemLog(

@@ -16,28 +16,28 @@
             <a href="/list" class="top-nav-link {% if request.path == '/list' %}active{% endif %}">
                 <i class="fas fa-plug"></i> API Endpoints
             </a>
-            <a href="/convert/history"
-                class="top-nav-link {% if '/convert/history' in request.path %}active{% endif %}">
+            <a href="/conversions/history"
+                class="top-nav-link {% if '/conversions/history' in request.path %}active{% endif %}">
                 <i class="fas fa-book"></i> History
             </a>
 
             <!-- Convert dropdown -->
             <div class="top-nav-dropdown">
                 <button
-                    class="top-nav-link top-nav-dropdown-btn {% if '/convert/' in request.path and 'history' not in request.path %}active{% endif %}">
+                    class="top-nav-link top-nav-dropdown-btn {% if '/conversions/' in request.path and 'history' not in request.path %}active{% endif %}">
                     <i class="fas fa-exchange-alt"></i> Convert
                     <i class="fas fa-chevron-down top-nav-caret"></i>
                 </button>
                 <div class="top-nav-dropdown-menu">
-                    <a href="/convert/misp_to_stix"
-                        class="top-nav-dropdown-item {% if request.path == '/convert/misp_to_stix' %}active{% endif %}">
+                    <a href="/conversions/misp_to_stix"
+                        class="top-nav-dropdown-item {% if request.path == '/conversions/misp_to_stix' %}active{% endif %}">
                         <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin-right:5px;">
                         MISP <span class="convert-arrow">→</span>
                         <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin:0 3px;">
                         STIX
                     </a>
-                    <a href="/convert/stix_to_misp"
-                        class="top-nav-dropdown-item {% if request.path == '/convert/stix_to_misp' %}active{% endif %}">
+                    <a href="/conversions/stix_to_misp"
+                        class="top-nav-dropdown-item {% if request.path == '/conversions/stix_to_misp' %}active{% endif %}">
                         <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin-right:5px;">
                         STIX <span class="convert-arrow">→</span>
                         <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin:0 3px;">

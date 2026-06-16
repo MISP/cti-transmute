@@ -377,18 +377,18 @@
                             }
                             if (relType === 'comment' && related) {
                                 try {
-                                    const r = await fetch(`/convert/get_comment_info?comment_id=${related}`)
+                                    const r = await fetch(`/conversions/get_comment_info?comment_id=${related}`)
                                     if (r.ok) {
                                         const d = await r.json()
-                                        if (d.convert_id) {
+                                        if (d.conversion_id) {
                                             const tabParam = d.is_evaluation ? '?open_tab=eval' : ''
-                                            window.location.href = `/convert/detail/${d.convert_id}${tabParam}#comment-${related}`
+                                            window.location.href = `/conversions/detail/${d.conversion_id}${tabParam}#comment-${related}`
                                             return
                                         }
                                     }
                                 } catch {}
                             }
-                            if (related) window.location.href = '/convert/detail/' + related
+                            if (related) window.location.href = '/conversions/detail/' + related
                         })
 
                         list.appendChild(item)

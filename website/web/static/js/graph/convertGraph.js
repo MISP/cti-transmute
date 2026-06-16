@@ -591,7 +591,7 @@ export function reRenderGraph() {
  * It registers the lazy-render hook so the graph only builds when the tab
  * is first opened.
  *
- * @param {object} convertData  — the object returned by /convert/get_convert
+ * @param {object} convertData  — the object returned by /conversions/get_convert
  */
 export function initConvertGraph(convertData) {
     _convertData = convertData

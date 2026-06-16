@@ -35,7 +35,7 @@
                     {% endif %}
                 </div>
             </div>
-            <a href="{{ url_for('convert.detail', id=convert_obj.id) }}" class="btn btn-outline-secondary btn-sm px-3">
+            <a href="{{ url_for('conversions.detail', id=convert_obj.id) }}" class="btn btn-outline-secondary btn-sm px-3">
                 <i class="fas fa-arrow-left me-1"></i> Back
             </a>
         </div>
@@ -190,7 +190,7 @@
     </div>
 
     <div class="text-center mb-5">
-        <a href="{{ url_for('convert.detail', id=convert_obj.id) }}"
+        <a href="{{ url_for('conversions.detail', id=convert_obj.id) }}"
             class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
             <i class="fas fa-arrow-left me-2"></i> Back
         </a>
@@ -210,7 +210,7 @@
             const history_list = ref([]);
 
             async function getHistory() {
-                const res = await fetch(`/convert/get_new_convert?id={{ convert_obj.id }}`);
+                const res = await fetch(`/conversions/get_new_convert?id={{ convert_obj.id }}`);
                 const data = await res.json();
                 history_list.value = (res.ok && data.history_convert) ? data.history_convert : [];
             }
@@ -229,14 +229,14 @@
 
             async function historyAction(id, action) {
                 const params = new URLSearchParams({ history_id: id, action });
-                const res = await fetch(`/convert/history_action?${params}`);
+                const res = await fetch(`/conversions/history_action?${params}`);
                 const data = await res.json();
                 create_message(data.message, data.toast_class);
                 await getHistory();
             }
 
             function goToDiff(id) {
-                window.location.href = `/convert/difference/${id}`;
+                window.location.href = `/conversions/difference/${id}`;
             }
 
             function formatDate(str) {

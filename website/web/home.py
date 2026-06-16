@@ -54,7 +54,7 @@ def get_current_user() -> jsonify:
 @home_blueprint.route("/get_public_activity")
 def get_public_activity():
     """Public activity feed for the homepage, based on system logs for public converts."""
-    from website.db_class.db import Convert, SystemLog
+    from website.db_class.db import Conversion, SystemLog
 
     PUBLIC_EVENTS = [
         'convert_created', 'eval_like', 'eval_dislike',
@@ -65,14 +65,14 @@ def get_public_activity():
         from website.db_class.db import User
         logs = (
             SystemLog.query
-            .join(Convert, and_(
-                SystemLog.target_id == Convert.id,
+            .join(Conversion, and_(
+                SystemLog.target_id == Conversion.id,
                 SystemLog.target_type == 'convert'
             ))
             .filter(
                 SystemLog.event_type.in_(PUBLIC_EVENTS),
-                Convert.public == True,
-                Convert.is_active == True,
+                Conversion.public,
+                Conversion.is_active,
                 SystemLog.actor_name.isnot(None),
                 or_(
                     SystemLog.event_type != 'convert_visibility_changed',

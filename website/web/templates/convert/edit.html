@@ -30,7 +30,7 @@
                 {{ form.edit(class_="btn btn-primary") }}
             </div>
             <div>
-                <a href="{{ url_for('convert.detail', id=convert_id) }}" class="btn btn-secondary"
+                <a href="{{ url_for('conversions.detail', id=conversion_id) }}" class="btn btn-secondary"
                     title="Back to detail">
                     <i class="fas fa-arrow-left me-1"></i> Back
                 </a>
@@ -46,7 +46,7 @@
     const el = document.getElementById('tag-input-mount-edit');
     if (el) {
         Vue.createApp(TagInput, {
-            convertId: {{ convert_id }},
+            conversionId: {{ conversion_id }},
             canEdit: true,
         }).mount(el);
     }

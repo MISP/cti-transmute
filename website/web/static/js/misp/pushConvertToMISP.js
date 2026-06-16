@@ -1,16 +1,16 @@
 // Modal component for pushing a convert's MISP event to an external MISP instance.
 // Register with: app.component('push-convert-to-misp', PushConvertToMISP)
-// Usage: <push-convert-to-misp ref="mispModal" :convert-id="convert.id" :convert-data="convert">
+// Usage: <push-convert-to-misp ref="mispModal" :conversion-id="convert.id" :convert-data="convert">
 //        Then trigger: $refs.mispModal.open()
 
 const PushConvertToMISP = {
     delimiters: ['[[', ']]'],
     props: {
-        convertId:   { type: Number, required: true },
+        conversionId:   { type: Number, required: true },
         convertData: { type: Object, default: null },
     },
     template: `
-<div :id="'misp-push-modal-' + convertId" class="modal fade" tabindex="-1" aria-hidden="true">
+<div :id="'misp-push-modal-' + conversionId" class="modal fade" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
 
@@ -297,7 +297,7 @@ const PushConvertToMISP = {
 
         // Preview state
         const { computed } = Vue
-        const preview             = ref(null)   // full response from /convert/misp_push_preview/<id>
+        const preview             = ref(null)   // full response from /conversions/misp_push_preview/<id>
         const previewLoading      = ref(false)
         const previewOpen         = ref(true)   // expanded by default when entering step 2
         const jsonOpen            = ref(false)
@@ -337,7 +337,7 @@ const PushConvertToMISP = {
             jsonTab.value      = 'object'
             step.value         = 'connect'
             parseMispEvent()
-            const el = document.getElementById('misp-push-modal-' + props.convertId)
+            const el = document.getElementById('misp-push-modal-' + props.conversionId)
             if (el) new bootstrap.Modal(el).show()
         }
 
@@ -374,7 +374,7 @@ const PushConvertToMISP = {
             previewLoading.value = true
             preview.value        = null
             try {
-                const res  = await fetch(`/convert/misp_push_preview/${props.convertId}`, {
+                const res  = await fetch(`/conversions/misp_push_preview/${props.conversionId}`, {
                     headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' },
                 })
                 const body = await res.json()
@@ -410,7 +410,7 @@ const PushConvertToMISP = {
             connecting.value   = true
             connectError.value = ''
             try {
-                const res  = await fetch('/convert/misp_test_connection', {
+                const res  = await fetch('/conversions/misp_test_connection', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -480,14 +480,14 @@ const PushConvertToMISP = {
             pushError.value   = ''
             pushSuccess.value = ''
             try {
-                const res  = await fetch('/convert/push_to_misp', {
+                const res  = await fetch('/conversions/push_to_misp', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
                     },
                     body: JSON.stringify({
-                        convert_id: props.convertId,
+                        conversion_id: props.conversionId,
                         misp_url:   mispUrl.value,
                         api_key:    apiKey.value,
                         tags:       selectedTags.value.map(t => t.name),

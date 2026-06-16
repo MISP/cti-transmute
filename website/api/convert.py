@@ -129,7 +129,7 @@ misp_to_stix_parser.add_argument(
 
 
 @convert_ns.route('/misp_to_stix')
-@convert_ns.doc(description='Convert MISP data collection to STIX format.')
+@convert_ns.doc(description='Conversion MISP data collection to STIX format.')
 class MISPtoSTIX(MispStixConverter):
     @convert_ns.expect(misp_to_stix_parser)
     def post(self):
@@ -188,7 +188,7 @@ stix_to_misp_parser.add_argument(
 )
 stix_to_misp_parser.add_argument(
     'single_event', action='store_true', location='args',
-    help='Convert STIX data to a single MISP event in case there are multiple reports/groupings.'
+    help='Conversion STIX data to a single MISP event in case there are multiple reports/groupings.'
 )
 stix_to_misp_parser.add_argument(
     'producer', type=str, help='Producer of the STIX data', location='args'
@@ -200,7 +200,7 @@ stix_to_misp_parser.add_argument(
 
 
 @convert_ns.route('/stix_to_misp')
-@convert_ns.doc(description='Convert STIX data collection to MISP format.')
+@convert_ns.doc(description='Conversion STIX data collection to MISP format.')
 class STIXtoMISP(MispStixConverter):
     @convert_ns.expect(stix_to_misp_parser)
     def post(self):

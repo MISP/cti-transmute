@@ -188,7 +188,7 @@
       function goToLog(l) {
         const rid = l.related_id || l.target_id
         if (rid && (l.related_type === 'convert' || l.target_type === 'convert')) {
-          window.location.href = '/convert/detail/' + rid
+          window.location.href = '/conversions/detail/' + rid
         }
       }
 

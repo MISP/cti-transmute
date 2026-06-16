@@ -23,7 +23,7 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-end mt-2 cti-dropdown-menu">
                 <li>
-                    <a class="dropdown-item cti-dropdown-item" href="/convert/misp_to_stix">
+                    <a class="dropdown-item cti-dropdown-item" href="/conversions/misp_to_stix">
                         <div class="cti-convert-row">
                             <span class="cti-badge cti-badge-misp">MISP</span>
                             <i class="fas fa-arrow-right cti-arrow"></i>
@@ -34,7 +34,7 @@
                 </li>
                 <li><hr class="cti-divider"></li>
                 <li>
-                    <a class="dropdown-item cti-dropdown-item" href="/convert/stix_to_misp">
+                    <a class="dropdown-item cti-dropdown-item" href="/conversions/stix_to_misp">
                         <div class="cti-convert-row">
                             <span class="cti-badge cti-badge-stix">STIX</span>
                             <i class="fas fa-arrow-right cti-arrow"></i>
@@ -68,7 +68,7 @@
                     <i class="fas fa-clock"></i> Recent Public Converts
                 </span>
                 <div class="d-flex align-items-center gap-3">
-                    <a href="{{ url_for('convert.history') }}" class="home-panel-link">
+                    <a href="{{ url_for('conversions.history') }}" class="home-panel-link">
                         View all <i class="fas fa-arrow-right" style="font-size:0.55rem;"></i>
                     </a>
                 </div>
@@ -86,7 +86,7 @@
                  @mouseleave="pauseAuto = false">
                 <div class="home-carousel-track" id="recent-track">
                     <a v-for="item in recent_list" :key="item.id"
-                       :href="'/convert/detail/' + item.id"
+                       :href="'/conversions/detail/' + item.id"
                        class="home-recent-card">
                         <div class="home-recent-card-top">
                             <template v-if="item.conversion_type === 'STIX_TO_MISP'">
@@ -150,7 +150,7 @@
         <div class="home-section-label reveal-up"><i class="fas fa-plug me-1"></i> API Endpoints</div>
         <p class="home-section-desc reveal-up reveal-d1">Click a card to navigate, or call the endpoints directly via the REST API.</p>
         <div class="home-grid reveal-stagger">
-            <a href="/convert/misp_to_stix" class="home-card">
+            <a href="/conversions/misp_to_stix" class="home-card">
                 <div class="home-card-icon home-card-icon--blue">
                     <i class="fas fa-arrow-right-arrow-left"></i>
                 </div>
@@ -163,7 +163,7 @@
                 </div>
                 <div class="home-card-arrow"><i class="fas fa-chevron-right"></i></div>
             </a>
-            <a href="/convert/stix_to_misp" class="home-card">
+            <a href="/conversions/stix_to_misp" class="home-card">
                 <div class="home-card-icon home-card-icon--indigo">
                     <i class="fas fa-arrow-right-arrow-left fa-flip-horizontal"></i>
                 </div>
@@ -220,7 +220,7 @@
                                 <a v-if="item.actor_id" :href="'/account/public/' + item.actor_id" class="activity-actor activity-actor-link">[[ item.actor_name ]]</a>
                                 <span v-else class="activity-actor">[[ item.actor_name ]]</span>
                                 <span class="activity-verb">[[ eventVerb(item.event_type) ]]</span>
-                                <a :href="'/convert/detail/' + item.target_id"
+                                <a :href="'/conversions/detail/' + item.target_id"
                                    class="activity-target" :title="item.target_name">
                                     [[ item.target_name ]]
                                 </a>
@@ -366,7 +366,7 @@
 
             async function fetchRecent() {
                 try {
-                    const res  = await fetch('/convert/get_convert_page_history?page=1&sort_order=desc');
+                    const res  = await fetch('/conversions/get_convert_page_history?page=1&sort_order=desc');
                     const data = await res.json();
                     if (res.ok) recent_list.value = (data.list || []).slice(0, 10);
                 } catch (e) { console.error(e); }
@@ -379,7 +379,7 @@
 
             async function fetchMostFavorited() {
                 try {
-                    const res  = await fetch('/convert/most_favorited?limit=8');
+                    const res  = await fetch('/conversions/most_favorited?limit=8');
                     const data = await res.json();
                     if (data.success) fav_list.value = data.list || [];
                 } catch (e) { console.error(e); }

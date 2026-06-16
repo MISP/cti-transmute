@@ -191,7 +191,7 @@
         </div>
 
         <div class="text-center mb-5">
-            <a href="{{ url_for('convert.detail', id=convert_obj.id) }}"
+            <a href="{{ url_for('conversions.detail', id=convert_obj.id) }}"
                 class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
                 <i class="fas fa-arrow-left me-2"></i> Back
             </a>
@@ -236,7 +236,7 @@
 
             async function fetchConvert() {
                 const params = new URLSearchParams({ history_id });
-                const res = await fetch(`/convert/get_history_details?${params}`);
+                const res = await fetch(`/conversions/get_history_details?${params}`);
                 const data = await res.json();
                 if (data.success) historyObj.value = data.history;
             }
@@ -437,10 +437,10 @@
 
             async function historyAction(id, action) {
                 const params = new URLSearchParams({ history_id: id, action });
-                const res = await fetch(`/convert/history_action?${params}`);
+                const res = await fetch(`/conversions/history_action?${params}`);
                 const data = await res.json();
                 if (data.success) {
-                    window.location.href = `/convert/refresh/${"{{convert_obj.uuid}}"}`;
+                    window.location.href = `/conversions/refresh/${"{{convert_obj.uuid}}"}`;
                 } else {
                     create_message(data.message, data.toast_class);
                 }

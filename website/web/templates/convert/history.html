@@ -352,7 +352,7 @@
                          class="hcd-section">
                         <div class="hcd-label"><i class="fas fa-chart-bar me-1"></i>Evaluation</div>
                         <evaluation-panel
-                            :convert-id="item.id"
+                            :conversion-id="item.id"
                             :is-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
                             :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && item.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
                             :is-public="item.public">
@@ -555,12 +555,12 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     snippets.value[id] = undefined  // mark as loading
 
                     const params = new URLSearchParams({
-                        convert_id: id,
+                        conversion_id: id,
                         q: searchQuery.value,
                         scope: search_scope.value === 'all' ? 'content' : search_scope.value,
                     })
                     try {
-                        const res = await fetch('/convert/search_in_content?' + params.toString())
+                        const res = await fetch('/conversions/search_in_content?' + params.toString())
                         if (res.ok) {
                             const data = await res.json()
                             snippets.value = { ...snippets.value, [id]: data.results || [] }
@@ -593,7 +593,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     vis_filter:     vis_filter.value || '',
                     favorites_only: favorites_only.value,
                 })
-                const res = await fetch('/convert/get_convert_page_history?' + params.toString())
+                const res = await fetch('/conversions/get_convert_page_history?' + params.toString())
                 if (res.ok) {
                     const data = await res.json()
                     convert_history.value = data.list
@@ -616,7 +616,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
 
             async function deleteItem(id) {
                 const params = new URLSearchParams({ id })
-                const res = await fetch('/convert/delete_item?' + params.toString())
+                const res = await fetch('/conversions/delete_item?' + params.toString())
                 if (res.status === 200) {
                     fetchConvertHistory(current_page.value)
                     const el = document.getElementById('del_modal_' + id)
@@ -635,7 +635,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             }
             fetchCurrentUser()
 
-            function seeDetails(id) { window.location.href = '/convert/detail/' + id }
+            function seeDetails(id) { window.location.href = '/conversions/detail/' + id }
 
             function resetFilters() {
                 exact_match.value      = false
@@ -659,13 +659,13 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             }
 
             async function toggleFavorite(item) {
-                const res = await fetch('/convert/favorite/toggle', {
+                const res = await fetch('/conversions/favorite/toggle', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
                     },
-                    body: JSON.stringify({ convert_id: item.id }),
+                    body: JSON.stringify({ conversion_id: item.id }),
                 })
                 if (res.ok) {
                     const data = await res.json()

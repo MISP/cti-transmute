@@ -16,7 +16,7 @@
                 Your deleted converts. Restore them or delete them permanently.
             </p>
         </div>
-        <a href="/convert/history" class="btn btn-sm back-btn"
+        <a href="/conversions/history" class="btn btn-sm back-btn"
             style="background:var(--surface); border:1px solid var(--border); color:var(--text-2);">
             <i class="fas fa-arrow-left me-1"></i> Back to History
         </a>
@@ -163,7 +163,7 @@
                 try {
                     const params = new URLSearchParams({ page: page.value })
                     if (search.value) params.set('search', search.value)
-                    const res = await fetch(`/convert/get_trash?${params}`)
+                    const res = await fetch(`/conversions/get_trash?${params}`)
                     if (res.ok) {
                         const data = await res.json()
                         list.value       = (data.list || []).map(c => ({ ...c, _action: '' }))
@@ -195,7 +195,7 @@
             async function doAction(c) {
                 if (!c._action) return
                 if (c._action === 'hard_delete' && !confirm(`Permanently delete "${c.name}"? This cannot be undone.`)) return
-                const url = c._action === 'restore' ? '/convert/restore' : '/convert/hard_delete'
+                const url = c._action === 'restore' ? '/conversions/restore' : '/conversions/hard_delete'
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -216,7 +216,7 @@
             async function bulkAction(action) {
                 if (!selected.value.length) return
                 if (action === 'hard_delete' && !confirm(`Permanently delete ${selected.value.length} convert(s)? This cannot be undone.`)) return
-                const res = await fetch('/convert/bulk_action', {
+                const res = await fetch('/conversions/bulk_action', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

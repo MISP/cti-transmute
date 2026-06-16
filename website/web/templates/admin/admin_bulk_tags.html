@@ -504,7 +504,7 @@ createApp({
             const r = await fetch('/tags/admin/bulk_converts/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids }),
+                body: JSON.stringify({ conversion_ids: ids }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);
@@ -515,7 +515,7 @@ createApp({
             const r = await fetch('/tags/admin/bulk_converts/assign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids, tag_ids: tagIds }),
+                body: JSON.stringify({ conversion_ids: ids, tag_ids: tagIds }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);
@@ -527,7 +527,7 @@ createApp({
             const r = await fetch('/tags/admin/bulk_converts/remove_tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids, tag_ids: tagIds }),
+                body: JSON.stringify({ conversion_ids: ids, tag_ids: tagIds }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);
@@ -537,7 +537,7 @@ createApp({
             const r = await fetch('/tags/admin/bulk_converts/clear_tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids }),
+                body: JSON.stringify({ conversion_ids: ids }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);

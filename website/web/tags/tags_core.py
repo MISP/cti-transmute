@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sqlalchemy import case, func, or_
 
-from website.db_class.db import Convert, ConvertTagAssociation, Tag
+from website.db_class.db import Conversion, ConversionTagAssociation, Tag
 from website.web import db
 
 VENDOR_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / "misp-taxonomies"
@@ -396,7 +396,7 @@ def import_galaxies(admin_user_id, vendor_path=None, batch_size=500):
 
 
 ###################################
-#   Convert tag associations      #
+#   Conversion tag associations   #
 ###################################
 
 _SOURCE_MAP = {
@@ -439,43 +439,43 @@ def get_available_tags(user_id, search=None, source=None, is_evaluation=False, l
     return query.order_by(*order).limit(limit).all()
 
 
-def get_convert_tags(convert_id, source_type=None):
+def get_convert_tags(conversion_id, source_type=None):
     """Return tag associations for a convert. Optionally filter by source_type ('user'|'json')."""
-    q = ConvertTagAssociation.query.filter_by(convert_id=convert_id)
+    q = ConversionTagAssociation.query.filter_by(conversion_id=conversion_id)
     if source_type:
         q = q.filter_by(source_type=source_type)
     return q.all()
 
 
 def get_convert_tags_batch(convert_ids):
-    """Return {convert_id: [assoc, ...]} for a list of convert IDs."""
+    """Return {conversion_id: [assoc, ...]} for a list of convert IDs."""
     if not convert_ids:
         return {}
-    assocs = ConvertTagAssociation.query.filter(
-        ConvertTagAssociation.convert_id.in_(convert_ids)
+    assocs = ConversionTagAssociation.query.filter(
+        ConversionTagAssociation.conversion_id.in_(convert_ids)
     ).all()
     result = {cid: [] for cid in convert_ids}
     for a in assocs:
-        result[a.convert_id].append(a)
+        result[a.conversion_id].append(a)
     return result
 
 
 def get_convert_ids(search=None, conv_type=None):
-    query = Convert.query.with_entities(Convert.id)
+    query = Conversion.query.with_entities(Conversion.id)
     if conv_type and conv_type != "ALL":
-        query = query.filter(Convert.conversion_type == conv_type)
+        query = query.filter(Conversion.conversion_type == conv_type)
     if search:
-        query = query.filter(Convert.name.ilike(f"%{search}%"))
+        query = query.filter(Conversion.name.ilike(f"%{search}%"))
     return [row.id for row in query.all()]
 
 
 def get_converts_page(page, per_page=50, search=None, conv_type=None):
-    query = Convert.query
+    query = Conversion.query
     if conv_type and conv_type != "ALL":
-        query = query.filter(Convert.conversion_type == conv_type)
+        query = query.filter(Conversion.conversion_type == conv_type)
     if search:
-        query = query.filter(Convert.name.ilike(f"%{search}%"))
-    return query.order_by(Convert.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        query = query.filter(Conversion.name.ilike(f"%{search}%"))
+    return query.order_by(Conversion.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
 
 
 def find_tags_by_names(user_id, names: list[str]) -> list:
@@ -510,14 +510,14 @@ def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
     return [t.id for t in tags if t.name.lower() in lower_names]
 
 
-def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int, source_type: str = "user") -> int:
+def merge_convert_tags(conversion_id: int, tag_ids: list, user_id: int, source_type: str = "user") -> int:
     """Add tags to a convert without removing existing ones. Returns count of newly added tags.
     source_type: 'user' (default) for manually added tags, 'json' for admin-scan-detected tags.
     Deduplication is scoped to the same source_type."""
     existing = {
         a.tag_id
-        for a in ConvertTagAssociation.query.filter_by(
-            convert_id=convert_id, source_type=source_type
+        for a in ConversionTagAssociation.query.filter_by(
+            conversion_id=conversion_id, source_type=source_type
         ).all()
     }
     now = datetime.now(timezone.utc)
@@ -530,9 +530,9 @@ def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int, source_type
         tag = Tag.query.get(tid)
         if not tag or not tag.is_active:
             continue
-        db.session.add(ConvertTagAssociation(
+        db.session.add(ConversionTagAssociation(
             uuid=str(uuid.uuid4()),
-            convert_id=convert_id,
+            conversion_id=conversion_id,
             tag_id=tid,
             user_id=user_id,
             added_at=now,
@@ -547,11 +547,11 @@ def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int, source_type
     return count
 
 
-def remove_convert_tags(convert_id: int, tag_ids: list) -> int:
+def remove_convert_tags(conversion_id: int, tag_ids: list) -> int:
     """Remove specific tags from a convert. Returns count removed."""
-    q = ConvertTagAssociation.query.filter(
-        ConvertTagAssociation.convert_id == convert_id,
-        ConvertTagAssociation.tag_id.in_(tag_ids),
+    q = ConversionTagAssociation.query.filter(
+        ConversionTagAssociation.conversion_id == conversion_id,
+        ConversionTagAssociation.tag_id.in_(tag_ids),
     )
     count = q.count()
     q.delete(synchronize_session=False)
@@ -563,9 +563,9 @@ def remove_convert_tags(convert_id: int, tag_ids: list) -> int:
     return count
 
 
-def clear_convert_tags(convert_id: int) -> int:
+def clear_convert_tags(conversion_id: int) -> int:
     """Remove ALL tags from a convert. Returns count removed."""
-    q = ConvertTagAssociation.query.filter_by(convert_id=convert_id)
+    q = ConversionTagAssociation.query.filter_by(conversion_id=conversion_id)
     count = q.count()
     q.delete(synchronize_session=False)
     try:
@@ -581,9 +581,9 @@ def get_all_tags_usage():
     from sqlalchemy import func
 
     rows = (
-        db.session.query(ConvertTagAssociation.tag_id, func.count(ConvertTagAssociation.id))
-        .group_by(ConvertTagAssociation.tag_id)
-        .having(func.count(ConvertTagAssociation.id) > 0)
+        db.session.query(ConversionTagAssociation.tag_id, func.count(ConversionTagAssociation.id))
+        .group_by(ConversionTagAssociation.tag_id)
+        .having(func.count(ConversionTagAssociation.id) > 0)
         .all()
     )
     if not rows:
@@ -612,11 +612,11 @@ def get_all_tags_usage():
     ]
 
 
-def save_convert_tags(convert_id, tag_ids, user_id):
+def save_convert_tags(conversion_id, tag_ids, user_id):
     """Replace user-added tag associations for a convert (idempotent).
     JSON-sourced tags (source_type='json') are never touched by this function."""
-    ConvertTagAssociation.query.filter_by(
-        convert_id=convert_id, source_type="user"
+    ConversionTagAssociation.query.filter_by(
+        conversion_id=conversion_id, source_type="user"
     ).delete(synchronize_session=False)
     now = datetime.now(timezone.utc)
     seen = set()
@@ -629,9 +629,9 @@ def save_convert_tags(convert_id, tag_ids, user_id):
             continue
         if tag.visibility != 'public' and tag.created_by != user_id:
             continue
-        db.session.add(ConvertTagAssociation(
+        db.session.add(ConversionTagAssociation(
             uuid=str(uuid.uuid4()),
-            convert_id=convert_id,
+            conversion_id=conversion_id,
             tag_id=tid,
             user_id=user_id,
             added_at=now,

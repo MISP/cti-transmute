@@ -88,11 +88,11 @@
                                 <i class="fas fa-share-nodes me-1"></i> Share
                             </button>
                         </template>
-                        <a href="{{ url_for('convert.refresh', uuid=convert.uuid) }}"
+                        <a href="{{ url_for('conversions.refresh', uuid=convert.uuid) }}"
                             class="btn btn-sm btn-action" title="Refresh">
                             <i class="fas fa-sync-alt me-1"></i> Refresh
                         </a>
-                        <a :href="'/convert/edit/'+convert.id" class="btn btn-sm btn-outline-secondary" title="Edit">
+                        <a :href="'/conversions/edit/'+convert.id" class="btn btn-sm btn-outline-secondary" title="Edit">
                             <i class="fas fa-edit me-1"></i> Edit
                         </a>
                         <button class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal"
@@ -123,7 +123,7 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/convert/download/' + convert.id + '/input'">
+                                       :href="'/conversions/download/' + convert.id + '/input'">
                                         <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
                                             src="/static/image/misp.svg" width="13" height="13"
                                             style="vertical-align:middle; margin-right:6px;">
@@ -134,7 +134,7 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/convert/download/' + convert.id + '/output'">
+                                       :href="'/conversions/download/' + convert.id + '/output'">
                                         <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
                                             src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">  
                                         <img v-else src="/static/image/misp.svg" width="13" height="13"
@@ -145,7 +145,7 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/convert/download/' + convert.id + '/misp-push'">
+                                       :href="'/conversions/download/' + convert.id + '/misp-push'">
                                         <img src="/static/image/misp.svg" width="13" height="13"
                                             style="vertical-align:middle; margin-right:6px;">
                                         MISP push payload
@@ -240,7 +240,7 @@
         </div>
 
         <tag-input
-            :convert-id="{{ convert.id }}"
+            :conversion-id="{{ convert.id }}"
             :can-edit="false"
             class="mb-4">
         </tag-input>
@@ -625,23 +625,23 @@
 
                 <!-- ── Sunburst tab ──────────────────────────────── -->
                 <div class="tab-pane fade" :id="'sunburst-pane-'+convert.id" role="tabpanel">
-                    <convert-sunburst :convert-data="convert"></convert-sunburst>
+                    <convert-sunburst :convert-data="convert"></conversions-sunburst>
                 </div>
 
                 <!-- ── Table tab ─────────────────────────────────── -->
                 <div class="tab-pane fade" :id="'table-pane-'+convert.id" role="tabpanel">
-                    <convert-table :convert-data="convert"></convert-table>
+                    <convert-table :convert-data="convert"></conversions-table>
                 </div>
 
                 <!-- ── Evaluation tab ────────────────────────────── -->
                 <div class="tab-pane fade" :id="'eval-pane-'+convert.id" role="tabpanel">
                     <evaluation-panel
-                        :convert-id="{{ convert.id }}"
+                        :conversion-id="{{ convert.id }}"
                         :is-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
                         :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && convert.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
                         :is-public="convert.public">
                     </evaluation-panel>
-                    <evaluation-charts :convert-id="{{ convert.id }}"></evaluation-charts>
+                    <evaluation-charts :conversion-id="{{ convert.id }}"></evaluation-charts>
 
                     <!-- ── Export evaluation report ─────────────────── -->
                     <div class="d-flex align-items-center gap-2 mt-3 mb-1 px-1" style="flex-wrap:wrap;">
@@ -778,7 +778,7 @@
         {% endif %}
 
         <div class="text-center mb-5">
-            <a href="{{ url_for('convert.history') }}"
+            <a href="{{ url_for('conversions.history') }}"
                 class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
                 <i class="fas fa-arrow-left me-2"></i> Back to History
             </a>
@@ -821,9 +821,9 @@
                     <label class="form-label">Share link</label>
                     <div class="input-group">
                         <input type="text" class="form-control" readonly
-                            :value="`https://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`">
+                            :value="`https://cti-transmute.org/conversions/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`">
                         <button class="btn btn-primary" type="button"
-                            @click="copyText('https://cti-transmute.org/convert/share?uuid='+convert.uuid+'&share_key='+share_key, $event)">
+                            @click="copyText('https://cti-transmute.org/conversions/share?uuid='+convert.uuid+'&share_key='+share_key, $event)">
                             <i class="fas fa-copy me-1"></i> Copy
                         </button>
                     </div>
@@ -897,12 +897,12 @@
         </div>
     </div>
 
-    <div id="convert_id" data-convert-id="{{ convert.id }}"></div>
+    <div id="conversion_id" data-conversion-id="{{ convert.id }}"></div>
 
     <!-- MISP push modal (component mounted by Vue) -->
     <push-convert-to-misp
         ref="mispModal"
-        :convert-id="{{ convert.id }}"
+        :conversion-id="{{ convert.id }}"
         :convert-data="convert">
     </push-convert-to-misp>
 </div>
@@ -923,7 +923,7 @@
     window.showGraphSide = showGraphSide;
     window.openGraphConfigModal = openGraphConfigModal;
 
-    const convert_id = document.getElementById('convert_id').dataset.convertId;
+    const conversion_id = document.getElementById('conversion_id').dataset.conversionId;
     const IS_AUTH = "{{ 'true' if current_user.is_authenticated else 'false' }}";
     const CURRENT_USER_ID = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
     const IS_ADMIN = "{{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}";
@@ -1144,7 +1144,7 @@
 
             
             async function getConvert() {
-                const res = await fetch(`/convert/get_convert?id=${convert_id}`)
+                const res = await fetch(`/conversions/get_convert?id=${conversion_id}`)
                 if (res.ok) {
                     const data = await res.json()
                     const c = data.convert
@@ -1191,18 +1191,18 @@
                 const isAdmin = current_user_is_admin?.value || false
                 const convertUserId = convert?.value?.user_id
                 if (!isAdmin && currentUserId !== convertUserId) return
-                if (!convert_id) return
+                if (!conversion_id) return
                 try {
-                    const res = await fetch(`/convert/get_share_key?id=${convert_id}`)
+                    const res = await fetch(`/conversions/get_share_key?id=${conversion_id}`)
                     if (!res.ok) return
                     const data = await res.json()
                     share_key.value = data.share_key
                 } catch {}
             }
 
-            async function regenerateShareKey(convertId) {
+            async function regenerateShareKey(conversionId) {
                 try {
-                    const res = await fetch(`/convert/regenerate_share_key?id=${convertId}`)
+                    const res = await fetch(`/conversions/regenerate_share_key?id=${conversionId}`)
                     const data = await res.json()
                     if (res.ok) share_key.value = data.share_key
                     create_message(data.message, data.toast_class)
@@ -1229,27 +1229,27 @@
             }
 
             async function doTogglePublic() {
-                const res = await fetch(`/convert/edit_public?id=${convert_id}`)
+                const res = await fetch(`/conversions/edit_public?id=${conversion_id}`)
                 const data = await res.json()
                 if (res.ok) { convert.value.public = data.convert_public; getConvert() }
                 create_message(data.message, data.toast_class)
             }
 
             async function deleteConvert() {
-                const res = await fetch('/convert/delete_item', {
+                const res = await fetch('/conversions/delete_item', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
                     },
-                    body: JSON.stringify({ id: convert_id })
+                    body: JSON.stringify({ id: conversion_id })
                 })
                 const data = await res.json()
                 if (res.status === 200) {
-                    const el = document.getElementById('delete_modal_' + convert_id)
+                    const el = document.getElementById('delete_modal_' + conversion_id)
                     bootstrap.Modal.getInstance(el)?.hide()
                     create_message(data.message, data.toast_class)
-                    setTimeout(() => { window.location.href = '/convert/history' }, 1200)
+                    setTimeout(() => { window.location.href = '/conversions/history' }, 1200)
                 } else if (res.status === 403) {
                     window.location.href = '/account/login'
                 } else {
@@ -1259,7 +1259,7 @@
 
             async function getHistory() {
                 try {
-                    const res = await fetch(`/convert/get_history?id=${convert_id}`)
+                    const res = await fetch(`/conversions/get_history?id=${conversion_id}`)
                     const data = await res.json()
                     history_list.value = res.ok ? data.history_convert : []
                 } catch {
@@ -1267,7 +1267,7 @@
                 }
             }
 
-            function goToDiff(id) { window.location.href = `/convert/difference/${id}` }
+            function goToDiff(id) { window.location.href = `/conversions/difference/${id}` }
 
             function formatDate(str) {
                 if (!str) return 'N/A'
@@ -1324,7 +1324,7 @@
                 if (comments_loaded.value) return
                 comments_loading.value = true
                 try {
-                    const res = await fetch(`/convert/get_comments?convert_id=${convert_id}`)
+                    const res = await fetch(`/conversions/get_comments?conversion_id=${conversion_id}`)
                     if (res.ok) {
                         const data = await res.json()
                         comments.value = data.comments || []
@@ -1336,7 +1336,7 @@
             }
 
             async function refreshComments() {
-                const res = await fetch(`/convert/get_comments?convert_id=${convert_id}`)
+                const res = await fetch(`/conversions/get_comments?conversion_id=${conversion_id}`)
                 if (res.ok) {
                     const data = await res.json()
                     comments.value = data.comments || []
@@ -1349,11 +1349,11 @@
                 const isPriv  = isEval ? new_eval_private.value : new_discuss_private.value
                 const content = text.trim()
                 if (!content) return
-                const res = await fetch('/convert/comment', {
+                const res = await fetch('/conversions/comment', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
                     body: JSON.stringify({
-                        convert_id:    parseInt(convert_id),
+                        conversion_id:    parseInt(conversion_id),
                         content,
                         is_private:    isPriv,
                         is_evaluation: isEval,
@@ -1372,10 +1372,10 @@
             async function postReply(parent_id) {
                 const content = (reply_texts.value[parent_id] || '').trim()
                 if (!content) return
-                const res = await fetch('/convert/comment', {
+                const res = await fetch('/conversions/comment', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
-                    body: JSON.stringify({convert_id: parseInt(convert_id), content, parent_id})
+                    body: JSON.stringify({conversion_id: parseInt(conversion_id), content, parent_id})
                 })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
@@ -1387,14 +1387,14 @@
             }
 
             async function deleteComment(comment_id) {
-                const res = await fetch(`/convert/delete_comment?comment_id=${comment_id}`)
+                const res = await fetch(`/conversions/delete_comment?comment_id=${comment_id}`)
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (data.success) await refreshComments()
             }
 
             async function toggleCommentPrivate(comment_id) {
-                const res = await fetch(`/convert/toggle_comment_private?comment_id=${comment_id}`)
+                const res = await fetch(`/conversions/toggle_comment_private?comment_id=${comment_id}`)
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (data.success) await refreshComments()
@@ -1416,7 +1416,7 @@
             async function submitEdit(comment_id) {
                 const content = edit_comment_text.value.trim()
                 if (!content) return
-                const res = await fetch('/convert/edit_comment', {
+                const res = await fetch('/conversions/edit_comment', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
                     body: JSON.stringify({ comment_id, content }),
@@ -1452,10 +1452,10 @@
             // ── Report functions ─────────────────────────────
 
             async function submitReport() {
-                const res = await fetch('/convert/report', {
+                const res = await fetch('/conversions/report', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
-                    body: JSON.stringify({convert_id: parseInt(convert_id), reason: report_reason.value, description: report_description.value})
+                    body: JSON.stringify({conversion_id: parseInt(conversion_id), reason: report_reason.value, description: report_description.value})
                 })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
@@ -1475,13 +1475,13 @@
             }, { immediate: true })
 
             async function toggleFavorite() {
-                const res = await fetch('/convert/favorite/toggle', {
+                const res = await fetch('/conversions/favorite/toggle', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
                     },
-                    body: JSON.stringify({ convert_id: parseInt(convert_id) }),
+                    body: JSON.stringify({ conversion_id: parseInt(conversion_id) }),
                 })
                 if (res.ok) {
                     const data = await res.json()
@@ -1495,7 +1495,7 @@
 
             async function loadFavoriteStatus() {
                 try {
-                    const res = await fetch(`/convert/favorite/status/${convert_id}`)
+                    const res = await fetch(`/conversions/favorite/status/${conversion_id}`)
                     if (res.ok) {
                         const data = await res.json()
                         is_favorite.value = data.is_favorite
@@ -1508,7 +1508,7 @@
                 getConvert()
                 getHistory()
                 loadFavoriteStatus()
-                fetch(`/convert/get_comments?convert_id=${convert_id}`)
+                fetch(`/conversions/get_comments?conversion_id=${conversion_id}`)
                     .then(r => r.json())
                     .then(d => {
                         if (d.success) {

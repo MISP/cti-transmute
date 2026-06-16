@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 
 from flask_login import current_user
 from sqlalchemy import or_
-from website.db_class.db import Comment, Convert, Notification, SystemLog, User, UserFollow
+
+from website.db_class.db import Comment, Conversion, Notification, SystemLog, User, UserFollow
 from website.web.utils import generate_api_key
 
 from .. import db
@@ -129,7 +130,7 @@ def get_all_convert_own_by_user_id(id):
     convert_list = []
     user = get_user(id)
     if user:
-        converts = Convert.query.filter_by(user_id=id).all()
+        converts = Conversion.query.filter_by(user_id=id).all()
 
         for convert in converts:
             convert.user_id = current_user.id
@@ -411,12 +412,12 @@ def get_user_comments(user_id, page=1, search=None, is_admin=False):
     else:
         query = (
             Comment.query
-            .join(Convert, Comment.convert_id == Convert.id)
+            .join(Conversion, Comment.conversion_id == Conversion.id)
             .filter(
                 Comment.user_id == user_id,
                 Comment.is_deleted,
-                Convert.is_active,
-                or_(Convert.public, Convert.user_id == user_id),
+                Conversion.is_active,
+                or_(Conversion.public, Conversion.user_id == user_id),
             )
         )
     if search:

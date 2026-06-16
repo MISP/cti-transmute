@@ -61,7 +61,7 @@ const OverviewApp = {
 
         openConvert(id) {
             sessionStorage.setItem('open_eval_tab', String(id))
-            window.location.href = '/convert/detail/' + id
+            window.location.href = '/conversions/detail/' + id
         },
 
         async fetchGlobalStats() {

@@ -116,7 +116,7 @@ def _trim() -> None:
 
 def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.db_class.db import Convert
+        from website.db_class.db import Conversion
         from website.web.tags.tags_core import find_tags_by_names, merge_convert_tags
         from website.web.utils import extract_tag_names_from_misp_json
 
@@ -125,7 +125,7 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
 
         for i, cid in enumerate(convert_ids):
             try:
-                conv = Convert.query.get(cid)
+                conv = Conversion.query.get(cid)
                 if not conv:
                     skipped += 1
                     update(jid, progress=i + 1, skipped=skipped)

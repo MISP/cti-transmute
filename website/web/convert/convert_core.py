@@ -19,7 +19,7 @@ from website.web.utils import generate_api_key
 
 def create_convert(user_id, input_text, output_text, convert_choice, description, name, public):
     """
-    Create a new Convert entry from API response and save history.
+    Create a new Conversion entry from API response and save history.
     input_text: original file content
     output_text: converted content
     """
@@ -36,12 +36,12 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
         if len(final_name) > MAX_NAME_LEN:
             final_name = final_name[:MAX_NAME_LEN]
 
-        existing = Convert.query.filter_by(name=final_name).first()
+        existing = Conversion.query.filter_by(name=final_name).first()
         if existing:
             suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
             final_name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
 
-        convert = Convert(
+        convert = Conversion(
             user_id=user_id,
             name=final_name,
             conversion_type=convert_choice,
@@ -76,12 +76,9 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
         return None
 
 
-
-
-
-def delete_convert(convert_id):
-    """Soft-delete a Convert entry (sets is_active=False)."""
-    convert = Convert.query.get(convert_id)
+def delete_convert(conversion_id):
+    """Soft-delete a Conversion entry (sets is_active=False)."""
+    convert = Conversion.query.get(conversion_id)
     if not convert:
         return False
     convert.is_active = False
@@ -90,9 +87,9 @@ def delete_convert(convert_id):
     return True
 
 
-def restore_convert(convert_id):
+def restore_convert(conversion_id):
     """Restore a soft-deleted convert."""
-    convert = Convert.query.get(convert_id)
+    convert = Conversion.query.get(conversion_id)
     if not convert or convert.is_active:
         return False
 
@@ -102,9 +99,9 @@ def restore_convert(convert_id):
     return True
 
 
-def hard_delete_convert(convert_id):
+def hard_delete_convert(conversion_id):
     """Permanently remove a convert from the database."""
-    convert = Convert.query.get(convert_id)
+    convert = Conversion.query.get(conversion_id)
     if not convert:
         return False
     db.session.delete(convert)
@@ -114,26 +111,26 @@ def hard_delete_convert(convert_id):
 
 def get_deleted_converts(page, user_id=None, search=None):
     """Return paginated soft-deleted converts. Scoped to user_id when provided."""
-    query = Convert.query.filter(Convert.is_active == False)
+    query = Conversion.query.filter(Conversion.is_active)
     if user_id:
-        query = query.filter(Convert.user_id == user_id)
+        query = query.filter(Conversion.user_id == user_id)
     if search:
-        query = query.filter(Convert.name.ilike(f"%{search}%"))
-    query = query.order_by(desc(Convert.deleted_at))
+        query = query.filter(Conversion.name.ilike(f"%{search}%"))
+    query = query.order_by(desc(Conversion.deleted_at))
     return query.paginate(page=page, per_page=15)
 
 
-def get_convert(convert_id, include_deleted=False):
-    """Get a Convert entry by id. Soft-deleted converts are excluded by default."""
-    convert = Convert.query.get(convert_id)
+def get_convert(conversion_id, include_deleted=False):
+    """Get a Conversion entry by id. Soft-deleted converts are excluded by default."""
+    convert = Conversion.query.get(conversion_id)
     if convert and not include_deleted and not convert.is_active:
         return None
     return convert
 
 
 def list_all():
-    """Return all Convert entries"""
-    return Convert.query.all()
+    """Return all Conversion entries"""
+    return Conversion.query.all()
 
 
 def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False, tag_names=None, vis_filter=None, favorites_only=False, favorites_user_id=None):
@@ -143,7 +140,7 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
     - exact_match: if True, search for exact phrase instead of contains
     """
 
-    query = Convert.query.filter(Convert.is_active == True)
+    query = Conversion.query.filter(Conversion.is_active)
     if searchQuery:
         if exact_match:
             search_pattern = searchQuery  # exact, case-sensitive via ilike = case-insensitive exact
@@ -153,47 +150,47 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
             def make_filter(col): return col.ilike(search_pattern)
 
         if search_scope == 'name':
-            query = query.filter(make_filter(Convert.name))
+            query = query.filter(make_filter(Conversion.name))
         elif search_scope == 'description':
-            query = query.filter(make_filter(Convert.description))
+            query = query.filter(make_filter(Conversion.description))
         elif search_scope == 'content':
             query = query.filter(
-                or_(make_filter(Convert.input_text), make_filter(Convert.output_text))
+                or_(make_filter(Conversion.input_text), make_filter(Conversion.output_text))
             )
         else:  # 'all'
             query = query.filter(
                 or_(
-                    make_filter(Convert.name),
-                    make_filter(Convert.description),
-                    make_filter(Convert.input_text),
-                    make_filter(Convert.output_text),
+                    make_filter(Conversion.name),
+                    make_filter(Conversion.description),
+                    make_filter(Conversion.input_text),
+                    make_filter(Conversion.output_text),
                 )
             )
 
     # Date range filter
     if date_from:
         try:
-            query = query.filter(Convert.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+            query = query.filter(Conversion.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
         except ValueError:
             pass
     if date_to:
         try:
             dt_to = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
-            query = query.filter(Convert.created_at < dt_to)
+            query = query.filter(Conversion.created_at < dt_to)
         except ValueError:
             pass
 
     # Filter by conversion type if provided
     if filter_type:
-        query = query.filter(Convert.conversion_type == filter_type)
+        query = query.filter(Conversion.conversion_type == filter_type)
 
     # Visibility filter (public / private)
     if vis_filter == 'public':
-        query = query.filter(Convert.public == True)
+        query = query.filter(Conversion.public)
     elif vis_filter == 'private':
-        query = query.filter(Convert.public == False)
+        query = query.filter(not Conversion.public)
 
-    # Convert only_mine to boolean
+    # Conversion only_mine to boolean
     only_mine_bool = str(only_mine).lower() in ['true', '1', 'yes', 'on']
 
     # Check if user is connected
@@ -202,45 +199,44 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
         # Admin sees everything: public + private + all users
         if only_mine_bool:
             # Admin wants to see only their own conversions
-            query = query.filter(Convert.user_id == current_user.id)
+            query = query.filter(Conversion.user_id == current_user.id)
         # else: no filter, show absolutely everything    
     elif current_user.is_authenticated:
         if only_mine_bool:
             # Show only current user's conversions
-            query = query.filter(Convert.user_id == current_user.id)
+            query = query.filter(Conversion.user_id == current_user.id)
         else:
             # Show public conversions and the user's private conversions
-            query = query.filter((Convert.public == True) | (Convert.user_id == current_user.id))
+            query = query.filter(Conversion.public | (Conversion.user_id == current_user.id))
     else:
         # Anonymous user: only public conversions
-        query = query.filter(Convert.public == True)
+        query = query.filter(Conversion.public)
 
     # Order by created_at
     if sort_order == 'asc':
-        query = query.order_by(asc(Convert.created_at))
+        query = query.order_by(asc(Conversion.created_at))
     else:
-        query = query.order_by(desc(Convert.created_at))
+        query = query.order_by(desc(Conversion.created_at))
 
     # Tag filter: convert must have ALL selected tags (AND logic)
     if tag_names:
-        from website.db_class.db import ConvertTagAssociation, Tag as TagModel
         for tag_name in tag_names:
             subq = (
-                db.session.query(ConvertTagAssociation.convert_id)
-                .join(TagModel, ConvertTagAssociation.tag_id == TagModel.id)
+                db.session.query(ConversionTagAssociation.conversion_id)
+                .join(TagModel, ConversionTagAssociation.tag_id == TagModel.id)
                 .filter(func.lower(TagModel.name) == tag_name.lower())
                 .subquery()
             )
-            query = query.filter(Convert.id.in_(subq))
+            query = query.filter(Conversion.id.in_(subq))
 
     # Favorites filter
     if favorites_only and favorites_user_id:
         fav_subq = (
-            db.session.query(ConvertFavorite.convert_id)
-            .filter(ConvertFavorite.user_id == favorites_user_id)
+            db.session.query(ConversionFavorite.conversion_id)
+            .filter(ConversionFavorite.user_id == favorites_user_id)
             .subquery()
         )
-        query = query.filter(Convert.id.in_(fav_subq))
+        query = query.filter(Conversion.id.in_(fav_subq))
 
     # Pagination
     return query.paginate(page=page, per_page=10)
@@ -248,7 +244,7 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
 
 # edit
 
-def search_in_content(query_str, convert_id, scope='all', context_chars=120):
+def search_in_content(query_str, conversion_id, scope='all', context_chars=120):
     """
     Search for query_str in a single convert's texts and return snippets with match positions.
     Returns list of { field, snippet, match_start, match_end }
@@ -256,7 +252,7 @@ def search_in_content(query_str, convert_id, scope='all', context_chars=120):
     if not query_str:
         return []
 
-    convert = get_convert(convert_id)
+    convert = get_convert(conversion_id)
     if not convert:
         return []
 
@@ -328,7 +324,7 @@ def edit_convert(id, data):
         return False , 'no convert with this id'
     
     if convert.name != data.get('name', convert.name):
-        existing = Convert.query.filter_by(name=data.get('name', convert.name)).first()
+        existing = Conversion.query.filter_by(name=data.get('name', convert.name)).first()
         if existing:
             return False , 'Name already existe'
 
@@ -347,24 +343,24 @@ def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', sear
     if not user_id:
         return None
 
-    query = Convert.query.filter(Convert.user_id == user_id, Convert.is_active == True)
+    query = Conversion.query.filter(Conversion.user_id == user_id, Conversion.is_active)
 
     if searchQuery:
         search_lower = f"%{searchQuery.lower()}%"
         query = query.filter(
             or_(
-                Convert.name.ilike(search_lower),
-                Convert.description.ilike(search_lower),
+                Conversion.name.ilike(search_lower),
+                Conversion.description.ilike(search_lower),
             )
         )
 
     if filter_type:
-        query = query.filter(Convert.conversion_type == filter_type)
+        query = query.filter(Conversion.conversion_type == filter_type)
 
     if sort_order == 'asc':
-        query = query.order_by(asc(Convert.created_at))
+        query = query.order_by(asc(Conversion.created_at))
     else:
-        query = query.order_by(desc(Convert.created_at))
+        query = query.order_by(desc(Conversion.created_at))
 
     if filter_public is not None:
         if isinstance(filter_public, str):
@@ -376,16 +372,16 @@ def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', sear
                 filter_public = None
 
         if filter_public is not None:
-            query = query.filter(Convert.public == filter_public)
+            query = query.filter(Conversion.public == filter_public)
 
     return query.paginate(page=page, per_page=10)
 
 def get_convert_by_uuid(uuid):
-    return Convert.query.filter_by(uuid=uuid).first()
+    return Conversion.query.filter_by(uuid=uuid).first()
 
-def regenerate_share_key_convert(convert_id):
-    """Regenerate the share key for a Convert entry"""
-    convert = get_convert(convert_id)
+def regenerate_share_key_convert(conversion_id):
+    """Regenerate the share key for a Conversion entry"""
+    convert = get_convert(conversion_id)
     if not convert:
         return False , None
     convert.share_key = generate_api_key(36)
@@ -467,7 +463,7 @@ def reconvert_stix_to_misp(convert_obj, form):
     old_input = convert_obj.input_text
     old_output = convert_obj.output_text
 
-    # Convert stored input text into a simulated uploaded file
+    # Conversion stored input text into a simulated uploaded file
     file_stream = io.BytesIO(old_input.encode("utf-8"))
     file_stream.name = "input.json"
 
@@ -570,9 +566,9 @@ def create_history(convert_obj, user_id=None, comment=None, new_output_text=None
     try:
         # 1) Get the last version and check for potential duplicate
         last_entry = (
-            ConvertHistory.query
-            .filter_by(convert_id=convert_obj.id, status='accepted')  
-            .order_by(ConvertHistory.version.desc())
+            ConversionHistory.query
+            .filter_by(conversion_id=convert_obj.id, status='accepted')
+            .order_by(ConversionHistory.version.desc())
             .first()
         )
 
@@ -600,9 +596,9 @@ def create_history(convert_obj, user_id=None, comment=None, new_output_text=None
         history_uuid = str(uuid.uuid4())
 
         # 3) Create history entry
-        history = ConvertHistory(
+        history = ConversionHistory(
             user_id=user_id,
-            convert_id=convert_obj.id,
+            conversion_id=convert_obj.id,
             version=next_version,
             uuid=history_uuid,
 
@@ -627,28 +623,28 @@ def create_history(convert_obj, user_id=None, comment=None, new_output_text=None
         return False, None
 
 
-def get_latest_history(convert_id):
-    return ConvertHistory.query.filter_by(convert_id=convert_id).order_by(ConvertHistory.version.desc()).first()
+def get_latest_history(conversion_id):
+    return ConversionHistory.query.filter_by(conversion_id=conversion_id).order_by(ConversionHistory.version.desc()).first()
 
-def get_latest_history_list(convert_id):
-    return ConvertHistory.query.filter_by(convert_id=convert_id).order_by(ConvertHistory.version.desc()).all()
+def get_latest_history_list(conversion_id):
+    return ConversionHistory.query.filter_by(conversion_id=conversion_id).order_by(ConversionHistory.version.desc()).all()
 
-def get_history_list(convert_id):
+def get_history_list(conversion_id):
     return (
-        ConvertHistory.query
-        .filter_by(convert_id=convert_id, status="accepted")
-        .order_by(ConvertHistory.version.asc())
+        ConversionHistory.query
+        .filter_by(conversion_id=conversion_id, status="accepted")
+        .order_by(ConversionHistory.version.asc())
         .all()
     )
 
 
 def accept_history(history_id):
-    history = ConvertHistory.query.get(history_id)
+    history = ConversionHistory.query.get(history_id)
     if history is None:
         return False
     history.status = "accepted"
 
-    # Update the main Convert entry with the new output
+    # Update the main Conversion entry with the new output
     convert = history.convert
     convert.output_text = history.new_output_text
     convert.updated_at = datetime.now(timezone.utc)
@@ -658,7 +654,7 @@ def accept_history(history_id):
     return True
 
 def reject_history(history_id):
-    history = ConvertHistory.query.get(history_id)
+    history = ConversionHistory.query.get(history_id)
     if history is None:
         return False
     history.status = "rejected"
@@ -668,9 +664,9 @@ def reject_history(history_id):
 
 def get_convert_history_by_id(convert_history_id):
      return (
-        ConvertHistory.query
+        ConversionHistory.query
         .filter_by(id=convert_history_id)
-        .order_by(ConvertHistory.version.desc())
+        .order_by(ConversionHistory.version.desc())
         .first()
     )
 
@@ -694,12 +690,12 @@ def _can_see_comment(comment, convert_is_public, current_user_id, is_admin, conv
     return current_user_id == convert_owner_id or current_user_id == comment.user_id
 
 
-def create_comment(convert_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
+def create_comment(conversion_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
     """Create a new comment or reply on a convert."""
     try:
         now = datetime.now(timezone.utc)
         comment = Comment(
-            convert_id=convert_id,
+            conversion_id=conversion_id,
             user_id=user_id,
             content=content.strip(),
             is_private=is_private,
@@ -717,9 +713,9 @@ def create_comment(convert_id, user_id, content, is_private=False, parent_id=Non
         return None
 
 
-def get_comments(convert_id, current_user_id=None, is_admin=False, convert_owner_id=None):
+def get_comments(conversion_id, current_user_id=None, is_admin=False, convert_owner_id=None):
     """Return visible top-level comments and their visible replies for a convert."""
-    convert = get_convert(convert_id)
+    convert = get_convert(conversion_id)
     if not convert:
         return []
 
@@ -727,7 +723,7 @@ def get_comments(convert_id, current_user_id=None, is_admin=False, convert_owner
 
     top_level = (
         Comment.query
-        .filter_by(convert_id=convert_id, parent_id=None)
+        .filter_by(conversion_id=conversion_id, parent_id=None)
         .filter_by(is_deleted=False)
         .order_by(Comment.created_at.asc())
         .all()
@@ -740,7 +736,7 @@ def get_comments(convert_id, current_user_id=None, is_admin=False, convert_owner
         comment_data = c.to_json(current_user_id=current_user_id, is_admin=is_admin, convert_owner_id=convert_owner_id)
         replies = (
             Comment.query
-            .filter_by(convert_id=convert_id, parent_id=c.id)
+            .filter_by(conversion_id=conversion_id, parent_id=c.id)
             .filter_by(is_deleted=False)
             .order_by(Comment.created_at.asc())
             .all()
@@ -759,9 +755,9 @@ def delete_comment(comment_id, requesting_user_id, is_admin=False):
     comment = Comment.query.get(comment_id)
     if not comment:
         return False, "Comment not found"
-    convert = get_convert(comment.convert_id)
+    convert = get_convert(comment.conversion_id)
     if not convert:
-        return False, "Convert not found"
+        return False, "Conversion not found"
     allowed = (
         is_admin or
         requesting_user_id == comment.user_id or
@@ -848,11 +844,11 @@ def get_all_comments_admin(page=1, search=None):
 REPORT_REASONS = ["spam", "inappropriate", "inaccurate", "other"]
 
 
-def create_report(convert_id, user_id, reason, description=None):
+def create_report(conversion_id, user_id, reason, description=None):
     """Submit a report on a convert."""
     try:
-        report = ConvertReport(
-            convert_id=convert_id,
+        report = ConversionReport(
+            conversion_id=conversion_id,
             user_id=user_id,
             reason=reason,
             description=description,
@@ -870,20 +866,20 @@ def create_report(convert_id, user_id, reason, description=None):
 
 def get_reports(page=1, status=None, search=None):
     """Admin: paginated list of reports."""
-    query = ConvertReport.query
+    query = ConversionReport.query
     if status:
         query = query.filter_by(status=status)
     if search:
         query = query.filter(
-            ConvertReport.reason.ilike(f"%{search}%") |
-            ConvertReport.description.ilike(f"%{search}%")
+            ConversionReport.reason.ilike(f"%{search}%") |
+            ConversionReport.description.ilike(f"%{search}%")
         )
-    return query.order_by(ConvertReport.created_at.desc()).paginate(page=page, per_page=20)
+    return query.order_by(ConversionReport.created_at.desc()).paginate(page=page, per_page=20)
 
 
 def review_report(report_id, new_status, reviewed_by_id):
     """Admin: update report status (reviewed / dismissed)."""
-    report = ConvertReport.query.get(report_id)
+    report = ConversionReport.query.get(report_id)
     if not report:
         return False
     report.status = new_status
@@ -894,11 +890,11 @@ def review_report(report_id, new_status, reviewed_by_id):
 
 
 def get_report(report_id):
-    return ConvertReport.query.get(report_id)
+    return ConversionReport.query.get(report_id)
 
 
 def delete_report(report_id):
-    report = ConvertReport.query.get(report_id)
+    report = ConversionReport.query.get(report_id)
     if report:
         db.session.delete(report)
         db.session.commit()
@@ -908,14 +904,14 @@ def delete_report(report_id):
 ###################################
 
 def get_graph_configs(user_id=None, is_admin=False):
-    query = GraphConfig.query.filter(GraphConfig.is_active == True)
+    query = GraphConfig.query.filter(GraphConfig.is_active)
     if not is_admin:
         if user_id:
             query = query.filter(
-                or_(GraphConfig.is_default == True, GraphConfig.created_by == user_id)
+                or_(GraphConfig.is_default, GraphConfig.created_by == user_id)
             )
         else:
-            query = query.filter(GraphConfig.is_default == True)
+            query = query.filter(GraphConfig.is_default)
     return query.order_by(GraphConfig.is_default.desc(), GraphConfig.created_at.desc()).all()
 
 
@@ -965,15 +961,15 @@ def delete_graph_config(config_id, user_id, is_admin):
 #   Favorites                     #
 ###################################
 
-def toggle_favorite(user_id: int, convert_id: int) -> bool:
+def toggle_favorite(user_id: int, conversion_id: int) -> bool:
     """Toggle favorite for a user on a convert. Returns True if now favorited, False if removed."""
-    existing = ConvertFavorite.query.filter_by(user_id=user_id, convert_id=convert_id).first()
+    existing = ConversionFavorite.query.filter_by(user_id=user_id, conversion_id=conversion_id).first()
     if existing:
         db.session.delete(existing)
         db.session.commit()
         return False
     db.session.add(
-        ConvertFavorite(
+        ConversionFavorite(
             user_id=user_id,
             conversion_id=conversion_id,
             created_at=datetime.now(timezone.utc)
@@ -985,9 +981,9 @@ def toggle_favorite(user_id: int, convert_id: int) -> bool:
 
 def get_favorite_ids(user_id: int) -> set:
     """Return the set of convert IDs favorited by this user."""
-    rows = ConvertFavorite.query.filter_by(user_id=user_id).with_entities(ConvertFavorite.convert_id).all()
-    return {r.convert_id for r in rows}
+    rows = ConversionFavorite.query.filter_by(user_id=user_id).with_entities(ConversionFavorite.conversion_id).all()
+    return {r.conversion_id for r in rows}
 
 
-def is_favorite(user_id: int, convert_id: int) -> bool:
-    return ConvertFavorite.query.filter_by(user_id=user_id, convert_id=convert_id).first() is not None
+def is_favorite(user_id: int, conversion_id: int) -> bool:
+    return ConversionFavorite.query.filter_by(user_id=user_id, conversion_id=conversion_id).first() is not None

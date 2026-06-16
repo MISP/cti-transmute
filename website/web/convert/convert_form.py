@@ -34,13 +34,13 @@ class mispToStixParamForm(FlaskForm):
         validators=[Optional()],
         description="Paste your MISP JSON content here"
     )
-    convert = SubmitField('Convert')
+    convert = SubmitField('Conversion')
 
     def validate_name(self, field):
-        existing_convert = Convert.query.filter_by(name=field.data).first()
+        existing_convert = Conversion.query.filter_by(name=field.data).first()
         if existing_convert:
             raise ValidationError(
-                f'Convert already registered with this name '
+                'Conversion already registered with this name '
             )
 
 
@@ -98,7 +98,7 @@ class stixToMispParamForm(FlaskForm):
     )
     single_event = BooleanField(
         "Single Event",
-        description="Convert STIX data to a single MISP event if multiple reports/groupings exist"
+        description="Conversion STIX data to a single MISP event if multiple reports/groupings exist"
     )
     producer = StringField(
         "Producer",
@@ -115,13 +115,13 @@ class stixToMispParamForm(FlaskForm):
         validators=[Optional()],
         description="Paste your STIX JSON content here"
     )
-    convert = SubmitField("Convert")
+    convert = SubmitField("Conversion")
 
     def validate_name(self, field):
         if field.data:
-            existing_convert = Convert.query.filter_by(name=field.data).first()
+            existing_convert = Conversion.query.filter_by(name=field.data).first()
             if existing_convert:
-                raise ValidationError('Convert already registered with this name')
+                raise ValidationError('Conversion already registered with this name')
         
 
 class editConvertForm(FlaskForm):
@@ -142,8 +142,8 @@ class editConvertForm(FlaskForm):
     # def validate_name(self, field):
 
 
-    #     existing_convert = Convert.query.filter_by(name=field.data).first()
+    #     existing_convert = Conversion.query.filter_by(name=field.data).first()
     #     if existing_convert:
     #         raise ValidationError(
-    #             f'Convert already registered with this name '
+    #             f'Conversion already registered with this name '
     #         )

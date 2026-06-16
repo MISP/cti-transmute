@@ -72,8 +72,8 @@ class AnonymousUser(AnonymousUserMixin):
 # Register AnonymousUser as the default for anonymous visitors
 login_manager.anonymous_user = AnonymousUser
 
-class Convert(db.Model):
-    __tablename__ = "convert"
+class Conversion(db.Model):
+    __tablename__ = "conversion"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, nullable=True) # the user who made the convert
@@ -147,7 +147,7 @@ class Comment(db.Model):
     __tablename__ = "comment"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey("convert.id", ondelete="CASCADE"), nullable=False)
+    conversion_id = db.Column(db.Integer, db.ForeignKey("conversion.id", ondelete="CASCADE"), nullable=False)
     user_id = db.Column(db.Integer, nullable=True)
     content = db.Column(db.Text, nullable=False)
     is_private = db.Column(db.Boolean, default=False, index=True)
@@ -156,7 +156,7 @@ class Comment(db.Model):
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     is_evaluation = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
 
-    convert = db.relationship("Convert", backref=db.backref("comments", lazy=True, cascade="all, delete-orphan"))
+    convert = db.relationship("Conversion", backref=db.backref("comments", lazy=True, cascade="all, delete-orphan"))
     replies = db.relationship(
         "Comment",
         backref=db.backref("parent", remote_side=[id]),
@@ -182,7 +182,7 @@ class Comment(db.Model):
 
         return {
             "id": self.id,
-            "convert_id": self.convert_id,
+            "conversion_id": self.conversion_id,
             "user_id": self.user_id,
             "author": self.get_author_name(),
             "content": self.content if not self.is_deleted else "[deleted]",
@@ -224,7 +224,7 @@ class Notification(db.Model):
     # Types: "comment_reply", "new_follow_convert", "report_submitted"
     type = db.Column(db.String(50), nullable=False)
     is_read = db.Column(db.Boolean, default=False, index=True)
-    related_id = db.Column(db.Integer, nullable=True)    # comment_id or convert_id
+    related_id = db.Column(db.Integer, nullable=True)    # comment_id or conversion_id
     related_type = db.Column(db.String(50), nullable=True)  # "comment" or "convert"
     actor_id = db.Column(db.Integer, nullable=True)       # who triggered it
     message = db.Column(db.Text)
@@ -266,11 +266,11 @@ class UserFollow(db.Model):
     )
 
 
-class ConvertReport(db.Model):
-    __tablename__ = "convert_report"
+class ConversionReport(db.Model):
+    __tablename__ = "conversion_report"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey("convert.id", ondelete="CASCADE"), nullable=False)
+    conversion_id = db.Column(db.Integer, db.ForeignKey("conversion.id", ondelete="CASCADE"), nullable=False)
     user_id = db.Column(db.Integer, nullable=True)
     reason = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -279,15 +279,15 @@ class ConvertReport(db.Model):
     reviewed_at = db.Column(db.DateTime, nullable=True)
     reviewed_by = db.Column(db.Integer, nullable=True)
 
-    convert = db.relationship("Convert", backref=db.backref("reports", lazy=True, cascade="all, delete-orphan"))
+    convert = db.relationship("Conversion", backref=db.backref("reports", lazy=True, cascade="all, delete-orphan"))
 
     def to_json(self):
-        convert = Convert.query.get(self.convert_id)
+        convert = Conversion.query.get(self.conversion_id)
         reviewer = User.query.get(self.reviewed_by) if self.reviewed_by else None
         reporter = User.query.get(self.user_id) if self.user_id else None
         return {
             "id": self.id,
-            "convert_id": self.convert_id,
+            "conversion_id": self.conversion_id,
             "convert_name": convert.name if convert else None,
             "user_id": self.user_id,
             "reporter": f"{reporter.first_name} {reporter.last_name}" if reporter else "Anonymous",
@@ -329,15 +329,15 @@ class SystemLog(db.Model):
         }
 
 
-class ConvertHistory(db.Model):
-    __tablename__ = "convert_history"
+class ConversionHistory(db.Model):
+    __tablename__ = "conversion_history"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, nullable=True)
 
-    convert_id = db.Column(
+    conversion_id = db.Column(
         db.Integer,
-        db.ForeignKey("convert.id", ondelete="CASCADE"),
+        db.ForeignKey("conversion.id", ondelete="CASCADE"),
         nullable=False
     )
 
@@ -356,7 +356,7 @@ class ConvertHistory(db.Model):
     comment = db.Column(db.Text, nullable=True)
 
     # Relationship
-    convert = db.relationship("Convert", backref=db.backref(
+    convert = db.relationship("Conversion", backref=db.backref(
         "history",
         lazy=True,
         cascade="all, delete-orphan"
@@ -365,7 +365,7 @@ class ConvertHistory(db.Model):
     def to_json(self):
         return {
             "id": self.id,
-            "convert_id": self.convert_id,
+            "conversion_id": self.conversion_id,
             "version": self.version,
             "uuid": self.uuid,
             "input_text": self.input_text,
@@ -464,19 +464,19 @@ class GraphConfig(db.Model):
         }
 
 
-class ConvertTagAssociation(db.Model):
-    __tablename__ = 'convert_tag_association'
+class ConversionTagAssociation(db.Model):
+    __tablename__ = 'conversion_tag_association'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), unique=True, nullable=False, index=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey('convert.id', ondelete='CASCADE'), nullable=False, index=True)
+    conversion_id = db.Column(db.Integer, db.ForeignKey('conversion.id', ondelete='CASCADE'), nullable=False, index=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     # "user" = manually added via UI | "json" = extracted from MISP/STIX JSON by admin scan
     source_type = db.Column(db.String(10), nullable=False, default="user", server_default="user")
 
-    convert = db.relationship('Convert', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
+    convert = db.relationship('Conversion', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
     tag = db.relationship('Tag', backref=db.backref('convert_associations', lazy='dynamic'))
     user = db.relationship('User', backref=db.backref('convert_tag_associations', lazy='dynamic'))
 
@@ -485,7 +485,7 @@ class ConvertTagAssociation(db.Model):
         return {
             "id": self.id,
             "uuid": self.uuid,
-            "convert_id": self.convert_id,
+            "conversion_id": self.conversion_id,
             "tag_id": self.tag_id,
             "user_id": self.user_id,
             "tag_name": tag.name if tag else None,
@@ -498,27 +498,27 @@ class ConvertTagAssociation(db.Model):
         }
 
 
-class ConvertFavorite(db.Model):
+class ConversionFavorite(db.Model):
     """Stores user favorites on converts."""
-    __tablename__ = "convert_favorite"
+    __tablename__ = "conversion_favorite"
 
     id         = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id    = db.Column(db.Integer, db.ForeignKey("user.id",    ondelete="CASCADE"), nullable=False, index=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey("convert.id", ondelete="CASCADE"), nullable=False, index=True)
+    conversion_id = db.Column(db.Integer, db.ForeignKey("conversion.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = db.Column(db.DateTime)
 
-    __table_args__ = (db.UniqueConstraint("user_id", "convert_id", name="uq_favorite_user_convert"),)
+    __table_args__ = (db.UniqueConstraint("user_id", "conversion_id", name="uq_favorite_user_convert"),)
 
     user    = db.relationship("User",    backref=db.backref("favorites", lazy="dynamic"))
-    convert = db.relationship("Convert", backref=db.backref("favorited_by", lazy="dynamic", cascade="all, delete-orphan"))
+    convert = db.relationship("Conversion", backref=db.backref("favorited_by", lazy="dynamic", cascade="all, delete-orphan"))
 
 
-class ConvertEvaluation(db.Model):
+class ConversionEvaluation(db.Model):
     """Stores like/dislike/reaction evaluations on converts."""
-    __tablename__ = "convert_evaluation"
+    __tablename__ = "conversion_evaluation"
 
     id           = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    convert_id   = db.Column(db.Integer, db.ForeignKey("convert.id",  ondelete="CASCADE"), nullable=False, index=True)
+    conversion_id   = db.Column(db.Integer, db.ForeignKey("conversion.id",  ondelete="CASCADE"), nullable=False, index=True)
     user_id      = db.Column(db.Integer, db.ForeignKey("user.id",     ondelete="CASCADE"), nullable=False, index=True)
     # 'like' | 'dislike' | 'reaction'
     eval_type    = db.Column(db.String(20),  nullable=False)
@@ -526,13 +526,13 @@ class ConvertEvaluation(db.Model):
     reaction_key = db.Column(db.String(50),  nullable=True)
     created_at   = db.Column(db.DateTime, index=True)
 
-    convert = db.relationship("Convert", backref=db.backref("evaluations", lazy="dynamic", cascade="all, delete-orphan"))
+    convert = db.relationship("Conversion", backref=db.backref("evaluations", lazy="dynamic", cascade="all, delete-orphan"))
     user    = db.relationship("User",    backref=db.backref("evaluations", lazy="dynamic"))
 
     def to_json(self):
         return {
             "id":           self.id,
-            "convert_id":   self.convert_id,
+            "conversion_id":   self.conversion_id,
             "user_id":      self.user_id,
             "username":     self.user.first_name if self.user else "Unknown",
             "eval_type":    self.eval_type,

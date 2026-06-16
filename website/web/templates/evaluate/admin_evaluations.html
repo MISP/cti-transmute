@@ -61,8 +61,8 @@
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ e.id ]]</td>
             <td style="font-weight:600;">[[ e.username ]]</td>
             <td>
-              <a :href="'/convert/detail/'+e.convert_id" style="color:var(--accent); font-size:0.82rem;">
-                #[[ e.convert_id ]]
+              <a :href="'/conversions/detail/'+e.conversion_id" style="color:var(--accent); font-size:0.82rem;">
+                #[[ e.conversion_id ]]
               </a>
             </td>
             <td>
@@ -139,7 +139,7 @@
         page.value    = p
         const params  = new URLSearchParams({ page: p, per_page: 50 })
         if (filter_type.value)    params.set('type',       filter_type.value)
-        if (filter_convert.value) params.set('convert_id', filter_convert.value)
+        if (filter_convert.value) params.set('conversion_id', filter_convert.value)
 
         const res  = await fetch('/evaluate/admin/list?' + params)
         const data = await res.json()
