@@ -1,24 +1,34 @@
 # website/web/convert/views.py
-import io
 import ipaddress
 import json
+import re
+import uuid as uuid_mod
+from datetime import datetime, timezone
 from urllib.parse import urlparse
-from flask import Blueprint, jsonify, redirect, render_template, request, flash, url_for, abort
-from flask_login import current_user, login_required
-from website.web.convert.convert_form import  editConvertForm, mispToStixParamForm, stixToMispParamForm
-from website.web.utils import extract_name_from_misp_json, extract_tag_names_from_misp_json, form_to_dict, parse_stix_reports
+
 import requests
-from cti_transmute.exceptions import (
-    ConversionError, InvalidParameters, InvalidPayload, UnknownConverter,
-)
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
+from pymisp import MISPEvent, MISPObject
+from sqlalchemy import func
+
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
+from cti_transmute.exceptions import ConversionError, InvalidParameters, InvalidPayload, UnknownConverter
+from website.db_class.db import Comment as CommentModel
+from website.db_class.db import Conversion, ConversionFavorite, db
+from website.db_class.db import Tag as TagModel
 from website.lib.conversions import submit_conversion
 from website.lib.exceptions import PersistenceFailed
-from ..convert import convert_core as ConvertModel
+from website.web.convert.convert_form import editConvertForm, mispToStixParamForm, stixToMispParamForm
+from website.web.utils import (
+    extract_name_from_misp_json, extract_tag_names_from_misp_json,
+    form_to_dict, parse_stix_reports)
+
 from ..account import account_core as AccountModel
-from ..tags import tags_core as TagsModel
+from ..convert import convert_core as ConvertModel
 from ..evaluate import evaluate_core as EvalModel
+from ..tags import tags_core as TagsModel
 
 
 def _validate_misp_url(misp_url: str) -> str | None:
@@ -288,10 +298,14 @@ def misp_search_events():
         return jsonify({"error": "limit and page must be integers"}), 400
 
     search_body = {"limit": limit, "page": page}
-    if data.get("search"):    search_body["searchinfo"]     = data["search"].strip()
-    if data.get("tag"):       search_body["searchtag"]      = data["tag"].strip()
-    if data.get("date_from"): search_body["searchdatefrom"] = data["date_from"].strip()
-    if data.get("date_to"):   search_body["searchdateto"]   = data["date_to"].strip()
+    if data.get("search"):
+        search_body["searchinfo"] = data["search"].strip()
+    if data.get("tag"):
+        search_body["searchtag"] = data["tag"].strip()
+    if data.get("date_from"):
+        search_body["searchdatefrom"] = data["date_from"].strip()
+    if data.get("date_to"):
+        search_body["searchdateto"] = data["date_to"].strip()
 
     try:
         resp = requests.post(
@@ -537,7 +551,6 @@ def favorite_status(convert_id):
 @convert_blueprint.route("/most_favorited", methods=['GET'])
 def most_favorited():
     """Return the most favorited public converts, ordered by favorite count desc."""
-    from website.db_class.db import ConvertFavorite
     limit = request.args.get('limit', 10, type=int)
 
     # Subquery: count favorites per convert (public only)
@@ -718,11 +731,11 @@ def edit_public():
                 comment_count = len([c for c in convert.comments if not c.is_deleted])
                 success , _bool = ConvertModel.edit_public(id)
                 if success:
-                    if _bool == True:
-                        message="This convert is now public"
-                    else:
-                        message="This convert is now private"
-                    AccountModel.create_system_log("convert_visibility_changed", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=id, target_name=convert.name, details="public" if _bool else "private")
+                    message = f"This convert is now {'public' if _bool else 'private'}"
+                    AccountModel.create_system_log(
+                        'convert_visibility_changed', actor_id=current_user.id, actor_name=current_user.first_name,
+                        target_type="convert", target_id=id, target_name=convert.name, details="public" if _bool else "private"
+                    )
                     return {
                         "success": True,
                         "convert_public": _bool,
@@ -1249,7 +1262,11 @@ def delete_comment():
         is_admin=current_user.is_admin()
     )
     if success and comment:
-        AccountModel.create_system_log("comment_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="comment", target_id=comment_id, target_name=f"On convert #{comment.convert_id}", details=comment.content[:120] if comment.content else None)
+        AccountModel.create_system_log(
+            'comment_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
+            target_type='comment', target_id=comment_id, target_name=f'On convert #{comment.conversion_id}',
+            details=comment.content[:120] if comment.content else None
+        )
     return {
         "success": success,
         "message": message,
@@ -1711,8 +1728,6 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
                          for the detail table in the modal
       - error          : None or an error string
     """
-    import re, uuid as uuid_mod, datetime as dt
-    from pymisp import MISPEvent, MISPObject
 
     SCORE_MAP = {"very-low": 0, "low": 25, "moderate": 50, "high": 75, "very-high": 100}
 
@@ -1761,7 +1776,7 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
     source_fmt    = "MISP"     if convert.conversion_type == "MISP_TO_STIX" else "STIX 2.1"
     target_fmt    = "STIX 2.1" if convert.conversion_type == "MISP_TO_STIX" else "MISP"
     overall_level = next((parse_tag(t)[2] for t in push_tags if parse_tag(t)[1] == "overall-score"), None)
-    now_iso       = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    now_iso       = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     obj = MISPObject("cti-evaluation", standalone=False)
 
@@ -1907,10 +1922,9 @@ def admin_get_comments():
     search = request.args.get('search', '', type=str) or None
     pagination = ConvertModel.get_all_comments_admin(page=page, search=search)
     items = []
-    from website.db_class.db import Comment as CommentModel
     for c in pagination.items:
         d = c.to_json(current_user_id=current_user.id, is_admin=True)
-        convert = ConvertModel.get_convert(c.convert_id, include_deleted=True)
+        convert = ConvertModel.get_convert(c.conversion_id, include_deleted=True)
         d["convert_name"] = convert.name if convert else "Unknown"
         d["convert_active"] = bool(convert and convert.is_active)
         d["is_reply"] = bool(c.parent_id)

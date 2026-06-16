@@ -1,16 +1,22 @@
 # website/web/convert/convert_service.py
+import io
 import json
-from sqlite3 import IntegrityError
-import uuid
-from flask_login import AnonymousUserMixin, current_user
-from website.db_class.db import Comment, CommentReaction, Convert, ConvertFavorite, ConvertHistory, ConvertReport, GraphConfig
-from website.web import db
-from sqlalchemy import desc, asc, or_, func
-import datetime
 import random
+import requests
 import string
-
+import uuid
+from datetime import datetime, timedelta, timezone
+from flask_login import current_user
+from sqlalchemy import asc, desc, func, or_
+from sqlite3 import IntegrityError
+from website.db_class.db import (
+    Comment, CommentReaction, Conversion, ConversionFavorite, ConversionHistory,
+    ConversionReport, ConversionTagAssociation, GraphConfig)
+from website.db_class.db import Tag as TagModel
+from website.web import db
 from website.web.utils import generate_api_key
+
+
 def create_convert(user_id, input_text, output_text, convert_choice, description, name, public):
     """
     Create a new Convert entry from API response and save history.
@@ -18,7 +24,7 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
     output_text: converted content
     """
     try:
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         if convert_choice == "MISP_TO_STIX":
             _name = f"STIX_{now.strftime('%Y%m%d%H%M%S')}"
         else:
@@ -79,7 +85,7 @@ def delete_convert(convert_id):
     if not convert:
         return False
     convert.is_active = False
-    convert.deleted_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    convert.deleted_at = datetime.now(timezone.utc)
     db.session.commit()
     return True
 
@@ -167,12 +173,12 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
     # Date range filter
     if date_from:
         try:
-            query = query.filter(Convert.created_at >= datetime.datetime.strptime(date_from, '%Y-%m-%d'))
+            query = query.filter(Convert.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
         except ValueError:
             pass
     if date_to:
         try:
-            dt_to = datetime.datetime.strptime(date_to, '%Y-%m-%d') + datetime.timedelta(days=1)
+            dt_to = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
             query = query.filter(Convert.created_at < dt_to)
         except ValueError:
             pass
@@ -388,11 +394,6 @@ def regenerate_share_key_convert(convert_id):
 
 
 # convert/convert_core.py
-
-import io
-import json
-import requests
-
 def reconvert_conversion(convert_obj, form):
     """
     Dispatcher: call the right reconversion depending on the type.
@@ -564,7 +565,7 @@ def create_history(convert_obj, user_id=None, comment=None, new_output_text=None
     if convert_obj is None:
         return False, None
 
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    now = datetime.now(timezone.utc)
 
     try:
         # 1) Get the last version and check for potential duplicate
@@ -589,10 +590,7 @@ def create_history(convert_obj, user_id=None, comment=None, new_output_text=None
             
             # If the input text is identical AND the output text (new_output_text) is identical to the last recorded output
             # We assume a duplicate run.
-            is_duplicate = (
-                last_input == current_input and
-                last_output == current_output
-            )
+            is_duplicate = (last_input == current_input and last_output == current_output)
             
             if is_duplicate:
                 # If duplicate, return True without creating a new entry
@@ -653,7 +651,7 @@ def accept_history(history_id):
     # Update the main Convert entry with the new output
     convert = history.convert
     convert.output_text = history.new_output_text
-    convert.updated_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    convert.updated_at = datetime.now(timezone.utc)
 
 
     db.session.commit()
@@ -699,7 +697,7 @@ def _can_see_comment(comment, convert_is_public, current_user_id, is_admin, conv
 def create_comment(convert_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
     """Create a new comment or reply on a convert."""
     try:
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         comment = Comment(
             convert_id=convert_id,
             user_id=user_id,
@@ -803,7 +801,7 @@ def react_to_comment(comment_id, user_id, emoji):
             comment_id=comment_id,
             user_id=user_id,
             emoji=emoji,
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(reaction)
         db.session.commit()
@@ -859,7 +857,7 @@ def create_report(convert_id, user_id, reason, description=None):
             reason=reason,
             description=description,
             status="pending",
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(report)
         db.session.commit()
@@ -889,7 +887,7 @@ def review_report(report_id, new_status, reviewed_by_id):
     if not report:
         return False
     report.status = new_status
-    report.reviewed_at = datetime.datetime.now(tz=datetime.timezone.utc)
+    report.reviewed_at = datetime.now(timezone.utc)
     report.reviewed_by = reviewed_by_id
     db.session.commit()
     return True
@@ -923,7 +921,7 @@ def get_graph_configs(user_id=None, is_admin=False):
 
 def save_graph_config(name, config_json, created_by):
     try:
-        now = datetime.datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cfg = GraphConfig(
             uuid=str(uuid.uuid4()),
             name=name.strip()[:100],
@@ -955,7 +953,7 @@ def delete_graph_config(config_id, user_id, is_admin):
             db.session.delete(cfg)
         else:
             cfg.is_active = False
-            cfg.updated_at = datetime.datetime.utcnow()
+            cfg.updated_at = datetime.now(timezone.utc)
         db.session.commit()
         return True, None
     except Exception as e:
@@ -974,11 +972,13 @@ def toggle_favorite(user_id: int, convert_id: int) -> bool:
         db.session.delete(existing)
         db.session.commit()
         return False
-    db.session.add(ConvertFavorite(
-        user_id=user_id,
-        convert_id=convert_id,
-        created_at=datetime.datetime.now(tz=datetime.timezone.utc),
-    ))
+    db.session.add(
+        ConvertFavorite(
+            user_id=user_id,
+            conversion_id=conversion_id,
+            created_at=datetime.now(timezone.utc)
+        )
+    )
     db.session.commit()
     return True
 

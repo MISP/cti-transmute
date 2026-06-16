@@ -1,10 +1,11 @@
-import datetime
+from datetime import datetime, timezone
+
 from flask_login import current_user
-from sqlalchemy import desc, or_
+from sqlalchemy import or_
 from website.db_class.db import Comment, Convert, Notification, SystemLog, User, UserFollow
 from website.web.utils import generate_api_key
-from .. import db
 
+from .. import db
 
 # CRUD
 
@@ -167,7 +168,7 @@ def follow_user(follower_id, followed_id):
         follow = UserFollow(
             follower_id=follower_id,
             followed_id=followed_id,
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(follow)
         db.session.commit()
@@ -270,7 +271,7 @@ def create_notification(user_id, notif_type, message, related_id=None, related_t
             related_type=related_type,
             actor_id=actor_id,
             message=message,
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(notif)
         db.session.commit()
@@ -406,16 +407,16 @@ def get_user_comments(user_id, page=1, search=None, is_admin=False):
     Admins bypass all visibility filters.
     """
     if is_admin:
-        query = Comment.query.filter(Comment.user_id == user_id, Comment.is_deleted == False)
+        query = Comment.query.filter(Comment.user_id == user_id, Comment.is_deleted)
     else:
         query = (
             Comment.query
             .join(Convert, Comment.convert_id == Convert.id)
             .filter(
                 Comment.user_id == user_id,
-                Comment.is_deleted == False,
-                Convert.is_active == True,
-                or_(Convert.public == True, Convert.user_id == user_id),
+                Comment.is_deleted,
+                Convert.is_active,
+                or_(Convert.public, Convert.user_id == user_id),
             )
         )
     if search:
@@ -437,7 +438,7 @@ def create_system_log(event_type, actor_id=None, actor_name=None, target_type=No
             target_id=target_id,
             target_name=target_name,
             details=details,
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
+            created_at=datetime.now(timezone.utc),
         )
         db.session.add(log)
         db.session.commit()
@@ -487,13 +488,17 @@ def delete_all_logs(log_type='all', date_from=None, date_to=None):
     count = 0
     if log_type in ('all', 'system'):
         q = SystemLog.query
-        if date_from: q = q.filter(SystemLog.created_at >= date_from)
-        if date_to:   q = q.filter(SystemLog.created_at <= date_to)
+        if date_from:
+            q = q.filter(SystemLog.created_at >= date_from)
+        if date_to:
+            q = q.filter(SystemLog.created_at <= date_to)
         count += q.delete(synchronize_session=False)
     if log_type in ('all', 'notifications'):
         q = Notification.query
-        if date_from: q = q.filter(Notification.created_at >= date_from)
-        if date_to:   q = q.filter(Notification.created_at <= date_to)
+        if date_from:
+            q = q.filter(Notification.created_at >= date_from)
+        if date_to:
+            q = q.filter(Notification.created_at <= date_to)
         count += q.delete(synchronize_session=False)
     db.session.commit()
     return count

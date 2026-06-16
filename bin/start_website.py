@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
+from flask import render_template
+
 from cti_transmute.default import get_config
 from website.api import api_blueprint
-from website.web import db
 from website.web import application
-from flask import render_template
 
 
 @application.errorhandler(404)

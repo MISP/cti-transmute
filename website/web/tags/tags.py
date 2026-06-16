@@ -1,14 +1,18 @@
 import functools
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Blueprint, render_template, request, abort
+from flask import Blueprint, abort, current_app, render_template, request
 from flask_login import current_user, login_required
 
-from website.db_class.db import Convert, Tag
-from website.web import csrf
-from . import tags_core as TagsModel
-from ..account import account_core as AccountModel
+from website.db_class.db import Conversion, Tag
+from website.web import csrf, db
+from website.web.tags import bulk_jobs
 from website.web.utils import extract_tag_names_from_misp_json
+
+from ..account import account_core as AccountModel
+from . import tags_core as TagsModel
 
 
 @functools.lru_cache(maxsize=1)
@@ -165,7 +169,6 @@ def admin_vendor_status():
     """Return commit SHA + date for each MISP vendor submodule."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    import subprocess
 
     def _git_info(path):
         try:
@@ -194,8 +197,7 @@ def admin_pull_and_import():
     """Pull latest MISP vendor submodules then import new tags as a background job."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
+
     jid = bulk_jobs.start_pull_and_import(current_app._get_current_object(), current_user.id)
     AccountModel.create_system_log(
         "tags_vendor_pull_started",
@@ -266,10 +268,8 @@ def admin_toggle_visibility(tag_id):
     tag = TagsModel.get_tag(tag_id)
     if not tag:
         return {"success": False, "message": "Not found", "toast_class": "danger"}, 404
-    import datetime
     tag.visibility = "private" if tag.visibility == "public" else "public"
-    tag.updated_at = datetime.datetime.utcnow()
-    from website.web import db
+    tag.updated_at = datetime.now(timezone.utc)
     try:
         db.session.commit()
         label = "public" if tag.visibility == "public" else "private"
@@ -479,8 +479,6 @@ def admin_bulk_converts_all_ids():
 def admin_bulk_scan():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     if not convert_ids:
@@ -501,8 +499,6 @@ def admin_bulk_scan():
 def admin_bulk_assign():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
@@ -523,7 +519,6 @@ def admin_bulk_assign():
 def admin_bulk_job_status(job_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from website.web.tags import bulk_jobs
     job = bulk_jobs.get(job_id)
     if not job:
         return {"success": False, "message": "Job not found"}, 404
@@ -535,7 +530,6 @@ def admin_bulk_job_status(job_id):
 def admin_bulk_jobs_list():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from website.web.tags import bulk_jobs
     return {"success": True, "jobs": bulk_jobs.list_recent()}, 200
 
 
@@ -545,7 +539,6 @@ def admin_bulk_jobs_list():
 def admin_bulk_job_delete(job_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from website.web.tags import bulk_jobs
     removed = bulk_jobs.remove(job_id)
     if removed:
         return {"success": True}, 200
@@ -558,8 +551,6 @@ def admin_bulk_job_delete(job_id):
 def admin_bulk_remove_tags():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
@@ -581,8 +572,6 @@ def admin_bulk_remove_tags():
 def admin_bulk_clear_tags():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     if not convert_ids:

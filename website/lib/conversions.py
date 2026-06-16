@@ -6,9 +6,9 @@ ADR-0009 the converter runs *outside* the DB transaction, and the persistence is
 one all-or-nothing transaction.
 """
 
-import datetime
 import json
 import uuid as uuid_lib
+from datetime import datetime, timezone
 from typing import Any
 
 from cti_transmute import transmute
@@ -35,7 +35,7 @@ def submit_conversion(
     # ADR-0009: the converter runs outside the DB transaction.
     result = transmute.convert(source, target, payload, params)
 
-    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    now = datetime.now(timezone.utc)
     convert = Convert(
         user_id=None if user is None else user.id,
         name=name or f"{source}_to_{target}_{now.strftime('%Y%m%d%H%M%S')}".upper(),

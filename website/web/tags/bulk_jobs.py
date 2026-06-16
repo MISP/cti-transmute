@@ -3,9 +3,10 @@ Small in-memory background job system for bulk convert-tag operations.
 Jobs are stored in a module-level dict (resets on server restart).
 Workers run in daemon threads and push their own Flask app context.
 """
-import datetime
+import subprocess
 import threading
 import uuid as _uuid
+from datetime import datetime, timezone
 
 _jobs: dict = {}
 _lock = threading.Lock()
@@ -25,7 +26,7 @@ def create(job_type: str, total: int) -> str:
             'added':      0,
             'skipped':    0,
             'errors':     [],
-            'created_at': datetime.datetime.utcnow().isoformat(timespec='seconds'),
+            'created_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         }
         _trim()
     return jid
@@ -191,11 +192,11 @@ def _remove_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int
 
 
 def _pull_import_worker(app, jid: str, user_id: int) -> None:
-    import subprocess
-
     with app.app_context():
         from website.web.tags.tags_core import (
-            VENDOR_PATH, import_taxonomies, import_galaxies,
+            VENDOR_PATH,
+            import_galaxies,
+            import_taxonomies,
         )
 
         project_root = VENDOR_PATH.parent.parent  # vendor/misp-taxonomies/../../  = project root

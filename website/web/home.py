@@ -1,8 +1,7 @@
-from flask import Blueprint, render_template, request, jsonify, abort
+import requests
+from flask import Blueprint, abort, jsonify, render_template
 from flask_login import current_user
 from sqlalchemy import and_, or_
-import requests
-
 
 home_blueprint = Blueprint(
     "home",
@@ -55,7 +54,7 @@ def get_current_user() -> jsonify:
 @home_blueprint.route("/get_public_activity")
 def get_public_activity():
     """Public activity feed for the homepage, based on system logs for public converts."""
-    from website.db_class.db import SystemLog, Convert
+    from website.db_class.db import Convert, SystemLog
 
     PUBLIC_EVENTS = [
         'convert_created', 'eval_like', 'eval_dislike',

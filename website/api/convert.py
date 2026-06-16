@@ -2,16 +2,16 @@
 
 import json
 import logging
+from io import BytesIO
+
 from flask import request
 from flask_restx import Namespace, Resource, reqparse
-from io import BytesIO
 from pydantic import ValidationError
 
 from cti_transmute import transmute
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
-from cti_transmute.exceptions import (
-    ConverterFailed, InvalidParameters, InvalidPayload)
+from cti_transmute.exceptions import ConverterFailed, InvalidParameters, InvalidPayload
 
 logger = logging.getLogger(__name__)
 

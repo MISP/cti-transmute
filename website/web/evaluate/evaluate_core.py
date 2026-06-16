@@ -1,8 +1,9 @@
-import re
 import datetime
+import re
 from collections import Counter
+
+from website.db_class.db import Comment, Conversion, ConversionEvaluation, Tag
 from website.web import db
-from website.db_class.db import ConvertEvaluation, Comment, Convert, Tag
 
 VALUE_ORDER = ['very-low', 'low', 'moderate', 'high', 'very-high']
 
@@ -17,7 +18,7 @@ def _parse_eval_tag(name: str):
 
 def get_tlp_tags() -> list[dict]:
     tags = (Tag.query
-            .filter(Tag.is_evaluation_tag == True, Tag.is_active == True)
+            .filter(Tag.is_evaluation_tag, Tag.is_active)
             .order_by(Tag.name)
             .all())
     result = []
@@ -35,8 +36,7 @@ def _build_cti_categories(rows, viewer_id=None) -> dict:
     for all active cti-evaluation:* tags.
     """
     tags = (Tag.query
-            .filter(Tag.is_evaluation_tag == True,
-                    Tag.is_active == True,
+            .filter(Tag.is_evaluation_tag, Tag.is_active,
                     Tag.name.like('cti-evaluation:%'))
             .all())
 
@@ -162,9 +162,7 @@ def toggle_dislike(convert_id: int, user_id: int) -> dict:
 
 def toggle_reaction(convert_id: int, user_id: int, reaction_key: str) -> dict:
     tag = Tag.query.filter(
-        Tag.name == reaction_key,
-        Tag.is_evaluation_tag == True,
-        Tag.is_active == True,
+        Tag.name == reaction_key, Tag.is_evaluation_tag, Tag.is_active
     ).first()
     if not tag:
         raise ValueError(f"Unknown reaction key: {reaction_key}")
@@ -572,22 +570,22 @@ def render_evaluation_markdown(report: dict) -> str:
 
     # ── Header ───────────────────────────────────────────────────
     lines += [
-        f'# CTI Evaluation Report',
-        f'',
+        '# CTI Evaluation Report',
+        '',
         f'## {c["name"]}',
-        f'',
-        f'| Field | Value |',
-        f'|---|---|',
+        '',
+        '| Field | Value |',
+        '|---|---|',
         f'| **Conversion type** | {c["source_fmt"]} → {c["target_fmt"]} |',
         f'| **Conversion date** | {c["created_at"]} |',
         f'| **Report generated** | {now} |',
         f'| **UUID** | `{c["uuid"]}` |',
         f'| **Visibility** | {"Public" if c["public"] else "Private"} |',
-        f'',
+        '',
     ]
 
     if c['description']:
-        lines += [f'> {c["description"]}', f'']
+        lines += [f'> {c["description"]}', '']
 
     lines += ['---', '']
 
@@ -598,10 +596,10 @@ def render_evaluation_markdown(report: dict) -> str:
 
     lines += [
         f'## Overall Score: {emoji} {level_str} ({score_str})',
-        f'',
+        '',
         f'Community assessment based on **{ov["total_votes"]} vote(s)** '
         f'from the CTI-Transmute platform.',
-        f'',
+        '',
         f'- 👍 **{ov["likes"]} like(s)**'
         + (f' · 👎 **{ov["dislikes"]} dislike(s)**' if ov['dislikes'] else ''),
     ]

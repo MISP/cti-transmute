@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import os
-import datetime
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+
 
 def backup_database():
     """
@@ -23,7 +24,7 @@ def backup_database():
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     # Filename with timestamp
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
     backup_file = backup_dir / f"{DB_NAME}_backup_{timestamp}.sql.gz"
 
     # Environment variable for password

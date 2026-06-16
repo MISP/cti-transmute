@@ -1,4 +1,3 @@
-from flask import url_for
 from flask_login import current_user
 from flask_wtf import FlaskForm
 from wtforms import ValidationError
@@ -6,7 +5,6 @@ from wtforms.fields import BooleanField, PasswordField, StringField, SubmitField
 from wtforms.validators import Email, InputRequired, Length
 
 from website.db_class.db import User
-
 
 
 class LoginForm(FlaskForm):

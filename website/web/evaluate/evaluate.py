@@ -1,8 +1,10 @@
-from flask import Blueprint, request, render_template, Response, abort
+from flask import Blueprint, Response, abort, render_template, request
 from flask_login import current_user, login_required
-from website.db_class.db import Convert
-from ..evaluate import evaluate_core as EvalModel
+
+from website.db_class.db import Conversion
+
 from ..account import account_core as AccountModel
+from ..evaluate import evaluate_core as EvalModel
 
 evaluate_blueprint = Blueprint("evaluate", __name__)
 

@@ -2,17 +2,18 @@
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
-from flask import  Flask
+from flask import Flask
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from flask_session import Session
 
 load_dotenv()
-from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
-from flask_sqlalchemy import SQLAlchemy
-from flask_session import Session
-from werkzeug.middleware.proxy_fix import ProxyFix
-from flask_login import LoginManager
-
 
 application = Flask(__name__)
 application.wsgi_app = ProxyFix(application.wsgi_app)
@@ -43,7 +44,6 @@ migrate = Migrate()
 db.init_app(application)
 csrf.init_app(application)
 
-from website.db_class import db as db_module 
 migrate.init_app(application, db, directory='website/migrations', render_as_batch=True)
 
 

@@ -196,7 +196,7 @@ def cmd_init() -> None:
             ok(f"Database '{DB_NAME}' already exists")
     else:
         info("Could not connect as postgres superuser — skipping automatic DB creation.")
-        info(f"Create the role and database manually before continuing:")
+        info("Create the role and database manually before continuing:")
         print(f"\n    psql -U postgres -c \"CREATE ROLE {DB_USER} WITH LOGIN PASSWORD '{DB_PASSWORD}';\"")
         print(f"    psql -U postgres -c \"CREATE DATABASE {DB_NAME} OWNER {DB_USER};\"\n")
 

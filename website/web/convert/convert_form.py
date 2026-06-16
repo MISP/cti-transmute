@@ -1,8 +1,8 @@
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, IntegerField, SelectField, StringField, SubmitField, TextAreaField, ValidationError
-from wtforms.validators import DataRequired , Optional, NumberRange
+from wtforms.validators import DataRequired, NumberRange, Optional
+from website.db_class.db import Conversion
 
-from website.db_class.db import Convert
 
 class mispToStixParamForm(FlaskForm):
     version = SelectField(

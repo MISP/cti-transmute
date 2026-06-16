@@ -1,8 +1,9 @@
-import random
-import string
-from website.db_class.db import User , db
 import json
-from typing import List, Optional, Tuple, Union
+import string
+from typing import List, Optional, Tuple
+
+from website.db_class.db import User, db
+
 
 def form_to_dict(form):
     """Parse a form into a dict"""
@@ -67,8 +68,6 @@ def generate_api_key(length=60):
 #   Parser for name and description   #
 #######################################
 
-import json
-from typing import List, Tuple, Optional
 
 def parse_stix_reports(json_text: str) -> List[Tuple[str, Optional[str]]]:
     """
@@ -78,7 +77,7 @@ def parse_stix_reports(json_text: str) -> List[Tuple[str, Optional[str]]]:
     """
     try:
         data = json.loads(json_text)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         return []
 
     results = []
@@ -130,7 +129,6 @@ def parse_misp_reports(file_content):
 
 
 
-import json
 
 def extract_name_from_misp_json(json_text: str) -> str | None:
     """

@@ -1,10 +1,10 @@
-import datetime
 import hashlib
 import json
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import or_, case, func
+from sqlalchemy import case, func, or_
 
 from website.db_class.db import Convert, ConvertTagAssociation, Tag
 from website.web import db
@@ -55,7 +55,7 @@ def get_tags_page(page, source=None, visibility_filter=None, search=None,
 def create_tag(name, description, color, icon, source, created_by,
                visibility="private", is_approved_by_admin=False, is_active=False):
     try:
-        now = datetime.datetime.utcnow()
+        now = datetime.now(timezone.utc)
         tag = Tag(
             uuid=str(uuid.uuid4()),
             name=name.strip(),
@@ -99,7 +99,7 @@ def edit_tag(tag_id, current_user_id, is_admin, **kwargs):
         if field in kwargs and kwargs[field] is not None:
             setattr(tag, field, kwargs[field])
 
-    tag.updated_at = datetime.datetime.utcnow()
+    tag.updated_at = datetime.now(timezone.utc)
     try:
         db.session.commit()
         return tag, None
@@ -131,7 +131,7 @@ def admin_approve_tag(tag_id, approve=True):
     if approve:
         tag.is_active = True
         tag.visibility = "public"
-    tag.updated_at = datetime.datetime.utcnow()
+    tag.updated_at = datetime.now(timezone.utc)
     try:
         db.session.commit()
         return True, None
@@ -145,7 +145,7 @@ def admin_toggle_active(tag_id):
     if not tag:
         return False, None
     tag.is_active = not tag.is_active
-    tag.updated_at = datetime.datetime.utcnow()
+    tag.updated_at = datetime.now(timezone.utc)
     try:
         db.session.commit()
         return True, tag.is_active
@@ -161,7 +161,7 @@ def bulk_action(tag_ids, action):
     Returns (count, error).
     """
     tags = Tag.query.filter(Tag.id.in_(tag_ids)).all()
-    now = datetime.datetime.utcnow()
+    now = datetime.now(timezone.utc)
     count = len(tags)
     for tag in tags:
         if action == "delete":
@@ -207,7 +207,7 @@ def import_taxonomies(admin_user_id, vendor_path=None):
     imported = 0
     skipped = 0
     errors = []
-    now = datetime.datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     for taxonomy_dir in sorted(path.iterdir()):
         machinetag = taxonomy_dir / "machinetag.json"
@@ -322,7 +322,7 @@ def import_galaxies(admin_user_id, vendor_path=None, batch_size=500):
     imported = 0
     skipped = 0
     errors = []
-    now = datetime.datetime.utcnow()
+    now = datetime.now(timezone.utc)
     batch_count = 0
 
     # Pre-load existing galaxy tag names in a set for fast duplicate check
@@ -414,14 +414,14 @@ def get_available_tags(user_id, search=None, source=None, is_evaluation=False, l
     When `is_evaluation` is True, only tags marked as evaluation tags are returned.
     """
     query = Tag.query.filter(
-        Tag.is_active == True,
+        Tag.is_active,
         or_(
-            db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin == True),
+            db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin),
             db.and_(Tag.visibility == 'private', Tag.created_by == user_id),
         ),
     )
     if is_evaluation:
-        query = query.filter(Tag.is_evaluation_tag == True)
+        query = query.filter(Tag.is_evaluation_tag)
 
     if search:
         query = query.filter(Tag.name.ilike(f'%{search}%'))
@@ -487,9 +487,9 @@ def find_tags_by_names(user_id, names: list[str]) -> list:
     return (
         Tag.query
         .filter(
-            Tag.is_active == True,
+            Tag.is_active,
             or_(
-                db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin == True),
+                db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin),
                 db.and_(Tag.visibility == 'private', Tag.created_by == user_id),
             ),
             func.lower(Tag.name).in_(lower_names),
@@ -505,9 +505,7 @@ def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
         return []
     lower_names = {n.lower() for n in tag_names}
     tags = Tag.query.filter(
-        Tag.is_active == True,
-        Tag.is_approved_by_admin == True,
-        Tag.visibility == 'public',
+        Tag.is_active, Tag.is_approved_by_admin, Tag.visibility == 'public',
     ).all()
     return [t.id for t in tags if t.name.lower() in lower_names]
 
@@ -522,7 +520,7 @@ def merge_convert_tags(convert_id: int, tag_ids: list, user_id: int, source_type
             convert_id=convert_id, source_type=source_type
         ).all()
     }
-    now = datetime.datetime.utcnow()
+    now = datetime.now(timezone.utc)
     count = 0
     seen = set()
     for tid in tag_ids:
@@ -595,10 +593,8 @@ def get_all_tags_usage():
     tags = (
         Tag.query
         .filter(
-            Tag.id.in_(counts.keys()),
-            Tag.is_active == True,
-            Tag.visibility == 'public',
-            Tag.is_approved_by_admin == True,
+            Tag.id.in_(counts.keys()), Tag.is_active,
+            Tag.visibility == 'public', Tag.is_approved_by_admin,
         )
         .order_by(Tag.name.asc())
         .all()
@@ -622,7 +618,7 @@ def save_convert_tags(convert_id, tag_ids, user_id):
     ConvertTagAssociation.query.filter_by(
         convert_id=convert_id, source_type="user"
     ).delete(synchronize_session=False)
-    now = datetime.datetime.utcnow()
+    now = datetime.now(timezone.utc)
     seen = set()
     for tid in tag_ids:
         if tid in seen:

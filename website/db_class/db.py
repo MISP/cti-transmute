@@ -1,7 +1,10 @@
-import datetime
-from website.web import db , login_manager
-from flask_login import UserMixin, AnonymousUserMixin
+from datetime import datetime, timezone
+
+from flask_login import AnonymousUserMixin, UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from website.web import db, login_manager
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -382,8 +385,8 @@ class Tag(db.Model):
     uuid = db.Column(db.String(36), unique=True, nullable=False, index=True)
     name = db.Column(db.Text, unique=True, nullable=False, index=True)
     description = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = db.Column(db.Boolean, default=False)
     # "public" | "private"
     visibility = db.Column(db.String(255), nullable=True)
@@ -469,7 +472,7 @@ class ConvertTagAssociation(db.Model):
     convert_id = db.Column(db.Integer, db.ForeignKey('convert.id', ondelete='CASCADE'), nullable=False, index=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
-    added_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     # "user" = manually added via UI | "json" = extracted from MISP/STIX JSON by admin scan
     source_type = db.Column(db.String(10), nullable=False, default="user", server_default="user")
 
