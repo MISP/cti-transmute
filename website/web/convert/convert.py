@@ -1518,7 +1518,7 @@ def bulk_action():
             _name = convert.name
             if ConvertModel.hard_delete_convert(conversion_id):
                 AccountModel.create_system_log(
-                    'convert_hard_deleted", actor_id=current_user.id, actor_name=current_user.first_name,
+                    'convert_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
                     target_type='convert', target_id=conversion_id, target_name=_name
                 )
                 done += 1
