@@ -267,8 +267,8 @@
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const old_result = ref(`{{ old_result | tojson | safe }}`);
-            const new_result = ref(`{{ new_result | tojson | safe }}`);
+            const old_result = ref({{ old_result | tojson | safe }});
+            const new_result = ref({{ new_result | tojson | safe }});
             const history_id = "{{ history_id }}";
 
             const original_params = ref({{ convert_obj.params | tojson | safe }});
