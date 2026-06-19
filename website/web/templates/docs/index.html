@@ -327,7 +327,9 @@ website/
                             <tr><td><span class="dc-field-name">id / uuid</span></td><td><span class="dc-field-type">Integer / String(36)</span></td><td>PK + UUID4</td></tr>
                             <tr><td><span class="dc-field-name">name</span></td><td><span class="dc-field-type">String(256)</span></td><td>User-defined label</td></tr>
                             <tr><td><span class="dc-field-name">description</span></td><td><span class="dc-field-type">Text</span></td><td>Optional free text</td></tr>
-                            <tr><td><span class="dc-field-name">conversion_type</span></td><td><span class="dc-field-type">String(32)</span></td><td><code>"MISP_TO_STIX"</code> or <code>"STIX_TO_MISP"</code></td></tr>
+                            <tr><td><span class="dc-field-name">source_format / target_format</span></td><td><span class="dc-field-type">String(50)</span></td><td>Converter slugs, e.g. <code>"misp"</code> / <code>"stix"</code></td></tr>
+                            <tr><td><span class="dc-field-name">conversion_type</span></td><td><span class="dc-field-type">String (derived)</span></td><td>Computed from the slugs, e.g. <code>"MISP_TO_STIX"</code> — not stored</td></tr>
+                            <tr><td><span class="dc-field-name">params</span></td><td><span class="dc-field-type">JSON</span></td><td>Params the conversion ran with (<code>null</code> for legacy rows)</td></tr>
                             <tr><td><span class="dc-field-name">input_text / output_text</span></td><td><span class="dc-field-type">Text</span></td><td>Raw JSON strings</td></tr>
                             <tr><td><span class="dc-field-name">public</span></td><td><span class="dc-field-type">Boolean</span></td><td>Visibility flag</td></tr>
                             <tr><td><span class="dc-field-name">share_key</span></td><td><span class="dc-field-type">String(64)</span></td><td>Token for sharing private converts</td></tr>

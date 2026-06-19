@@ -39,9 +39,11 @@ def submit_conversion(
     convert = Conversion(
         user_id=None if user is None else user.id,
         name=name or f"{source}_to_{target}_{now.strftime('%Y%m%d%H%M%S')}".upper(),
-        conversion_type=f"{source}_to_{target}".upper(),
+        source_format=source,
+        target_format=target,
         input_text=_to_text(payload),
         output_text=_to_text(result),
+        params=params.model_dump(mode="json", exclude_none=True),
         description=description,
         created_at=now,
         updated_at=now,

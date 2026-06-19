@@ -3,6 +3,12 @@
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/difference.css') }}">
 <link id="hljs-theme" rel="stylesheet" href="">
+<style>
+    .params-table td, .params-table th { padding: .3rem .5rem; vertical-align: top; }
+    .params-table tr.param-row-changed { background: rgba(245, 158, 11, .12); }
+    .params-table tr.param-row-changed td { font-weight: 600; }
+    .params-missing { color: var(--text-3); font-style: italic; font-size: .875rem; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -87,6 +93,45 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="custom-card p-3 mb-4">
+            <p class="form-label mb-2">
+                <i class="fas fa-sliders me-1" style="color:var(--text-3);"></i>
+                Parameters used
+            </p>
+
+            <p class="params-missing mb-0" v-if="!paramsState.recorded">
+                Parameters not recorded — this conversion predates parameter tracking.
+            </p>
+
+            <template v-else>
+                <div v-if="paramsState.identical"
+                    class="alert alert-success py-2 px-3 mb-2" style="font-size:0.85rem;">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Same parameters used — the difference comes from input edits or library-version drift.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 params-table" style="font-size:0.82rem;">
+                        <thead>
+                            <tr>
+                                <th style="width:40%;">Parameter</th>
+                                <th>Original</th>
+                                <th>New</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="r in paramsState.rows" :key="r.key"
+                                :class="r.changed ? 'param-row-changed' : ''">
+                                <td><code>[[ r.key ]]</code></td>
+                                <td>[[ fmtParam(r.old) ]]</td>
+                                <td>[[ fmtParam(r.new) ]]</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
         </div>
 
         <div class="diff-toolbar">
@@ -207,7 +252,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
 
 <script type="module">
-    const { createApp, ref, nextTick } = Vue;
+    const { createApp, ref, computed, nextTick } = Vue;
     import { create_message } from '/static/js/toaster.js';
 
     function applyHljsTheme() {
@@ -226,6 +271,8 @@
             const new_result = ref(`{{ new_result | tojson | safe }}`);
             const history_id = "{{ history_id }}";
 
+            const original_params = ref({{ convert_obj.params | tojson | safe }});
+
             const historyObj = ref({});
             const leftHtml = ref('');
             const rightHtml = ref('');
@@ -240,6 +287,35 @@
                 const data = await res.json();
                 if (data.success) historyObj.value = data.history;
             }
+
+            function fmtParam(v) {
+                if (v === undefined) return '—';
+                if (v === null) return 'null';
+                if (typeof v === 'boolean') return v ? 'true' : 'false';
+                if (typeof v === 'object') return JSON.stringify(v);
+                return String(v);
+            }
+
+            // Compare the Original vs New param sets for the diff attribution block.
+            const paramsState = computed(() => {
+                const op = original_params.value;
+                const hp = historyObj.value && historyObj.value.params;
+                const o = op && Object.keys(op).length ? op : null;
+                const n = hp && Object.keys(hp).length ? hp : null;
+                if (!o && !n) return { recorded: false, rows: [], identical: false };
+
+                const keys = Array.from(new Set([
+                    ...Object.keys(o || {}), ...Object.keys(n || {})
+                ])).sort();
+                const rows = keys.map(k => {
+                    const ov = o ? o[k] : undefined;
+                    const nv = n ? n[k] : undefined;
+                    return { key: k, old: ov, new: nv,
+                             changed: JSON.stringify(ov) !== JSON.stringify(nv) };
+                });
+                const identical = !!o && !!n && rows.every(r => !r.changed);
+                return { recorded: true, hasOriginal: !!o, hasNew: !!n, identical, rows };
+            });
 
             function prettyJSON(str) {
                 try { return JSON.stringify(JSON.parse(str), null, 2); }
@@ -477,7 +553,7 @@
                 old_result, new_result, leftHtml, rightHtml,
                 historyObj, panelHeight, filterMode, stats,
                 is_loading, historyAction, toggleFilter,
-                copyText, formatDate
+                copyText, formatDate, paramsState, fmtParam
             };
         }
     }).mount('#main-containers');

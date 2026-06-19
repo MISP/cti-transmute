@@ -168,8 +168,8 @@ def public_converts(user_id):
     )
 
     total = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True).count()
-    m2s   = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='MISP_TO_STIX').count()
-    s2m   = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True, conversion_type='STIX_TO_MISP').count()
+    m2s   = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True).filter(Conversion.conversion_type == 'MISP_TO_STIX').count()
+    s2m   = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True).filter(Conversion.conversion_type == 'STIX_TO_MISP').count()
 
     items = []
     if pagination:
@@ -778,8 +778,8 @@ def get_user_stats():
         return {"success": False}, 404
 
     total  = Conversion.query.filter_by(user_id=user_id, is_active=True).count()
-    m2s    = Conversion.query.filter_by(user_id=user_id, conversion_type='MISP_TO_STIX', is_active=True).count()
-    s2m    = Conversion.query.filter_by(user_id=user_id, conversion_type='STIX_TO_MISP', is_active=True).count()
+    m2s    = Conversion.query.filter_by(user_id=user_id, is_active=True).filter(Conversion.conversion_type == 'MISP_TO_STIX').count()
+    s2m    = Conversion.query.filter_by(user_id=user_id, is_active=True).filter(Conversion.conversion_type == 'STIX_TO_MISP').count()
     public = Conversion.query.filter_by(user_id=user_id, is_active=True, public=True).count()
 
     likes     = ConversionEvaluation.query.filter_by(user_id=user_id, eval_type='like').count()

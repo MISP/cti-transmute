@@ -41,10 +41,12 @@ def create_convert(user_id, input_text, output_text, convert_choice, description
             suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
             final_name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
 
+        _source, _, _target = convert_choice.partition("_TO_")
         convert = Conversion(
             user_id=user_id,
             name=final_name,
-            conversion_type=convert_choice,
+            source_format=_source.lower() or None,
+            target_format=_target.lower() or None,
             input_text=input_text,
             output_text=output_text,
             description=description or f"STIX conversion saved at {now.isoformat()}",

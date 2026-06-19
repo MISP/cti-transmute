@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 
 from flask_login import AnonymousUserMixin, UserMixin
+from sqlalchemy import func
+from sqlalchemy.ext.hybrid import hybrid_property
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from website.web import db, login_manager
@@ -78,17 +80,35 @@ class Conversion(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, nullable=True) # the user who made the convert
     name = db.Column(db.String(255), nullable=False)
-    conversion_type = db.Column(db.String(50), nullable=False)
+    source_format = db.Column(db.String(50), nullable=True)  # Converter source slug
+    target_format = db.Column(db.String(50), nullable=True)  # Converter target slug
     description = db.Column(db.Text)  # optional description
     uuid = db.Column(db.String(36), index=True)
     input_text = db.Column(db.Text, nullable=False)    # Original text
     output_text = db.Column(db.Text, nullable=True)    # Converted text
+    params = db.Column(db.JSON, nullable=True)  # the params the conversion ran with
     created_at = db.Column(db.DateTime, index=True)
     updated_at = db.Column(db.DateTime, index=True)
     public = db.Column(db.Boolean, default=True, index=True) #able to share with the community
     share_key = db.Column(db.String(36), index=True, nullable=True)
     is_active = db.Column(db.Boolean, default=True, index=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
+
+    @hybrid_property
+    def conversion_type(self):
+        """Derived direction discriminator, e.g. ``"MISP_TO_STIX"``.
+
+        No longer a stored free-form column — computed from the Converter's
+        source/target slugs so it can never drift from them.
+        """
+        if self.source_format is None or self.target_format is None:
+            return None
+        return f"{self.source_format}_to_{self.target_format}".upper()
+
+    @conversion_type.expression
+    def conversion_type(cls):
+        # Usable in SQL WHERE clauses: func.upper(source || '_to_' || target)
+        return func.upper(cls.source_format + "_to_" + cls.target_format)
 
     def get_user_name_by_id(self):
         user = User.query.get(self.user_id)  
@@ -103,6 +123,9 @@ class Conversion(db.Model):
             "description": self.description,
             "input_text": self.input_text,
             "conversion_type": self.conversion_type,
+            "source_format": self.source_format,
+            "target_format": self.target_format,
+            "params": self.params,
             "output_text": self.output_text,
             "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
             "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
@@ -351,6 +374,8 @@ class ConversionHistory(db.Model):
     old_output_text = db.Column(db.Text, nullable=True)
     new_output_text = db.Column(db.Text, nullable=True)
 
+    params = db.Column(db.JSON, nullable=True)  # params this version ran with
+
     # Metadata
     created_at = db.Column(db.DateTime, index=True)
     comment = db.Column(db.Text, nullable=True)
@@ -371,6 +396,7 @@ class ConversionHistory(db.Model):
             "input_text": self.input_text,
             "old_output_text": self.old_output_text,
             "new_output_text": self.new_output_text,
+            "params": self.params,
             "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
             "comment": self.comment,
             "status": self.status,
