@@ -54,6 +54,7 @@ def app_db():
     exercises the real ORM/session/transaction without a live Postgres.
     """
     from website.web import application, db
+    import website.db_class.db  # noqa: F401  -- register models on db.metadata before create_all
 
     application.config["TESTING"] = True
     application.config["SQLALCHEMY_DATABASE_URI"] = "sqlite://"

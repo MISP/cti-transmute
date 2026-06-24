@@ -11,7 +11,6 @@ from cti_transmute.exceptions import (
     UnknownConverter,
 )
 
-
 # --- registry: resolving a (source, target) family to its Converter ---------
 
 def test_resolves_misp_to_stix():
