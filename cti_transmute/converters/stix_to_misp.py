@@ -16,8 +16,8 @@ class StixToMispParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     distribution: int = Field(default=0, ge=0, le=4)
-    # ADR-0005: the "required when distribution == 4" relationship is carried as
-    # a description only — semantic/cross-field validity is the target tool's job.
+    # the "required when distribution == 4" relationship is carried as a
+    # description only — semantic/cross-field validity is the target tool's job.
     sharing_group_id: Optional[int] = Field(
         default=None,
         description="Sharing group ID; required by MISP when distribution is 4.",

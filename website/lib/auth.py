@@ -1,7 +1,6 @@
 """API authentication: resolve the acting User from the ``X-API-KEY`` header.
 
-Per ADR-0003 the public API accepts an optional ``X-API-KEY`` header:
-
+The public API accepts an optional ``X-API-KEY`` header:
 - **absent** → anonymous (``None``); the request proceeds and any persisted
   Conversion gets ``user_id IS NULL`` — matching the web view for logged-out
   visitors.
@@ -28,7 +27,7 @@ def resolve_api_actor() -> User | None:
 
     ``None`` means no header was sent (anonymous). Raises ``InvalidApiKey`` when
     a key is present but matches no user. An indexed exact-match lookup; no
-    constant-time comparison needed (ADR-0003).
+    constant-time comparison needed.
     """
     key = request.headers.get(API_KEY_HEADER)
     if not key:

@@ -1,8 +1,8 @@
 """The conversion use-case: convert-and-save.
 
 `submit_conversion` runs a conversion through the Flask-free engine
-(`transmute.convert`, ADR-0010's pure path) and persists the result. Per
-ADR-0009 the converter runs *outside* the DB transaction, and the persistence is
+(`transmute.convert`) and persists the result.
+The converter runs *outside* the DB transaction, and the persistence is
 one all-or-nothing transaction.
 """
 
@@ -32,7 +32,7 @@ def submit_conversion(
     name: str | None = None, description: str | None = None,
     public: bool = True) -> Conversion:
     """Conversion ``payload`` and persist the result as a ``Conversion`` row."""
-    # ADR-0009: the converter runs outside the DB transaction.
+    # The converter runs outside the DB transaction.
     result = transmute.convert(source, target, payload, params)
 
     now = datetime.now(timezone.utc)
@@ -51,8 +51,8 @@ def submit_conversion(
         uuid=str(uuid_lib.uuid4()),
         share_key=generate_api_key(36),
     )
-    # ADR-0009: one all-or-nothing transaction — the Conversion row and its
-    # audit log commit together, or not at all.
+    # One all-or-nothing transaction — the Conversion row and its audit log
+    # commit together, or not at all.
     db.session.add(convert)
     db.session.flush()  # assign convert.id within the transaction
     _record_creation(convert, user, now)
@@ -62,8 +62,8 @@ def submit_conversion(
         db.session.rollback()
         raise PersistenceFailed("Failed to persist the conversion") from exc
 
-    # ADR-0009: external side effects fire only after commit. Notify followers
-    # for an authenticated, public submission.
+    # External side effects fire only after commit. Notify followers for an
+    # authenticated, public submission.
     if user is not None and public:
         AccountModel.notify_followers_new_convert(convert, user.id)
     return convert
@@ -145,7 +145,7 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
     ``PermissionDenied`` before anything is converted or written. Re-runs the
     engine on ``conversion.input_text`` (outside the transaction), then writes
     a ``ConversionHistory`` row with ``status="pending"`` and the ``params``
-    used — owned by the Conversion's owner, not the refresher — and its audit
+    used - owned by the Conversion's owner, not the refresher - and its audit
     log, atomically.
     """
     assert_can_refresh(user, conversion)

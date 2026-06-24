@@ -1,7 +1,7 @@
 """Transmute — the conversion engine's hub and public library API.
 
-`cti_transmute` is importable on its own (ADR-0001); `Transmute` is its front
-door. It is the runtime source of truth for the supported directions: concrete
+`cti_transmute` is importable on its own; `Transmute` is its front door.
+It is the runtime source of truth for the supported directions: concrete
 Converters self-register into it, it resolves a ``(source, target)`` family to
 its Converter, and ``convert`` runs one in a single call — accepting parameters
 as a plain dict (validated through the Converter's own schema), an already-built

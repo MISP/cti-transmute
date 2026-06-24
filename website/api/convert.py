@@ -162,7 +162,8 @@ class MispStixConverter(Resource):
             )
 
     def _persist(self, source: str, target: str, payload, params):
-        """Convert-and-save via the use-case, returning the ADR-0004 envelope.
+        """Convert-and-save via the use-case, returning the persisted-response
+        envelope: the converted payload plus the new Conversion's id, uuid, and URL.
 
         ``g.api_user`` is whatever `@api_actor` resolved from ``X-API-KEY`` — a
         ``User`` or ``None`` (anonymous persistence is allowed; the row gets

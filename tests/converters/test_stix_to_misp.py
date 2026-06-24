@@ -53,7 +53,7 @@ def test_params_reject_unknown_field():
 
 
 def test_params_accept_sharing_group_distribution_without_sharing_group():
-    # ADR-0005: shape-only validation. The "sharing_group_id required when
+    # Shape-only validation. The "sharing_group_id required when
     # distribution == 4" rule is the target tool's job, NOT ours — this must
     # construct cleanly.
     params = StixToMispParams(distribution=4)

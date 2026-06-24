@@ -1,7 +1,7 @@
-"""HTTP tests for Spine 06: ``X-API-KEY`` auth + ``?persist=true`` envelope.
+"""HTTP tests: ``X-API-KEY`` auth + ``?persist=true`` envelope.
 
-Covers ADR-0003 (API-key auth, anonymous still allowed) and ADR-0004 (opt-in
-persistence with a distinct envelope response). The stateless path is unchanged.
+Covers API-key auth, anonymous still allowed and opt-in persistence with a
+distinct envelope response). The stateless path is unchanged.
 """
 
 

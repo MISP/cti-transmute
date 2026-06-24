@@ -1,8 +1,8 @@
 """Unit tests for the WTForm → Pydantic params builders in the convert views.
 
-These are the testable seam of the Spine 03 web rewire: the views stop calling
-their own API over HTTP and instead build the Converter's Pydantic params from
-the WTForm's cleaned data, then call `submit_conversion` directly. The mapping
+These are the testable seam of web rewire: the views stop calling their own API
+over HTTP and instead build the Converter's Pydantic params from the WTForm's
+cleaned data, then call `submit_conversion` directly. The mapping
 (strip strings, drop empties to defaults, keep real bool/int) replaces the old
 `sanitazed_params` + `[None, "", False, "False"]` filter and the API's
 `""`-means-true convention.
