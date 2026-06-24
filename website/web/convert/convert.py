@@ -18,8 +18,10 @@ from cti_transmute.exceptions import ConversionError, InvalidParameters, Invalid
 from website.db_class.db import Comment as CommentModel
 from website.db_class.db import Conversion, ConversionFavorite, db
 from website.db_class.db import Tag as TagModel
-from website.lib.conversions import submit_conversion
-from website.lib.exceptions import PersistenceFailed
+from website.lib.conversions import (
+    accept_history, assert_can_refresh, refresh_conversion, reject_history,
+    submit_conversion)
+from website.lib.exceptions import PermissionDenied, PersistenceFailed
 from website.web.convert.convert_form import editConvertForm, mispToStixParamForm, stixToMispParamForm
 from website.web.utils import (
     extract_name_from_misp_json, extract_tag_names_from_misp_json,
@@ -870,21 +872,29 @@ def share_convert():
 ###########################
 
 @convert_blueprint.route("/refresh/<string:uuid>", methods=['GET', 'POST'])
+@login_required
 def refresh(uuid):
-
     convert_obj = ConvertModel.get_convert_by_uuid(uuid)
 
     if not convert_obj:
         flash("Conversion not found.", "danger")
         return redirect(url_for("conversions.history"))
 
-    # Choose which WTForm to use
+    # Owner-or-admin only — gate both the form (GET) and the re-run (POST).
+    # Anonymous callers were already bounced to login by @login_required.
+    user = current_user._get_current_object()
+    try:
+        assert_can_refresh(user, convert_obj)
+    except PermissionDenied:
+        abort(403)
+
+    # Choose the WTForm + params builder for this conversion's direction.
     if convert_obj.conversion_type == "MISP_TO_STIX":
-        print("Using MISP to STIX form")
         form = mispToStixParamForm()
+        build_params = _build_misp_to_stix_params
     elif convert_obj.conversion_type == "STIX_TO_MISP":
-        print("Using STIX to MISP form")
         form = stixToMispParamForm()
+        build_params = _build_stix_to_misp_params
     else:
         flash("Unsupported conversion type.", "danger")
         return redirect(url_for("conversions.history"))
@@ -900,22 +910,25 @@ def refresh(uuid):
     error = None
 
     if form.validate_on_submit():
-
-        # Call the generic dispatcher
-        new_output, is_identical, error_msg = ConvertModel.reconvert_conversion(convert_obj, form)
-
-        if error_msg:
-            error = error_msg
-            flash(error_msg, "danger")
+        try:
+            history = refresh_conversion(user, convert_obj, build_params(form))
+        except PermissionDenied:
+            abort(403)
+        except ConversionError as exc:
+            error = _conversion_error_message(exc)
+            flash(error, "danger")
         else:
-            if not is_identical:
-                flash("Conversion re-executed successfully! Changes detected.", "success")
-                result = new_output
-                diff = "The new conversion result is DIFFERENT from the previous one."
-            else:
+            result = history.new_output_text
+            is_identical = (
+                (convert_obj.output_text or "").strip()
+                == (history.new_output_text or "").strip()
+            )
+            if is_identical:
                 flash("Conversion re-executed successfully! No changes detected.", "success")
-                result = new_output
                 diff = "The new conversion result is IDENTICAL to the previous one."
+            else:
+                flash("Conversion re-executed successfully! Changes detected.", "success")
+                diff = "The new conversion result is DIFFERENT from the previous one."
 
     return render_template(
         "convert/refresh.html",
@@ -1001,55 +1014,57 @@ def get_new_convert():
         }, 400
 
 
-@convert_blueprint.route("/history_action", methods=['GET'])
+def _moderate_history(history_id, use_case, past_tense):
+    """Shared body for the accept/reject endpoints.
+
+    Resolves the history row, hands it to the use-case (which enforces the
+    owner-or-admin rule), and maps the typed failures to JSON + status: an
+    unauthorised actor is 403, a persistence failure 500.
+    """
+    history = ConvertModel.get_convert_history_by_id(history_id)
+    if not history:
+        return {"success": False, "message": "History entry not found",
+                "toast_class": "danger"}, 404
+    user = current_user._get_current_object()
+    try:
+        use_case(user, history)
+    except PermissionDenied:
+        return {"success": False,
+                "message": "You do not have permission to perform this action.",
+                "toast_class": "danger"}, 403
+    except ConversionError:
+        return {"success": False,
+                "message": f"Failed to {past_tense} the history entry.",
+                "toast_class": "danger"}, 500
+    return {"success": True,
+            "message": f"History entry {history_id} {past_tense}.",
+            "toast_class": "success"}, 200
+
+
+@convert_blueprint.route("/history/<int:history_id>/accept", methods=['POST'])
 @login_required
-def history_action():
-    """Handle actions related to conversion history"""
-    action = request.args.get('action')
-    history_id = request.args.get('history_id', type=int)
-    conversion_id = request.args.get('conversion_id', type=int)
+def history_accept(history_id):
+    """Accept a pending refresh (owner-or-admin) — adopts its output."""
+    return _moderate_history(history_id, accept_history, "accepted")
 
-    if current_user.is_anonymous():
-        return {
-            "success": False,
-            "message": "You must be logged in to perform this action.",
-            "toast_class": "danger"
-        }, 401
-    if not current_user.is_admin() and current_user.id != ConvertModel.get_convert(conversion_id).user_id:
-        return {
-            "success": False,
-            "message": "You do not have permission to perform this action.",
-            "toast_class": "danger"
-        }, 403
-    else:
-        # --- Handle Conversion History Actions (Accept/Reject) ---
-        if history_id and action in ["accept", "reject"]:
-            
-            if action == "accept":
-                success = ConvertModel.accept_history(history_id)
-            elif action == "reject":
-                success = ConvertModel.reject_history(history_id)
-            success = True # Replace with actual database call
-            
-            if success:
-                flash("Conversion history updated", "success")
-                return {
-                    "success": True,
-                    "message": f"History entry {history_id} {action}ed successfully.",
-                    "toast_class": "success"
-                }, 200
-            return {
-                "success": False,
-                "message": f"Failed to {action} history entry {history_id}.",
-                "toast_class": "danger"
-            }, 500
 
-    # --- Default Error ---
+@convert_blueprint.route("/history/<int:history_id>/reject", methods=['POST'])
+@login_required
+def history_reject(history_id):
+    """Reject a pending refresh (owner-or-admin) — leaves the Conversion as-is."""
+    return _moderate_history(history_id, reject_history, "rejected")
+
+
+@convert_blueprint.route("/history_action", methods=['GET', 'POST'])
+def history_action_gone():
+    """Removed: the GET-mutator split into POST accept/reject endpoints."""
     return {
         "success": False,
-        "message": "Invalid action or missing parameters (history_id or conversion_id).",
-        "toast_class": "danger"
-    }, 400
+        "message": ("This endpoint has moved. Use "
+                    "POST /conversions/history/<id>/accept or "
+                    "POST /conversions/history/<id>/reject."),
+        "toast_class": "danger",
+    }, 410
 
 
 @convert_blueprint.route("/difference/<int:id>", methods=['GET'])

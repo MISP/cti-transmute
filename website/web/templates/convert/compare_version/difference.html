@@ -13,6 +13,7 @@
 
 {% block content %}
 <div class="container my-5" id="main-container" v-cloak>
+    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
 
     <template v-if="is_loading">
         <div class="d-flex justify-content-center align-items-center" style="min-height:400px;">
@@ -512,8 +513,10 @@
             }
 
             async function historyAction(id, action) {
-                const params = new URLSearchParams({ history_id: id, action });
-                const res = await fetch(`/conversions/history_action?${params}`);
+                const res = await fetch(`/conversions/history/${id}/${action}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' },
+                });
                 const data = await res.json();
                 if (data.success) {
                     window.location.href = `/conversions/refresh/${"{{convert_obj.uuid}}"}`;

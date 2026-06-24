@@ -12,8 +12,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from cti_transmute import transmute
-from website.db_class.db import Conversion, SystemLog
-from website.lib.exceptions import PersistenceFailed
+from website.db_class.db import Conversion, ConversionHistory, SystemLog
+from website.lib.exceptions import PermissionDenied, PersistenceFailed
 from website.web import db
 from website.web.account import account_core as AccountModel
 from website.web.utils import generate_api_key
@@ -71,16 +71,163 @@ def submit_conversion(
 
 def _record_creation(convert: Conversion, user, now: datetime) -> None:
     """Add the `convert_created` audit log inside the conversion's transaction."""
+    _record_event(
+        "convert_created", user, "convert", convert.id, convert.name, now,
+        details=f"Type: {convert.conversion_type}, Public: {convert.public}",
+    )
+
+
+def _record_event(event_type: str, actor, target_type: str, target_id: int,
+                  target_name: str, now: datetime, details: str | None = None) -> None:
+    """Add an audit-log row inside the current transaction.
+
+    Until Candidate 3's event bus lands, the use-cases record their audit trail
+    by writing a ``SystemLog`` row directly (one per mutation), the same in-tx
+    pattern as `_record_creation` (audit is atomic with the change).
+    ``actor`` is the *acting* user (e.g. an admin refreshing someone else's
+    Conversion), which can differ from the row's owner.
+    """
     db.session.add(
         SystemLog(
-            event_type="convert_created",
-            actor_id=None if user is None else user.id,
-            actor_name="Anonymous" if user is None
-            else getattr(user, "first_name", None),
-            target_type="convert",
-            target_id=convert.id,
-            target_name=convert.name,
-            details=f"Type: {convert.conversion_type}, Public: {convert.public}",
-            created_at=now,
+            event_type=event_type,
+            actor_id=None if actor is None else actor.id,
+            actor_name="Anonymous" if actor is None
+            else getattr(actor, "first_name", None),
+            target_type=target_type,
+            target_id=target_id,
+            target_name=target_name,
+            details=details,
+            created_at=now
         )
     )
+
+
+def _is_owner_or_admin(user, conversion: Conversion) -> bool:
+    if user is None:
+        return False
+    if getattr(user, "id", None) == conversion.user_id:
+        return True
+    is_admin = getattr(user, "is_admin", None)
+    return bool(is_admin()) if callable(is_admin) else False
+
+
+def assert_can_refresh(user, conversion: Conversion) -> None:
+    """Allow only the Conversion's owner or an admin to refresh it.
+
+    Anonymous (``user is None``) and any other user raise ``PermissionDenied``.
+    Inline here for this slice; Candidate 2 lifts it into ``website/lib/access.py``.
+    """
+    if not _is_owner_or_admin(user, conversion):
+        raise PermissionDenied("You may not refresh this conversion.")
+
+
+def assert_can_moderate(user, conversion: Conversion) -> None:
+    """Allow only the Conversion's owner or an admin to accept/reject its history."""
+    if not _is_owner_or_admin(user, conversion):
+        raise PermissionDenied("You may not moderate this conversion's history.")
+
+
+def _next_history_version(conversion_id: int) -> int:
+    """Next version number; the base Conversion is treated as version 1."""
+    last = (
+        ConversionHistory.query
+        .filter_by(conversion_id=conversion_id)
+        .order_by(ConversionHistory.version.desc())
+        .first()
+    )
+    return 2 if last is None else last.version + 1
+
+
+def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistory:
+    """Re-run a Conversion's Converter on its stored input and record the result.
+
+    Owner-or-admin only (``assert_can_refresh``); anonymous/strangers raise
+    ``PermissionDenied`` before anything is converted or written. Re-runs the
+    engine on ``conversion.input_text`` (outside the transaction), then writes
+    a ``ConversionHistory`` row with ``status="pending"`` and the ``params``
+    used — owned by the Conversion's owner, not the refresher — and its audit
+    log, atomically.
+    """
+    assert_can_refresh(user, conversion)
+
+    # The converter runs outside the DB transaction.
+    result = transmute.convert(
+        conversion.source_format, conversion.target_format,
+        conversion.input_text, params,
+    )
+
+    now = datetime.now(timezone.utc)
+    history = ConversionHistory(
+        user_id=conversion.user_id,  # refresh doesn't change ownership
+        conversion_id=conversion.id,
+        version=_next_history_version(conversion.id),
+        uuid=str(uuid_lib.uuid4()),
+        status="pending",
+        public=conversion.public,
+        input_text=conversion.input_text,
+        old_output_text=conversion.output_text,
+        new_output_text=_to_text(result),
+        params=params.model_dump(mode="json", exclude_none=True),
+        created_at=now,
+    )
+    db.session.add(history)
+    db.session.flush()  # assign history.id within the transaction
+    _record_event(
+        "convert_refreshed", user, "convert", conversion.id, conversion.name, now,
+    )
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        raise PersistenceFailed("Failed to persist the refreshed conversion") from exc
+    return history
+
+
+def accept_history(user, history: ConversionHistory) -> ConversionHistory:
+    """Accept a pending refresh: adopt its output onto the Conversion.
+
+    Owner-or-admin only (``assert_can_moderate``). Marks the history row
+    ``accepted`` and copies its ``new_output_text`` onto the parent Conversion
+    (the established 'accept the refresh' meaning), atomically with the audit log.
+    """
+    conversion = history.convert
+    assert_can_moderate(user, conversion)
+
+    now = datetime.now(timezone.utc)
+    history.status = "accepted"
+    conversion.output_text = history.new_output_text
+    conversion.updated_at = now
+    _record_event(
+        "convert_history_accepted", user, "convert_history", history.id,
+        conversion.name, now,
+    )
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        raise PersistenceFailed("Failed to accept the history entry") from exc
+    return history
+
+
+def reject_history(user, history: ConversionHistory) -> ConversionHistory:
+    """Reject a pending refresh: mark it ``rejected``, leaving the Conversion as-is.
+
+    Owner-or-admin only (``assert_can_moderate``). The mirror of
+    `accept_history` — but a rejection never adopts the new output onto the
+    parent Conversion.
+    """
+    conversion = history.convert
+    assert_can_moderate(user, conversion)
+
+    now = datetime.now(timezone.utc)
+    history.status = "rejected"
+    _record_event(
+        "convert_history_rejected", user, "convert_history", history.id,
+        conversion.name, now,
+    )
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        raise PersistenceFailed("Failed to reject the history entry") from exc
+    return history
