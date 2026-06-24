@@ -17,6 +17,14 @@ A feature lives in `website/web/<feature>/` as a trio: `<feature>.py` (routes),
 `<feature>_form.py` (WTForms). All models are in `website/db_class/db.py`.
 Features: `convert`, `evaluate`, `tags`, `account`.
 
+`website/lib/` is the other shelf inside `website/`: cross-cutting **service**
+logic that bridges Flask and the engine but isn't a UI feature — the conversion
+use-cases (`conversions.py` → `submit_conversion`), the service-layer exceptions
+(`exceptions.py` → `PersistenceFailed`, `InvalidApiKey`), and API auth (`auth.py`
+→ `resolve_api_actor` / `@api_actor`). It may import Flask (`db`, `g`) but holds
+no routes or templates. New non-feature plumbing shared by routes belongs here,
+not in a feature trio and not in the Flask-free `cti_transmute/`.
+
 ## Source of truth
 
 The architecture is mid-refactor, so trust the docs over the current code, and
