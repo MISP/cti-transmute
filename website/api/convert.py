@@ -4,18 +4,39 @@ import json
 import logging
 from io import BytesIO
 
-from flask import request
+from flask import g, request
 from flask_restx import Namespace, Resource, reqparse
 from pydantic import ValidationError
 
 from cti_transmute import transmute
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
-from cti_transmute.exceptions import ConverterFailed, InvalidParameters, InvalidPayload
+from cti_transmute.exceptions import (
+    ConverterFailed, InvalidParameters, InvalidPayload, UnknownConverter)
+from website.lib.auth import api_actor
+from website.lib.conversions import submit_conversion
+from website.lib.exceptions import PersistenceFailed
 
 logger = logging.getLogger(__name__)
 
 convert_ns = Namespace('convert', description='Conversion operations.')
+
+
+def _wants_persist() -> bool:
+    """Whether the caller opted into persistence via ``?persist=true``."""
+    return request.args.get('persist', '').lower() == 'true'
+
+
+def _as_payload(text):
+    """Parse a persisted ``output_text`` back to its JSON value for the envelope.
+
+    Falls back to the raw string for the (converter-dependent) case where the
+    output is not JSON.
+    """
+    try:
+        return json.loads(text)
+    except (TypeError, json.JSONDecodeError):
+        return text
 
 
 def _get_api_from_namespace():
@@ -89,10 +110,13 @@ class MispStixConverter(Resource):
         return params_class(**supplied)
 
     def _run(self, source: str, target: str, params_class, args: dict):
-        """Load the payload, build + validate params, look up the Converter, run it.
+        """Load the payload, build + validate params, then run or persist.
 
-        Maps the typed errors to HTTP status codes: a bad payload or invalid
-        parameters is 400; a library failure (`ConverterFailed`) is 422.
+        Stateless by default (`transmute.convert`); with ``?persist=true`` it
+        runs `submit_conversion` and returns an envelope.
+        Maps the typed errors to HTTP status codes: a bad payload or
+        invalid parameters is 400; an unknown converter 404; a library failure
+        (`ConverterFailed`) 422; a persistence failure 500.
         """
         try:
             payload = self._load_input_from_request()
@@ -103,8 +127,15 @@ class MispStixConverter(Resource):
             )
         try:
             params = self._build_params(params_class, args)
+            if _wants_persist():
+                return self._persist(source, target, payload, params)
             return transmute.convert(source, target, payload, params)
-        except (ValidationError, InvalidParameters) as e:
+        except ValidationError as e:
+            return (
+                {'message': 'Input validation failed', 'errors': e.errors()},
+                400
+            )
+        except InvalidParameters as e:
             return (
                 {'message': 'Input validation failed', 'errors': {'params': str(e)}},
                 400
@@ -114,11 +145,38 @@ class MispStixConverter(Resource):
                 {'message': 'Input validation failed', 'errors': {'input': str(e)}},
                 400
             )
+        except UnknownConverter as e:
+            return (
+                {'message': 'Unknown converter', 'errors': {'converter': str(e)}},
+                404
+            )
         except ConverterFailed as e:
             return (
                 {'message': 'Conversion failed', 'errors': {'converter': str(e)}},
                 422
             )
+        except PersistenceFailed as e:
+            return (
+                {'message': 'Persistence failed', 'errors': {'persistence': str(e)}},
+                500
+            )
+
+    def _persist(self, source: str, target: str, payload, params):
+        """Convert-and-save via the use-case, returning the ADR-0004 envelope.
+
+        ``g.api_user`` is whatever `@api_actor` resolved from ``X-API-KEY`` — a
+        ``User`` or ``None`` (anonymous persistence is allowed; the row gets
+        ``user_id IS NULL``).
+        """
+        conversion = submit_conversion(
+            getattr(g, 'api_user', None), source, target, payload, params
+        )
+        return {
+            'conversion': _as_payload(conversion.output_text),
+            'id': conversion.id,
+            'uuid': conversion.uuid,
+            'url': f'/conversions/{conversion.id}',
+        }
 
 
 misp_to_stix_parser = reqparse.RequestParser()
@@ -132,6 +190,7 @@ misp_to_stix_parser.add_argument(
 @convert_ns.doc(description='Conversion MISP data collection to STIX format.')
 class MISPtoSTIX(MispStixConverter):
     @convert_ns.expect(misp_to_stix_parser)
+    @api_actor
     def post(self):
         return self._run(
             'misp', 'stix', MispToStixParams, misp_to_stix_parser.parse_args()
@@ -203,6 +262,7 @@ stix_to_misp_parser.add_argument(
 @convert_ns.doc(description='Conversion STIX data collection to MISP format.')
 class STIXtoMISP(MispStixConverter):
     @convert_ns.expect(stix_to_misp_parser)
+    @api_actor
     def post(self):
         return self._run(
             'stix', 'misp', StixToMispParams, stix_to_misp_parser.parse_args()

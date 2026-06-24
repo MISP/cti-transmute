@@ -10,3 +10,11 @@ from cti_transmute.exceptions import ConversionError
 
 class PersistenceFailed(ConversionError):
     """A conversion's persistence (DB write) failed; nothing was written."""
+
+
+class InvalidApiKey(Exception):
+    """An ``X-API-KEY`` header was supplied but matches no user.
+
+    Auth failure, not a conversion failure — so it deliberately does *not*
+    subclass ``ConversionError``. The API layer maps it to HTTP 403.
+    """

@@ -47,6 +47,23 @@ def client():
 
 
 @pytest.fixture
+def api_db_client(app_db):
+    """API test client backed by the in-memory SQLite DB.
+
+    Combines `app_db` (SQLite schema + live app context) with the API blueprint
+    and a Flask test client, so persist-path and auth routes can write rows that
+    the test then asserts on. `app_db` has already cleared Flask's
+    `_got_first_request` guard, so the blueprint registers cleanly here.
+    """
+    from website.api import api_blueprint
+    from website.web import application
+
+    if "transmute_api" not in application.blueprints:
+        application.register_blueprint(api_blueprint)
+    return application.test_client()
+
+
+@pytest.fixture
 def app_db():
     """Function-scoped, SQLite-backed app context for persistence/use-case tests.
 
