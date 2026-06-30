@@ -39,33 +39,21 @@ def _as_payload(text):
         return text
 
 
-def _get_api_from_namespace():
-    for api in convert_ns.apis:
-        if api.blueprint and api.blueprint.name == 'transmute_api':
-            return api
-    raise RuntimeError('No matching Api found for namespace')
-
-
-def _extract_converters_from_schema(schema: dict) -> dict:
-    converters = {}
-    for path, methods in schema.get('paths', {}).items():
-        for method, meta in methods.items():
-            if '/convert/' in path:
-                converters[f'/api{path}'] = {
-                    'description': meta.get('description'),
-                    'method': method.upper(),
-                    'parameters': meta.get('parameters', [])
-                }
-    return {'available': {k: converters[k] for k in sorted(converters)}}
-
-
 @convert_ns.route('/list')
 class ConvertersList(Resource):
     @convert_ns.doc(description='List available converters.')
     def get(self):
-        api = _get_api_from_namespace()
-        schema = api.__schema__
-        return _extract_converters_from_schema(schema), 200
+        available = {
+            f'/api/convert/{c.source_format}_to_{c.target_format}': {
+                'source': c.source_format,
+                'target': c.target_format,
+                'method': 'POST',
+                'description': c.description,
+                'params_schema': c.params_class.model_json_schema(),
+            }
+            for c in transmute.list()
+        }
+        return {'available': available}, 200
 
 
 class MispStixConverter(Resource):
