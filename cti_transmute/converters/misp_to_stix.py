@@ -31,6 +31,7 @@ class MispToStix(Converter):
     source_format = "misp"
     target_format = "stix"
     output_format = "application/json"
+    description = "Convert a MISP data collection to STIX format."
     params_class = MispToStixParams
 
     def process(self, payload: Any, params: BaseModel) -> dict:

@@ -19,6 +19,7 @@ class Converter(ABC):
     source_format: ClassVar[str]
     target_format: ClassVar[str]
     output_format: ClassVar[str]
+    description: ClassVar[str]
     params_class: ClassVar[type[BaseModel]]
 
     @abstractmethod
