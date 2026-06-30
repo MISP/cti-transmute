@@ -2,7 +2,7 @@ import json
 from io import BytesIO
 from typing import Any, Literal
 
-from misp_stix_converter import MISPtoSTIX20Parser, MISPtoSTIX21Parser
+from misp_stix_converter import InvalidMISPInputError, MISPtoSTIX20Parser, MISPtoSTIX21Parser
 from pydantic import BaseModel, ConfigDict
 
 from cti_transmute.converter import Converter
@@ -36,11 +36,9 @@ class MispToStix(Converter):
     def process(self, payload: Any, params: BaseModel) -> dict:
         content = _coerce_to_str(payload)
         try:
-            decoded = json.loads(content)
+            json.loads(content)  # JSON-validity gate; MISP-validity is misp-stix's call
         except json.JSONDecodeError as exc:
             raise InvalidPayload(f"Payload is not valid JSON: {exc}") from exc
-
-        _assert_looks_like_misp(decoded)
 
         parser_cls = (
             MISPtoSTIX20Parser if params.version == "2.0" else MISPtoSTIX21Parser
@@ -48,25 +46,13 @@ class MispToStix(Converter):
         parser = parser_cls()
         try:
             parser.parse_json_content(content)
+        except InvalidMISPInputError as exc:
+            # misp-stix is the authority on what counts as MISP input: it raises
+            # this only when the payload matches no supported MISP shape (see
+            # misp-stix). Structural "not MISP" -> InvalidPayload (400);
+            # a valid-but-empty payload yields 0 objects without raising.
+            raise InvalidPayload(str(exc)) from exc
         except Exception as exc:  # noqa: BLE001
             raise ConverterFailed(f"misp-stix-converter failed: {exc}") from exc
 
         return json.loads(parser.bundle.serialize())
-
-
-def _assert_looks_like_misp(decoded: Any) -> None:
-    """Reject input that has no chance of being a MISP event.
-
-    misp-stix-converter logs warnings on bad input but produces a near-empty
-    bundle rather than raising — leaving the caller unable to tell success
-    from a silent failure. We pre-check the obvious shape signals.
-    """
-    if isinstance(decoded, dict):
-        if "Event" in decoded or "response" in decoded:
-            return
-    if isinstance(decoded, list):
-        return
-    raise InvalidPayload(
-        "Input does not look like a MISP event "
-        "(expected an object with an 'Event' or 'response' key, or a list)."
-    )
