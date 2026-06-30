@@ -31,6 +31,43 @@ def test_non_misp_input_raises_invalid_payload():
         MispToStix().process({"not": "a misp event"}, MispToStixParams())
 
 
+def test_bare_event_without_wrapper_converts(misp_event):
+    """A bare MISP event (top-level event fields, no {'Event': ...} wrapper) is
+    valid MISP input and must convert. Derived from the wrapped fixture so the
+    two share a single source of truth."""
+    bare = misp_event["Event"]
+
+    result = MispToStix().process(bare, MispToStixParams())
+
+    assert result["type"] == "bundle"
+
+
+def test_restsearch_response_collection_converts(misp_event):
+    """restSearch output wraps events in {'response': [...]}; it must convert."""
+    payload = {"response": [misp_event]}
+
+    result = MispToStix().process(payload, MispToStixParams())
+
+    assert result["type"] == "bundle"
+
+
+def test_top_level_event_list_converts(misp_event):
+    """A top-level list of events used to crash inside misp-stix; it now routes
+    cleanly and converts (misp-stix ADR-0008)."""
+    payload = [misp_event]
+
+    result = MispToStix().process(payload, MispToStixParams())
+
+    assert result["type"] == "bundle"
+
+
+def test_empty_object_raises_invalid_payload():
+    """An empty object matches no MISP shape -> InvalidPayload (not a silent
+    empty bundle, the pre-ADR-0008 behaviour)."""
+    with pytest.raises(InvalidPayload):
+        MispToStix().process({}, MispToStixParams())
+
+
 def test_params_default_version_is_2_1():
     assert MispToStixParams().version == "2.1"
 
