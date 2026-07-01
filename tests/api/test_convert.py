@@ -173,13 +173,114 @@ def test_build_params_coerces_present_bool_flag_to_true():
     from cti_transmute.converters.stix_to_misp import StixToMispParams
     from website.api.convert import MispStixConverter
 
-    # Mirrors what reqparse yields: present store_true flag -> "" (web UI),
-    # unset flag -> None, ints pass through.
+    # Query-string convention: a key is present or absent, never None.
+    # A present bool flag arrives with no parseable value (web UI sends "") and
+    # is coerced to True; an absent flag falls back to the model default; an int
+    # arrives as a string and Pydantic coerces it; the `persist` transport flag
+    # is dropped, not treated as a param.
     params = MispStixConverter._build_params(
         StixToMispParams,
-        {"galaxies_as_tags": "", "single_event": None, "distribution": 3, "title": None},
+        {"galaxies_as_tags": "", "distribution": "3", "persist": "true"},
     )
 
     assert params.galaxies_as_tags is True   # present -> True
-    assert params.single_event is False      # None dropped -> model default
-    assert params.distribution == 3
+    assert params.single_event is False      # absent -> model default
+    assert params.distribution == 3          # "3" -> 3 (Pydantic coercion)
+
+
+# --- generic 03: Pydantic is the sole param validator ------
+
+def test_bad_param_shape_returns_400_error_fields_envelope(client, stix_bundle):
+    """A shape-violating param is rejected with the stable {error, fields}
+    envelope, `fields` keyed by the offending param name."""
+    resp = client.post("/api/convert/stix_to_misp?distribution=99", json=stix_bundle)
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert isinstance(body["error"], str) and body["error"]
+    assert "distribution" in body["fields"]
+    assert isinstance(body["fields"]["distribution"], str) and body["fields"]["distribution"]
+
+
+def test_unknown_param_name_is_rejected_naming_the_key(client, stix_bundle):
+    """An unknown/misremembered param name (here `sharing_group` instead of
+    `sharing_group_id`) is rejected — not silently dropped — with the offending
+    key named. The params model's `extra="forbid"` is the sole authority, so the
+    endpoint agrees with the published schema's `additionalProperties: false`."""
+    resp = client.post("/api/convert/stix_to_misp?sharing_group=5", json=stix_bundle)
+
+    assert resp.status_code == 400
+    assert "sharing_group" in resp.get_json()["fields"]
+
+
+def test_persist_flag_is_not_treated_as_a_param(api_db_client, stix_bundle):
+    """`persist` is a transport flag, not a Converter param; it must be
+    stripped before the params model is built rather than tripping
+    `extra="forbid"`. Sent alongside a real param, the conversion still runs."""
+    resp = api_db_client.post(
+        "/api/convert/stix_to_misp?persist=true&distribution=2", json=stix_bundle
+    )
+
+    assert resp.status_code == 200
+    assert set(resp.get_json()) >= {"conversion", "id", "uuid", "url"}
+
+
+def test_reqparse_param_surface_is_retired():
+    """The per-Converter reqparse parsers (and their add_argument param
+    declarations) are gone: Pydantic is the sole param validator."""
+    import website.api.convert as convert_module
+
+    assert not hasattr(convert_module, "misp_to_stix_parser")
+    assert not hasattr(convert_module, "stix_to_misp_parser")
+    assert not hasattr(convert_module, "reqparse")
+
+
+def test_new_converter_validated_by_params_class_alone(client):
+    """Validation is driven by the Converter's `params_class`, not per-Converter
+    API code: a novel params model no route ever declared is validated purely by
+    handing it to the generic `_run`, and its bad value is named in `fields`."""
+    from typing import Literal
+
+    from pydantic import BaseModel, ConfigDict
+
+    from website.api.convert import MispStixConverter
+    from website.web import application
+
+    class _ScratchParams(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        mode: Literal["fast", "slow"] = "fast"
+
+    resource = MispStixConverter()
+    with application.test_request_context(
+        "/api/convert/x?mode=bogus", method="POST", json={"any": "payload"}
+    ):
+        body, status = resource._run("openioc", "stix", _ScratchParams)
+
+    assert status == 400
+    assert "mode" in body["fields"]
+
+
+def test_endpoint_verdict_matches_published_schema(client, stix_bundle):
+    """Round-trip: for each sample, an independent JSON-Schema engine's verdict
+    against the published params_schema matches the live endpoint's accept/reject
+    — including an unknown key, which `additionalProperties: false` rejects."""
+    from jsonschema import Draft202012Validator
+
+    available = client.get("/api/convert/list").get_json()["available"]
+    schema = available["/api/convert/stix_to_misp"]["params_schema"]
+    validator = Draft202012Validator(schema)
+
+    samples = [
+        {"distribution": 2},    # valid
+        {"distribution": 99},   # out of range
+        {"sharing_group": 5},   # unknown key -> additionalProperties: false
+    ]
+    for sample in samples:
+        schema_ok = validator.is_valid(sample)
+        query = "&".join(f"{k}={v}" for k, v in sample.items())
+        resp = client.post(f"/api/convert/stix_to_misp?{query}", json=stix_bundle)
+        endpoint_ok = resp.status_code == 200
+        assert endpoint_ok == schema_ok, (
+            f"{sample}: schema={schema_ok} endpoint={endpoint_ok} "
+            f"(status {resp.status_code})"
+        )
