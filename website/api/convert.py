@@ -5,7 +5,7 @@ import logging
 from io import BytesIO
 
 from flask import g, request
-from flask_restx import Namespace, Resource, reqparse
+from flask_restx import Namespace, Resource
 from pydantic import ValidationError
 
 from cti_transmute import transmute
@@ -20,6 +20,8 @@ from website.lib.exceptions import PersistenceFailed
 logger = logging.getLogger(__name__)
 
 convert_ns = Namespace('convert', description='Conversion operations.')
+
+_TRANSPORT_ARGS = frozenset({'persist'})
 
 
 def _wants_persist() -> bool:
@@ -77,34 +79,52 @@ class MispStixConverter(Resource):
         )
 
     @staticmethod
-    def _build_params(params_class, args: dict):
-        """Build a Converter's params model from parsed reqparse args.
+    def _build_params(params_class, query_args):
+        """Build a Converter's params model from the request query string.
 
-        reqparse leaves unset args as ``None`` (dropped here, so the model uses
-        its own defaults), and yields the *raw query value* for ``store_true``
-        flags rather than a bool — so a present boolean flag (the web UI sends it
-        as an empty string) is coerced to ``True``. Raises ``ValidationError`` on
-        a value the model rejects; the caller maps that to 400.
+        Params travel in the query string, so values arrive as strings and
+        Pydantic coerces them (``"3"`` -> ``3``). A bare boolean flag
+        (``?galaxies_as_tags``, or the web UI's empty-string form) carries no
+        parseable value, so a *present* boolean field is coerced to ``True``.
+        Transport flags (``persist``) are not Converter params and are dropped;
+        any other unknown key is left for the model's ``extra="forbid"``
+        contract to reject — mirroring the published params_schema's
+        ``additionalProperties: false``. Raises ``ValidationError`` on a
+        rejected value or unknown key; the caller maps it to the
+        ``{error, fields}`` 400.
         """
         bool_fields = {
             name for name, field in params_class.model_fields.items()
             if field.annotation is bool
         }
         supplied = {}
-        for key, value in args.items():
-            if value is None:
+        for key in query_args:
+            if key in _TRANSPORT_ARGS:
                 continue
-            supplied[key] = True if key in bool_fields else value
+            supplied[key] = True if key in bool_fields else query_args[key]
         return params_class(**supplied)
 
-    def _run(self, source: str, target: str, params_class, args: dict):
+    @staticmethod
+    def _param_error(exc: ValidationError):
+        """Render a Pydantic ``ValidationError`` as the stable ``{error, fields}``
+        400: ``fields`` maps each offending param name to its message, ``error``
+        is a short human-readable summary."""
+        fields = {}
+        for err in exc.errors():
+            loc = err.get('loc') or ('params',)
+            fields[str(loc[0])] = err['msg']
+        return {'error': 'Invalid conversion parameters', 'fields': fields}, 400
+
+    def _run(self, source: str, target: str, params_class):
         """Load the payload, build + validate params, then run or persist.
 
+        Params are read from the query string and validated by constructing the
+        Converter's ``params_class``; Pydantic is the sole validator.
         Stateless by default (`transmute.convert`); with ``?persist=true`` it
         runs `submit_conversion` and returns an envelope.
-        Maps the typed errors to HTTP status codes: a bad payload or
-        invalid parameters is 400; an unknown converter 404; a library failure
-        (`ConverterFailed`) 422; a persistence failure 500.
+        Maps the typed errors to HTTP status codes: bad params or a bad payload
+        is 400; an unknown converter 404; a library failure (`ConverterFailed`)
+        422; a persistence failure 500.
         """
         try:
             payload = self._load_input_from_request()
@@ -114,20 +134,15 @@ class MispStixConverter(Resource):
                 400
             )
         try:
-            params = self._build_params(params_class, args)
+            params = self._build_params(params_class, request.args)
+        except ValidationError as e:
+            return self._param_error(e)
+        try:
             if _wants_persist():
                 return self._persist(source, target, payload, params)
             return transmute.convert(source, target, payload, params)
-        except ValidationError as e:
-            return (
-                {'message': 'Input validation failed', 'errors': e.errors()},
-                400
-            )
         except InvalidParameters as e:
-            return (
-                {'message': 'Input validation failed', 'errors': {'params': str(e)}},
-                400
-            )
+            return ({'error': str(e), 'fields': {}}, 400)
         except InvalidPayload as e:
             return (
                 {'message': 'Input validation failed', 'errors': {'input': str(e)}},
@@ -168,91 +183,17 @@ class MispStixConverter(Resource):
         }
 
 
-misp_to_stix_parser = reqparse.RequestParser()
-misp_to_stix_parser.add_argument(
-    'version', type=str, help='STIX version', location='args',
-    choices=('2.0', '2.1'), default='2.1'
-)
-
-
 @convert_ns.route('/misp_to_stix')
 @convert_ns.doc(description='Conversion MISP data collection to STIX format.')
 class MISPtoSTIX(MispStixConverter):
-    @convert_ns.expect(misp_to_stix_parser)
     @api_actor
     def post(self):
-        return self._run(
-            'misp', 'stix', MispToStixParams, misp_to_stix_parser.parse_args()
-        )
-
-
-stix_to_misp_parser = reqparse.RequestParser()
-stix_to_misp_parser.add_argument(
-    'distribution', type=int, choices=(0, 1, 2, 3, 4), default=0,
-    location='args', help='''
-        Distribution level for the imported MISP content (default is 0)
-            - 0: Your organisation only
-            - 1: This community only
-            - 2: Connected communities
-            - 3: All communities
-            - 4: Sharing Group
-        '''
-)
-stix_to_misp_parser.add_argument(
-    'sharing_group_id', type=int, location='args',
-    help='Sharing group ID when distribution is 4.'
-)
-stix_to_misp_parser.add_argument(
-    'galaxies_as_tags', action='store_true', location='args',
-    help='Import MISP Galaxies as tag names instead of the standard Galaxy format.'
-)
-stix_to_misp_parser.add_argument(
-    'no_force_contextual_data', action='store_true', location='args',
-    help=(
-        'Do not force the creation of custom Galaxy clusters in some '
-        'specific cases when STIX objects could be converted either as '
-        'clusters or MISP objects for instance.'
-    )
-)
-stix_to_misp_parser.add_argument(
-    'cluster_distribution', type=int, choices=(0, 1, 2, 3, 4), default=0,
-    location='args', help='''
-            Galaxy Clusters distribution level
-            in case of External STIX 2 content (default id 0)
-              - 0: Your organisation only
-              - 1: This community only
-              - 2: Connected communities
-              - 3: All communities
-              - 4: Sharing Group
-        '''
-)
-stix_to_misp_parser.add_argument(
-    'cluster_sharing_group_id', type=int, location='args',
-    help='Galaxy Clusters sharing group ID when clusters distribution is 4.'
-)
-stix_to_misp_parser.add_argument(
-    'organisation_uuid', type=str, location='args',
-    help='Organisation UUID to use when creating custom Galaxy Clusters.'
-)
-stix_to_misp_parser.add_argument(
-    'single_event', action='store_true', location='args',
-    help='Conversion STIX data to a single MISP event in case there are multiple reports/groupings.'
-)
-stix_to_misp_parser.add_argument(
-    'producer', type=str, help='Producer of the STIX data', location='args'
-)
-stix_to_misp_parser.add_argument(
-    'title', type=str, location='args',
-    help='Title used to set the MISP Event `info` field.'
-)
+        return self._run('misp', 'stix', MispToStixParams)
 
 
 @convert_ns.route('/stix_to_misp')
 @convert_ns.doc(description='Conversion STIX data collection to MISP format.')
 class STIXtoMISP(MispStixConverter):
-    @convert_ns.expect(stix_to_misp_parser)
     @api_actor
     def post(self):
-        return self._run(
-            'stix', 'misp', StixToMispParams, stix_to_misp_parser.parse_args()
-        )
+        return self._run('stix', 'misp', StixToMispParams)
