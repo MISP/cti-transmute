@@ -7,16 +7,15 @@ one all-or-nothing transaction.
 """
 
 import json
-import uuid as uuid_lib
 from datetime import datetime, timezone
 from typing import Any
 
 from cti_transmute import transmute
 from website.db_class.db import Conversion, ConversionHistory, SystemLog
 from website.lib.exceptions import PermissionDenied, PersistenceFailed
+from website.repos import conversions as conv_repo
 from website.web import db
 from website.web.account import account_core as AccountModel
-from website.web.utils import generate_api_key
 
 
 def _to_text(value: Any) -> str:
@@ -36,7 +35,11 @@ def submit_conversion(
     result = transmute.convert(source, target, payload, params)
 
     now = datetime.now(timezone.utc)
-    convert = Conversion(
+    # One all-or-nothing transaction — the Conversion row and its audit log
+    # commit together, or not at all. The repo stages the row (add + flush,
+    # assigning convert.id and minting its uuid/share_key); this use-case owns
+    # the commit so the audit entry lands in the same transaction.
+    convert = conv_repo.create(
         user_id=None if user is None else user.id,
         name=name or f"{source}_to_{target}_{now.strftime('%Y%m%d%H%M%S')}".upper(),
         source_format=source,
@@ -48,13 +51,8 @@ def submit_conversion(
         created_at=now,
         updated_at=now,
         public=public,
-        uuid=str(uuid_lib.uuid4()),
-        share_key=generate_api_key(36),
+        commit=False
     )
-    # One all-or-nothing transaction — the Conversion row and its audit log
-    # commit together, or not at all.
-    db.session.add(convert)
-    db.session.flush()  # assign convert.id within the transaction
     _record_creation(convert, user, now)
     try:
         db.session.commit()
@@ -127,17 +125,6 @@ def assert_can_moderate(user, conversion: Conversion) -> None:
         raise PermissionDenied("You may not moderate this conversion's history.")
 
 
-def _next_history_version(conversion_id: int) -> int:
-    """Next version number; the base Conversion is treated as version 1."""
-    last = (
-        ConversionHistory.query
-        .filter_by(conversion_id=conversion_id)
-        .order_by(ConversionHistory.version.desc())
-        .first()
-    )
-    return 2 if last is None else last.version + 1
-
-
 def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistory:
     """Re-run a Conversion's Converter on its stored input and record the result.
 
@@ -157,21 +144,15 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
     )
 
     now = datetime.now(timezone.utc)
-    history = ConversionHistory(
-        user_id=conversion.user_id,  # refresh doesn't change ownership
-        conversion_id=conversion.id,
-        version=_next_history_version(conversion.id),
-        uuid=str(uuid_lib.uuid4()),
-        status="pending",
-        public=conversion.public,
-        input_text=conversion.input_text,
-        old_output_text=conversion.output_text,
+    # The repo stages the pending history row (add + flush); this use-case owns
+    # the commit so the audit entry is atomic with it.
+    history = conv_repo.create_history(
+        conversion=conversion,
         new_output_text=_to_text(result),
         params=params.model_dump(mode="json", exclude_none=True),
         created_at=now,
+        commit=False
     )
-    db.session.add(history)
-    db.session.flush()  # assign history.id within the transaction
     _record_event(
         "convert_refreshed", user, "convert", conversion.id, conversion.name, now,
     )
@@ -194,7 +175,7 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
     assert_can_moderate(user, conversion)
 
     now = datetime.now(timezone.utc)
-    history.status = "accepted"
+    conv_repo.set_history_status(history, "accepted", commit=False)
     conversion.output_text = history.new_output_text
     conversion.updated_at = now
     _record_event(
@@ -220,7 +201,7 @@ def reject_history(user, history: ConversionHistory) -> ConversionHistory:
     assert_can_moderate(user, conversion)
 
     now = datetime.now(timezone.utc)
-    history.status = "rejected"
+    conv_repo.set_history_status(history, "rejected", commit=False)
     _record_event(
         "convert_history_rejected", user, "convert_history", history.id,
         conversion.name, now,
