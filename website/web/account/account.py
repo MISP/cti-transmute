@@ -7,6 +7,7 @@ from sqlalchemy import func
 from website.db_class.db import Comment as CommentModel
 from website.db_class.db import Conversion, ConversionEvaluation, SystemLog, User
 from website.db_class.db import Notification as NotifModel
+from website.repos import conversions as conv_repo
 from website.web import db
 from website.web.account.account_form import AddNewUserForm, EditUserForm, LoginForm
 from website.web.utils import form_to_dict, generate_api_key
@@ -500,7 +501,7 @@ def my_comments():
     pagination = AccountModel.get_user_comments(current_user.id, page=page, search=search, is_admin=current_user.is_admin())
     items = []
     for c in pagination.items:
-        convert = ConvertModel.get_convert(c.conversion_id, include_deleted=True)
+        convert = conv_repo.get(c.conversion_id, include_deleted=True)
         item = c.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())
         item["convert_name"] = convert.name if convert else "Unknown"
         item["conversion_id"] = c.conversion_id

@@ -1,111 +1,22 @@
-# website/web/convert/convert_service.py
-import random
-import string
+"""Feature-level persistence for the convert blueprint's non-Conversion concerns.
+
+Conversion and ConversionHistory rows now live in
+``website/repos/conversions.py``. This module (imported as ``ConvertModel``)
+keeps the comment, report, reaction, favorite, graph-config, and Conversion
+listing/search helpers used by the convert views.
+"""
 import uuid
 from datetime import datetime, timedelta, timezone
+
 from flask_login import current_user
 from sqlalchemy import asc, desc, func, or_
-from sqlite3 import IntegrityError
+
 from website.db_class.db import (
-    Comment, CommentReaction, Conversion, ConversionFavorite, ConversionHistory,
+    Comment, CommentReaction, Conversion, ConversionFavorite,
     ConversionReport, ConversionTagAssociation, GraphConfig)
 from website.db_class.db import Tag as TagModel
+from website.repos import conversions as conv_repo
 from website.web import db
-from website.web.utils import generate_api_key
-
-
-def create_convert(user_id, input_text, output_text, convert_choice, description, name, public):
-    """
-    Create a new Conversion entry from API response and save history.
-    input_text: original file content
-    output_text: converted content
-    """
-    try:
-        now = datetime.now(timezone.utc)
-        if convert_choice == "MISP_TO_STIX":
-            _name = f"STIX_{now.strftime('%Y%m%d%H%M%S')}"
-        else:
-            _name = f"MISP_{now.strftime('%Y%m%d%H%M%S')}"
-
-        MAX_NAME_LEN = 100
-        final_name = name or _name
-
-        if len(final_name) > MAX_NAME_LEN:
-            final_name = final_name[:MAX_NAME_LEN]
-
-        existing = Conversion.query.filter_by(name=final_name).first()
-        if existing:
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            final_name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
-
-        _source, _, _target = convert_choice.partition("_TO_")
-        convert = Conversion(
-            user_id=user_id,
-            name=final_name,
-            source_format=_source.lower() or None,
-            target_format=_target.lower() or None,
-            input_text=input_text,
-            output_text=output_text,
-            description=description or f"STIX conversion saved at {now.isoformat()}",
-            created_at=now,
-            updated_at=now,
-            public=public,
-            uuid=str(uuid.uuid4()),
-            share_key=generate_api_key(36)
-        )
-        db.session.add(convert)
-        db.session.commit()
-        return convert
-
-    except IntegrityError:
-        db.session.rollback()
-        try:
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            convert.name = f"{final_name[:MAX_NAME_LEN - 7]}_{suffix}"
-            db.session.add(convert)
-            db.session.commit()
-            return convert
-        except Exception:
-            db.session.rollback()
-            return None
-
-    except Exception as e:
-        db.session.rollback()
-        print("Exception:", e)
-        return None
-
-
-def delete_convert(conversion_id):
-    """Soft-delete a Conversion entry (sets is_active=False)."""
-    convert = Conversion.query.get(conversion_id)
-    if not convert:
-        return False
-    convert.is_active = False
-    convert.deleted_at = datetime.now(timezone.utc)
-    db.session.commit()
-    return True
-
-
-def restore_convert(conversion_id):
-    """Restore a soft-deleted convert."""
-    convert = Conversion.query.get(conversion_id)
-    if not convert or convert.is_active:
-        return False
-
-    convert.is_active = True
-    convert.deleted_at = None
-    db.session.commit()
-    return True
-
-
-def hard_delete_convert(conversion_id):
-    """Permanently remove a convert from the database."""
-    convert = Conversion.query.get(conversion_id)
-    if not convert:
-        return False
-    db.session.delete(convert)
-    db.session.commit()
-    return True
 
 
 def get_deleted_converts(page, user_id=None, search=None):
@@ -117,19 +28,6 @@ def get_deleted_converts(page, user_id=None, search=None):
         query = query.filter(Conversion.name.ilike(f"%{search}%"))
     query = query.order_by(desc(Conversion.deleted_at))
     return query.paginate(page=page, per_page=15)
-
-
-def get_convert(conversion_id, include_deleted=False):
-    """Get a Conversion entry by id. Soft-deleted converts are excluded by default."""
-    convert = Conversion.query.get(conversion_id)
-    if convert and not include_deleted and not convert.is_active:
-        return None
-    return convert
-
-
-def list_all():
-    """Return all Conversion entries"""
-    return Conversion.query.all()
 
 
 def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false', searchQuery=None, search_scope='all', date_from=None, date_to=None, exact_match=False, tag_names=None, vis_filter=None, favorites_only=False, favorites_user_id=None):
@@ -241,8 +139,6 @@ def get_convert_page(page, filter_type=None, sort_order='desc', only_mine='false
     return query.paginate(page=page, per_page=10)
 
 
-# edit
-
 def search_in_content(query_str, conversion_id, scope='all', context_chars=120):
     """
     Search for query_str in a single convert's texts and return snippets with match positions.
@@ -251,7 +147,7 @@ def search_in_content(query_str, conversion_id, scope='all', context_chars=120):
     if not query_str:
         return []
 
-    convert = get_convert(conversion_id)
+    convert = conv_repo.get(conversion_id)
     if not convert:
         return []
 
@@ -297,44 +193,6 @@ def search_in_content(query_str, conversion_id, scope='all', context_chars=120):
     return results
 
 
-# edit
-
-def edit_public(id):
-    """Edit the public section"""
-    convert = get_convert(id)
-    if convert:
-        p = convert.public
-        convert.public = not convert.public
-        db.session.commit()
-        return True , not p
-    return False , False
-
-def edit_convert(id, data):
-    """
-    Edit the title (name) and description of a convert.
-    Args:
-        id (int): ID of the convert
-        data (dict): Dictionary containing 'name' and/or 'description'
-    Returns:
-        bool: True if updated successfully, False if convert not found
-    """
-    convert = get_convert(id)
-    if not convert:
-        return False , 'no convert with this id'
-    
-    if convert.name != data.get('name', convert.name):
-        existing = Conversion.query.filter_by(name=data.get('name', convert.name)).first()
-        if existing:
-            return False , 'Name already existe'
-
-    # Update fields if provided
-    convert.name = data.get('name', convert.name)
-    convert.description = data.get('description', convert.description)
-
-    # Commit changes
-    db.session.commit()
-    return True , ''
-
 def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', searchQuery=None, filter_public=None):
     """
     Return paginated conversions created by a specific user.
@@ -374,41 +232,6 @@ def get_convert_by_user(page, user_id, filter_type=None, sort_order='desc', sear
             query = query.filter(Conversion.public == filter_public)
 
     return query.paginate(page=page, per_page=10)
-
-def get_convert_by_uuid(uuid):
-    return Conversion.query.filter_by(uuid=uuid).first()
-
-def regenerate_share_key_convert(conversion_id):
-    """Regenerate the share key for a Conversion entry"""
-    convert = get_convert(conversion_id)
-    if not convert:
-        return False , None
-    convert.share_key = generate_api_key(36)
-    db.session.commit()
-    return True, convert.share_key
-
-
-def get_latest_history(conversion_id):
-    return ConversionHistory.query.filter_by(conversion_id=conversion_id).order_by(ConversionHistory.version.desc()).first()
-
-def get_latest_history_list(conversion_id):
-    return ConversionHistory.query.filter_by(conversion_id=conversion_id).order_by(ConversionHistory.version.desc()).all()
-
-def get_history_list(conversion_id):
-    return (
-        ConversionHistory.query
-        .filter_by(conversion_id=conversion_id, status="accepted")
-        .order_by(ConversionHistory.version.asc())
-        .all()
-    )
-
-def get_convert_history_by_id(convert_history_id):
-     return (
-        ConversionHistory.query
-        .filter_by(id=convert_history_id)
-        .order_by(ConversionHistory.version.desc())
-        .first()
-    )
 
 
 ###################################
@@ -455,7 +278,7 @@ def create_comment(conversion_id, user_id, content, is_private=False, parent_id=
 
 def get_comments(conversion_id, current_user_id=None, is_admin=False, convert_owner_id=None):
     """Return visible top-level comments and their visible replies for a convert."""
-    convert = get_convert(conversion_id)
+    convert = conv_repo.get(conversion_id)
     if not convert:
         return []
 
@@ -495,7 +318,7 @@ def delete_comment(comment_id, requesting_user_id, is_admin=False):
     comment = Comment.query.get(comment_id)
     if not comment:
         return False, "Comment not found"
-    convert = get_convert(comment.conversion_id)
+    convert = conv_repo.get(comment.conversion_id)
     if not convert:
         return False, "Conversion not found"
     allowed = (
