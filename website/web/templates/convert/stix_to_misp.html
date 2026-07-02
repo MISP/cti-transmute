@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block head %}
-<link id="hljs-theme" rel="stylesheet" href="">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/convert_form.css') }}">
 {% endblock %}
 {% block content %}
@@ -26,33 +25,7 @@
         </div>
     </div>
 
-    <!-- Help Panel -->
-    <div class="card mb-4" style="background:var(--color-navbar); border:1px solid rgba(255,255,255,0.1);">
-        <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse"
-            data-bs-target="#helpPanel" style="cursor:pointer;">
-            <span><i class="fas fa-circle-info me-2 opacity-50"></i>Help / Parameters</span>
-            <i class="fas fa-chevron-down opacity-50"></i>
-        </div>
-        <div id="helpPanel" class="collapse">
-            <div class="card-body">
-                <ul class="mb-0" style="font-size:0.85rem; opacity:0.8; line-height:2;">
-                    <li><strong>distribution</strong> (0-4) — Distribution level for the imported MISP content</li>
-                    <li><strong>sharing_group_id</strong> — Required if distribution is 4</li>
-                    <li><strong>galaxies_as_tags</strong> — Import MISP Galaxies as tags instead of standard format</li>
-                    <li><strong>no_force_contextual_data</strong> — Skip forced creation of custom Galaxy clusters</li>
-                    <li><strong>cluster_distribution</strong> (0-4) — Distribution level for Galaxy clusters</li>
-                    <li><strong>cluster_sharing_group_id</strong> — Sharing group for clusters</li>
-                    <li><strong>organisation_uuid</strong> — UUID for custom Galaxy Clusters</li>
-                    <li><strong>single_event</strong> — Convert to a single MISP event if multiple</li>
-                    <li><strong>producer</strong> — Producer of the STIX data</li>
-                    <li><strong>title</strong> — Title for the resulting MISP Event</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <form method="post" enctype="multipart/form-data" class="mb-4">
-        {{ form.hidden_tag() }}
+    <form id="convert-form" class="mb-4" novalidate>
 
         <!-- STIX INPUT TABS -->
         <div class="row mb-3">
@@ -84,13 +57,9 @@
                                         </button>
                                     </div>
                                 </div>
-                                {{ form.stix_content(
-                                class_="json-editor",
-                                id="stix_content",
-                                placeholder='{\n "type": "bundle",\n "objects": [\n ...\n ]\n}',
-                                rows="14",
-                                spellcheck="false"
-                                ) }}
+                                <textarea class="json-editor" id="stix_content" name="stix_content"
+                                    placeholder='{&#10; "type": "bundle",&#10; "objects": [&#10; ...&#10; ]&#10;}'
+                                    rows="14" spellcheck="false"></textarea>
                                 <div class="json-editor-footer">
                                     <span id="json-status" class="json-status"></span>
                                     <span id="json-chars" class="json-chars">0 chars</span>
@@ -119,134 +88,37 @@
                         </div>
                     </div>
                 </div>
-                <input type="hidden" name="input_mode" id="input_mode" value="paste">
             </div>
         </div>
 
-        <!-- Nom et description -->
+        <!-- Name + description (fixed submission envelope) -->
         <div class="row mb-3">
             <div class="col-md-6">
-                {{ form.name.label(class_="form-label") }}
-                {{ form.name(class_="form-control", placeholder="Enter a name for the conversion",
-                style="background-color:var(--color-navbar); color:var(--color-text);") }}
-                {% for err in form.name.errors %}
-                <div class="invalid-feedback d-block">{{ err }}</div>
-                {% endfor %}
-            </div>
-            <div class="col-md-6">
-                {{ form.description.label(class_="form-label") }}
-                {{ form.description(class_="form-control", placeholder="Optional description...",
-                style="background-color:var(--color-navbar); color:var(--color-text);") }}
-            </div>
-        </div>
-
-        <!-- Distribution + Sharing Group -->
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label for="distribution" class="form-label">Distribution Level</label>
-                <select class="form-select" id="distribution" name="distribution"
+                <label class="form-label" for="conv-name">Name</label>
+                <input type="text" class="form-control" id="conv-name" name="name"
+                    placeholder="Enter a name for the conversion"
                     style="background-color:var(--color-navbar); color:var(--color-text);">
-                    <option value="0" {% if form.distribution.data==0 %}selected{% endif %}>0 – Your organisation only
-                    </option>
-                    <option value="1" {% if form.distribution.data==1 %}selected{% endif %}>1 – This community only
-                    </option>
-                    <option value="2" {% if form.distribution.data==2 %}selected{% endif %}>2 – Connected communities
-                    </option>
-                    <option value="3" {% if form.distribution.data==3 %}selected{% endif %}>3 – All communities</option>
-                    <option value="4" {% if form.distribution.data==4 %}selected{% endif %}>4 – Sharing Group</option>
-                </select>
-                {% for err in form.distribution.errors %}
-                <div class="invalid-feedback d-block">{{ err }}</div>
-                {% endfor %}
             </div>
             <div class="col-md-6">
-                {{ form.sharing_group_id.label(class_="form-label") }}
-                {{ form.sharing_group_id(
-                class_="form-control disabled-hint",
-                id="sharing_group_id",
-                placeholder="Only if distribution = 4",
-                style="background-color:var(--color-navbar); color:var(--color-text);",
-                **{'data-tooltip': "Enable distribution 4 to edit this field."}
-                ) }}
+                <label class="form-label" for="conv-description">Description</label>
+                <textarea class="form-control" id="conv-description" name="description"
+                    placeholder="Optional description..."
+                    style="background-color:var(--color-navbar); color:var(--color-text);"></textarea>
             </div>
         </div>
 
-        <!-- Cluster Distribution + Sharing Group -->
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label for="cluster_distribution" class="form-label">Cluster Distribution Level</label>
-                <select class="form-select" id="cluster_distribution" name="cluster_distribution"
-                    style="background-color:var(--color-navbar); color:var(--color-text);">
-                    <option value="0" {% if form.cluster_distribution.data==0 %}selected{% endif %}>0 – Your
-                        organisation only</option>
-                    <option value="1" {% if form.cluster_distribution.data==1 %}selected{% endif %}>1 – This community
-                        only</option>
-                    <option value="2" {% if form.cluster_distribution.data==2 %}selected{% endif %}>2 – Connected
-                        communities</option>
-                    <option value="3" {% if form.cluster_distribution.data==3 %}selected{% endif %}>3 – All communities
-                    </option>
-                    <option value="4" {% if form.cluster_distribution.data==4 %}selected{% endif %}>4 – Sharing Group
-                    </option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                {{ form.cluster_sharing_group_id.label(class_="form-label") }}
-                {{ form.cluster_sharing_group_id(
-                class_="form-control", id="cluster_sharing_group_id",
-                placeholder="Only if cluster distribution = 4",
-                style="background-color:var(--color-navbar); color:var(--color-text);"
-                ) }}
-            </div>
-        </div>
-
-        <!-- Organisation + Producer -->
-        <div class="row mb-3">
-            <div class="col-md-6">
-                {{ form.organisation_uuid.label(class_="form-label") }}
-                {{ form.organisation_uuid(class_="form-control", placeholder="Organisation UUID (optional)",
-                style="background-color:var(--color-navbar); color:var(--color-text);") }}
-            </div>
-            <div class="col-md-6">
-                {{ form.producer.label(class_="form-label") }}
-                {{ form.producer(class_="form-control", placeholder="Producer of the STIX data",
-                style="background-color:var(--color-navbar); color:var(--color-text);") }}
-            </div>
-        </div>
-
-        <!-- Title -->
+        <!-- Converter parameters — rendered from the Parameter schema -->
         <div class="mb-3">
-            {{ form.title.label(class_="form-label") }}
-            {{ form.title(class_="form-control", placeholder="Optional title for the resulting MISP Event",
-            style="background-color:var(--color-navbar); color:var(--color-text);") }}
+            <label class="form-label d-block mb-2">Parameters</label>
+            <div id="param-surface"></div>
         </div>
 
-        <!-- Switches -->
+        <!-- Public switch + tags -->
         <div class="row mb-3">
             <div class="col-md-3">
                 <div class="form-check form-switch">
-                    {{ form.public(class_="form-check-input", id="publicSwitch") }}
-                    {{ form.public.label(class_="form-check-label", for="publicSwitch") }}
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="form-check form-switch">
-                    {{ form.galaxies_as_tags(class_="form-check-input", id="galaxiesSwitch") }}
-                    {{ form.galaxies_as_tags.label(class_="form-check-label", for="galaxiesSwitch") }}
-                    <small class="text-muted d-block">Import galaxies as simple tag names</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="form-check form-switch">
-                    {{ form.no_force_contextual_data(class_="form-check-input", id="contextSwitch") }}
-                    {{ form.no_force_contextual_data.label(class_="form-check-label", for="contextSwitch") }}
-                    <small class="text-muted d-block">Avoid forcing ambiguous Galaxy cluster creation</small>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="form-check form-switch">
-                    {{ form.single_event(class_="form-check-input", id="singleEventSwitch") }}
-                    {{ form.single_event.label(class_="form-check-label", for="singleEventSwitch") }}
-                    <small class="text-muted d-block">Convert STIX data into one MISP event</small>
+                    <input class="form-check-input" type="checkbox" id="publicSwitch" name="public" checked>
+                    <label class="form-check-label" for="publicSwitch">Public</label>
                 </div>
             </div>
         </div>
@@ -258,208 +130,83 @@
         </div>
         {% endif %}
 
-        <button type="submit" name="convert" class="btn btn-primary">
-            <i class="fas fa-exchange-alt me-1"></i> {{ form.convert.label.text }}
+        <button type="submit" id="convert-submit" class="btn btn-primary">
+            <i class="fas fa-exchange-alt me-1"></i> Conversion
         </button>
     </form>
 
-    <!-- Result / Error -->
-    {% if result %}
-    <div class="custom-card mb-4">
-        <div class="code-panel-wrapper">
-            <div class="code-panel-toolbar d-flex align-items-center justify-content-between p-2 rounded-top border border-bottom-0"
-                style="background-color: var(--surface-2); border-color: var(--border) !important;">
-
-                <div class="d-flex align-items-center ms-1">
-                    <i class="fas fa-file-export text-info me-2" style="font-size: 0.9rem;"></i>
-                    <div class="text-light small">
-                        <span class="opacity-50" style="color: var(--text);">STIX · JSON ·</span>
-                        <strong class="ms-1 text-info-emphasis">Conversion Result</strong>
-                    </div>
-                </div>
-
-                <div class="btn-group shadow-sm">
-                    <button class="btn btn-xs btn-custom-action" id="btn-result-format" title="Format JSON">
-                        <i class="fas fa-align-left"></i>
-                    </button>
-                    <button class="btn btn-xs btn-custom-action" id="btn-result-download" title="Download STIX">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="btn btn-xs btn-custom-action" id="btn-result-copy" title="Copy to Clipboard">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="code-loading-overlay" id="spinner-result">
-                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                Rendering…
-            </div>
-            <pre class="code-panel-pre d-none" id="pre-result">
-                <code class="language-json" id="result-code">{{ result | tojson(indent=2) }}</code>
-            </pre>
-
-            <div class="code-panel-footer">
-                <small style="color:var(--text-3);">
-                    <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>
-                    Conversion successful
-                </small>
-                {% if result is mapping and result.get('id') %}
-                <small style="color:var(--text-3); font-family:var(--font-mono); font-size:0.7rem;">
-                    {{ result.get('id', '') }}
-                </small>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if error %}
-    <div class="custom-card mb-4 cf-error-card">
+    <!-- Error surface (populated by the fetch submit) -->
+    <div class="custom-card mb-4 cf-error-card d-none" id="convert-error">
         <div class="cf-error-header">
             <i class="fas fa-circle-xmark me-2"></i> Conversion Error
         </div>
         <div class="cf-error-body">
-            <pre class="cf-error-pre">{{ error }}</pre>
+            <pre class="cf-error-pre" id="convert-error-text"></pre>
         </div>
     </div>
-    {% endif %}
 </div>
 {% endblock %}
 {% block script %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
-
 <script type="module">
+    import ParamSurface from '{{ asset_url('js/convert/paramSurface.js') }}';
+
     const { createApp, onMounted } = Vue;
+    const CONVERTER_URL = '/api/convert/stix_to_misp';
+    const csrf = () => document.getElementById('csrf_token')?.value || '';
 
-    /* ── Gestion dynamique du thème hljs ─────────────────────────── */
-    function applyHljsTheme() {
-        const isDark = document.documentElement.classList.contains('dark-mode');
-        const themeEl = document.getElementById('hljs-theme');
-        if (themeEl) {
-            themeEl.href = isDark
-                ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
-                : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css';
+    let paramVm = null;
+
+    /* ── Render the param controls from the Converter's Parameter schema ─── */
+    async function mountParamSurface() {
+        const mount = document.getElementById('param-surface');
+        try {
+            const res = await fetch('/api/convert/list');
+            const data = await res.json();
+            const entry = data.available?.[CONVERTER_URL];
+            if (!entry) throw new Error('Converter not found in registry');
+            paramVm = createApp(ParamSurface, { schema: entry.params_schema })
+                .mount('#param-surface');
+        } catch (e) {
+            mount.innerHTML =
+                '<div class="text-danger small">Could not load parameters: ' + e.message + '</div>';
         }
-    }
-
-    /* ── Rendu du bloc de résultat (Highlight) ───────────────────── */
-    function highlightResult() {
-        const spinner = document.getElementById('spinner-result');
-        const pre = document.getElementById('pre-result');
-        const block = document.getElementById('result-code');
-        if (!pre || !block) return;
-
-        spinner?.classList.remove('d-none');
-        spinner?.classList.add('d-flex');
-        pre.classList.add('d-none');
-
-        setTimeout(() => {
-            block.removeAttribute('data-highlighted');
-            hljs.highlightElement(block);
-            spinner?.classList.add('d-none');
-            spinner?.classList.remove('d-flex');
-            pre.classList.remove('d-none');
-        }, 50);
     }
 
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
             onMounted(() => {
-                // Initialisation Thème
-                applyHljsTheme();
-                document.getElementById('theme-toggle')?.addEventListener('click', () => setTimeout(applyHljsTheme, 50));
+                mountParamSurface();
 
-
-                if (document.getElementById('pre-result')) {
-                    highlightResult();
-
-                    setTimeout(() => {
-                        const resultCard = document.querySelector('.code-panel-wrapper');
-                        if (resultCard) {
-                            resultCard.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'center'
-                            });
-                        }
-                    }, 100);
-                }
-
-
-                if (document.getElementById('pre-result')) {
-                    highlightResult();
-                }
-
-                /* ── Toolbar du résultat (Copy, Download, Format) ─── */
-                const resultCode = document.getElementById('result-code');
-
-                document.getElementById('btn-result-copy')?.addEventListener('click', (e) => {
-                    if (!resultCode) return;
-                    const btn = e.currentTarget;
-                    const orig = btn.innerHTML;
-                    navigator.clipboard.writeText(resultCode.textContent).then(() => {
-                        btn.innerHTML = '<i class="fas fa-check"></i>';
-                        setTimeout(() => { btn.innerHTML = orig; }, 1500);
-                    });
-                });
-
-                document.getElementById('btn-result-download')?.addEventListener('click', (e) => {
-                    if (!resultCode) return;
-                    const blob = new Blob([resultCode.textContent], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = Object.assign(document.createElement('a'), {
-                        href: url, download: 'converted_misp.json'
-                    });
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    const btn = e.currentTarget;
-                    const orig = btn.innerHTML;
-                    btn.innerHTML = '<i class="fas fa-check"></i>';
-                    setTimeout(() => { btn.innerHTML = orig; }, 1500);
-                });
-
-                document.getElementById('btn-result-format')?.addEventListener('click', (e) => {
-                    if (!resultCode) return;
-                    const btn = e.currentTarget;
-                    try {
-                        const obj = JSON.parse(resultCode.textContent);
-                        resultCode.textContent = JSON.stringify(obj, null, 2);
-                        highlightResult();
-                    } catch (err) {
-                        console.error("Format error", err);
-                    }
-                });
-
-                /* ── Gestion des onglets Input (Paste/File) ────────── */
-                const tabBtns = document.querySelectorAll('.input-tab-btn');
-                const tabPanes = document.querySelectorAll('.input-tab-pane');
-                const inputMode = document.getElementById('input_mode');
                 const textarea = document.getElementById('stix_content');
                 const fileInput = document.getElementById('file');
+                const errorCard = document.getElementById('convert-error');
+                const errorText = document.getElementById('convert-error-text');
 
-                tabBtns.forEach(btn => {
+                const showError = (msg) => {
+                    errorText.textContent = msg;
+                    errorCard.classList.remove('d-none');
+                    errorCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                };
+                const clearError = () => errorCard.classList.add('d-none');
+
+                /* ── Input tabs (Paste / File) ─────────────────────── */
+                const tabBtns = document.querySelectorAll('.input-tab-btn');
+                const tabPanes = document.querySelectorAll('.input-tab-pane');
+                tabBtns.forEach((btn) => {
                     btn.addEventListener('click', () => {
-                        tabBtns.forEach(b => b.classList.remove('active'));
-                        tabPanes.forEach(p => p.classList.remove('active'));
+                        tabBtns.forEach((b) => b.classList.remove('active'));
+                        tabPanes.forEach((p) => p.classList.remove('active'));
                         btn.classList.add('active');
                         document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
-                        inputMode.value = btn.dataset.tab;
-
-                        if (btn.dataset.tab === 'file') {
-                            textarea.removeAttribute('required');
-                            fileInput.setAttribute('required', '');
-                        } else {
-                            fileInput.removeAttribute('required');
-                        }
                     });
                 });
+                const activeTab = () =>
+                    document.querySelector('.input-tab-btn.active')?.dataset.tab || 'paste';
 
-                /* ── Validation JSON Live ─────────────────────────── */
+                /* ── Live JSON validation ──────────────────────────── */
                 const jsonStatus = document.getElementById('json-status');
                 const jsonChars = document.getElementById('json-chars');
-
                 textarea?.addEventListener('input', () => {
                     const val = textarea.value.trim();
                     if (jsonChars) jsonChars.textContent = `${val.length} chars`;
@@ -473,7 +220,6 @@
                         jsonStatus.className = 'json-status invalid';
                     }
                 });
-
                 document.getElementById('btn-format')?.addEventListener('click', () => {
                     try {
                         textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 2);
@@ -485,37 +231,33 @@
                         }
                     }
                 });
-
                 document.getElementById('btn-clear')?.addEventListener('click', () => {
                     textarea.value = '';
                     textarea.dispatchEvent(new Event('input'));
                 });
 
-                /* ── Zone de Drop Fichier ──────────────────────────── */
+                /* ── File drop zone ────────────────────────────────── */
                 const dropZone = document.getElementById('drop-zone');
                 const fileInfo = document.getElementById('file-info');
                 const fileName = document.getElementById('file-name');
                 const fileDropContent = dropZone?.querySelector('.file-drop-content');
-
-                const showFile = name => {
+                const showFile = (name) => {
                     if (fileName) fileName.textContent = name;
                     fileInfo?.classList.remove('d-none');
                     fileDropContent?.classList.add('d-none');
-                }
+                };
                 const clearFile = () => {
                     if (fileInput) fileInput.value = '';
                     fileInfo?.classList.add('d-none');
                     fileDropContent?.classList.remove('d-none');
-                }
-
+                };
                 fileInput?.addEventListener('change', () => {
                     if (fileInput.files[0]) showFile(fileInput.files[0].name);
                 });
                 document.getElementById('btn-remove-file')?.addEventListener('click', clearFile);
-
-                dropZone?.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+                dropZone?.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
                 dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-                dropZone?.addEventListener('drop', e => {
+                dropZone?.addEventListener('drop', (e) => {
                     e.preventDefault();
                     dropZone.classList.remove('dragover');
                     const f = e.dataTransfer.files[0];
@@ -526,46 +268,58 @@
                     }
                 });
 
-                /* ── Toggles Distribution (Sharing Groups) ─────────── */
-                const distSelect = document.getElementById('distribution');
-                const sgInput = document.getElementById('sharing_group_id');
-                const cDistSelect = document.getElementById('cluster_distribution');
-                const cSgInput = document.getElementById('cluster_sharing_group_id');
-
-                const toggleField = (input, enabled) => {
-                    if (!input) return;
-                    input.disabled = !enabled;
-                    if (!enabled) {
-                        input.value = '';
-                        input.classList.add('disabled-input');
-                    } else {
-                        input.classList.remove('disabled-input');
+                /* ── Gather the STIX payload from the active tab ───── */
+                async function readPayload() {
+                    if (activeTab() === 'file') {
+                        const f = fileInput?.files[0];
+                        return f ? await f.text() : null;
                     }
+                    return (textarea?.value || '').trim() || null;
                 }
 
-                if (distSelect && sgInput) {
-                    toggleField(sgInput, distSelect.value === '4');
-                    distSelect.addEventListener('change', () => toggleField(sgInput, distSelect.value === '4'));
-                }
-                if (cDistSelect && cSgInput) {
-                    toggleField(cSgInput, cDistSelect.value === '4');
-                    cDistSelect.addEventListener('change', () => toggleField(cSgInput, cDistSelect.value === '4'));
-                }
+                /* ── Submit: params via fetch/JSON ──────── */
+                const form = document.getElementById('convert-form');
+                const submitBtn = document.getElementById('convert-submit');
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearError();
+                    paramVm?.clearErrors();
 
-                /* ── Soumission Formulaire (Convert Paste to File) ─── */
-                document.querySelector('form')?.addEventListener('submit', function () {
-                    const mode = document.getElementById('input_mode').value;
-                    if (mode === 'paste') {
-                        const content = textarea.value.trim();
-                        if (content) {
-                            const blob = new Blob([content], { type: 'application/json' });
-                            const file = new File([blob], 'pasted_stix.json', { type: 'application/json' });
-                            const dt = new DataTransfer();
-                            dt.items.add(file);
-                            fileInput.files = dt.files;
-                            textarea.value = '';
-                            document.getElementById('input_mode').value = 'file';
+                    const payload = await readPayload();
+                    if (!payload) { showError('Please provide STIX content (paste or upload a file).'); return; }
+
+                    const tagHidden = document.getElementById('tag-ids-hidden-s2m');
+                    const body = {
+                        payload,
+                        params: paramVm ? paramVm.collect() : {},
+                        name: document.getElementById('conv-name').value.trim(),
+                        description: document.getElementById('conv-description').value.trim(),
+                        public: document.getElementById('publicSwitch').checked,
+                        tag_ids: (tagHidden?.value || '').split(',').filter(Boolean),
+                    };
+
+                    const orig = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Converting…';
+                    try {
+                        const res = await fetch(form.getAttribute('action') || window.location.pathname, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                            body: JSON.stringify(body),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.url) { window.location.href = data.url; return; }
+                        if (res.status === 400 && data.fields) {
+                            paramVm?.setErrors(data.fields);
+                            showError(data.error || 'Please correct the highlighted parameters.');
+                        } else {
+                            showError(data.error || `Conversion failed (HTTP ${res.status}).`);
                         }
+                    } catch (err) {
+                        showError('Network error: ' + err.message);
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = orig;
                     }
                 });
             });

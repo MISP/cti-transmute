@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block head %}
-<link id="hljs-theme" rel="stylesheet" href="">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/convert_form.css') }}">
 {% endblock %}
 
@@ -30,34 +29,18 @@
 
 
     <div class="custom-card p-4 mb-4">
-        <form method="post" enctype="multipart/form-data" novalidate>
-            {{ form.hidden_tag() }}
+        <form id="convert-form" novalidate>
 
             <div class="row mb-3">
                 <div class="col-md-6">
-                    <label class="form-label cf-label">{{ form.version.label }} <span
-                            class="text-danger">*</span></label>
-                    {{ form.version(class_="form-select") }}
-                    {% for err in form.version.errors %}
-                    <div class="invalid-feedback d-block">{{ err }}</div>
-                    {% endfor %}
+                    <label class="form-label cf-label" for="conv-name">Name</label>
+                    <input type="text" class="form-control" id="conv-name" name="name"
+                        placeholder="Enter a name for the conversion">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label cf-label">{{ form.name.label }}</label>
-                    {{ form.name(class_="form-control", placeholder="Enter a name for the conversion") }}
-                    {% for err in form.name.errors %}
-                    <div class="invalid-feedback d-block">{{ err }}</div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-md-12">
-                    <label class="form-label cf-label">{{ form.description.label }}</label>
-                    {{ form.description(class_="form-control", placeholder="Optional description...") }}
-                    {% for err in form.description.errors %}
-                    <div class="invalid-feedback d-block">{{ err }}</div>
-                    {% endfor %}
+                    <label class="form-label cf-label" for="conv-description">Description</label>
+                    <input type="text" class="form-control" id="conv-description" name="description"
+                        placeholder="Optional description...">
                 </div>
             </div>
 
@@ -96,13 +79,9 @@
                                             </button>
                                         </div>
                                     </div>
-                                    {{ form.misp_content(
-                                    class_="json-editor",
-                                    id="misp_content",
-                                    placeholder='{\n "Event": {\n ...\n }\n}',
-                                    rows="14",
-                                    spellcheck="false"
-                                    ) }}
+                                    <textarea class="json-editor" id="misp_content" name="misp_content"
+                                        placeholder='{&#10; "Event": {&#10; ...&#10; }&#10;}'
+                                        rows="14" spellcheck="false"></textarea>
                                     <div class="json-editor-footer">
                                         <span id="json-status" class="json-status"></span>
                                         <span id="json-chars" class="json-chars">0 chars</span>
@@ -273,15 +252,20 @@
                             </div><!-- /tab-misp -->
                         </div>
                     </div>
-                    <input type="hidden" name="input_mode" id="input_mode" value="paste">
                 </div>
+            </div>
+
+            <!-- Converter parameters — rendered from the Parameter schema (ADR-0006) -->
+            <div class="mb-3">
+                <label class="form-label cf-label d-block mb-2">Parameters</label>
+                <div id="param-surface"></div>
             </div>
 
             <div class="row mb-4">
                 <div class="col-md-6">
                     <div class="form-check form-switch">
-                        {{ form.public(class_="form-check-input", id="publicSwitch") }}
-                        {{ form.public.label(class_="form-check-label", for="publicSwitch") }}
+                        <input class="form-check-input" type="checkbox" id="publicSwitch" name="public" checked>
+                        <label class="form-check-label" for="publicSwitch">Public</label>
                     </div>
                 </div>
             </div>
@@ -293,72 +277,21 @@
             </div>
             {% endif %}
 
-            <button type="submit" name="convert" class="btn btn-primary fw-semibold">
-                <i class="fas fa-exchange-alt me-1"></i> {{ form.convert.label.text }}
+            <button type="submit" id="convert-submit" name="convert" class="btn btn-primary fw-semibold">
+                <i class="fas fa-exchange-alt me-1"></i> Conversion
             </button>
         </form>
     </div>
 
-    {% if result %}
-    <div class="custom-card mb-4">
-        <div class="code-panel-wrapper">
-            <div class="code-panel-toolbar d-flex align-items-center justify-content-between p-2 rounded-top border border-bottom-0"
-                style="background-color: var(--surface-2); border-color: var(--border) !important;">
-
-                <div class="d-flex align-items-center ms-1">
-                    <i class="fas fa-file-export text-info me-2" style="font-size: 0.9rem;"></i>
-                    <div class="text-light small">
-                        <span class="opacity-50" style="color: var(--text);">MISP · JSON ·</span>
-                        <strong class="ms-1 text-info-emphasis">Conversion Result</strong>
-                    </div>
-                </div>
-
-                <div class="btn-group shadow-sm">
-                    <button class="btn btn-xs btn-custom-action" id="btn-result-format" title="Format JSON">
-                        <i class="fas fa-align-left"></i>
-                    </button>
-                    <button class="btn btn-xs btn-custom-action" id="btn-result-download" title="Download STIX">
-                        <i class="fas fa-download"></i>
-                    </button>
-                    <button class="btn btn-xs btn-custom-action" id="btn-result-copy" title="Copy to Clipboard">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="code-loading-overlay" id="spinner-result">
-                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                Rendering…
-            </div>
-            <pre class="code-panel-pre d-none" id="pre-result">
-                <code class="language-json" id="result-code">{{ result | tojson(indent=2) }}</code>
-            </pre>
-
-            <div class="code-panel-footer">
-                <small style="color:var(--text-3);">
-                    <i class="fas fa-check-circle me-1" style="color:var(--success);"></i>
-                    Conversion successful
-                </small>
-                {% if result is mapping and result.get('id') %}
-                <small style="color:var(--text-3); font-family:var(--font-mono); font-size:0.7rem;">
-                    {{ result.get('id', '') }}
-                </small>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% if error %}
-    <div class="custom-card mb-4 cf-error-card">
+    <!-- Error surface (populated by the fetch submit) -->
+    <div class="custom-card mb-4 cf-error-card d-none" id="convert-error">
         <div class="cf-error-header">
             <i class="fas fa-circle-xmark me-2"></i> Conversion Error
         </div>
         <div class="cf-error-body">
-            <pre class="cf-error-pre">{{ error }}</pre>
+            <pre class="cf-error-pre" id="convert-error-text"></pre>
         </div>
     </div>
-    {% endif %}
 
 </div>
 
@@ -366,138 +299,63 @@
 {% endblock %}
 
 {% block script %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
-
 <script type="module">
+    import ParamSurface from '{{ asset_url('js/convert/paramSurface.js') }}';
+
     const { createApp, onMounted } = Vue;
+    const CONVERTER_URL = '/api/convert/misp_to_stix';
+    const csrf = () => document.getElementById('csrf_token')?.value || '';
 
-    /* ── hljs theme ───────────────────────────────────────────────── */
-    function applyHljsTheme() {
-        const isDark = document.documentElement.classList.contains('dark-mode');
-        document.getElementById('hljs-theme').href = isDark
-            ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
-            : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css';
-    }
-    applyHljsTheme();
-    document.getElementById('theme-toggle')?.addEventListener('click', () => setTimeout(applyHljsTheme, 50));
+    let paramVm = null;
 
-    /* ── Highlight result panel (same pattern as detail.html) ─────── */
-    function highlightResult() {
-        const spinner = document.getElementById('spinner-result');
-        const pre = document.getElementById('pre-result');
-        const block = document.getElementById('result-code');
-        if (!pre || !block) return;
-
-        spinner?.classList.remove('d-none');
-        spinner?.classList.add('d-flex');
-        pre.classList.add('d-none');
-
-        setTimeout(() => {
-            block.removeAttribute('data-highlighted');
-            hljs.highlightElement(block);
-            spinner?.classList.add('d-none');
-            spinner?.classList.remove('d-flex');
-            pre.classList.remove('d-none');
-        }, 50);
+    async function mountParamSurface() {
+        const mount = document.getElementById('param-surface');
+        try {
+            const res = await fetch('/api/convert/list');
+            const data = await res.json();
+            const entry = data.available?.[CONVERTER_URL];
+            if (!entry) throw new Error('Converter not found in registry');
+            paramVm = createApp(ParamSurface, { schema: entry.params_schema })
+                .mount('#param-surface');
+        } catch (e) {
+            mount.innerHTML =
+                '<div class="text-danger small">Could not load parameters: ' + e.message + '</div>';
+        }
     }
 
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
             onMounted(() => {
-                /* ── Scroll to result if present ──────────────────── */
-                if (document.getElementById('pre-result')) {
-                    highlightResult();
+                mountParamSurface();
 
-                    setTimeout(() => {
-                        const resultCard = document.querySelector('.code-panel-wrapper');
-                        if (resultCard) {
-                            resultCard.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'center'
-                            });
-                        }
-                    }, 100);
-                }
-                /* ── Highlight result if present ──────────────────── */
-                if (document.getElementById('pre-result')) {
-                    highlightResult();
-                }
-
-                /* ── Result toolbar buttons ───────────────────────── */
-                const resultCode = document.getElementById('result-code');
-
-                document.getElementById('btn-result-copy')?.addEventListener('click', (e) => {
-                    if (!resultCode) return;
-                    const btn = e.currentTarget;
-                    const orig = btn.innerHTML;
-                    navigator.clipboard.writeText(resultCode.textContent).then(() => {
-                        btn.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
-                        setTimeout(() => { btn.innerHTML = orig; }, 1500);
-                    });
-                });
-
-                document.getElementById('btn-result-download')?.addEventListener('click', (e) => {
-                    if (!resultCode) return;
-                    const blob = new Blob([resultCode.textContent], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = Object.assign(document.createElement('a'), {
-                        href: url, download: 'converted_stix.json'
-                    });
-                    a.click();
-                    URL.revokeObjectURL(url);
-                    const btn = e.currentTarget;
-                    const orig = btn.innerHTML;
-                    btn.innerHTML = '<i class="fas fa-check me-1"></i> Downloaded!';
-                    setTimeout(() => { btn.innerHTML = orig; }, 1500);
-                });
-
-                document.getElementById('btn-result-format')?.addEventListener('click', (e) => {
-                    if (!resultCode) return;
-                    const btn = e.currentTarget;
-                    const orig = btn.innerHTML;
-                    try {
-                        resultCode.textContent = JSON.stringify(JSON.parse(resultCode.textContent), null, 2);
-                        highlightResult();
-                        btn.innerHTML = '<i class="fas fa-check me-1"></i> Formatted!';
-                    } catch {
-                        btn.innerHTML = '<i class="fas fa-xmark me-1"></i> Invalid JSON';
-                    }
-                    setTimeout(() => { btn.innerHTML = orig; }, 1800);
-                });
-
-                /* ── Tab switching ────────────────────────────────── */
-                const tabBtns = document.querySelectorAll('.input-tab-btn');
-                const tabPanes = document.querySelectorAll('.input-tab-pane');
-                const inputMode = document.getElementById('input_mode');
                 const textarea = document.getElementById('misp_content');
                 const fileInput = document.getElementById('file');
+                const errorCard = document.getElementById('convert-error');
+                const errorText = document.getElementById('convert-error-text');
 
+                const showError = (msg) => {
+                    errorText.textContent = msg;
+                    errorCard.classList.remove('d-none');
+                    errorCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                };
+                const clearError = () => errorCard.classList.add('d-none');
+
+                /* ── Tab switching (Paste / File / MISP Instance) ──── */
+                const tabBtns = document.querySelectorAll('.input-tab-btn');
+                const tabPanes = document.querySelectorAll('.input-tab-pane');
                 function switchTab(tabName) {
-                    tabBtns.forEach(b => b.classList.remove('active'));
-                    tabPanes.forEach(p => p.classList.remove('active'));
-                    const btn = document.querySelector(`.input-tab-btn[data-tab="${tabName}"]`);
-                    if (btn) btn.classList.add('active');
-                    const pane = document.getElementById(`tab-${tabName}`);
-                    if (pane) pane.classList.add('active');
-                    // misp tab is not a real form input — treat it as paste for validation
-                    if (tabName === 'misp' || tabName === 'paste') {
-                        inputMode.value = 'paste';
-                        fileInput.removeAttribute('required');
-                    } else if (tabName === 'file') {
-                        inputMode.value = 'file';
-                        textarea.removeAttribute('required');
-                        fileInput.setAttribute('required', '');
-                    }
+                    tabBtns.forEach((b) => b.classList.remove('active'));
+                    tabPanes.forEach((p) => p.classList.remove('active'));
+                    document.querySelector(`.input-tab-btn[data-tab="${tabName}"]`)?.classList.add('active');
+                    document.getElementById(`tab-${tabName}`)?.classList.add('active');
                 }
-
-                tabBtns.forEach(btn => {
-                    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-                });
+                tabBtns.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+                const activeTab = () =>
+                    document.querySelector('.input-tab-btn.active')?.dataset.tab || 'paste';
 
                 /* ── MISP Instance — Inline Browser ─────────────────── */
-                const CSRF = () => document.querySelector('input[name="csrf_token"]')?.value || '';
+                const CSRF = csrf;
                 const miSt = { url: '', apiKey: '', page: 1, limit: 25, filters: {}, events: [], selected: new Set() };
 
                 function showFlash(msg, type) {
@@ -708,7 +566,6 @@
                             if (cb.checked) miSt.selected.add(id);
                             else miSt.selected.delete(id);
                             miUpdateImportBtn();
-                            // Sync header checkbox
                             const all = tbody.querySelectorAll('.mi-row-check');
                             const allChecked = [...all].every(c => c.checked);
                             const checkAll = document.getElementById('mi-check-all');
@@ -718,7 +575,6 @@
                     tbody.querySelectorAll('.mi-select-btn').forEach(btn => {
                         btn.addEventListener('click', () => miSelectEvent(btn.dataset.id, btn));
                     });
-                    // Sync header "select all" state
                     const checkAll = document.getElementById('mi-check-all');
                     if (checkAll) { checkAll.checked = false; checkAll.indeterminate = miSt.selected.size > 0; }
                 }
@@ -832,7 +688,6 @@
                 function miTriggerImportSelected() {
                     const ids = [...miSt.selected];
                     if (!ids.length) return;
-                    // Collect event data for all selected IDs (may span pages — use what we have)
                     const knownEvents = miSt.events.filter(e => ids.includes(String(e.id)));
                     const allTags = knownEvents.flatMap(e => e.tags || []);
                     const sensitiveTags = checkSensitiveTags(allTags);
@@ -875,19 +730,16 @@
                         sensitiveTags,
                         distInfo,
                         () => {
-                            // Make Private & Continue
                             const pub = document.getElementById('publicSwitch');
                             if (pub) { pub.checked = false; pub.dispatchEvent(new Event('change')); }
                             if (convertBtn) convertBtn.disabled = false;
                             miFetchAndLoad(id, btn, orig);
                         },
                         () => {
-                            // Continue anyway
                             if (convertBtn) convertBtn.disabled = false;
                             miFetchAndLoad(id, btn, orig);
                         },
                         () => {
-                            // Dismissed — restore button
                             if (convertBtn) convertBtn.disabled = false;
                             btn.innerHTML = orig;
                             btn.disabled = false;
@@ -981,7 +833,6 @@
                 /* ── Live JSON validation ─────────────────────────── */
                 const jsonStatus = document.getElementById('json-status');
                 const jsonChars = document.getElementById('json-chars');
-
                 textarea?.addEventListener('input', () => {
                     const val = textarea.value.trim();
                     jsonChars.textContent = `${val.length} chars`;
@@ -996,7 +847,6 @@
                     }
                 });
 
-                /* ── Format / Clear textarea ──────────────────────── */
                 document.getElementById('btn-format')?.addEventListener('click', () => {
                     try {
                         textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 2);
@@ -1017,7 +867,6 @@
                 const fileInfo = document.getElementById('file-info');
                 const fileNameEl = document.getElementById('file-name');
                 const fileDropContent = dropZone?.querySelector('.file-drop-content');
-
                 function showFile(name) {
                     fileNameEl.textContent = name;
                     fileInfo.classList.remove('d-none');
@@ -1028,12 +877,10 @@
                     fileInfo.classList.add('d-none');
                     fileDropContent.classList.remove('d-none');
                 }
-
                 fileInput?.addEventListener('change', () => {
                     if (fileInput.files[0]) showFile(fileInput.files[0].name);
                 });
                 document.getElementById('btn-remove-file')?.addEventListener('click', clearFile);
-
                 dropZone?.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
                 dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
                 dropZone?.addEventListener('drop', e => {
@@ -1048,23 +895,59 @@
                     }
                 });
 
-                /* ── Submit: paste → file ─────────────────────────── */
-                document.querySelector('form').addEventListener('submit', () => {
-                    const mode = document.getElementById('input_mode').value;
-                    if (mode === 'paste') {
-                        const content = textarea.value.trim();
-                        if (content) {
-                            const file = new File(
-                                [new Blob([content], { type: 'application/json' })],
-                                'pasted_misp.json',
-                                { type: 'application/json' }
-                            );
-                            const dt = new DataTransfer();
-                            dt.items.add(file);
-                            fileInput.files = dt.files;
-                            textarea.value = '';
-                            document.getElementById('input_mode').value = 'file';
+                /* ── Gather the MISP payload from the active tab ───── */
+                async function readPayload() {
+                    if (activeTab() === 'file') {
+                        const f = fileInput?.files[0];
+                        return f ? await f.text() : null;
+                    }
+                    // paste + misp tabs both feed the textarea
+                    return (textarea?.value || '').trim() || null;
+                }
+
+                /* ── Submit: params via fetch/JSON ──────── */
+                const form = document.getElementById('convert-form');
+                const submitBtn = document.getElementById('convert-submit');
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearError();
+                    paramVm?.clearErrors();
+
+                    const payload = await readPayload();
+                    if (!payload) { showError('Please provide MISP content (paste, upload, or import from an instance).'); return; }
+
+                    const tagHidden = document.getElementById('tag-ids-hidden-m2s');
+                    const body = {
+                        payload,
+                        params: paramVm ? paramVm.collect() : {},
+                        name: document.getElementById('conv-name').value.trim(),
+                        description: document.getElementById('conv-description').value.trim(),
+                        public: document.getElementById('publicSwitch').checked,
+                        tag_ids: (tagHidden?.value || '').split(',').filter(Boolean),
+                    };
+
+                    const orig = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Converting…';
+                    try {
+                        const res = await fetch(window.location.pathname, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                            body: JSON.stringify(body),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.url) { window.location.href = data.url; return; }
+                        if (res.status === 400 && data.fields) {
+                            paramVm?.setErrors(data.fields);
+                            showError(data.error || 'Please correct the highlighted parameters.');
+                        } else {
+                            showError(data.error || `Conversion failed (HTTP ${res.status}).`);
                         }
+                    } catch (err) {
+                        showError('Network error: ' + err.message);
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = orig;
                     }
                 });
             });
