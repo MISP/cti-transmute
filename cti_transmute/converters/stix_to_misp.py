@@ -11,31 +11,98 @@ from pydantic import BaseModel, ConfigDict, Field
 from cti_transmute.converter import Converter
 from cti_transmute.exceptions import ConverterFailed, InvalidPayload
 
+# The MISP distribution levels, labelled once here on the Converter so
+# every param surface renders the same choices from the schema rather than
+# hardcoding them. Published as JSON-Schema ``oneOf: [{const, title}]``; the
+# ``ge=0, le=4`` constraint below stays the validator, so the endpoint and the
+# published schema agree on which values are accepted (round-trip parity).
+_DISTRIBUTION_ONEOF = [
+    {"const": 0, "title": "0 – Your organisation only"},
+    {"const": 1, "title": "1 – This community only"},
+    {"const": 2, "title": "2 – Connected communities"},
+    {"const": 3, "title": "3 – All communities"},
+    {"const": 4, "title": "4 – Sharing group"},
+]
+
 
 class StixToMispParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    distribution: int = Field(default=0, ge=0, le=4)
-    # the "required when distribution == 4" relationship is carried as a
-    # description only — semantic/cross-field validity is the target tool's job.
-    sharing_group_id: Optional[int] = Field(
-        default=None,
-        description="Sharing group ID; required by MISP when distribution is 4.",
+    distribution: int = Field(
+        default=0, ge=0, le=4, title="Distribution Level",
+        description="Distribution level for the imported MISP content.",
+        json_schema_extra={"oneOf": _DISTRIBUTION_ONEOF},
     )
-    galaxies_as_tags: bool = False
-    no_force_contextual_data: bool = False
-    cluster_distribution: int = Field(default=0, ge=0, le=4)
+    # ``enabledWhen`` is a UI-only affordance (presentation hint): the
+    # param surface greys this field out unless distribution == 4. It is NOT
+    # validation — the server stays shape-only and the target tool owns the
+    # "required when distribution == 4" semantics.
+    sharing_group_id: Optional[int] = Field(
+        default=None, title="Sharing Group ID",
+        description="Sharing group ID; required by MISP when distribution is 4.",
+        json_schema_extra={
+            "enabledWhen": {"field": "distribution", "equals": 4},
+            "placeholder": "Only if distribution = 4",
+        },
+    )
+    cluster_distribution: int = Field(
+        default=0, ge=0, le=4, title="Cluster Distribution Level",
+        description=(
+            "Galaxy clusters distribution level for external STIX 2 content."
+        ),
+        json_schema_extra={"oneOf": _DISTRIBUTION_ONEOF},
+    )
     cluster_sharing_group_id: Optional[int] = Field(
-        default=None,
+        default=None, title="Cluster Sharing Group ID",
         description=(
             "Galaxy clusters sharing group ID; required by MISP when "
             "cluster_distribution is 4."
         ),
+        json_schema_extra={
+            "enabledWhen": {"field": "cluster_distribution", "equals": 4},
+            "placeholder": "Only if cluster distribution = 4",
+        },
     )
-    organisation_uuid: Optional[str] = None
-    single_event: bool = False
-    producer: Optional[str] = None
-    title: Optional[str] = None
+    organisation_uuid: Optional[str] = Field(
+        default=None, title="Organisation UUID",
+        description="Organisation UUID to use when creating custom Galaxy clusters.",
+        json_schema_extra={"placeholder": "Organisation UUID (optional)"},
+    )
+    producer: Optional[str] = Field(
+        default=None, title="Producer", description="Producer of the STIX data.",
+        json_schema_extra={"placeholder": "Producer of the STIX data"},
+    )
+    # ``fullWidth`` (presentation hint): render on its own full-width row.
+    title: Optional[str] = Field(
+        default=None, title="Title",
+        description="Title used to set the MISP Event `info` field.",
+        json_schema_extra={
+            "fullWidth": True,
+            "placeholder": "Optional title for the resulting MISP Event",
+        },
+    )
+    # Boolean switches declared last so the schema-driven surface groups them
+    # together at the bottom (render order = field declaration order).
+    galaxies_as_tags: bool = Field(
+        default=False, title="Galaxies as Tags",
+        description=(
+            "Import MISP Galaxies as tag names instead of the standard "
+            "Galaxy format."
+        ),
+    )
+    no_force_contextual_data: bool = Field(
+        default=False, title="No Force Contextual Data",
+        description=(
+            "Do not force the creation of custom Galaxy clusters when ambiguous."
+        ),
+    )
+    single_event: bool = Field(
+        default=False, title="Single Event",
+        description=(
+            "Convert STIX data to a single MISP event if multiple "
+            "reports/groupings exist."
+        ),
+    )
 
 
 class StixToMisp(Converter):

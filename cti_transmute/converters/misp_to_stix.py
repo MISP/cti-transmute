@@ -3,7 +3,7 @@ from io import BytesIO
 from typing import Any, Literal
 
 from misp_stix_converter import InvalidMISPInputError, MISPtoSTIX20Parser, MISPtoSTIX21Parser
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from cti_transmute.converter import Converter
 from cti_transmute.exceptions import ConverterFailed, InvalidPayload
@@ -12,7 +12,10 @@ from cti_transmute.exceptions import ConverterFailed, InvalidPayload
 class MispToStixParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    version: Literal["2.0", "2.1"] = "2.1"
+    version: Literal["2.0", "2.1"] = Field(
+        default="2.1", title="STIX Version",
+        description="STIX specification version of the generated bundle.",
+    )
 
 
 def _coerce_to_str(payload: Any) -> str:
