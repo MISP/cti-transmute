@@ -16,6 +16,7 @@ from cti_transmute.exceptions import (
 from website.lib.auth import api_actor
 from website.lib.conversions import submit_conversion
 from website.lib.exceptions import PersistenceFailed
+from website.lib.params import param_error
 
 logger = logging.getLogger(__name__)
 
@@ -107,13 +108,9 @@ class MispStixConverter(Resource):
     @staticmethod
     def _param_error(exc: ValidationError):
         """Render a Pydantic ``ValidationError`` as the stable ``{error, fields}``
-        400: ``fields`` maps each offending param name to its message, ``error``
-        is a short human-readable summary."""
-        fields = {}
-        for err in exc.errors():
-            loc = err.get('loc') or ('params',)
-            fields[str(loc[0])] = err['msg']
-        return {'error': 'Invalid conversion parameters', 'fields': fields}, 400
+        400. The rendering is shared with the web convert page (ADR-0006), so the
+        two surfaces return the identical shape (`website.lib.params.param_error`)."""
+        return param_error(exc)
 
     def _run(self, source: str, target: str, params_class):
         """Load the payload, build + validate params, then run or persist.
