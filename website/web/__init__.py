@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, url_for
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -52,3 +52,18 @@ login_manager.init_app(application)
 
 application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
+
+
+@application.template_global()
+def asset_url(filename):
+    """Static URL cache-busted with the file's last-modified time.
+
+    The browser caches the asset but re-fetches it the moment the file changes
+    (the ``?v=`` stamp changes), so editing a JS/CSS file never needs a manual
+    cache clear. Use in templates: ``src="{{ asset_url('js/convert/x.js') }}"``.
+    """
+    try:
+        version = int(os.path.getmtime(os.path.join(application.static_folder, filename)))
+    except OSError:
+        version = 0
+    return f"{url_for('static', filename=filename)}?v={version}"
