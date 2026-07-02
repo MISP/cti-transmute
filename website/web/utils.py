@@ -137,6 +137,11 @@ def extract_name_from_misp_json(json_text: str) -> str | None:
     """
     try:
         data = json.loads(json_text)
+        if not isinstance(data, dict):
+            # Valid JSON that isn't a MISP object (an array/scalar/null): no name
+            # to extract. Guard mirrors parse_stix_reports so a best-effort name
+            # lookup never raises on non-dict input.
+            return None
 
         info_value = data.get("info")
 
