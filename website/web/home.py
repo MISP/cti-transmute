@@ -1,4 +1,3 @@
-import requests
 from flask import Blueprint, abort, jsonify, render_template
 from flask_login import current_user
 from sqlalchemy import and_, or_
@@ -25,26 +24,6 @@ def why():
 def list():
     """List page"""
     return render_template("list.html")
-
-@home_blueprint.route("/get_features", methods=["GET"])
-def get_features():
-    """Get all the features of the API"""
-    try:
-        response = requests.get("http://127.0.0.1:6868/api/convert/list")
-        response.raise_for_status()
-
-        data = response.json()
-        return jsonify({
-            "status": "success",
-            "features": data.get("available", {})
-        }), 200
-
-    except requests.RequestException as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e),
-            "features": {}
-        }), 500
 
 @home_blueprint.route("/get_current_user", methods=['GET'])
 def get_current_user() -> jsonify:
