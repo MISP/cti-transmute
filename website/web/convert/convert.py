@@ -206,7 +206,7 @@ def redirect_to_conversions(rest):
 
 @convert_blueprint.route("/misp_to_stix", methods=['GET', 'POST'])
 def misp_to_stix():
-    """MISP -> STIX convert page.
+    """MISP → STIX convert page.
 
     GET renders the page; its param controls are drawn client-side from the
     Converter's Parameter schema. POST is a fetch/JSON submission handled by
@@ -410,7 +410,7 @@ def misp_search_events():
 
 @convert_blueprint.route("/stix_to_misp", methods=['GET', 'POST'])
 def stix_to_misp():
-    """STIX -> MISP convert page.
+    """STIX → MISP convert page.
 
     GET renders the page; its param controls are drawn client-side from the
     Converter's Parameter schema. POST is a fetch/JSON submission handled by
@@ -608,6 +608,15 @@ def _render_detail(convert):
 
     flash("You do not have permission to view this convert.", "danger")
     return redirect(url_for("conversions.history"))
+
+
+@convert_blueprint.route("/<int:id>", methods=['GET'])
+def conversion_by_id(id):
+    """Canonical short URL of a Conversion - the address the API persist
+    envelope advertises as ``url``. A 302 (not the legacy shim's 301) to the
+    detail page, so the short URL stays canonical if the detail location
+    ever moves."""
+    return redirect(url_for("conversions.detail", id=id))
 
 
 @convert_blueprint.route("/detail/<id>", methods=['GET'])
@@ -819,7 +828,7 @@ def share_convert():
 ###########################
 
 def _build_misp_to_stix_params(form) -> MispToStixParams:
-    """Build MISP -> STIX params from the refresh page's WTForm cleaned data.
+    """Build MISP → STIX params from the refresh page's WTForm cleaned data.
 
     The convert page is schema-driven and submits params as JSON; the refresh
     page still uses a classic WTForm POST, so it keeps this builder.
@@ -828,7 +837,7 @@ def _build_misp_to_stix_params(form) -> MispToStixParams:
 
 
 def _build_stix_to_misp_params(form) -> StixToMispParams:
-    """Build STIX -> MISP params from the refresh page's WTForm cleaned data.
+    """Build STIX → MISP params from the refresh page's WTForm cleaned data.
 
     Strips strings and drops blanks/``None`` to defaults. Kept for the refresh
     page's classic WTForm POST (the convert page submits params as JSON via
