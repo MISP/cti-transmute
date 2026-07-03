@@ -22,8 +22,10 @@ logic that bridges Flask and the engine but isn't a UI feature — the conversio
 use-cases (`conversions.py` → `submit_conversion`), the service-layer exceptions
 (`exceptions.py` → `PersistenceFailed`, `InvalidApiKey`), and API auth (`auth.py`
 → `resolve_api_actor` / `@api_actor`). It may import Flask (`db`, `g`) but holds
-no routes or templates. New non-feature plumbing shared by routes belongs here,
-not in a feature trio and not in the Flask-free `cti_transmute/`.
+no routes or templates. New cross-cutting *service/use-case* logic belongs here;
+*aggregate persistence* (DB reads/writes) belongs in the sibling `website/repos/`
+shelf (e.g. `conversions.py`) — neither goes in a feature trio or the Flask-free
+`cti_transmute/`.
 
 ## Source of truth
 
