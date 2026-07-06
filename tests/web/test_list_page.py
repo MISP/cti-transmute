@@ -2,7 +2,7 @@
 
 It renders its endpoint cards and testers client-side from
 ``GET /api/convert/list`` (each entry's ``params_schema``), mounting the same
-``paramSurface.js`` renderer as the convert pages — so the old server-side
+``paramSurface.js`` renderer as the conversion pages — so the old server-side
 ``/get_features`` loopback proxy (an HTTP call from the app to its own port)
 is gone.
 """

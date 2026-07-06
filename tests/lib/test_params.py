@@ -1,9 +1,9 @@
 """Unit tests for the shared parameter-surface helpers.
 
 `build_params` turns a submitted params *mapping* (the JSON-body surfaces: the
-web convert page and, later, the MISP view) into a Converter's Pydantic model,
-and `param_error` renders a Pydantic `ValidationError` as the one `{error,
-fields}` 400 every surface returns. The query-string variant with its
+web conversion page and, later, the MISP view) into a Converter's Pydantic
+model, and `param_error` renders a Pydantic `ValidationError` as the one
+`{error, fields}` 400 every surface returns. The query-string variant with its
 bool-coercion lives on the API resource; this is the typed-JSON sibling.
 """
 

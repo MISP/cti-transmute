@@ -1,4 +1,4 @@
-"""Unit tests for the convert view's ConversionError → flash-message mapping.
+"""Unit tests for the conversion view's ConversionError → flash-message mapping.
 
 The WTForm→Pydantic params builders that used to live here are retired: params
 now travel as JSON and are built + validated by the shared
