@@ -206,7 +206,7 @@ def redirect_to_conversions(rest):
 
 @convert_blueprint.route("/misp_to_stix", methods=['GET', 'POST'])
 def misp_to_stix():
-    """MISP → STIX convert page.
+    """MISP → STIX conversion page.
 
     GET renders the page; its param controls are drawn client-side from the
     Converter's Parameter schema. POST is a fetch/JSON submission handled by
@@ -410,7 +410,7 @@ def misp_search_events():
 
 @convert_blueprint.route("/stix_to_misp", methods=['GET', 'POST'])
 def stix_to_misp():
-    """STIX → MISP convert page.
+    """STIX → MISP conversion page.
 
     GET renders the page; its param controls are drawn client-side from the
     Converter's Parameter schema. POST is a fetch/JSON submission handled by
@@ -423,12 +423,12 @@ def stix_to_misp():
 
 @convert_blueprint.route("/history", methods=['GET'])
 def history():
-    """History page of the last convert"""
+    """History page of the last conversion"""
     return render_template("convert/history.html")
 
 @convert_blueprint.route("/get_convert_page_history", methods=['GET'])
 def get_page_history():
-    """History of the last convert, with optional filter and sort"""
+    """History of the last conversion, with optional filter and sort"""
     page        = request.args.get('page', 1, type=int)
     filter_type = request.args.get('filter_type', type=str)
     sort_order  = request.args.get('sort_order', type=str)
@@ -465,7 +465,7 @@ def get_page_history():
     items = pagination.items
     convert_list = [item.to_json_list() for item in items]
 
-    # Batch load tags for all returned converts
+    # Batch load tags for all returned conversions
     ids = [item.id for item in items]
     tags_by_convert = TagsModel.get_convert_tags_batch(ids)
 
@@ -519,7 +519,7 @@ def most_favorited():
     """Return the most favorited public conversions, ordered by favorite count desc."""
     limit = request.args.get('limit', 10, type=int)
 
-    # Subquery: count favorites per convert (public only)
+    # Subquery: count favorites per conversion (public only)
     fav_counts = (
         db.session.query(
             ConversionFavorite.conversion_id,
@@ -549,7 +549,7 @@ def most_favorited():
 
 @convert_blueprint.route("/search_in_content", methods=['GET'])
 def search_in_content():
-    """Return highlighted snippets for a query inside a single convert"""
+    """Return highlighted snippets for a query inside a single conversion"""
     conversion_id = request.args.get('conversion_id', type=int)
     query_str  = request.args.get('q', type=str)
     scope      = request.args.get('scope', 'all', type=str)
@@ -595,20 +595,20 @@ def delete_rule() -> jsonify:
 def _render_detail(convert):
     """Shared visibility logic for the detail page."""
     if not convert:
-        flash("The convert id is unknown", "danger")
+        flash("The conversion id is unknown", "danger")
         return redirect(url_for("conversions.history"))
 
     if convert.public:
         return render_template("convert/detail.html", convert=convert)
 
     if not current_user.is_authenticated:
-        flash("You must be logged in to view this convert.", "warning")
+        flash("You must be logged in to view this conversion.", "warning")
         return redirect(url_for("account.login"))
 
     if current_user.id == convert.user_id or current_user.is_admin():
         return render_template("convert/detail.html", convert=convert)
 
-    flash("You do not have permission to view this convert.", "danger")
+    flash("You do not have permission to view this conversion.", "danger")
     return redirect(url_for("conversions.history"))
 
 
@@ -633,7 +633,7 @@ def detail(id):
 @convert_blueprint.route("/edit/<int:id>", methods=['GET', 'POST'])
 @login_required
 def edit(id):
-    """Detail page of the convert"""
+    """Detail page of the conversion"""
 
     form = editConvertForm()  
     convert = conv_repo.get(id)
@@ -660,18 +660,18 @@ def edit(id):
         
         
 
-#############################
-#   Feature on the convert  #
-#############################
+################################
+#   Feature on the conversion  #
+################################
 
 @convert_blueprint.route("/get_convert", methods=['GET'])
 def get_convert():
-    """Get the convert thanks to the id to the interface (vue-js)"""
+    """Get the conversion thanks to the id to the interface (vue-js)"""
     id = request.args.get('id', 1, type=int)
     if id:
         convert = conv_repo.get(id)
         if convert:
-            # Visibility check: private converts only visible to owner and admins
+            # Visibility check: private conversions only visible to owner and admins
             if not convert.public:
                 if not current_user.is_authenticated:
                     return {"success": False, "message": "Unauthorized", "toast_class": "danger"}, 403
@@ -685,7 +685,7 @@ def get_convert():
                 }, 200
         return {
             "success": False,
-            "message": "No convert history for this id",
+            "message": "No conversion history for this id",
             "toast_class" : "danger"
             }, 404
     return {
@@ -706,7 +706,7 @@ def edit_public():
                 comment_count = len([c for c in convert.comments if not c.is_deleted])
                 success , _bool = conv_repo.toggle_visibility(id)
                 if success:
-                    message = f"This convert is now {'public' if _bool else 'private'}"
+                    message = f"This conversion is now {'public' if _bool else 'private'}"
                     AccountModel.create_system_log(
                         'convert_visibility_changed', actor_id=current_user.id, actor_name=current_user.first_name,
                         target_type="convert", target_id=id, target_name=convert.name, details="public" if _bool else "private"
@@ -726,7 +726,7 @@ def edit_public():
             return abort(403)
         return {
             "success": False, 
-            "message": "No convert history for this id", 
+            "message": "No conversion history for this id",
             "toast_class" : "danger"
             }, 500
     return {
@@ -735,14 +735,14 @@ def edit_public():
         "toast_class" : "danger"
         }, 404
 
-#########################
-#   Share the convert   #
-#########################
+############################
+#   Share the conversion   #
+############################
 
 @convert_blueprint.route("/get_share_key", methods=['GET'])
 @login_required
 def get_share_key():
-    """Get the share key of a convert"""
+    """Get the share key of a conversion"""
     id = request.args.get('id', 1, type=int)
     if id:
         convert = conv_repo.get(id)
@@ -757,7 +757,7 @@ def get_share_key():
             return abort(403)
         return {
             "success": False, 
-            "message": "No convert history for this id", 
+            "message": "No conversion history for this id",
             "toast_class" : "danger"
             }, 500
     return {
@@ -770,7 +770,7 @@ def get_share_key():
 @convert_blueprint.route("/regenerate_share_key", methods=['GET'])
 @login_required
 def regenerate_share_key():
-    """Regenerate the share key of a convert"""
+    """Regenerate the share key of a conversion"""
     id = request.args.get('id', 1, type=int)
     if id:
         convert = conv_repo.get(id)
@@ -792,7 +792,7 @@ def regenerate_share_key():
             return abort(403)
         return {
             "success": False, 
-            "message": "No convert history for this id", 
+            "message": "No conversion history for this id",
             "toast_class" : "danger"
             }, 500
     return {
@@ -804,7 +804,7 @@ def regenerate_share_key():
 # https://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`
 @convert_blueprint.route("/share", methods=['GET'])
 def share_convert():
-    """Share a convert using uuid and share_key"""
+    """Share a conversion using uuid and share_key"""
     uuid = request.args.get('uuid', type=str)
     share_key = request.args.get('share_key', type=str)
 
@@ -814,7 +814,7 @@ def share_convert():
     print(f"UUID: {uuid}, Share Key: {share_key}")
     convert = conv_repo.get_by_uuid(uuid)
     if not convert:
-        flash("No convert found for the provided UUID", "danger")
+        flash("No conversion found for the provided UUID", "danger")
         return redirect(url_for("conversions.history"))
 
     if convert.share_key != share_key:
@@ -832,7 +832,7 @@ def share_convert():
 def _build_misp_to_stix_params(form) -> MispToStixParams:
     """Build MISP → STIX params from the refresh page's WTForm cleaned data.
 
-    The convert page is schema-driven and submits params as JSON; the refresh
+    The conversion page is schema-driven and submits params as JSON; the refresh
     page still uses a classic WTForm POST, so it keeps this builder.
     """
     return MispToStixParams(version=form.version.data)
@@ -842,7 +842,7 @@ def _build_stix_to_misp_params(form) -> StixToMispParams:
     """Build STIX → MISP params from the refresh page's WTForm cleaned data.
 
     Strips strings and drops blanks/``None`` to defaults. Kept for the refresh
-    page's classic WTForm POST (the convert page submits params as JSON via
+    page's classic WTForm POST (the conversion page submits params as JSON via
     `website.lib.params.build_params`).
     """
     raw = {
@@ -946,17 +946,17 @@ def get_history():
                 return {
                     "success": True,
                     "history_convert": [h.to_json() for h in latest_history],
-                    "message": "New convert found",
+                    "message": "New conversion found",
                     "toast_class" : "success"
                     }, 200
             return {
                 "success": True,
-                "message": "No conversion history found for this convert",
+                "message": "No conversion history found for this conversion",
                 "toast_class" : "danger"
                 }, 200
         return {
             "success": False,
-            "message": "No convert found for this id",
+            "message": "No conversion found for this id",
             "toast_class" : "danger"
             }, 404
     return {
@@ -971,7 +971,7 @@ def get_history():
 @convert_blueprint.route("/get_new_convert", methods=['GET'])
 @login_required
 def get_new_convert():
-    """Get the new convert after a refresh to show the difference"""
+    """Get the new conversion after a refresh to show the difference"""
     id = request.args.get('id', 1, type=int)
     if id:
         convert_obj = conv_repo.get(id)
@@ -983,17 +983,17 @@ def get_new_convert():
                 return {
                     "success": True,
                     "history_convert": [h.to_json() for h in latest_history],
-                    "message": "New convert found",
+                    "message": "New conversion found",
                     "toast_class" : "success"
                     }, 200
             return {
                 "success": True,
-                "message": "No conversion history found for this convert",
+                "message": "No conversion history found for this conversion",
                 "toast_class" : "danger"
                 }, 200
         return {
             "success": False,
-            "message": "No convert found for this id",
+            "message": "No conversion found for this id",
             "toast_class" : "danger"
             }, 404
     return {
@@ -1058,7 +1058,7 @@ def history_action_gone():
 
 @convert_blueprint.route("/difference/<int:id>", methods=['GET'])
 def difference(id):
-    """Show the difference between two convert versions"""
+    """Show the difference between two conversion versions"""
     convert_obj_history = conv_repo.get_history(id)
     if not convert_obj_history:
         flash("Conversion not found.", "danger")
@@ -1071,11 +1071,11 @@ def difference(id):
     
     if convert_obj.public:
         if current_user.is_anonymous():
-            flash("You must be logged in to view this convert if you are the owner of this convert.", "warning")
+            flash("You must be logged in to view this conversion if you are the owner of this conversion.", "warning")
             return redirect(url_for("account.login"))  
 
         if current_user.id != convert_obj.user_id and not current_user.is_admin():
-            flash("You do not have permission to view this convert.", "danger")
+            flash("You do not have permission to view this conversion.", "danger")
             return redirect(url_for("conversions.history"))
         
         return render_template(
@@ -1098,7 +1098,7 @@ def difference(id):
 @convert_blueprint.route("/get_history_details", methods=['GET'])
 @login_required
 def get_history_details():
-    """Get the details of a convert history entry"""
+    """Get the details of a conversion history entry"""
     history_id = request.args.get('history_id', type=int)
     if history_id:
         convert_history = conv_repo.get_history(history_id)
@@ -1115,7 +1115,7 @@ def get_history_details():
                 }, 200
         return {
             "success": False,
-            "message": "No convert history found for this id",
+            "message": "No conversion history found for this id",
             "toast_class" : "danger"
             }, 404
     return {
@@ -1131,7 +1131,7 @@ def get_history_details():
 
 @convert_blueprint.route("/get_comments", methods=['GET'])
 def get_comments():
-    """Return visible comments for a convert."""
+    """Return visible comments for a conversion."""
     conversion_id = request.args.get('conversion_id', type=int)
     if not conversion_id:
         return {"success": False, "message": "Missing conversion_id", "toast_class": "danger"}, 400
@@ -1155,7 +1155,7 @@ def get_comments():
 @convert_blueprint.route("/comment", methods=['POST'])
 @login_required
 def add_comment():
-    """Create a comment or reply on a convert."""
+    """Create a comment or reply on a conversion."""
     data = request.get_json(silent=True) or {}
     conversion_id    = data.get('conversion_id')
     content       = (data.get('content') or '').strip()
@@ -1173,7 +1173,7 @@ def add_comment():
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
     if not convert.public and not current_user.is_admin() and current_user.id != convert.user_id:
-        return {"success": False, "message": "You cannot comment on a private convert", "toast_class": "danger"}, 403
+        return {"success": False, "message": "You cannot comment on a private conversion", "toast_class": "danger"}, 403
 
     comment = ConvertModel.create_comment(
         conversion_id=conversion_id,
@@ -1345,7 +1345,7 @@ def react():
 @convert_blueprint.route("/report", methods=['POST'])
 @login_required
 def report_convert():
-    """Submit a report on a convert."""
+    """Submit a report on a conversion."""
     data = request.get_json(silent=True) or {}
     conversion_id = data.get('conversion_id')
     reason = data.get('reason', '').strip()
@@ -1471,7 +1471,7 @@ def restore():
             target_type='convert', target_id=conversion_id, target_name=convert.name
         )
         return {"success": True, "message": f"'{convert.name}' restored successfully", "toast_class": "success"}, 200
-    return {"success": False, "message": "Error restoring convert", "toast_class": "danger"}, 500
+    return {"success": False, "message": "Error restoring conversion", "toast_class": "danger"}, 500
 
 
 @convert_blueprint.route("/hard_delete", methods=['POST'])
@@ -1493,7 +1493,7 @@ def hard_delete():
             target_type='convert', target_id=conversion_id, target_name=_name
         )
         return {"success": True, "message": f"'{_name}' permanently deleted", "toast_class": "success"}, 200
-    return {"success": False, "message": "Error deleting convert", "toast_class": "danger"}, 500
+    return {"success": False, "message": "Error deleting conversion", "toast_class": "danger"}, 500
 
 
 @convert_blueprint.route("/bulk_action", methods=['POST'])
@@ -1526,7 +1526,7 @@ def bulk_action():
                     target_type='convert', target_id=conversion_id, target_name=_name
                 )
                 done += 1
-    label = "convert" if done == 1 else "converts"
+    label = "conversion" if done == 1 else "conversions"
     if action == 'restore':
         msg = f"{done} {label} restored"
     else:
@@ -1585,7 +1585,7 @@ def misp_test_connection():
 
 
 def _can_download(convert) -> bool:
-    """Return True if the current user is allowed to download this convert's data."""
+    """Return True if the current user is allowed to download this conversion's data."""
     if convert.public:
         return True
     return current_user.is_authenticated and (current_user.id == convert.user_id or current_user.is_admin())
@@ -1749,7 +1749,7 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
     """
     Build the final MISP event payload using PyMISP.
 
-    Loads the existing MISP event from the convert, injects the cti-evaluation
+    Loads the existing MISP event from the conversion, injects the cti-evaluation
     object (populated from community votes) and the evaluation tags, then
     returns a dict with:
       - event_dict     : the full MISPEvent as a dict (what is sent to MISP)
@@ -1765,12 +1765,12 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
         m = re.match(r'^([\w-]+):([\w.-]+)="([\w.-]+)"$', name or '')
         return (m.group(1), m.group(2), m.group(3)) if m else (None, None, None)
 
-    # ── 1. Extract the raw MISP event dict from the convert ──────────────
+    # ── 1. Extract the raw MISP event dict from the conversion ──────────────
     misp_text = convert.input_text if convert.conversion_type == "MISP_TO_STIX" else convert.output_text
     try:
         misp_data = json.loads(misp_text)
     except (json.JSONDecodeError, TypeError):
-        return None, None, None, "Invalid JSON in convert data"
+        return None, None, None, "Invalid JSON in conversion data"
 
     _MISP_EVENT_KEYS = {'info', 'uuid', 'Attribute', 'Object', 'Tag', 'Galaxy'}
     if isinstance(misp_data, list):
@@ -1786,7 +1786,7 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
         event_data = None
 
     if not event_data:
-        return None, None, None, "No MISP Event found in convert data"
+        return None, None, None, "No MISP Event found in conversion data"
 
     # Remove server-assigned fields that would conflict on a fresh MISP import
     for field in ("id", "timestamp", "publish_timestamp", "published"):
@@ -1945,7 +1945,7 @@ def misp_push_preview(conversion_id):
 @convert_blueprint.route("/admin/get_all_comments", methods=['GET'])
 @login_required
 def admin_get_comments():
-    """Admin: get all comments across all converts."""
+    """Admin: get all comments across all conversions."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
     page = request.args.get('page', 1, type=int)

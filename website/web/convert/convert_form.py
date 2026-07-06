@@ -12,21 +12,21 @@ class mispToStixParamForm(FlaskForm):
         validators=[DataRequired()]
     )
     name = StringField(
-        "Name of the convert",
+        "Name of the conversion",
         validators=[Optional()],
-        description="Name of the convert"
+        description="Name of the conversion"
     )
     
     description = TextAreaField(
-        "Description of the convert",
+        "Description of the conversion",
         validators=[Optional()],
-        description="Description of the convert"
+        description="Description of the conversion"
     )
 
     public = BooleanField(
         "Public",
         default='true',
-        description="Let the user who create this convert to choose if he wants to share or not to the community"
+        description="Let the user who create this conversion to choose if he wants to share or not to the community"
     )
 
     misp_content = TextAreaField(
@@ -53,19 +53,19 @@ class stixToMispParamForm(FlaskForm):
         description="Distribution level for the imported MISP content (0-4)"
     )
     name = StringField(
-        "Name of the convert",
+        "Name of the conversion",
         validators=[Optional()],
-        description="Name of the convert"
+        description="Name of the conversion"
     )
     description = TextAreaField(
-        "Description of the convert",
+        "Description of the conversion",
         validators=[Optional()],
-        description="Description of the convert"
+        description="Description of the conversion"
     )
     public = BooleanField(
         "Public",
         default='true',
-        description="Let the user who create this convert to choose if he wants to share or not to the community"
+        description="Let the user who create this conversion to choose if he wants to share or not to the community"
     )
     sharing_group_id = IntegerField(
         "Sharing Group ID",
@@ -126,15 +126,15 @@ class stixToMispParamForm(FlaskForm):
 
 class editConvertForm(FlaskForm):
     name = StringField(
-        "Name of the convert",
+        "Name of the conversion",
         validators=[DataRequired()],
-        description="Name of the convert"
+        description="Name of the conversion"
     )
     
     description = TextAreaField(
-        "Description of the convert",
+        "Description of the conversion",
         validators=[Optional()],
-        description="Description of the convert"
+        description="Description of the conversion"
     )
 
     edit = SubmitField("Edit")

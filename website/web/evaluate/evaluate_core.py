@@ -224,7 +224,7 @@ def get_admin_list(page: int = 1, per_page: int = 50,
 def get_misp_push_tags(conversion_id: int) -> list[str]:
     """
     Return evaluation tag names to inject into a MISP event on push.
-    Includes each cti-evaluation reaction_key voted on this convert,
+    Includes each cti-evaluation reaction_key voted on this conversion,
     plus a computed cti-evaluation:overall-score="<level>" tag when votes exist.
     """
     rows = ConversionEvaluation.query.filter_by(conversion_id=conversion_id).all()
@@ -315,7 +315,7 @@ def delete_evaluation(eval_id: int) -> bool:
 
 
 def get_global_stats() -> dict:
-    """Platform-wide evaluation stats. Only public, active converts."""
+    """Platform-wide evaluation stats. Only public, active conversions."""
     pub_ids = {c.id for c in Conversion.query.filter_by(public=True, is_active=True).with_entities(Conversion.id).all()}
     rows = ConversionEvaluation.query.filter(ConversionEvaluation.conversion_id.in_(pub_ids)).all()
 
@@ -404,7 +404,7 @@ def get_platform_reviews(page: int = 1, per_page: int = 10) -> dict:
 
 
 def get_activity_timeline(days: int = 30) -> list:
-    """Returns evaluation count per day for the last N days (public converts only)."""
+    """Returns evaluation count per day for the last N days (public conversions only)."""
     from collections import defaultdict
     pub_ids = {c.id for c in Conversion.query.filter_by(public=True, is_active=True).with_entities(Conversion.id).all()}
     since = datetime.datetime.utcnow() - datetime.timedelta(days=days)
@@ -458,9 +458,9 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
     """
     Assemble all data needed to render an evaluation report (Markdown or PDF).
 
-    Returns a structured dict or None if the convert does not exist.
+    Returns a structured dict or None if the conversion does not exist.
     Fields:
-      convert        – basic convert metadata
+      convert        – basic conversion metadata
       generated_at   – UTC timestamp string
       overall        – {level, score, total_votes, likes, dislikes, like_ratio}
       dimensions     – list of {key, label, description, level, score, votes, distribution}
@@ -753,7 +753,7 @@ def render_evaluation_pdf(report: dict) -> bytes:
 
 
 def get_recent_to_evaluate(viewer_id=None, limit=8) -> list:
-    """Recent public converts, with their evaluation summary."""
+    """Recent public conversions, with their evaluation summary."""
     converts = (Conversion.query
                 .filter_by(public=True, is_active=True)
                 .order_by(Conversion.created_at.desc())

@@ -587,7 +587,7 @@ export function reRenderGraph() {
 }
 
 /**
- * Call this once the convert data is available (after the API response).
+ * Call this once the conversion data is available (after the API response).
  * It registers the lazy-render hook so the graph only builds when the tab
  * is first opened.
  *

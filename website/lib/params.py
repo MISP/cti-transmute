@@ -1,6 +1,6 @@
 """Shared server-side helpers for the generated parameter surface.
 
-One Parameter schema per Converter feeds the API validator, the web convert
+One Parameter schema per Converter feeds the API validator, the web conversion
 page, and (later) the MISP view. These helpers turn a submitted params mapping
 into the Converter's Pydantic model and render a Pydantic ``ValidationError`` as
 the one stable ``{error, fields}`` 400 every surface returns, so a client can

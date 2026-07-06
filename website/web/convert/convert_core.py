@@ -1,9 +1,9 @@
-"""Feature-level persistence for the convert blueprint's non-Conversion concerns.
+"""Feature-level persistence for the conversions blueprint's non-Conversion concerns.
 
 Conversion and ConversionHistory rows — including their listing, access-scoped
 search, and Trash queries — now live in ``website/repos/conversions.py``. This
 module (imported as ``ConvertModel``) keeps the comment, report, reaction,
-favorite, and graph-config helpers used by the convert views.
+favorite, and graph-config helpers used by the conversion views.
 """
 import uuid
 from datetime import datetime, timezone
@@ -25,18 +25,18 @@ def _can_see_comment(comment, convert_is_public, current_user_id, is_admin, conv
     if is_admin:
         return True
     if not convert_is_public:
-        # Private convert: only its owner can see
+        # Private conversion: only its owner can see
         return current_user_id is not None and current_user_id == convert_owner_id
     if not comment.is_private:
         return True
-    # Private comment on public convert: owner or comment author only
+    # Private comment on public conversion: owner or comment author only
     if current_user_id is None:
         return False
     return current_user_id == convert_owner_id or current_user_id == comment.user_id
 
 
 def create_comment(conversion_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
-    """Create a new comment or reply on a convert."""
+    """Create a new comment or reply on a conversion."""
     try:
         now = datetime.now(timezone.utc)
         comment = Comment(
@@ -59,7 +59,7 @@ def create_comment(conversion_id, user_id, content, is_private=False, parent_id=
 
 
 def get_comments(conversion_id, current_user_id=None, is_admin=False, convert_owner_id=None):
-    """Return visible top-level comments and their visible replies for a convert."""
+    """Return visible top-level comments and their visible replies for a conversion."""
     convert = conv_repo.get(conversion_id)
     if not convert:
         return []
@@ -96,7 +96,7 @@ def get_comments(conversion_id, current_user_id=None, is_admin=False, convert_ow
 
 
 def delete_comment(comment_id, requesting_user_id, is_admin=False):
-    """Soft-delete a comment. Only author, convert owner, or admin can delete."""
+    """Soft-delete a comment. Only author, conversion owner, or admin can delete."""
     comment = Comment.query.get(comment_id)
     if not comment:
         return False, "Comment not found"
@@ -175,7 +175,7 @@ def get_comment(comment_id):
 
 
 def get_all_comments_admin(page=1, search=None):
-    """Admin: paginated list of all non-deleted comments across all converts."""
+    """Admin: paginated list of all non-deleted comments across all conversions."""
     query = Comment.query.filter_by(is_deleted=False)
     if search:
         query = query.filter(Comment.content.ilike(f"%{search}%"))
@@ -190,7 +190,7 @@ REPORT_REASONS = ["spam", "inappropriate", "inaccurate", "other"]
 
 
 def create_report(conversion_id, user_id, reason, description=None):
-    """Submit a report on a convert."""
+    """Submit a report on a conversion."""
     try:
         report = ConversionReport(
             conversion_id=conversion_id,
@@ -307,7 +307,7 @@ def delete_graph_config(config_id, user_id, is_admin):
 ###################################
 
 def toggle_favorite(user_id: int, conversion_id: int) -> bool:
-    """Toggle favorite for a user on a convert. Returns True if now favorited, False if removed."""
+    """Toggle favorite for a user on a conversion. Returns True if now favorited, False if removed."""
     existing = ConversionFavorite.query.filter_by(user_id=user_id, conversion_id=conversion_id).first()
     if existing:
         db.session.delete(existing)
@@ -325,7 +325,7 @@ def toggle_favorite(user_id: int, conversion_id: int) -> bool:
 
 
 def get_favorite_ids(user_id: int) -> set:
-    """Return the set of convert IDs favorited by this user."""
+    """Return the set of conversion IDs favorited by this user."""
     rows = ConversionFavorite.query.filter_by(user_id=user_id).with_entities(ConversionFavorite.conversion_id).all()
     return {r.conversion_id for r in rows}
 

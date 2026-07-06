@@ -9,7 +9,7 @@
 {% macro evaluation_panel(convert, current_user) %}
 {# Log de contrôle pour vérifier que Jinja reçoit bien les données #}
 <script>
-    console.log("Jinja Debug - Tentative de rendu du panel pour convert ID:", "{{ convert.id if convert else 'NULL' }}");
+    console.log("Jinja Debug - Tentative de rendu du panel pour conversion ID:", "{{ convert.id if convert else 'NULL' }}");
 </script>
 
 <div class="eval-section">

@@ -10,7 +10,7 @@ evaluate_blueprint = Blueprint("evaluate", __name__)
 
 
 def _can_view_convert(convert: Conversion) -> bool:
-    """Return True if the current viewer is allowed to see this convert."""
+    """Return True if the current viewer is allowed to see this conversion."""
     if convert.public:
         return True
     if current_user.is_authenticated and (
@@ -196,7 +196,7 @@ def admin_delete(eval_id):
 @evaluate_blueprint.route("/consensus_tags/<int:conversion_id>", methods=["GET"])
 def consensus_tags(conversion_id):
     """Return evaluation tags that have reached the 3-vote threshold.
-    Public converts are accessible to everyone; private ones require auth."""
+    Public conversions are accessible to everyone; private ones require auth."""
     convert = Conversion.query.get(conversion_id)
     if not convert:
         return {"success": False, "message": "Not found"}, 404

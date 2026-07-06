@@ -347,7 +347,7 @@
                         </div>
                     </div>
 
-                    <!-- Evaluation (only for public converts or own) -->
+                    <!-- Evaluation (only for public conversions or own) -->
                     <div v-if="item.public || {{ 'true' if current_user.is_authenticated else 'false' }}"
                          class="hcd-section">
                         <div class="hcd-label"><i class="fas fa-chart-bar me-1"></i>Evaluation</div>
@@ -545,7 +545,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     .replace(/"/g, '&quot;')
             }
 
-            // ── Fetch snippets for visible converts ──────────────────────────
+            // ── Fetch snippets for visible conversions ──────────────────────────
             async function fetchSnippets(ids) {
                 if (!searchQuery.value) { snippets.value = {}; return }
                 if (search_scope.value !== 'content' && search_scope.value !== 'all') return
@@ -573,7 +573,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 }
             }
 
-            // ── Fetch convert list ───────────────────────────────────────────
+            // ── Fetch conversion list ───────────────────────────────────────────
             async function fetchConvertHistory(page) {
                 if (page < 1) return
                 is_loading.value = true

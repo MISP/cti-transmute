@@ -1,4 +1,4 @@
-// EvaluationCharts — approval donut + tag-reaction bar chart for a convert.
+// EvaluationCharts — approval donut + tag-reaction bar chart for a conversion.
 // Register with: app.component('evaluation-charts', EvaluationCharts)
 
 const EvaluationCharts = {

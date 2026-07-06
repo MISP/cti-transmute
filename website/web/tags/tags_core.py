@@ -406,7 +406,7 @@ _SOURCE_MAP = {
 }
 
 def get_available_tags(user_id, search=None, source=None, is_evaluation=False, limit=60):
-    """Tags available to attach to a convert:
+    """Tags available to attach to a conversion:
     - public + active + admin-approved
     - OR private + active + owned by user (no admin approval required)
     Filtered by `search` (SQL ilike) and `source` ('custom'|'taxonomy'|'vulnerability').
@@ -440,7 +440,7 @@ def get_available_tags(user_id, search=None, source=None, is_evaluation=False, l
 
 
 def get_convert_tags(conversion_id, source_type=None):
-    """Return tag associations for a convert. Optionally filter by source_type ('user'|'json')."""
+    """Return tag associations for a conversion. Optionally filter by source_type ('user'|'json')."""
     q = ConversionTagAssociation.query.filter_by(conversion_id=conversion_id)
     if source_type:
         q = q.filter_by(source_type=source_type)
@@ -448,7 +448,7 @@ def get_convert_tags(conversion_id, source_type=None):
 
 
 def get_convert_tags_batch(convert_ids):
-    """Return {conversion_id: [assoc, ...]} for a list of convert IDs."""
+    """Return {conversion_id: [assoc, ...]} for a list of conversion IDs."""
     if not convert_ids:
         return {}
     assocs = ConversionTagAssociation.query.filter(
@@ -511,7 +511,7 @@ def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
 
 
 def merge_convert_tags(conversion_id: int, tag_ids: list, user_id: int, source_type: str = "user") -> int:
-    """Add tags to a convert without removing existing ones. Returns count of newly added tags.
+    """Add tags to a conversion without removing existing ones. Returns count of newly added tags.
     source_type: 'user' (default) for manually added tags, 'json' for admin-scan-detected tags.
     Deduplication is scoped to the same source_type."""
     existing = {
@@ -548,7 +548,7 @@ def merge_convert_tags(conversion_id: int, tag_ids: list, user_id: int, source_t
 
 
 def remove_convert_tags(conversion_id: int, tag_ids: list) -> int:
-    """Remove specific tags from a convert. Returns count removed."""
+    """Remove specific tags from a conversion. Returns count removed."""
     q = ConversionTagAssociation.query.filter(
         ConversionTagAssociation.conversion_id == conversion_id,
         ConversionTagAssociation.tag_id.in_(tag_ids),
@@ -564,7 +564,7 @@ def remove_convert_tags(conversion_id: int, tag_ids: list) -> int:
 
 
 def clear_convert_tags(conversion_id: int) -> int:
-    """Remove ALL tags from a convert. Returns count removed."""
+    """Remove ALL tags from a conversion. Returns count removed."""
     q = ConversionTagAssociation.query.filter_by(conversion_id=conversion_id)
     count = q.count()
     q.delete(synchronize_session=False)
@@ -577,7 +577,7 @@ def clear_convert_tags(conversion_id: int) -> int:
 
 
 def get_all_tags_usage():
-    """Return only tags actually used in at least one convert, with their usage counts."""
+    """Return only tags actually used in at least one conversion, with their usage counts."""
     from sqlalchemy import func
 
     rows = (
@@ -613,7 +613,7 @@ def get_all_tags_usage():
 
 
 def save_convert_tags(conversion_id, tag_ids, user_id):
-    """Replace user-added tag associations for a convert (idempotent).
+    """Replace user-added tag associations for a conversion (idempotent).
     JSON-sourced tags (source_type='json') are never touched by this function."""
     ConversionTagAssociation.query.filter_by(
         conversion_id=conversion_id, source_type="user"

@@ -20,7 +20,7 @@
             <a class="dc-toc-link" href="#models">Database Models</a>
             <div class="dc-toc-sub">
                 <a class="dc-toc-link" href="#model-user">User</a>
-                <a class="dc-toc-link" href="#model-convert">Convert</a>
+                <a class="dc-toc-link" href="#model-convert">Conversion</a>
                 <a class="dc-toc-link" href="#model-comment">Comments</a>
                 <a class="dc-toc-link" href="#model-tag">Tags</a>
                 <a class="dc-toc-link" href="#model-social">Social &amp; Eval</a>
@@ -37,7 +37,7 @@
         </div>
         <div class="dc-toc-section">
             <div class="dc-toc-group">Web routes</div>
-            <a class="dc-toc-link" href="#routes-convert">Convert</a>
+            <a class="dc-toc-link" href="#routes-convert">Conversions</a>
             <a class="dc-toc-link" href="#routes-evaluate">Evaluate</a>
             <a class="dc-toc-link" href="#routes-tags">Tags</a>
             <a class="dc-toc-link" href="#routes-account">Account</a>
@@ -130,7 +130,7 @@
                 </div>
                 <div class="dc-info-card warning">
                     <div class="dc-info-title"><i class="fas fa-chart-bar"></i> Evaluation</div>
-                    <div class="dc-info-body">Per-convert quality scoring with like/dislike, reaction tags, and PDF/Markdown export.</div>
+                    <div class="dc-info-body">Per-conversion quality scoring with like/dislike, reaction tags, and PDF/Markdown export.</div>
                 </div>
             </div>
         </section>
@@ -260,7 +260,7 @@ vendor/                  <span class="comment"># git submodules</span>
 website/
   web/__init__.py        <span class="comment"># Flask factory, db/login/session/migrate</span>
   web/home.py            <span class="comment"># home_blueprint</span>
-  web/conversions/           <span class="comment"># convert blueprint + core + form</span>
+  web/conversions/           <span class="comment"># conversion blueprint + core + form</span>
   web/evaluate/          <span class="comment"># evaluate blueprint + core</span>
   web/tags/              <span class="comment"># tags blueprint + core</span>
   web/account/           <span class="comment"># account blueprint</span>
@@ -268,7 +268,7 @@ website/
   web/templates/         <span class="comment"># Jinja2 (base.html + per-feature folders)</span>
   web/static/
     css/                 <span class="comment"># one .css per feature</span>
-    js/graph/            <span class="comment"># convert visualizations</span>
+    js/graph/            <span class="comment"># conversion visualizations</span>
     js/misp/             <span class="comment"># MISP push modal</span>
     js/tags/             <span class="comment"># tag components</span>
     js/evaluate/         <span class="comment"># evaluation charts</span>
@@ -313,12 +313,12 @@ website/
                 </div>
             </div>
 
-            <!-- Convert -->
+            <!-- Conversion -->
             <div class="dc-subsection" id="model-convert">
-                <div class="dc-subsection-title">Convert</div>
+                <div class="dc-subsection-title">Conversion</div>
                 <div class="dc-model-block">
                     <div class="dc-model-head">
-                        <span class="dc-model-name">Convert</span>
+                        <span class="dc-model-name">Conversion</span>
                         <span class="dc-model-desc">Core conversion record</span>
                     </div>
                     <table class="dc-model-tbl">
@@ -332,7 +332,7 @@ website/
                             <tr><td><span class="dc-field-name">params</span></td><td><span class="dc-field-type">JSON</span></td><td>Params the conversion ran with (<code>null</code> for legacy rows)</td></tr>
                             <tr><td><span class="dc-field-name">input_text / output_text</span></td><td><span class="dc-field-type">Text</span></td><td>Raw JSON strings</td></tr>
                             <tr><td><span class="dc-field-name">public</span></td><td><span class="dc-field-type">Boolean</span></td><td>Visibility flag</td></tr>
-                            <tr><td><span class="dc-field-name">share_key</span></td><td><span class="dc-field-type">String(64)</span></td><td>Token for sharing private converts</td></tr>
+                            <tr><td><span class="dc-field-name">share_key</span></td><td><span class="dc-field-type">String(64)</span></td><td>Token for sharing private conversions</td></tr>
                             <tr><td><span class="dc-field-name">is_active</span></td><td><span class="dc-field-type">Boolean</span></td><td>Soft-delete flag</td></tr>
                             <tr><td><span class="dc-field-name">user_id</span></td><td><span class="dc-field-type">FK → User</span></td><td>Owner</td></tr>
                             <tr><td><span class="dc-field-name">created_at / updated_at / deleted_at</span></td><td><span class="dc-field-type">DateTime</span></td><td>UTC timestamps</td></tr>
@@ -348,11 +348,11 @@ website/
                     <table class="dc-model-tbl">
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
-                            <tr><td><span class="dc-field-name">version</span></td><td><span class="dc-field-type">Integer</span></td><td>Auto-incremented per convert</td></tr>
+                            <tr><td><span class="dc-field-name">version</span></td><td><span class="dc-field-type">Integer</span></td><td>Auto-incremented per conversion</td></tr>
                             <tr><td><span class="dc-field-name">status</span></td><td><span class="dc-field-type">String</span></td><td><code>"pending"</code> | <code>"accepted"</code> | <code>"rejected"</code></td></tr>
                             <tr><td><span class="dc-field-name">input_text / output_text</span></td><td><span class="dc-field-type">Text</span></td><td>Snapshot of the conversion at that version</td></tr>
                             <tr><td><span class="dc-field-name">comment</span></td><td><span class="dc-field-type">Text</span></td><td>Optional change note</td></tr>
-                            <tr><td><span class="dc-field-name">conversion_id</span></td><td><span class="dc-field-type">FK → Convert</span></td><td>Parent convert</td></tr>
+                            <tr><td><span class="dc-field-name">conversion_id</span></td><td><span class="dc-field-type">FK → Conversion</span></td><td>Parent conversion</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -364,7 +364,7 @@ website/
                 <div class="dc-model-block">
                     <div class="dc-model-head">
                         <span class="dc-model-name">Comment</span>
-                        <span class="dc-model-desc">Discussion thread + evaluation comments on a convert</span>
+                        <span class="dc-model-desc">Discussion thread + evaluation comments on a conversion</span>
                     </div>
                     <table class="dc-model-tbl">
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
@@ -405,7 +405,7 @@ website/
                 <div class="dc-model-block">
                     <div class="dc-model-head">
                         <span class="dc-model-name">ConvertTagAssociation</span>
-                        <span class="dc-model-desc">Bridge: many tags ↔ many converts</span>
+                        <span class="dc-model-desc">Bridge: many tags ↔ many conversions</span>
                     </div>
                     <table class="dc-model-tbl">
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
@@ -423,14 +423,14 @@ website/
                 <div class="dc-model-block">
                     <div class="dc-model-head">
                         <span class="dc-model-name">ConvertEvaluation</span>
-                        <span class="dc-model-desc">Like / dislike / reaction votes per convert</span>
+                        <span class="dc-model-desc">Like / dislike / reaction votes per conversion</span>
                     </div>
                     <table class="dc-model-tbl">
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
                             <tr><td><span class="dc-field-name">vote_type</span></td><td><span class="dc-field-type">String</span></td><td><code>"like"</code> | <code>"dislike"</code> | <code>"reaction"</code></td></tr>
                             <tr><td><span class="dc-field-name">reaction_key</span></td><td><span class="dc-field-type">String</span></td><td>Tag name used as evaluation reaction</td></tr>
-                            <tr><td><span class="dc-field-name">conversion_id / user_id</span></td><td><span class="dc-field-type">FK</span></td><td>Unique per (user, convert, vote_type)</td></tr>
+                            <tr><td><span class="dc-field-name">conversion_id / user_id</span></td><td><span class="dc-field-type">FK</span></td><td>Unique per (user, conversion, vote_type)</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -457,7 +457,7 @@ website/
                         <thead><tr><th>Model</th><th>Purpose</th></tr></thead>
                         <tbody>
                             <tr><td><span class="dc-field-name">UserFollow</span></td><td>follower_id → followed_id social graph</td></tr>
-                            <tr><td><span class="dc-field-name">ConvertFavorite</span></td><td>Bookmarked converts per user</td></tr>
+                            <tr><td><span class="dc-field-name">ConvertFavorite</span></td><td>Bookmarked conversions per user</td></tr>
                             <tr><td><span class="dc-field-name">ConvertReport</span></td><td>Abuse reports: reason + description + status (pending / reviewed / dismissed)</td></tr>
                             <tr><td><span class="dc-field-name">SystemLog</span></td><td>Audit log — event_type, actor_name, target_id/type, details, created_at</td></tr>
                             <tr><td><span class="dc-field-name">GraphConfig</span></td><td>Saved Pivotick visualization configs per user</td></tr>
@@ -648,9 +648,9 @@ website/
             </div>
         </section>
 
-        <!-- ── WEB ROUTES — CONVERT ──────────────────────────────── -->
+        <!-- ── WEB ROUTES — CONVERSIONS ──────────────────────────────── -->
         <section class="dc-section" id="routes-convert">
-            <h2 class="dc-section-title"><i class="fas fa-arrows-left-right"></i> Web Routes — Convert</h2>
+            <h2 class="dc-section-title"><i class="fas fa-arrows-left-right"></i> Web Routes — Conversions</h2>
             <p class="dc-lead">All routes under <code>/conversions</code>. JSON routes return <code>{"success": bool, "message": "...", "toast_class": "..."}</code>.</p>
 
             <div class="dc-code-block">
@@ -678,10 +678,10 @@ website/
                 <div class="dc-routes">
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/history</code><p class="dc-route-desc">History listing page (Vue SPA shell).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_convert_page_history</code><p class="dc-route-desc">Paginated JSON list. Filters: <code>type</code>, <code>sort</code>, <code>date_from/to</code>, <code>tags[]</code>, <code>favorites_only</code>, <code>search</code>, <code>search_scope</code>.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_convert?id=&lt;id&gt;</code><p class="dc-route-desc">Get one convert by DB id or UUID. Returns full object including input/output text.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_convert?id=&lt;id&gt;</code><p class="dc-route-desc">Get one conversion by DB id or UUID. Returns full object including input/output text.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/detail/&lt;id&gt;</code><p class="dc-route-desc">Detail page with all tabs (Input, Output, Graph, Sunburst, Table, Comments, Evaluation).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/difference/&lt;id&gt;</code><p class="dc-route-desc">Side-by-side diff of a history version vs the current output.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/search_in_content?q=&lt;q&gt;</code><p class="dc-route-desc">Full-text search with snippet extraction. Returns matching convert IDs + context snippets.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/search_in_content?q=&lt;q&gt;</code><p class="dc-route-desc">Full-text search with snippet extraction. Returns matching conversion IDs + context snippets.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                 </div>
             </div>
 
@@ -689,9 +689,9 @@ website/
                 <div class="dc-subsection-title">Sharing &amp; visibility</div>
                 <div class="dc-routes">
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/edit_public?id=&lt;id&gt;</code><p class="dc-route-desc">Toggle public/private. Returns new state.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_share_key?id=&lt;id&gt;</code><p class="dc-route-desc">Retrieve the share token for a private convert.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Owner</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_share_key?id=&lt;id&gt;</code><p class="dc-route-desc">Retrieve the share token for a private conversion.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Owner</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/regenerate_share_key?id=&lt;id&gt;</code><p class="dc-route-desc">Rotate the share key, invalidating old share links.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Owner</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/share?uuid=&lt;u&gt;&amp;share_key=&lt;k&gt;</code><p class="dc-route-desc">Access a private convert via share link. Redirects to detail if valid.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/share?uuid=&lt;u&gt;&amp;share_key=&lt;k&gt;</code><p class="dc-route-desc">Access a private conversion via share link. Redirects to detail if valid.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/delete_item</code><p class="dc-route-desc">Soft-delete. Body: <code>{"id": 42}</code>. Moves to admin trash.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Owner</span></div></div>
                 </div>
             </div>
@@ -699,7 +699,7 @@ website/
             <div class="dc-subsection">
                 <div class="dc-subsection-title">Comments &amp; reactions</div>
                 <div class="dc-routes">
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_comments?conversion_id=&lt;id&gt;</code><p class="dc-route-desc">Fetch all comments for a convert. Filters private/deleted based on requester role.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_comments?conversion_id=&lt;id&gt;</code><p class="dc-route-desc">Fetch all comments for a conversion. Filters private/deleted based on requester role.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/comment</code><p class="dc-route-desc">Create a comment or reply. Body: <code>conversion_id</code>, <code>content</code>, <code>is_private</code>, <code>is_evaluation</code>, optional <code>parent_id</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/edit_comment</code><p class="dc-route-desc">Update comment content. Body: <code>comment_id</code>, <code>content</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/delete_comment?comment_id=&lt;id&gt;</code><p class="dc-route-desc">Soft-delete a comment. Content replaced with placeholder.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
@@ -711,8 +711,8 @@ website/
             <div class="dc-subsection">
                 <div class="dc-subsection-title">Favorites, downloads &amp; MISP push</div>
                 <div class="dc-routes">
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/favorite/toggle</code><p class="dc-route-desc">Bookmark or un-bookmark a convert. Body: <code>{"conversion_id": 42}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/favorite/status/&lt;id&gt;</code><p class="dc-route-desc">Check whether the current user has favorited a convert.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/favorite/toggle</code><p class="dc-route-desc">Bookmark or un-bookmark a conversion. Body: <code>{"conversion_id": 42}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/favorite/status/&lt;id&gt;</code><p class="dc-route-desc">Check whether the current user has favorited a conversion.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/download/&lt;id&gt;/input</code><p class="dc-route-desc">Download the raw input JSON file.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/download/&lt;id&gt;/output</code><p class="dc-route-desc">Download the conversion result JSON.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/download/&lt;id&gt;/misp-push</code><p class="dc-route-desc">Download the full PyMISP push payload including evaluation tags object.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
@@ -724,10 +724,10 @@ website/
             <div class="dc-subsection">
                 <div class="dc-subsection-title">Admin — trash &amp; moderation</div>
                 <div class="dc-routes">
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/trash</code><p class="dc-route-desc">Admin trash page listing soft-deleted converts.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/restore</code><p class="dc-route-desc">Restore a soft-deleted convert. Body: <code>{"id": 42}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/hard_delete</code><p class="dc-route-desc">Permanently delete a convert. Irreversible.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/bulk_action</code><p class="dc-route-desc">Restore or hard-delete multiple converts. Body: <code>{"ids": [...], "action": "restore"}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/trash</code><p class="dc-route-desc">Admin trash page listing soft-deleted conversions.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/restore</code><p class="dc-route-desc">Restore a soft-deleted conversion. Body: <code>{"id": 42}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/hard_delete</code><p class="dc-route-desc">Permanently delete a conversion. Irreversible.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/bulk_action</code><p class="dc-route-desc">Restore or hard-delete multiple conversions. Body: <code>{"ids": [...], "action": "restore"}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/admin/get_reports</code><p class="dc-route-desc">Paginated list of abuse reports with filters.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/admin/review_report?id=&lt;id&gt;&amp;action=&lt;a&gt;</code><p class="dc-route-desc">Mark a report as reviewed or dismissed.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                 </div>
@@ -739,9 +739,9 @@ website/
             <h2 class="dc-section-title"><i class="fas fa-chart-bar"></i> Web Routes — Evaluate</h2>
             <p class="dc-lead">All routes under <code>/evaluate</code>. Provides quality scoring and export for conversions.</p>
             <div class="dc-routes">
-                <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/summary/&lt;id&gt;</code><p class="dc-route-desc">Evaluation stats for a convert: like/dislike counts, reaction breakdown, consensus score.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/toggle_like</code><p class="dc-route-desc">Like a convert. Body: <code>{"conversion_id": 42}</code>. Toggle: calling twice removes the like.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/toggle_dislike</code><p class="dc-route-desc">Dislike a convert. Mutually exclusive with like.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/summary/&lt;id&gt;</code><p class="dc-route-desc">Evaluation stats for a conversion: like/dislike counts, reaction breakdown, consensus score.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/toggle_like</code><p class="dc-route-desc">Like a conversion. Body: <code>{"conversion_id": 42}</code>. Toggle: calling twice removes the like.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/toggle_dislike</code><p class="dc-route-desc">Dislike a conversion. Mutually exclusive with like.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                 <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/toggle_reaction</code><p class="dc-route-desc">Vote with a reaction tag. Body: <code>{"conversion_id": 42, "reaction_key": "tlp:red"}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                 <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/consensus_tags/&lt;id&gt;</code><p class="dc-route-desc">Returns tags that reached the vote threshold (default ≥3). Used in MISP push payload.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                 <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/evaluate/export/&lt;id&gt;/markdown</code><p class="dc-route-desc">Download evaluation report as a <code>.md</code> file.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
@@ -764,8 +764,8 @@ website/
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/create</code><p class="dc-route-desc">Create a custom tag. Auto-approved for admins creating Vulnerability tags.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/list</code><p class="dc-route-desc">Paginated list of tags accessible to the current user.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/available</code><p class="dc-route-desc">Tags available for attachment. Filter <code>?evaluation=1</code> for eval-only tags.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/for_convert/&lt;id&gt;</code><p class="dc-route-desc">Tags currently attached to a convert (filtered by source_type if provided).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/save_for_convert/&lt;id&gt;</code><p class="dc-route-desc">Replace all tags on a convert. Body: <code>{"tag_ids": [1, 2, 3]}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/for_convert/&lt;id&gt;</code><p class="dc-route-desc">Tags currently attached to a conversion (filtered by source_type if provided).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/save_for_convert/&lt;id&gt;</code><p class="dc-route-desc">Replace all tags on a conversion. Body: <code>{"tag_ids": [1, 2, 3]}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/extract_from_convert/&lt;id&gt;</code><p class="dc-route-desc">Auto-extract tag names from the stored JSON and match them against the tag library.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                 </div>
             </div>
@@ -777,7 +777,7 @@ website/
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/approve/&lt;id&gt;</code><p class="dc-route-desc">Toggle approval status of a tag.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_taxonomies</code><p class="dc-route-desc">Import all tags from <code>vendor/misp-taxonomies</code> submodule (~12 380 tags).</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_galaxies</code><p class="dc-route-desc">Import cluster names from <code>vendor/misp-galaxy</code> submodule.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_converts/scan</code><p class="dc-route-desc">Background job: scan all converts and auto-assign matching tags from their JSON.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_converts/scan</code><p class="dc-route-desc">Background job: scan all conversions and auto-assign matching tags from their JSON.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_converts/job/&lt;id&gt;</code><p class="dc-route-desc">Poll the status of a background bulk-tag job.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                 </div>
             </div>
@@ -814,7 +814,7 @@ website/
                 <div class="dc-routes">
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/account/get_users</code><p class="dc-route-desc">Paginated user list. Filters: connection status, admin role, search.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/account/edit_admin</code><p class="dc-route-desc">Grant or revoke admin rights. Body: <code>{"user_id": 5, "is_admin": true}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/account/delete/&lt;id&gt;</code><p class="dc-route-desc">Delete a user and cascade-delete all their converts and comments.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/account/delete/&lt;id&gt;</code><p class="dc-route-desc">Delete a user and cascade-delete all their conversions and comments.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/account/admin/get_all_notifications</code><p class="dc-route-desc">Merged view of notifications + system logs. Filters: type, date range, search.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/account/admin/delete_logs_bulk</code><p class="dc-route-desc">Bulk-delete logs by ID list.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                 </div>
@@ -909,10 +909,10 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                 <div class="dc-comp-row"><span class="dc-comp-name">ConvertTable</span><span class="dc-comp-file">js/graph/convertTable.js</span><span class="dc-comp-desc">Flat tabular view with search, sortable columns, pagination (50 rows/page). Click a row → JsonViewer.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">JsonViewer</span><span class="dc-comp-file">js/graph/jsonViewer.js</span><span class="dc-comp-desc">Reusable JSON display: hljs syntax highlighting, collapsible tree, format, download, copy.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">ConvertGraph</span><span class="dc-comp-file">js/graph/convertGraph.js</span><span class="dc-comp-desc">Force-directed graph via Pivotick. Input/Output toggle. Config modal via graphConfigModal.js.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">EvaluationPanel</span><span class="dc-comp-file">js/evaluationPanel.js</span><span class="dc-comp-desc">Like / dislike / reaction-tag voting panel per convert.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">EvaluationCharts</span><span class="dc-comp-file">js/evaluate/evaluationCharts.js</span><span class="dc-comp-desc">Aggregated vote charts for a single convert's evaluation tab.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">EvaluationPanel</span><span class="dc-comp-file">js/evaluationPanel.js</span><span class="dc-comp-desc">Like / dislike / reaction-tag voting panel per conversion.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">EvaluationCharts</span><span class="dc-comp-file">js/evaluate/evaluationCharts.js</span><span class="dc-comp-desc">Aggregated vote charts for a single conversion's evaluation tab.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">PushConvertToMISP</span><span class="dc-comp-file">js/misp/pushConvertToMISP.js</span><span class="dc-comp-desc">Modal: configure MISP URL + key and push the conversion with evaluation tags.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">TagInput</span><span class="dc-comp-file">js/tags/tagInput.js</span><span class="dc-comp-desc">Tag selector + display per convert. Uses Select2-style dropdown with search.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">TagInput</span><span class="dc-comp-file">js/tags/tagInput.js</span><span class="dc-comp-desc">Tag selector + display per conversion. Uses Select2-style dropdown with search.</span></div>
             </div>
 
             <div class="dc-subsection">
@@ -920,7 +920,7 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                 <p class="dc-lead">
                     The detail page (<code>templates/conversions/detail.html</code>) uses Bootstrap 5 tabs.
                     Each tab is a <code>nav-link</code> + a matching <code>tab-pane</code>.
-                    The visualization components receive the convert object as <code>:convert-data="convert"</code>
+                    The visualization components receive the conversion object as <code>:convert-data="convert"</code>
                     and auto-render when the prop becomes available via <code>watch({ immediate: true })</code>.
                 </p>
                 <div class="dc-comp-list">
@@ -951,7 +951,7 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                     <div class="dc-step-num">1</div>
                     <div>
                         <div class="dc-step-title">Create the component file</div>
-                        <div class="dc-step-desc">Create <code>website/web/static/js/graph/myViz.js</code>. The component receives <code>convertData</code> (the full convert object with <code>input_text</code> and <code>output_text</code> fields). Use <code>watch({ immediate: true })</code> so it auto-renders as soon as the prop is populated — even before the user clicks the tab.</div>
+                        <div class="dc-step-desc">Create <code>website/web/static/js/graph/myViz.js</code>. The component receives <code>convertData</code> (the full conversion object with <code>input_text</code> and <code>output_text</code> fields). Use <code>watch({ immediate: true })</code> so it auto-renders as soon as the prop is populated — even before the user clicks the tab.</div>
                     </div>
                 </div>
                 <div class="dc-step">

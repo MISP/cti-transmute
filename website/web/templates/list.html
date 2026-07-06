@@ -375,7 +375,7 @@
                     catch { data = text }
                     if (resp.status === 400) {
                         // Param rejections arrive as {error, fields}; light the
-                        // offending controls like the convert pages do.
+                        // offending controls like the conversion pages do.
                         try {
                             const fields = JSON.parse(text).fields
                             if (fields) paramVms[path]?.setErrors(fields)

@@ -32,7 +32,7 @@ def get_current_user() -> jsonify:
 
 @home_blueprint.route("/get_public_activity")
 def get_public_activity():
-    """Public activity feed for the homepage, based on system logs for public converts."""
+    """Public activity feed for the homepage, based on system logs for public conversions."""
     from website.db_class.db import Conversion, SystemLog
 
     PUBLIC_EVENTS = [

@@ -157,11 +157,11 @@
                   </div>
                 </div>
 
-                <!-- Deactivated convert warning -->
+                <!-- Deactivated conversion warning -->
                 <div v-if="!c.convert_active" class="d-flex align-items-center gap-2 mb-1 px-2 py-1 rounded-2"
                   style="background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.18); font-size:0.78rem; color:var(--danger);">
                   <i class="fas fa-triangle-exclamation"></i>
-                  This convert has been deactivated.
+                  This conversion has been deactivated.
                   <a :href="'/account/admin/deleted_converts?highlight='+c.conversion_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
                     View in Trash <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i>
                   </a>
@@ -291,7 +291,7 @@
                        onmouseout="this.style.textDecoration='none'">
                       [[ u.name ]]
                     </a>
-                    <div style="font-size:.72rem; color:var(--text-3);">[[ u.public_count ]] public convert[[ u.public_count !== 1 ? 's' : '' ]]</div>
+                    <div style="font-size:.72rem; color:var(--text-3);">[[ u.public_count ]] public conversion[[ u.public_count !== 1 ? 's' : '' ]]</div>
                   </div>
                 </div>
                 <button class="follow-btn" :class="u.is_following ? 'following' : ''" @click="toggleFollowModal(u)">

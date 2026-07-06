@@ -13,7 +13,7 @@
                 <i class="fas fa-trash-alt me-2" style="color:var(--danger);"></i>Trash
             </h2>
             <p class="mb-0" style="color:var(--text-2); font-size:0.85rem;">
-                Your deleted converts. Restore them or delete them permanently.
+                Your deleted conversions. Restore them or delete them permanently.
             </p>
         </div>
         <a href="/conversions/history" class="btn btn-sm back-btn"
@@ -30,11 +30,11 @@
                     style="left:10px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:0.8rem; z-index:1;"></i>
                 <input type="text" v-model="search" @input="debounceSearch"
                     class="form-control form-control-sm" style="padding-left:30px;"
-                    placeholder="Search deleted converts…">
+                    placeholder="Search deleted conversions…">
             </div>
             <span style="color:var(--text-3); font-size:0.8rem;">
                 <i class="fas fa-circle-info me-1"></i>
-                [[ total_count ]] deleted convert[[ total_count !== 1 ? 's' : '' ]]
+                [[ total_count ]] deleted conversion[[ total_count !== 1 ? 's' : '' ]]
             </span>
         </div>
     </div>
@@ -44,7 +44,7 @@
         style="background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);">
         <span style="font-size:0.82rem; color:var(--text-2);">
             <strong style="color:var(--accent);">[[ selected.length ]]</strong>
-            convert[[ selected.length !== 1 ? 's' : '' ]] selected
+            conversion[[ selected.length !== 1 ? 's' : '' ]] selected
         </span>
         <button class="btn btn-sm btn-primary ms-2" @click="bulkAction('restore')">
             <i class="fas fa-rotate-left me-1"></i>Restore
@@ -215,7 +215,7 @@
 
             async function bulkAction(action) {
                 if (!selected.value.length) return
-                if (action === 'hard_delete' && !confirm(`Permanently delete ${selected.value.length} convert(s)? This cannot be undone.`)) return
+                if (action === 'hard_delete' && !confirm(`Permanently delete ${selected.value.length} conversion(s)? This cannot be undone.`)) return
                 const res = await fetch('/conversions/bulk_action', {
                     method: 'POST',
                     headers: {

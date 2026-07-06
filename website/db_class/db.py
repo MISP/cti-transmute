@@ -78,7 +78,7 @@ class Conversion(db.Model):
     __tablename__ = "conversion"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, nullable=True) # the user who made the convert
+    user_id = db.Column(db.Integer, nullable=True) # the user who made the conversion
     name = db.Column(db.String(255), nullable=False)
     source_format = db.Column(db.String(50), nullable=True)  # Converter source slug
     target_format = db.Column(db.String(50), nullable=True)  # Converter target slug
@@ -525,7 +525,7 @@ class ConversionTagAssociation(db.Model):
 
 
 class ConversionFavorite(db.Model):
-    """Stores user favorites on converts."""
+    """Stores user favorites on conversions."""
     __tablename__ = "conversion_favorite"
 
     id         = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -540,7 +540,7 @@ class ConversionFavorite(db.Model):
 
 
 class ConversionEvaluation(db.Model):
-    """Stores like/dislike/reaction evaluations on converts."""
+    """Stores like/dislike/reaction evaluations on conversions."""
     __tablename__ = "conversion_evaluation"
 
     id           = db.Column(db.Integer, primary_key=True, autoincrement=True)

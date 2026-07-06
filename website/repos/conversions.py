@@ -155,7 +155,7 @@ def edit(conversion_id: int, data: dict, *, commit: bool = True) -> tuple[bool, 
     """
     conversion = get(conversion_id)
     if not conversion:
-        return False, "no convert with this id"
+        return False, "no conversion with this id"
 
     if conversion.name != data.get("name", conversion.name):
         existing = Conversion.query.filter_by(

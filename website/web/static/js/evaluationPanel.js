@@ -1,4 +1,4 @@
-// EvaluationPanel — Vue 3 component for convert evaluations.
+// EvaluationPanel — Vue 3 component for conversion evaluations.
 // Register with: app.component('evaluation-panel', EvaluationPanel)
 
 const CSRF_TOKEN = () =>

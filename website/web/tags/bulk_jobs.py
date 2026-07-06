@@ -1,5 +1,5 @@
 """
-Small in-memory background job system for bulk convert-tag operations.
+Small in-memory background job system for bulk conversion-tag operations.
 Jobs are stored in a module-level dict (resets on server restart).
 Workers run in daemon threads and push their own Flask app context.
 """
@@ -60,7 +60,7 @@ def remove(jid: str) -> bool:
 # ── Worker launchers ──────────────────────────────────────────────
 
 def start_scan(app, convert_ids: list, user_id: int) -> str:
-    """Auto-scan each convert's input JSON and merge matching tags."""
+    """Auto-scan each conversion's input JSON and merge matching tags."""
     jid = create('scan', len(convert_ids))
     t = threading.Thread(target=_scan_worker, args=(app, jid, convert_ids, user_id), daemon=True)
     t.start()
@@ -68,7 +68,7 @@ def start_scan(app, convert_ids: list, user_id: int) -> str:
 
 
 def start_assign(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
-    """Merge specific tags into every selected convert."""
+    """Merge specific tags into every selected conversion."""
     jid = create('assign', len(convert_ids))
     t = threading.Thread(target=_assign_worker, args=(app, jid, convert_ids, tag_ids, user_id), daemon=True)
     t.start()
@@ -76,7 +76,7 @@ def start_assign(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
 
 
 def start_remove(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
-    """Remove specific tags from every selected convert."""
+    """Remove specific tags from every selected conversion."""
     jid = create('remove', len(convert_ids))
     t = threading.Thread(target=_remove_worker, args=(app, jid, convert_ids, tag_ids, user_id), daemon=True)
     t.start()
@@ -84,7 +84,7 @@ def start_remove(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
 
 
 def start_clear(app, convert_ids: list, user_id: int) -> str:
-    """Remove ALL tags from every selected convert."""
+    """Remove ALL tags from every selected conversion."""
     jid = create('clear', len(convert_ids))
     t = threading.Thread(target=_clear_worker, args=(app, jid, convert_ids, user_id), daemon=True)
     t.start()

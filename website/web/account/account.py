@@ -152,7 +152,7 @@ def public_profile(user_id):
 
 @account_blueprint.route("/public_converts/<int:user_id>")
 def public_converts(user_id):
-    """Paginated public converts for a user profile page."""
+    """Paginated public conversions for a user profile page."""
 
     page        = request.args.get('page', 1, type=int)
     filter_type = request.args.get('filter_type', type=str)
@@ -203,7 +203,7 @@ def manage_user() -> redirect:
 @account_blueprint.route("/get_users", methods=['GET'])
 @login_required
 def get_users():
-    """History of the last convert, with optional filter and sort"""
+    """History of the last conversion, with optional filter and sort"""
     page = request.args.get('page', 1, type=int)
     searchQuery = request.args.get('searchQuery',  type=str) 
     filterConnection = request.args.get('filterConnection',  type=str)
@@ -716,7 +716,7 @@ def edit_admin():
                     }, 500
             return {
                 "success": False, 
-                "message": "No convert history for this id", 
+                "message": "No conversion history for this id",
                 "toast_class" : "danger"
                 }, 500
         return {

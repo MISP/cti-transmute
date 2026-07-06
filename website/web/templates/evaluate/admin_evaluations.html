@@ -9,7 +9,7 @@
   <div class="list-header">
     <div class="home-hero-badge"><i class="fas fa-chart-bar"></i> Admin</div>
     <h1 class="list-title">All Evaluations</h1>
-    <p class="list-subtitle">Review all likes, dislikes and reactions across every convert.</p>
+    <p class="list-subtitle">Review all likes, dislikes and reactions across every conversion.</p>
   </div>
 
   <div class="custom-card p-3">
@@ -19,7 +19,7 @@
       <div class="search-bar-wrapper" style="max-width:220px;">
         <i class="fas fa-hashtag search-bar-icon"></i>
         <input class="search-bar-input" type="number" v-model="filter_convert"
-               @input="debounceLoad" placeholder="Filter by convert ID…">
+               @input="debounceLoad" placeholder="Filter by conversion ID…">
       </div>
       <select class="form-select form-select-sm" style="max-width:160px; background:var(--bg-2); color:var(--text); border-color:var(--border);"
               v-model="filter_type" @change="loadPage(1)">
@@ -49,7 +49,7 @@
           <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
             <th style="width:60px;">ID</th>
             <th>User</th>
-            <th>Convert</th>
+            <th>Conversion</th>
             <th>Type</th>
             <th>Reaction</th>
             <th>Date</th>

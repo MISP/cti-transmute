@@ -108,7 +108,7 @@ class MispStixConverter(Resource):
     @staticmethod
     def _param_error(exc: ValidationError):
         """Render a Pydantic ``ValidationError`` as the stable ``{error, fields}``
-        400. The rendering is shared with the web convert page (ADR-0006), so the
+        400. The rendering is shared with the web conversion page, so the
         two surfaces return the identical shape (`website.lib.params.param_error`)."""
         return param_error(exc)
 

@@ -373,7 +373,7 @@ def list_tags():
 @tags_blueprint.route("/available", methods=["GET"])
 @login_required
 def available_tags():
-    """Tags available to the current user for attaching to a convert."""
+    """Tags available to the current user for attaching to a conversion."""
     search = request.args.get("search", "", type=str).strip() or None
     source = request.args.get("source", "", type=str).strip() or None
     is_evaluation = request.args.get("is_evaluation", "false", type=str).lower() == "true"
@@ -383,7 +383,7 @@ def available_tags():
 
 @tags_blueprint.route("/for_convert/<int:conversion_id>", methods=["GET"])
 def for_convert(conversion_id):
-    """Get tags attached to a convert.
+    """Get tags attached to a conversion.
     Optional ?source_type=user|json to filter by origin."""
     convert = Conversion.query.get(conversion_id)
     if not convert:
@@ -402,7 +402,7 @@ def for_convert(conversion_id):
 @login_required
 @csrf.exempt
 def save_for_convert(conversion_id):
-    """Replace all tags for a convert. Owner or admin only."""
+    """Replace all tags for a conversion. Owner or admin only."""
     convert = Conversion.query.get(conversion_id)
     if not convert:
         return {"success": False, "message": "Conversion not found"}, 404
@@ -482,7 +482,7 @@ def admin_bulk_scan():
     data = request.get_json(silent=True) or {}
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     if not convert_ids:
-        return {"success": False, "message": "No converts selected"}, 400
+        return {"success": False, "message": "No conversions selected"}, 400
     jid = bulk_jobs.start_scan(current_app._get_current_object(), convert_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_scan",
@@ -503,7 +503,7 @@ def admin_bulk_assign():
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
     if not convert_ids or not tag_ids:
-        return {"success": False, "message": "No converts or tags selected"}, 400
+        return {"success": False, "message": "No conversions or tags selected"}, 400
     jid = bulk_jobs.start_assign(current_app._get_current_object(), convert_ids, tag_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_assign",
@@ -555,7 +555,7 @@ def admin_bulk_remove_tags():
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
     if not convert_ids or not tag_ids:
-        return {"success": False, "message": "No converts or tags selected"}, 400
+        return {"success": False, "message": "No conversions or tags selected"}, 400
     jid = bulk_jobs.start_remove(current_app._get_current_object(), convert_ids, tag_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_remove",
@@ -575,7 +575,7 @@ def admin_bulk_clear_tags():
     data = request.get_json(silent=True) or {}
     convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
     if not convert_ids:
-        return {"success": False, "message": "No converts selected"}, 400
+        return {"success": False, "message": "No conversions selected"}, 400
     jid = bulk_jobs.start_clear(current_app._get_current_object(), convert_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_clear",
@@ -609,7 +609,7 @@ def extract_from_json():
 @tags_blueprint.route("/extract_from_convert/<int:conversion_id>", methods=["GET"])
 @login_required
 def extract_from_convert(conversion_id):
-    """Extract tags from a stored convert's MISP JSON and return available matching tags."""
+    """Extract tags from a stored conversion's MISP JSON and return available matching tags."""
     convert = Conversion.query.get(conversion_id)
     if not convert:
         return {"success": False, "message": "Conversion not found"}, 404

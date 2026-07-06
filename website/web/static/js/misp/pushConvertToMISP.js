@@ -1,4 +1,4 @@
-// Modal component for pushing a convert's MISP event to an external MISP instance.
+// Modal component for pushing a conversion's MISP event to an external MISP instance.
 // Register with: app.component('push-convert-to-misp', PushConvertToMISP)
 // Usage: <push-convert-to-misp ref="mispModal" :conversion-id="convert.id" :convert-data="convert">
 //        Then trigger: $refs.mispModal.open()
@@ -74,7 +74,7 @@ const PushConvertToMISP = {
                         </div>
                         <div v-else class="alert alert-warning py-2 px-3" style="font-size:0.84rem;">
                             <i class="fas fa-exclamation-triangle me-1"></i>
-                            No MISP event found in this convert's data.
+                            No MISP event found in this conversion's data.
                         </div>
                     </div>
 

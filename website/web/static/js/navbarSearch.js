@@ -12,7 +12,7 @@ const SECTIONS_ADMIN = [
     { icon: 'fa-users',     label: 'Manage Users',     url: '/account/manage_user',            admin: true },
     { icon: 'fa-comments',  label: 'All Comments',     url: '/account/admin/comments',         admin: true },
     { icon: 'fa-flag',      label: 'Reports',          url: '/account/admin/reports',          admin: true },
-    { icon: 'fa-trash-alt', label: 'Deleted Converts', url: '/account/admin/deleted_converts', admin: true },
+    { icon: 'fa-trash-alt', label: 'Deleted Conversions', url: '/account/admin/deleted_converts', admin: true },
     { icon: 'fa-stream',    label: 'Activity Logs',    url: '/account/admin/logs',             admin: true },
     { icon: 'fa-tags',      label: 'Tag Management',   url: '/tags/admin/',                    admin: true },
 ]
@@ -83,7 +83,7 @@ const NavbarSearch = {
                 if (items.length) {
                     g.push({
                         id: 'converts', type: 'convert',
-                        icon: 'fa-exchange-alt', label: 'Converts',
+                        icon: 'fa-exchange-alt', label: 'Conversions',
                         items,
                         seeAll: '/conversions/history?search=' + encodeURIComponent(q),
                     })
@@ -199,7 +199,7 @@ const NavbarSearch = {
           </a>
         </template>
 
-        <!-- Converts -->
+        <!-- Conversions -->
         <template v-else-if="g.type==='convert'">
           <div class="nav-sd-group-header">
             <i class="fas fa-exchange-alt me-1"></i>{{ g.label }}

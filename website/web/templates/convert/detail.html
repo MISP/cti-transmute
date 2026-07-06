@@ -515,7 +515,7 @@
                         <!-- Visibility banner -->
                         <div v-if="!convert.public" class="visibility-info-banner private-banner">
                             <i class="fas fa-lock mt-1"></i>
-                            <span>This convert is <strong>private</strong>. Only you and admins can see the comments below, regardless of their individual visibility.</span>
+                            <span>This conversion is <strong>private</strong>. Only you and admins can see the comments below, regardless of their individual visibility.</span>
                         </div>
 
                         <!-- Loading -->
@@ -670,7 +670,7 @@
                             <span class="cs-section-icon cs-section-icon--eval"><i class="fas fa-comment-alt"></i></span>
                             <span class="cs-section-title">Evaluation Comments</span>
                             <span v-if="eval_comments.length" class="cs-section-count cs-section-count--eval">[[ eval_comments.length ]]</span>
-                            <span class="cs-eval-hint">Qualitative feedback on this convert</span>
+                            <span class="cs-eval-hint">Qualitative feedback on this conversion</span>
                         </div>
 
                         {% if current_user.is_authenticated %}
@@ -768,11 +768,11 @@
             </div>
         </div>
 
-        <!-- Report convert button -->
+        <!-- Report conversion button -->
         {% if current_user.is_authenticated %}
         <div class="text-end mb-2" style="font-size:0.78rem;">
             <button class="comment-action-btn danger" data-bs-toggle="modal" data-bs-target="#report_modal">
-                <i class="fas fa-flag me-1"></i> Report this convert
+                <i class="fas fa-flag me-1"></i> Report this conversion
             </button>
         </div>
         {% endif %}
@@ -835,13 +835,13 @@
         </div>
     </div>
 
-    <!-- Report convert modal -->
+    <!-- Report conversion modal -->
     {% if current_user.is_authenticated %}
     <div class="modal fade" id="report_modal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
-                    <h5 class="modal-title"><i class="fas fa-flag text-danger me-2"></i>Report this convert</h5>
+                    <h5 class="modal-title"><i class="fas fa-flag text-danger me-2"></i>Report this conversion</h5>
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -879,11 +879,11 @@
                 <div class="modal-body" style="font-size:0.875rem; color:var(--text-2);">
                     <div v-if="pending_visibility_action === 'private'" class="visibility-info-banner private-banner mb-3">
                         <i class="fas fa-lock mt-1"></i>
-                        <span>Making this convert <strong>private</strong> will hide <strong>[[ pending_comment_count ]] comment(s)</strong> from the public. Only you and admins will be able to see them until you make the convert public again.</span>
+                        <span>Making this conversion <strong>private</strong> will hide <strong>[[ pending_comment_count ]] comment(s)</strong> from the public. Only you and admins will be able to see them until you make the conversion public again.</span>
                     </div>
                     <div v-else class="visibility-info-banner public-banner mb-3">
                         <i class="fas fa-globe mt-1"></i>
-                        <span>Making this convert <strong>public</strong> will restore visibility for all comments. Public comments will be visible to everyone; private comments will remain visible only to their authors, you, and admins.</span>
+                        <span>Making this conversion <strong>public</strong> will restore visibility for all comments. Public comments will be visible to everyone; private comments will remain visible only to their authors, you, and admins.</span>
                     </div>
                     <p class="mb-0">Do you want to proceed?</p>
                 </div>

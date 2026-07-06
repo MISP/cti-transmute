@@ -15,7 +15,7 @@
         <h1 class="home-hero-title" style="margin-bottom:0.6rem;">Platform Insights</h1>
         <p class="home-hero-sub">
             Explore how the community rates public CTI conversions,
-            leave your own review, and browse the most-evaluated converts.
+            leave your own review, and browse the most-evaluated conversions.
         </p>
     </section>
 
@@ -34,7 +34,7 @@
             <div class="ov-kpi-card">
                 <div class="ov-kpi-icon"><i class="fas fa-file-alt"></i></div>
                 <div class="ov-kpi-value">[[ kpi_converts !== null ? kpi_converts.toLocaleString() : '—' ]]</div>
-                <div class="ov-kpi-label">Converts Rated</div>
+                <div class="ov-kpi-label">Conversions Rated</div>
             </div>
             <div class="ov-kpi-card">
                 <div class="ov-kpi-icon"><i class="fas fa-thumbs-up"></i></div>
@@ -98,12 +98,12 @@
         </div>
     </div>
 
-    <!-- ── Recent converts to evaluate ───────────────────────── -->
+    <!-- ── Recent conversions to evaluate ───────────────────────── -->
     <div class="ov-wrap">
         <div class="ov-panel">
             <div class="ov-panel-hd">
                 <span class="ov-panel-label">
-                    <i class="fas fa-clock"></i> Recent Public Converts
+                    <i class="fas fa-clock"></i> Recent Public Conversions
                 </span>
                 <a href="/conversions/history" class="home-panel-link">
                     View all <i class="fas fa-arrow-right" style="font-size:0.55rem;"></i>
@@ -116,14 +116,14 @@
                 </div>
                 <div v-else-if="recent.length === 0" class="ov-chart-empty" style="padding:2rem;">
                     <i class="fas fa-file-alt"></i>
-                    No public converts yet
+                    No public conversions yet
                 </div>
                 <div v-else class="ov-converts-strip">
                     <div v-for="c in recent" :key="c.id"
                          class="ov-convert-card"
                          @click="openConvert(c.id)"
                          style="cursor:pointer;">
-                        <div class="ov-convert-name" :title="c.name">[[ c.name || `Convert #${c.id}` ]]</div>
+                        <div class="ov-convert-name" :title="c.name">[[ c.name || `Conversion #${c.id}` ]]</div>
                         <div class="ov-convert-meta">
                             <span class="ov-convert-type">[[ conversionLabel(c.conversion_type) ]]</span>
                             <span class="ov-convert-date">[[ formatDate(c.created_at) ]]</span>
@@ -158,7 +158,7 @@
                 <span class="ov-panel-label">
                     <i class="fas fa-chart-line"></i> Evaluation Activity
                 </span>
-                <span style="font-size:0.72rem; color:var(--text-3);">Last 30 days — public converts only</span>
+                <span style="font-size:0.72rem; color:var(--text-3);">Last 30 days — public conversions only</span>
             </div>
             <div class="ov-panel-body">
                 <div v-if="timeline_loading" class="ov-loading" style="min-height:180px;">

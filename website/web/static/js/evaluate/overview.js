@@ -9,7 +9,7 @@ const OverviewApp = {
             stats: null,
             stats_loading: true,
 
-            // Recent converts
+            // Recent conversions
             recent: [],
             recent_loading: true,
 
@@ -112,7 +112,7 @@ const OverviewApp = {
         },
 
         conversionLabel(type) {
-            if (!type) return 'Convert'
+            if (!type) return 'Conversion'
             return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
         },
 
