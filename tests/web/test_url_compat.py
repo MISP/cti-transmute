@@ -65,3 +65,20 @@ def test_conversion_short_url_only_matches_ids(web_client):
     assert resp.status_code == 200
     resp = web_client.get("/conversions/not-a-number")
     assert resp.status_code == 404
+
+
+def test_record_urls_use_canonical_conversions_prefix(app_db, misp_event):
+    """``to_share()`` advertises share/detail URLs to payload consumers; they
+    must point at the canonical ``/conversions/…`` prefix, not the retired
+    ``/convert/…`` one that survives only through the one-release 301 shim."""
+    from cti_transmute.converters.misp_to_stix import MispToStixParams
+    from website.lib.conversions import submit_conversion
+
+    conversion = submit_conversion(
+        user=None, source="misp", target="stix",
+        payload=misp_event, params=MispToStixParams(),
+    )
+    payload = conversion.to_share()
+
+    assert payload["share_url"].endswith(f"/conversions/share/{conversion.uuid}")
+    assert payload["detail_url"].endswith(f"/conversions/detail/{conversion.id}")
