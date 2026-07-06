@@ -63,7 +63,7 @@ def submit_conversion(
     # External side effects fire only after commit. Notify followers for an
     # authenticated, public submission.
     if user is not None and public:
-        AccountModel.notify_followers_new_convert(convert, user.id)
+        AccountModel.notify_followers_new_conversion(convert, user.id)
     return convert
 
 

@@ -125,7 +125,7 @@ def edit_admin(id):
     return False , False
 
 
-def get_all_convert_own_by_user_id(id):
+def get_all_conversions_own_by_user_id(id):
     """Change the owner of all the user's conversions to the current user."""
     convert_list = []
     user = get_user(id)
@@ -333,7 +333,7 @@ def get_unread_count(user_id):
     return Notification.query.filter_by(user_id=user_id, is_read=False).count()
 
 
-def notify_followers_new_convert(convert, actor_id):
+def notify_followers_new_conversion(convert, actor_id):
     """Notify all followers of actor_id that a new public conversion was created."""
     follower_ids = get_followers_ids(actor_id)
     actor = get_user(actor_id)

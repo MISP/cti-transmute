@@ -439,7 +439,7 @@ def get_available_tags(user_id, search=None, source=None, is_evaluation=False, l
     return query.order_by(*order).limit(limit).all()
 
 
-def get_convert_tags(conversion_id, source_type=None):
+def get_conversion_tags(conversion_id, source_type=None):
     """Return tag associations for a conversion. Optionally filter by source_type ('user'|'json')."""
     q = ConversionTagAssociation.query.filter_by(conversion_id=conversion_id)
     if source_type:
@@ -447,7 +447,7 @@ def get_convert_tags(conversion_id, source_type=None):
     return q.all()
 
 
-def get_convert_tags_batch(convert_ids):
+def get_conversion_tags_batch(convert_ids):
     """Return {conversion_id: [assoc, ...]} for a list of conversion IDs."""
     if not convert_ids:
         return {}
@@ -460,7 +460,7 @@ def get_convert_tags_batch(convert_ids):
     return result
 
 
-def get_convert_ids(search=None, conv_type=None):
+def get_conversion_ids(search=None, conv_type=None):
     query = Conversion.query.with_entities(Conversion.id)
     if conv_type and conv_type != "ALL":
         query = query.filter(Conversion.conversion_type == conv_type)
@@ -469,7 +469,7 @@ def get_convert_ids(search=None, conv_type=None):
     return [row.id for row in query.all()]
 
 
-def get_converts_page(page, per_page=50, search=None, conv_type=None):
+def get_conversions_page(page, per_page=50, search=None, conv_type=None):
     query = Conversion.query
     if conv_type and conv_type != "ALL":
         query = query.filter(Conversion.conversion_type == conv_type)
@@ -510,7 +510,7 @@ def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
     return [t.id for t in tags if t.name.lower() in lower_names]
 
 
-def merge_convert_tags(conversion_id: int, tag_ids: list, user_id: int, source_type: str = "user") -> int:
+def merge_conversion_tags(conversion_id: int, tag_ids: list, user_id: int, source_type: str = "user") -> int:
     """Add tags to a conversion without removing existing ones. Returns count of newly added tags.
     source_type: 'user' (default) for manually added tags, 'json' for admin-scan-detected tags.
     Deduplication is scoped to the same source_type."""
@@ -547,7 +547,7 @@ def merge_convert_tags(conversion_id: int, tag_ids: list, user_id: int, source_t
     return count
 
 
-def remove_convert_tags(conversion_id: int, tag_ids: list) -> int:
+def remove_conversion_tags(conversion_id: int, tag_ids: list) -> int:
     """Remove specific tags from a conversion. Returns count removed."""
     q = ConversionTagAssociation.query.filter(
         ConversionTagAssociation.conversion_id == conversion_id,
@@ -563,7 +563,7 @@ def remove_convert_tags(conversion_id: int, tag_ids: list) -> int:
     return count
 
 
-def clear_convert_tags(conversion_id: int) -> int:
+def clear_conversion_tags(conversion_id: int) -> int:
     """Remove ALL tags from a conversion. Returns count removed."""
     q = ConversionTagAssociation.query.filter_by(conversion_id=conversion_id)
     count = q.count()
@@ -612,7 +612,7 @@ def get_all_tags_usage():
     ]
 
 
-def save_convert_tags(conversion_id, tag_ids, user_id):
+def save_conversion_tags(conversion_id, tag_ids, user_id):
     """Replace user-added tag associations for a conversion (idempotent).
     JSON-sourced tags (source_type='json') are never touched by this function."""
     ConversionTagAssociation.query.filter_by(

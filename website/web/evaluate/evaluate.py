@@ -9,7 +9,7 @@ from ..evaluate import evaluate_core as EvalModel
 evaluate_blueprint = Blueprint("evaluate", __name__)
 
 
-def _can_view_convert(convert: Conversion) -> bool:
+def _can_view_conversion(convert: Conversion) -> bool:
     """Return True if the current viewer is allowed to see this conversion."""
     if convert.public:
         return True
@@ -36,7 +36,7 @@ def get_summary(conversion_id):
     convert = Conversion.query.get(conversion_id)
     if not convert or not convert.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_convert(convert):
+    if not _can_view_conversion(convert):
         return {"success": False, "message": "Forbidden"}, 403
 
     viewer_id = current_user.id if current_user.is_authenticated else None
@@ -200,7 +200,7 @@ def consensus_tags(conversion_id):
     convert = Conversion.query.get(conversion_id)
     if not convert:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_convert(convert):
+    if not _can_view_conversion(convert):
         return {"success": False, "message": "Forbidden"}, 403
     threshold = request.args.get("threshold", 3, type=int)
     tags = EvalModel.get_consensus_tags(conversion_id, threshold=threshold)
@@ -263,7 +263,7 @@ def export_evaluation_markdown(conversion_id):
     convert = Conversion.query.get(conversion_id)
     if not convert or not convert.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_convert(convert):
+    if not _can_view_conversion(convert):
         return {"success": False, "message": "Forbidden"}, 403
 
     report = EvalModel.build_evaluation_report(conversion_id)
@@ -285,7 +285,7 @@ def export_evaluation_pdf(conversion_id):
     convert = Conversion.query.get(conversion_id)
     if not convert or not convert.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_convert(convert):
+    if not _can_view_conversion(convert):
         return {"success": False, "message": "Forbidden"}, 403
 
     report = EvalModel.build_evaluation_report(conversion_id)

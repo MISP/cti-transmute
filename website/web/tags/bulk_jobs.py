@@ -117,7 +117,7 @@ def _trim() -> None:
 def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
     with app.app_context():
         from website.db_class.db import Conversion
-        from website.web.tags.tags_core import find_tags_by_names, merge_convert_tags
+        from website.web.tags.tags_core import find_tags_by_names, merge_conversion_tags
         from website.web.utils import extract_tag_names_from_misp_json
 
         added_total = 0
@@ -143,7 +143,7 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
                     continue
                 tags = find_tags_by_names(user_id, names)
                 if tags:
-                    n = merge_convert_tags(cid, [t.id for t in tags], user_id, source_type="json")
+                    n = merge_conversion_tags(cid, [t.id for t in tags], user_id, source_type="json")
                     added_total += n
                 else:
                     skipped += 1
@@ -157,13 +157,13 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
 
 def _assign_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.web.tags.tags_core import merge_convert_tags
+        from website.web.tags.tags_core import merge_conversion_tags
 
         added_total = 0
 
         for i, cid in enumerate(convert_ids):
             try:
-                n = merge_convert_tags(cid, tag_ids, user_id)
+                n = merge_conversion_tags(cid, tag_ids, user_id)
                 added_total += n
             except Exception as exc:
                 with _lock:
@@ -175,13 +175,13 @@ def _assign_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int
 
 def _remove_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.web.tags.tags_core import remove_convert_tags
+        from website.web.tags.tags_core import remove_conversion_tags
 
         removed_total = 0
 
         for i, cid in enumerate(convert_ids):
             try:
-                n = remove_convert_tags(cid, tag_ids)
+                n = remove_conversion_tags(cid, tag_ids)
                 removed_total += n
             except Exception as exc:
                 with _lock:
@@ -258,13 +258,13 @@ def _pull_import_worker(app, jid: str, user_id: int) -> None:
 
 def _clear_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.web.tags.tags_core import clear_convert_tags
+        from website.web.tags.tags_core import clear_conversion_tags
 
         removed_total = 0
 
         for i, cid in enumerate(convert_ids):
             try:
-                n = clear_convert_tags(cid)
+                n = clear_conversion_tags(cid)
                 removed_total += n
             except Exception as exc:
                 with _lock:

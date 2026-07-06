@@ -174,7 +174,7 @@ def public_converts(user_id):
     items = []
     if pagination:
         ids = [c.id for c in pagination.items]
-        tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+        tags_by_convert = TagsModel.get_conversion_tags_batch(ids)
         for c in pagination.items:
             entry = c.to_json_list()
             entry['tags'] = [a.to_json() for a in tags_by_convert.get(c.id, [])]
@@ -310,7 +310,7 @@ def delete_user(id) -> redirect:
                 flash("You can't delete you account because you are admin!", 'danger')
                 return redirect(f"/account/detail_user/{id}")
             else:
-                _success = AccountModel.get_all_convert_own_by_user_id(id)
+                _success = AccountModel.get_all_conversions_own_by_user_id(id)
                 if _success:
                     _deleted_name = f"{user.first_name} {user.last_name}"
                     _deleted_id = user.id

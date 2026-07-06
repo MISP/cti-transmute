@@ -2,7 +2,7 @@
 
 Conversion and ConversionHistory rows — including their listing, access-scoped
 search, and Trash queries — now live in ``website/repos/conversions.py``. This
-module (imported as ``ConvertModel``) keeps the comment, report, reaction,
+module (imported as ``ConversionModel``) keeps the comment, report, reaction,
 favorite, and graph-config helpers used by the conversion views.
 """
 import uuid

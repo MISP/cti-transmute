@@ -31,7 +31,7 @@ from website.web.utils import (
     form_to_dict, parse_stix_reports)
 
 from ..account import account_core as AccountModel
-from ..convert import convert_core as ConvertModel
+from ..convert import convert_core as ConversionModel
 from ..evaluate import evaluate_core as EvalModel
 from ..tags import tags_core as TagsModel
 
@@ -172,7 +172,7 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
     if not current_user.is_anonymous():
         tag_ids = _manual_tag_ids(body.get("tag_ids"))
         if tag_ids:
-            TagsModel.save_convert_tags(convert.id, tag_ids, current_user.id)
+            TagsModel.save_conversion_tags(convert.id, tag_ids, current_user.id)
 
     flash(f"Converted to {target.upper()} successfully!", "success")
     return jsonify({
@@ -182,7 +182,7 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
     }), 200
 
 
-convert_blueprint = Blueprint(
+conversions_blueprint = Blueprint(
     "conversions",
     __name__,
     template_folder="templates",
@@ -204,7 +204,7 @@ def redirect_to_conversions(rest):
     return redirect(dest, code=301)
 
 
-@convert_blueprint.route("/misp_to_stix", methods=['GET', 'POST'])
+@conversions_blueprint.route("/misp_to_stix", methods=['GET', 'POST'])
 def misp_to_stix():
     """MISP → STIX conversion page.
 
@@ -217,7 +217,7 @@ def misp_to_stix():
     return render_template("convert/misp_to_stix.html")
 
 
-@convert_blueprint.route("/fetch_misp_event", methods=['POST'])
+@conversions_blueprint.route("/fetch_misp_event", methods=['POST'])
 def fetch_misp_event():
     """Fetch one or more MISP events via restSearch.
     Accepts event_ids (list) or event_id (string). Supports optional restSearch params.
@@ -316,7 +316,7 @@ def fetch_misp_event():
     return jsonify({"content": json.dumps(normalized, ensure_ascii=False), "count": count, "event_ids": event_ids}), 200
 
 
-@convert_blueprint.route("/misp_search_events", methods=['POST'])
+@conversions_blueprint.route("/misp_search_events", methods=['POST'])
 def misp_search_events():
     """Search events on an external MISP instance using /events/index."""
     data = request.get_json(silent=True) or {}
@@ -408,7 +408,7 @@ def misp_search_events():
     return jsonify({"events": events, "count": len(events), "page": page, "limit": limit}), 200
 
 
-@convert_blueprint.route("/stix_to_misp", methods=['GET', 'POST'])
+@conversions_blueprint.route("/stix_to_misp", methods=['GET', 'POST'])
 def stix_to_misp():
     """STIX → MISP conversion page.
 
@@ -421,12 +421,12 @@ def stix_to_misp():
     return render_template("convert/stix_to_misp.html")
 
 
-@convert_blueprint.route("/history", methods=['GET'])
+@conversions_blueprint.route("/history", methods=['GET'])
 def history():
     """History page of the last conversion"""
     return render_template("convert/history.html")
 
-@convert_blueprint.route("/get_convert_page_history", methods=['GET'])
+@conversions_blueprint.route("/get_convert_page_history", methods=['GET'])
 def get_page_history():
     """History of the last conversion, with optional filter and sort"""
     page        = request.args.get('page', 1, type=int)
@@ -467,10 +467,10 @@ def get_page_history():
 
     # Batch load tags for all returned conversions
     ids = [item.id for item in items]
-    tags_by_convert = TagsModel.get_convert_tags_batch(ids)
+    tags_by_convert = TagsModel.get_conversion_tags_batch(ids)
 
     # Batch load favorites for current user
-    fav_ids = ConvertModel.get_favorite_ids(current_user.id) if current_user.is_authenticated else set()
+    fav_ids = ConversionModel.get_favorite_ids(current_user.id) if current_user.is_authenticated else set()
 
     for entry in convert_list:
         entry['tags']        = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
@@ -482,7 +482,7 @@ def get_page_history():
     }, 200
 
 
-@convert_blueprint.route("/favorite/toggle", methods=['POST'])
+@conversions_blueprint.route("/favorite/toggle", methods=['POST'])
 @login_required
 def toggle_favorite():
     data       = request.get_json(silent=True) or {}
@@ -494,7 +494,7 @@ def toggle_favorite():
         return {"success": False, "error": "Not found"}, 404
     if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
         return {"success": False, "error": "Forbidden"}, 403
-    is_fav = ConvertModel.toggle_favorite(current_user.id, conversion_id)
+    is_fav = ConversionModel.toggle_favorite(current_user.id, conversion_id)
     AccountModel.create_system_log(
         "convert_favorited" if is_fav else "convert_unfavorited",
         actor_id=current_user.id,
@@ -507,14 +507,14 @@ def toggle_favorite():
     return {"success": True, "is_favorite": is_fav}, 200
 
 
-@convert_blueprint.route("/favorite/status/<int:conversion_id>", methods=['GET'])
+@conversions_blueprint.route("/favorite/status/<int:conversion_id>", methods=['GET'])
 @login_required
 def favorite_status(conversion_id):
-    is_fav = ConvertModel.is_favorite(current_user.id, conversion_id)
+    is_fav = ConversionModel.is_favorite(current_user.id, conversion_id)
     return {"success": True, "is_favorite": is_fav}, 200
 
 
-@convert_blueprint.route("/most_favorited", methods=['GET'])
+@conversions_blueprint.route("/most_favorited", methods=['GET'])
 def most_favorited():
     """Return the most favorited public conversions, ordered by favorite count desc."""
     limit = request.args.get('limit', 10, type=int)
@@ -547,7 +547,7 @@ def most_favorited():
     return {"success": True, "list": items}, 200
 
 
-@convert_blueprint.route("/search_in_content", methods=['GET'])
+@conversions_blueprint.route("/search_in_content", methods=['GET'])
 def search_in_content():
     """Return highlighted snippets for a query inside a single conversion"""
     conversion_id = request.args.get('conversion_id', type=int)
@@ -571,7 +571,7 @@ def search_in_content():
     results = conv_repo.search_in_content(query_str, conversion_id, scope=scope)
     return {"success": True, "results": results}, 200
 
-@convert_blueprint.route("/delete_item", methods=['POST', 'DELETE', 'GET'])
+@conversions_blueprint.route("/delete_item", methods=['POST', 'DELETE', 'GET'])
 @login_required
 def delete_rule() -> jsonify:
     """Delete an item"""
@@ -612,7 +612,7 @@ def _render_detail(convert):
     return redirect(url_for("conversions.history"))
 
 
-@convert_blueprint.route("/<int:id>", methods=['GET'])
+@conversions_blueprint.route("/<int:id>", methods=['GET'])
 def conversion_by_id(id):
     """Canonical short URL of a Conversion - the address the API persist
     envelope advertises as ``url``. A 302 (not the legacy shim's 301) to the
@@ -621,7 +621,7 @@ def conversion_by_id(id):
     return redirect(url_for("conversions.detail", id=id))
 
 
-@convert_blueprint.route("/detail/<id>", methods=['GET'])
+@conversions_blueprint.route("/detail/<id>", methods=['GET'])
 def detail(id):
     """Detail page — accepts numeric ID or UUID string."""
     try:
@@ -630,7 +630,7 @@ def detail(id):
         convert = conv_repo.get_by_uuid(id)
     return _render_detail(convert)
 
-@convert_blueprint.route("/edit/<int:id>", methods=['GET', 'POST'])
+@conversions_blueprint.route("/edit/<int:id>", methods=['GET', 'POST'])
 @login_required
 def edit(id):
     """Detail page of the conversion"""
@@ -664,8 +664,8 @@ def edit(id):
 #   Feature on the conversion  #
 ################################
 
-@convert_blueprint.route("/get_convert", methods=['GET'])
-def get_convert():
+@conversions_blueprint.route("/get_convert", methods=['GET'])
+def get_conversion():
     """Get the conversion thanks to the id to the interface (vue-js)"""
     id = request.args.get('id', 1, type=int)
     if id:
@@ -694,7 +694,7 @@ def get_convert():
         "toast_class" : "danger"
         }, 400
 
-@convert_blueprint.route("/edit_public", methods=['GET'])
+@conversions_blueprint.route("/edit_public", methods=['GET'])
 @login_required
 def edit_public():
     """Change the public/private section"""
@@ -739,7 +739,7 @@ def edit_public():
 #   Share the conversion   #
 ############################
 
-@convert_blueprint.route("/get_share_key", methods=['GET'])
+@conversions_blueprint.route("/get_share_key", methods=['GET'])
 @login_required
 def get_share_key():
     """Get the share key of a conversion"""
@@ -767,7 +767,7 @@ def get_share_key():
         }, 500
 
 
-@convert_blueprint.route("/regenerate_share_key", methods=['GET'])
+@conversions_blueprint.route("/regenerate_share_key", methods=['GET'])
 @login_required
 def regenerate_share_key():
     """Regenerate the share key of a conversion"""
@@ -802,8 +802,8 @@ def regenerate_share_key():
         }, 500
     
 # https://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`
-@convert_blueprint.route("/share", methods=['GET'])
-def share_convert():
+@conversions_blueprint.route("/share", methods=['GET'])
+def share_conversion():
     """Share a conversion using uuid and share_key"""
     uuid = request.args.get('uuid', type=str)
     share_key = request.args.get('share_key', type=str)
@@ -860,7 +860,7 @@ def _build_stix_to_misp_params(form) -> StixToMispParams:
     return build_params(StixToMispParams, raw)
 
 
-@convert_blueprint.route("/refresh/<string:uuid>", methods=['GET', 'POST'])
+@conversions_blueprint.route("/refresh/<string:uuid>", methods=['GET', 'POST'])
 @login_required
 def refresh(uuid):
     convert_obj = conv_repo.get_by_uuid(uuid)
@@ -932,7 +932,7 @@ def refresh(uuid):
 
 # get_history
 
-@convert_blueprint.route("/get_history", methods=['GET'])
+@conversions_blueprint.route("/get_history", methods=['GET'])
 @login_required
 def get_history():
     id = request.args.get('id', 1, type=int)
@@ -968,9 +968,9 @@ def get_history():
 
 
 
-@convert_blueprint.route("/get_new_convert", methods=['GET'])
+@conversions_blueprint.route("/get_new_convert", methods=['GET'])
 @login_required
-def get_new_convert():
+def get_new_conversion():
     """Get the new conversion after a refresh to show the difference"""
     id = request.args.get('id', 1, type=int)
     if id:
@@ -1030,21 +1030,21 @@ def _moderate_history(history_id, use_case, past_tense):
             "toast_class": "success"}, 200
 
 
-@convert_blueprint.route("/history/<int:history_id>/accept", methods=['POST'])
+@conversions_blueprint.route("/history/<int:history_id>/accept", methods=['POST'])
 @login_required
 def history_accept(history_id):
     """Accept a pending refresh (owner-or-admin) — adopts its output."""
     return _moderate_history(history_id, accept_history, "accepted")
 
 
-@convert_blueprint.route("/history/<int:history_id>/reject", methods=['POST'])
+@conversions_blueprint.route("/history/<int:history_id>/reject", methods=['POST'])
 @login_required
 def history_reject(history_id):
     """Reject a pending refresh (owner-or-admin) — leaves the Conversion as-is."""
     return _moderate_history(history_id, reject_history, "rejected")
 
 
-@convert_blueprint.route("/history_action", methods=['GET', 'POST'])
+@conversions_blueprint.route("/history_action", methods=['GET', 'POST'])
 def history_action_gone():
     """Removed: the GET-mutator split into POST accept/reject endpoints."""
     return {
@@ -1056,7 +1056,7 @@ def history_action_gone():
     }, 410
 
 
-@convert_blueprint.route("/difference/<int:id>", methods=['GET'])
+@conversions_blueprint.route("/difference/<int:id>", methods=['GET'])
 def difference(id):
     """Show the difference between two conversion versions"""
     convert_obj_history = conv_repo.get_history(id)
@@ -1095,7 +1095,7 @@ def difference(id):
         )
 
 # get_history_details
-@convert_blueprint.route("/get_history_details", methods=['GET'])
+@conversions_blueprint.route("/get_history_details", methods=['GET'])
 @login_required
 def get_history_details():
     """Get the details of a conversion history entry"""
@@ -1129,7 +1129,7 @@ def get_history_details():
 #   Comments & Reactions  #
 ###########################
 
-@convert_blueprint.route("/get_comments", methods=['GET'])
+@conversions_blueprint.route("/get_comments", methods=['GET'])
 def get_comments():
     """Return visible comments for a conversion."""
     conversion_id = request.args.get('conversion_id', type=int)
@@ -1143,7 +1143,7 @@ def get_comments():
     uid = current_user.id if current_user.is_authenticated else None
     is_admin = current_user.is_admin() if current_user.is_authenticated else False
 
-    comments = ConvertModel.get_comments(
+    comments = ConversionModel.get_comments(
         conversion_id=conversion_id,
         current_user_id=uid,
         is_admin=is_admin,
@@ -1152,7 +1152,7 @@ def get_comments():
     return {"success": True, "comments": comments}, 200
 
 
-@convert_blueprint.route("/comment", methods=['POST'])
+@conversions_blueprint.route("/comment", methods=['POST'])
 @login_required
 def add_comment():
     """Create a comment or reply on a conversion."""
@@ -1175,7 +1175,7 @@ def add_comment():
     if not convert.public and not current_user.is_admin() and current_user.id != convert.user_id:
         return {"success": False, "message": "You cannot comment on a private conversion", "toast_class": "danger"}, 403
 
-    comment = ConvertModel.create_comment(
+    comment = ConversionModel.create_comment(
         conversion_id=conversion_id,
         user_id=current_user.id,
         content=content,
@@ -1198,7 +1198,7 @@ def add_comment():
     )
 
     if parent_id:
-        parent = ConvertModel.get_comment(parent_id)
+        parent = ConversionModel.get_comment(parent_id)
         if parent:
             AccountModel.notify_comment_reply(parent, comment, current_user.id)
     else:
@@ -1216,25 +1216,25 @@ def add_comment():
     }, 201
 
 
-@convert_blueprint.route("/get_comment_info", methods=['GET'])
+@conversions_blueprint.route("/get_comment_info", methods=['GET'])
 def get_comment_info():
     """Return conversion_id and is_evaluation for a comment — used for notification deep-linking."""
     comment_id = request.args.get('comment_id', type=int)
     if not comment_id:
         return {"success": False}, 400
-    comment = ConvertModel.get_comment(comment_id)
+    comment = ConversionModel.get_comment(comment_id)
     if not comment:
         return {"success": False}, 404
     # For replies, the evaluation flag lives on the parent comment
     is_eval = comment.is_evaluation
     if comment.parent_id:
-        parent = ConvertModel.get_comment(comment.parent_id)
+        parent = ConversionModel.get_comment(comment.parent_id)
         if parent:
             is_eval = parent.is_evaluation
     return {"success": True, "conversion_id": comment.conversion_id, "is_evaluation": is_eval}, 200
 
 
-@convert_blueprint.route("/edit_comment", methods=['POST'])
+@conversions_blueprint.route("/edit_comment", methods=['POST'])
 @login_required
 def edit_comment():
     """Edit the content of a comment (author only)."""
@@ -1243,8 +1243,8 @@ def edit_comment():
     content    = data.get('content', '')
     if not comment_id:
         return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
-    comment = ConvertModel.get_comment(comment_id)
-    success, message = ConvertModel.edit_comment(
+    comment = ConversionModel.get_comment(comment_id)
+    success, message = ConversionModel.edit_comment(
         comment_id=comment_id,
         requesting_user_id=current_user.id,
         content=content,
@@ -1266,7 +1266,7 @@ def edit_comment():
     }, 200 if success else 403
 
 
-@convert_blueprint.route("/delete_comment", methods=['GET'])
+@conversions_blueprint.route("/delete_comment", methods=['GET'])
 @login_required
 def delete_comment():
     """Soft-delete a comment."""
@@ -1274,8 +1274,8 @@ def delete_comment():
     if not comment_id:
         return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
 
-    comment = ConvertModel.get_comment(comment_id)
-    success, message = ConvertModel.delete_comment(
+    comment = ConversionModel.get_comment(comment_id)
+    success, message = ConversionModel.delete_comment(
         comment_id=comment_id,
         requesting_user_id=current_user.id,
         is_admin=current_user.is_admin()
@@ -1293,7 +1293,7 @@ def delete_comment():
     }, 200 if success else 403
 
 
-@convert_blueprint.route("/toggle_comment_private", methods=['GET'])
+@conversions_blueprint.route("/toggle_comment_private", methods=['GET'])
 @login_required
 def toggle_comment_private():
     """Toggle the private/public visibility of a comment."""
@@ -1301,7 +1301,7 @@ def toggle_comment_private():
     if not comment_id:
         return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
 
-    success, message, new_private = ConvertModel.toggle_comment_private(
+    success, message, new_private = ConversionModel.toggle_comment_private(
         comment_id=comment_id,
         requesting_user_id=current_user.id,
         is_admin=current_user.is_admin()
@@ -1314,7 +1314,7 @@ def toggle_comment_private():
     }, 200 if success else 403
 
 
-@convert_blueprint.route("/react", methods=['POST'])
+@conversions_blueprint.route("/react", methods=['POST'])
 @login_required
 def react():
     """Toggle an emoji reaction on a comment."""
@@ -1326,7 +1326,7 @@ def react():
     if not comment_id or emoji not in allowed_emojis:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
 
-    success, added = ConvertModel.react_to_comment(comment_id, current_user.id, emoji)
+    success, added = ConversionModel.react_to_comment(comment_id, current_user.id, emoji)
     if not success:
         return {"success": False, "message": "Failed to update reaction", "toast_class": "danger"}, 500
 
@@ -1342,16 +1342,16 @@ def react():
 #   Report a Conversion   #
 ###########################
 
-@convert_blueprint.route("/report", methods=['POST'])
+@conversions_blueprint.route("/report", methods=['POST'])
 @login_required
-def report_convert():
+def report_conversion():
     """Submit a report on a conversion."""
     data = request.get_json(silent=True) or {}
     conversion_id = data.get('conversion_id')
     reason = data.get('reason', '').strip()
     description = (data.get('description') or '').strip() or None
 
-    if not conversion_id or reason not in ConvertModel.REPORT_REASONS:
+    if not conversion_id or reason not in ConversionModel.REPORT_REASONS:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
     if description and len(description) > 1000:
         return {"success": False, "message": "Description is too long (max 1000 characters)", "toast_class": "danger"}, 400
@@ -1360,7 +1360,7 @@ def report_convert():
     if not convert:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
-    report = ConvertModel.create_report(
+    report = ConversionModel.create_report(
         conversion_id=conversion_id,
         user_id=current_user.id,
         reason=reason,
@@ -1373,7 +1373,7 @@ def report_convert():
     return {"success": True, "message": "Report submitted. Thank you.", "toast_class": "success"}, 201
 
 
-@convert_blueprint.route("/admin/get_reports", methods=['GET'])
+@conversions_blueprint.route("/admin/get_reports", methods=['GET'])
 @login_required
 def admin_get_reports():
     """Admin: get paginated reports."""
@@ -1382,7 +1382,7 @@ def admin_get_reports():
     page = request.args.get('page', 1, type=int)
     status = request.args.get('status', type=str)
     search = request.args.get('search', '', type=str) or None
-    pagination = ConvertModel.get_reports(page=page, status=status, search=search)
+    pagination = ConversionModel.get_reports(page=page, status=status, search=search)
     return {
         "success": True,
         "list": [r.to_json() for r in pagination.items],
@@ -1390,7 +1390,7 @@ def admin_get_reports():
     }, 200
 
 
-@convert_blueprint.route("/admin/review_report", methods=['GET'])
+@conversions_blueprint.route("/admin/review_report", methods=['GET'])
 @login_required
 def admin_review_report():
     """Admin: mark a report as reviewed or dismissed."""
@@ -1400,7 +1400,7 @@ def admin_review_report():
     new_status = request.args.get('status', type=str)
     if not report_id or new_status not in ('reviewed', 'dismissed'):
         return {"success": False, "message": "Invalid params", "toast_class": "danger"}, 400
-    success = ConvertModel.review_report(report_id, new_status, current_user.id)
+    success = ConversionModel.review_report(report_id, new_status, current_user.id)
     return {
         "success": success,
         "message": f"Report marked as {new_status}" if success else "Failed",
@@ -1408,7 +1408,7 @@ def admin_review_report():
     }, 200 if success else 500
 
 
-@convert_blueprint.route("/admin/delete_report", methods=['GET'])
+@conversions_blueprint.route("/admin/delete_report", methods=['GET'])
 @login_required
 def admin_delete_report():
     """Admin: permanently delete a report."""
@@ -1417,10 +1417,10 @@ def admin_delete_report():
     report_id = request.args.get('report_id', type=int)
     if not report_id:
         return {"success": False, "message": "Invalid params", "toast_class": "danger"}, 400
-    report = ConvertModel.get_report(report_id)
+    report = ConversionModel.get_report(report_id)
     if not report:
         return {"success": False, "message": "Report not found", "toast_class": "danger"}, 404
-    ConvertModel.delete_report(report_id)
+    ConversionModel.delete_report(report_id)
     return {"success": True, "message": "Report deleted", "toast_class": "success"}, 200
 
 
@@ -1428,7 +1428,7 @@ def admin_delete_report():
 #   Trash (soft-delete) routes   #
 ##################################
 
-@convert_blueprint.route("/trash", methods=['GET'])
+@conversions_blueprint.route("/trash", methods=['GET'])
 @login_required
 def trash():
     if not current_user.is_admin():
@@ -1436,7 +1436,7 @@ def trash():
     return render_template("convert/trash.html")
 
 
-@convert_blueprint.route("/get_trash", methods=['GET'])
+@conversions_blueprint.route("/get_trash", methods=['GET'])
 @login_required
 def get_trash():
     if not current_user.is_admin():
@@ -1453,7 +1453,7 @@ def get_trash():
     }, 200
 
 
-@convert_blueprint.route("/restore", methods=['POST'])
+@conversions_blueprint.route("/restore", methods=['POST'])
 @login_required
 def restore():
     if not current_user.is_admin():
@@ -1474,7 +1474,7 @@ def restore():
     return {"success": False, "message": "Error restoring conversion", "toast_class": "danger"}, 500
 
 
-@convert_blueprint.route("/hard_delete", methods=['POST'])
+@conversions_blueprint.route("/hard_delete", methods=['POST'])
 @login_required
 def hard_delete():
     if not current_user.is_admin():
@@ -1496,7 +1496,7 @@ def hard_delete():
     return {"success": False, "message": "Error deleting conversion", "toast_class": "danger"}, 500
 
 
-@convert_blueprint.route("/bulk_action", methods=['POST'])
+@conversions_blueprint.route("/bulk_action", methods=['POST'])
 @login_required
 def bulk_action():
     if not current_user.is_admin():
@@ -1534,7 +1534,7 @@ def bulk_action():
     return {"success": True, "message": msg, "toast_class": "success" if done > 0 else "warning", "done": done}, 200
 
 
-@convert_blueprint.route("/misp_test_connection", methods=['POST'])
+@conversions_blueprint.route("/misp_test_connection", methods=['POST'])
 @login_required
 def misp_test_connection():
     """Test connectivity to a MISP instance and return its tag list."""
@@ -1591,7 +1591,7 @@ def _can_download(convert) -> bool:
     return current_user.is_authenticated and (current_user.id == convert.user_id or current_user.is_admin())
 
 
-@convert_blueprint.route("/download/<int:conversion_id>/input")
+@conversions_blueprint.route("/download/<int:conversion_id>/input")
 def download_input(conversion_id):
     """Download the input file (MISP JSON for MISP→STIX, STIX JSON for STIX→MISP)."""
     convert = conv_repo.get(conversion_id)
@@ -1608,7 +1608,7 @@ def download_input(conversion_id):
     }
 
 
-@convert_blueprint.route("/download/<int:conversion_id>/output")
+@conversions_blueprint.route("/download/<int:conversion_id>/output")
 def download_output(conversion_id):
     """Download the output file (STIX JSON for MISP→STIX, MISP JSON for STIX→MISP)."""
     convert = conv_repo.get(conversion_id)
@@ -1627,7 +1627,7 @@ def download_output(conversion_id):
     }
 
 
-@convert_blueprint.route("/download/<int:conversion_id>/misp-push")
+@conversions_blueprint.route("/download/<int:conversion_id>/misp-push")
 def download_misp_push(conversion_id):
     """
     Download the full PyMISP-built event payload — identical to what
@@ -1655,7 +1655,7 @@ def download_misp_push(conversion_id):
     }
 
 
-@convert_blueprint.route("/push_to_misp", methods=['POST'])
+@conversions_blueprint.route("/push_to_misp", methods=['POST'])
 @login_required
 def push_to_misp():
     """Push the MISP event to an external MISP instance via PyMISP-built payload."""
@@ -1887,7 +1887,7 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
     return event_dict, cti_obj_dict, attributes_meta, None
 
 
-@convert_blueprint.route("/misp_push_preview/<int:conversion_id>", methods=["GET"])
+@conversions_blueprint.route("/misp_push_preview/<int:conversion_id>", methods=["GET"])
 @login_required
 def misp_push_preview(conversion_id):
     """
@@ -1942,7 +1942,7 @@ def misp_push_preview(conversion_id):
 
 
 
-@convert_blueprint.route("/admin/get_all_comments", methods=['GET'])
+@conversions_blueprint.route("/admin/get_all_comments", methods=['GET'])
 @login_required
 def admin_get_comments():
     """Admin: get all comments across all conversions."""
@@ -1950,7 +1950,7 @@ def admin_get_comments():
         return {"success": False, "message": "Forbidden"}, 403
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '', type=str) or None
-    pagination = ConvertModel.get_all_comments_admin(page=page, search=search)
+    pagination = ConversionModel.get_all_comments_admin(page=page, search=search)
     items = []
     for c in pagination.items:
         d = c.to_json(current_user_id=current_user.id, is_admin=True)
@@ -1977,15 +1977,15 @@ def admin_get_comments():
 #   Graph configs                 #
 ###################################
 
-@convert_blueprint.route("/graph_config/list", methods=["GET"])
+@conversions_blueprint.route("/graph_config/list", methods=["GET"])
 @login_required
 def graph_config_list():
-    configs = ConvertModel.get_graph_configs(user_id=current_user.id, is_admin=current_user.is_admin())
+    configs = ConversionModel.get_graph_configs(user_id=current_user.id, is_admin=current_user.is_admin())
     is_admin = current_user.is_admin()
     return {"success": True, "list": [c.to_json(current_user_id=current_user.id, is_admin=is_admin) for c in configs]}, 200
 
 
-@convert_blueprint.route("/graph_config/save", methods=["POST"])
+@conversions_blueprint.route("/graph_config/save", methods=["POST"])
 @login_required
 def graph_config_save():
     data = request.get_json(silent=True) or {}
@@ -1997,21 +1997,21 @@ def graph_config_save():
         json.loads(config_json)
     except Exception:
         return {"success": False, "message": "Invalid JSON", "toast_class": "danger"}, 400
-    cfg, err = ConvertModel.save_graph_config(name, config_json, current_user.id)
+    cfg, err = ConversionModel.save_graph_config(name, config_json, current_user.id)
     if err:
         return {"success": False, "message": err, "toast_class": "danger"}, 500
     AccountModel.create_system_log("graph_config_saved", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=cfg.id, target_name=cfg.name)
     return {"success": True, "message": "Config saved", "toast_class": "success", "config": cfg.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())}, 201
 
 
-@convert_blueprint.route("/graph_config/delete", methods=["POST"])
+@conversions_blueprint.route("/graph_config/delete", methods=["POST"])
 @login_required
 def graph_config_delete():
     data = request.get_json(silent=True) or {}
     config_id = data.get('id')
     if not config_id:
         return {"success": False, "message": "ID required", "toast_class": "danger"}, 400
-    ok, err = ConvertModel.delete_graph_config(config_id, current_user.id, current_user.is_admin())
+    ok, err = ConversionModel.delete_graph_config(config_id, current_user.id, current_user.is_admin())
     if not ok:
         code = 403 if err == "Forbidden" else 404
         return {"success": False, "message": err, "toast_class": "danger"}, code
@@ -2019,7 +2019,7 @@ def graph_config_delete():
     return {"success": True, "message": "Config deleted", "toast_class": "success"}, 200
 
 
-@convert_blueprint.route("/json_tags/<int:conversion_id>", methods=["GET"])
+@conversions_blueprint.route("/json_tags/<int:conversion_id>", methods=["GET"])
 def get_json_tags(conversion_id):
     """Return tag objects for all tags embedded in the stored MISP/STIX JSON.
     JSON is never modified. Tags are matched against the DB for color/icon;

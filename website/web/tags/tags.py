@@ -394,7 +394,7 @@ def for_convert(conversion_id):
         if current_user.id != convert.user_id and not current_user.is_admin():
             return {"success": False, "message": "Forbidden"}, 403
     source_type = request.args.get("source_type") or None
-    assocs = TagsModel.get_convert_tags(conversion_id, source_type=source_type)
+    assocs = TagsModel.get_conversion_tags(conversion_id, source_type=source_type)
     return {"success": True, "list": [a.to_json() for a in assocs]}, 200
 
 
@@ -410,7 +410,7 @@ def save_for_convert(conversion_id):
         return {"success": False, "message": "Forbidden"}, 403
     data = request.get_json(silent=True) or {}
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
-    TagsModel.save_convert_tags(conversion_id, tag_ids, current_user.id)
+    TagsModel.save_conversion_tags(conversion_id, tag_ids, current_user.id)
     return {"success": True, "message": "Tags saved"}, 200
 
 
@@ -450,8 +450,8 @@ def admin_bulk_converts_list():
     search = request.args.get("search", "", type=str).strip() or None
     conv_type = request.args.get("type", "ALL", type=str).strip() or "ALL"
 
-    pagination = TagsModel.get_converts_page(page, per_page=per_page, search=search, conv_type=conv_type)
-    tag_map = TagsModel.get_convert_tags_batch([c.id for c in pagination.items])
+    pagination = TagsModel.get_conversions_page(page, per_page=per_page, search=search, conv_type=conv_type)
+    tag_map = TagsModel.get_conversion_tags_batch([c.id for c in pagination.items])
 
     items = [
         {"id": c.id, "name": c.name, "conversion_type": c.conversion_type,
@@ -469,7 +469,7 @@ def admin_bulk_converts_all_ids():
         return {"success": False, "message": "Forbidden"}, 403
     search = request.args.get("search", "", type=str).strip() or None
     conv_type = request.args.get("type", "ALL", type=str).strip() or "ALL"
-    ids = TagsModel.get_convert_ids(search=search, conv_type=conv_type)
+    ids = TagsModel.get_conversion_ids(search=search, conv_type=conv_type)
     return {"success": True, "ids": ids}, 200
 
 
