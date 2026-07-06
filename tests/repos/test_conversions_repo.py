@@ -399,13 +399,12 @@ def test_search_in_content_guards_empty_query_and_missing_row(app_db):
     assert conv_repo.search_in_content("q", 999999) == []
 
 
-def test_list_deleted_preserves_preexisting_is_active_filter(app_db):
-    """Characterization test, NOT an endorsement.
+def test_list_deleted_returns_soft_deleted_rows_only(app_db):
+    """The admin Trash view must show soft-deleted rows, never live ones.
 
-    ``list_deleted`` backs the admin Trash view but filters
-    ``Conversion.is_active`` — so it returns *active* rows, not soft-deleted
-    ones. This is a pre-existing bug; the move preserves it byte-for-byte and
-    a follow-up should flip the filter. Update this test when that fix lands.
+    Regression guard: ``list_deleted`` originally filtered ``Conversion.is_active``
+    and so listed *active* conversions in Trash — where "Delete permanently" could
+    then destroy them. It must filter ``~is_active`` instead.
     """
     from website.repos import conversions as conv_repo
 
@@ -414,5 +413,5 @@ def test_list_deleted_preserves_preexisting_is_active_filter(app_db):
     conv_repo.soft_delete(deleted.id)
 
     names = {c.name for c in conv_repo.list_deleted(1).items}
-    assert "still-here" in names    # preserved oddity: the active row shows up
-    assert "trashed" not in names   # ...and the actually-deleted row does not
+    assert "trashed" in names         # the soft-deleted row belongs in Trash
+    assert "still-here" not in names  # the live row must never appear there

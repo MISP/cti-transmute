@@ -92,3 +92,24 @@ def test_history_listing_authenticated_sees_public_plus_own(web_client):
     assert resp.status_code == 200
     names = {row["name"] for row in resp.get_json()["list"]}
     assert names == {"a-pub", "a-priv", "b-pub"}   # not bob's private row
+
+
+def test_trash_lists_soft_deleted_not_live_conversions(web_client):
+    """The admin Trash page must show soft-deleted conversions, never live ones.
+
+    Regression guard for the `list_deleted` filter bug: a live conversion showing
+    up in Trash is what let "Delete permanently" destroy active data.
+    """
+    from website.repos import conversions as conv_repo
+
+    admin = _make_user(admin=True, email="admin@test.test")
+    _make_conversion(owner_id=admin.id, public=True, name="live-one")
+    gone = _make_conversion(owner_id=admin.id, public=True, name="trashed-one")
+    conv_repo.soft_delete(gone.id)
+
+    _login(web_client, admin)
+    resp = web_client.get("/conversions/get_trash")
+
+    assert resp.status_code == 200
+    names = {row["name"] for row in resp.get_json()["list"]}
+    assert names == {"trashed-one"}   # only the soft-deleted row, never the live one
