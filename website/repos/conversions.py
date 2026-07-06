@@ -12,9 +12,15 @@ one all-or-nothing transaction owned by the use-case.
 """
 
 import uuid as uuid_lib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from website.db_class.db import Conversion, ConversionHistory
+from flask_sqlalchemy.pagination import Pagination
+from sqlalchemy import asc, desc, func, or_
+
+from website.db_class.db import (
+    Conversion,  ConversionFavorite, ConversionHistory,
+    ConversionTagAssociation, User)
+from website.db_class.db import Tag as TagModel
 from website.web import db
 from website.web.utils import generate_api_key
 
@@ -237,3 +243,246 @@ def accepted_history_list(conversion_id: int) -> list[ConversionHistory]:
         .order_by(ConversionHistory.version.asc())
         .all()
     )
+
+
+# --- Conversion: listing / search --------------------------------------------
+
+def list_for_user(
+        user: User | None, page: int, *, filter_type: str | None = None,
+        sort_order: str = 'desc', only_mine: str = 'false',
+        searchQuery: str | None = None, search_scope: str = 'all',
+        date_from: str | None = None, date_to: str | None = None,
+        exact_match: bool = False, tag_names: list[str] | None = None,
+        vis_filter: str | None = None, favorites_only: bool = False,
+        favorites_user_id: int | None = None) -> Pagination:
+    """Paginated Conversion listing, access-scoped to ``user``.
+
+    ``user`` is the actor, lifted out of ``flask_login.current_user`` by the
+    caller (``current_user._get_current_object()`` when authenticated, else
+    ``None``) so the repo carries no request-context dependency:
+
+    - an **admin** sees every Conversion (public + private, all owners);
+    - an **authenticated** non-admin sees public rows plus their own private ones;
+    - an **anonymous** actor (``user is None``) sees public rows only.
+
+    - search_scope: 'all' | 'name' | 'description' | 'content'
+    - exact_match: if True, search for exact phrase instead of contains
+    """
+
+    query = Conversion.query.filter(Conversion.is_active)
+    if searchQuery:
+        if exact_match:
+            search_pattern = searchQuery  # exact, case-sensitive via ilike = case-insensitive exact
+            def make_filter(col): return col.ilike(search_pattern)
+        else:
+            search_pattern = f"%{searchQuery}%"
+            def make_filter(col): return col.ilike(search_pattern)
+
+        if search_scope == 'name':
+            query = query.filter(make_filter(Conversion.name))
+        elif search_scope == 'description':
+            query = query.filter(make_filter(Conversion.description))
+        elif search_scope == 'content':
+            query = query.filter(
+                or_(make_filter(Conversion.input_text), make_filter(Conversion.output_text))
+            )
+        else:  # 'all'
+            query = query.filter(
+                or_(
+                    make_filter(Conversion.name),
+                    make_filter(Conversion.description),
+                    make_filter(Conversion.input_text),
+                    make_filter(Conversion.output_text),
+                )
+            )
+
+    # Date range filter
+    if date_from:
+        try:
+            query = query.filter(Conversion.created_at >= datetime.strptime(date_from, '%Y-%m-%d'))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.strptime(date_to, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(Conversion.created_at < dt_to)
+        except ValueError:
+            pass
+
+    # Filter by conversion type if provided
+    if filter_type:
+        query = query.filter(Conversion.conversion_type == filter_type)
+
+    # Visibility filter (public / private)
+    if vis_filter == 'public':
+        query = query.filter(Conversion.public)
+    elif vis_filter == 'private':
+        query = query.filter(not Conversion.public)
+
+    # Conversion only_mine to boolean
+    only_mine_bool = str(only_mine).lower() in ['true', '1', 'yes', 'on']
+
+    # Access scoping, from the actor passed in by the caller
+    if user is not None and user.is_admin():
+        # Admin sees everything: public + private + all users
+        if only_mine_bool:
+            # Admin wants to see only their own conversions
+            query = query.filter(Conversion.user_id == user.id)
+        # else: no filter, show absolutely everything
+    elif user is not None:
+        if only_mine_bool:
+            # Show only current user's conversions
+            query = query.filter(Conversion.user_id == user.id)
+        else:
+            # Show public conversions and the user's private conversions
+            query = query.filter(Conversion.public | (Conversion.user_id == user.id))
+    else:
+        # Anonymous user: only public conversions
+        query = query.filter(Conversion.public)
+
+    # Order by created_at
+    if sort_order == 'asc':
+        query = query.order_by(asc(Conversion.created_at))
+    else:
+        query = query.order_by(desc(Conversion.created_at))
+
+    # Tag filter: a conversion must have ALL selected tags (AND logic)
+    if tag_names:
+        for tag_name in tag_names:
+            subq = (
+                db.session.query(ConversionTagAssociation.conversion_id)
+                .join(TagModel, ConversionTagAssociation.tag_id == TagModel.id)
+                .filter(func.lower(TagModel.name) == tag_name.lower())
+                .subquery()
+            )
+            query = query.filter(Conversion.id.in_(subq))
+
+    # Favorites filter
+    if favorites_only and favorites_user_id:
+        fav_subq = (
+            db.session.query(ConversionFavorite.conversion_id)
+            .filter(ConversionFavorite.user_id == favorites_user_id)
+            .subquery()
+        )
+        query = query.filter(Conversion.id.in_(fav_subq))
+
+    # Pagination
+    return query.paginate(page=page, per_page=10)
+
+
+def list_by_user(
+        page: int, user_id: int | None, filter_type: str | None = None,
+        sort_order: str = 'desc', searchQuery: str | None = None,
+        filter_public: str | bool | None = None) -> Pagination | None:
+    """Paginated Conversions created by a specific user. ``None`` if no user_id."""
+    if not user_id:
+        return None
+
+    query = Conversion.query.filter(Conversion.user_id == user_id, Conversion.is_active)
+
+    if searchQuery:
+        search_lower = f"%{searchQuery.lower()}%"
+        query = query.filter(
+            or_(
+                Conversion.name.ilike(search_lower),
+                Conversion.description.ilike(search_lower),
+            )
+        )
+
+    if filter_type:
+        query = query.filter(Conversion.conversion_type == filter_type)
+
+    if sort_order == 'asc':
+        query = query.order_by(asc(Conversion.created_at))
+    else:
+        query = query.order_by(desc(Conversion.created_at))
+
+    if filter_public is not None:
+        if isinstance(filter_public, str):
+            if filter_public.upper() == "PUBLIC":
+                filter_public = True
+            elif filter_public.upper() == "PRIVATE":
+                filter_public = False
+            else:
+                filter_public = None
+
+        if filter_public is not None:
+            query = query.filter(Conversion.public == filter_public)
+
+    return query.paginate(page=page, per_page=10)
+
+
+def list_deleted(
+        page: int, user_id: int | None = None,
+        search: str | None = None) -> Pagination:
+    """Paginated Conversions for the admin Trash view, scoped to ``user_id``.
+
+    NOTE (pre-existing oddity): this filters ``Conversion.is_active``, so it
+    returns *active* rows rather than the soft-deleted ones the Trash view
+    intends to show. Preserved byte-for-byte in the move; a follow-up should
+    flip the filter to ``~Conversion.is_active``.
+    """
+    query = Conversion.query.filter(Conversion.is_active)
+    if user_id:
+        query = query.filter(Conversion.user_id == user_id)
+    if search:
+        query = query.filter(Conversion.name.ilike(f"%{search}%"))
+    query = query.order_by(desc(Conversion.deleted_at))
+    return query.paginate(page=page, per_page=15)
+
+
+def search_in_content(
+        query_str: str, conversion_id: int, scope: str = 'all',
+        context_chars: int = 120) -> list[dict]:
+    """Search ``query_str`` in a single Conversion's texts, returning snippets.
+
+    Returns a list of ``{field, snippet, match_start, match_end}`` dicts (empty
+    if the query is blank or the Conversion is missing).
+    """
+    if not query_str:
+        return []
+
+    conversion = get(conversion_id)
+    if not conversion:
+        return []
+
+    results = []
+    q_lower = query_str.lower()
+
+    fields = []
+    if scope in ('all', 'name'):
+        fields.append(('name', conversion.name or ''))
+    if scope in ('all', 'description'):
+        fields.append(('description', conversion.description or ''))
+    if scope in ('all', 'content'):
+        fields.append(('input', conversion.input_text or ''))
+        fields.append(('output', conversion.output_text or ''))
+
+    for field_name, text in fields:
+        text_lower = text.lower()
+        start = 0
+        seen_snippets = set()
+        while True:
+            idx = text_lower.find(q_lower, start)
+            if idx == -1:
+                break
+            # Extract context around match
+            snip_start = max(0, idx - context_chars)
+            snip_end   = min(len(text), idx + len(query_str) + context_chars)
+            snippet = ('…' if snip_start > 0 else '') + text[snip_start:snip_end] + ('…' if snip_end < len(text) else '')
+            match_in_snip = idx - snip_start + (3 if snip_start > 0 else 0)  # offset for leading '…'
+
+            key = (field_name, snip_start)
+            if key not in seen_snippets:
+                seen_snippets.add(key)
+                results.append({
+                    'field': field_name,
+                    'snippet': snippet,
+                    'match_start': match_in_snip,
+                    'match_end': match_in_snip + len(query_str),
+                })
+            start = idx + 1
+            if len(results) >= 10:  # cap per conversion
+                break
+
+    return results
