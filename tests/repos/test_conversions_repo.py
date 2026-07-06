@@ -256,3 +256,163 @@ def test_history_readers_order_and_filter_by_status(app_db):
     assert [h.version for h in conv_repo.accepted_history_list(conv.id)] == [2, 4]
     assert conv_repo.get_history(h3.id).id == h3.id
     assert conv_repo.get_history(-1) is None
+
+
+# --- listing / search -----------------
+#
+# The load-bearing new behaviour is ``list_for_user``'s access scoping, which
+# used to read ``flask_login.current_user`` directly. The move lifts the actor
+# into an explicit ``user: User | None`` param, so these tests pin all three
+# scope branches (admin / authenticated / anonymous) without a request context.
+
+def _make_user(*, admin=False, email="u@test.test"):
+    from website.db_class.db import User
+    from website.web import db
+
+    user = User(first_name=email.split("@")[0], last_name="x",
+                email=email, admin=admin, api_key=email)
+    db.session.add(user)
+    db.session.commit()
+    return user
+
+
+def _make_conv(*, user_id, public, name="c"):
+    from website.repos import conversions as conv_repo
+
+    return conv_repo.create(
+        user_id=user_id, name=name, source_format="misp", target_format="stix",
+        input_text="IN", output_text="OUT", params=None, public=public,
+    )
+
+
+def test_list_for_user_admin_sees_every_conversion(app_db):
+    """Admin actor: public + private, across all owners."""
+    from website.repos import conversions as conv_repo
+
+    alice = _make_user(email="alice@test.test")
+    bob   = _make_user(email="bob@test.test")
+    admin = _make_user(admin=True, email="admin@test.test")
+
+    _make_conv(user_id=alice.id, public=True,  name="a-pub")
+    _make_conv(user_id=alice.id, public=False, name="a-priv")
+    _make_conv(user_id=bob.id,   public=True,  name="b-pub")
+    _make_conv(user_id=bob.id,   public=False, name="b-priv")
+
+    names = {c.name for c in conv_repo.list_for_user(admin, 1).items}
+    assert names == {"a-pub", "a-priv", "b-pub", "b-priv"}
+
+
+def test_list_for_user_authenticated_sees_public_plus_own(app_db):
+    """Authenticated non-admin: every public row plus their own private rows,
+    but never another user's private row."""
+    from website.repos import conversions as conv_repo
+
+    alice = _make_user(email="alice@test.test")
+    bob   = _make_user(email="bob@test.test")
+
+    _make_conv(user_id=alice.id, public=True,  name="a-pub")
+    _make_conv(user_id=alice.id, public=False, name="a-priv")
+    _make_conv(user_id=bob.id,   public=True,  name="b-pub")
+    _make_conv(user_id=bob.id,   public=False, name="b-priv")
+
+    names = {c.name for c in conv_repo.list_for_user(alice, 1).items}
+    assert names == {"a-pub", "a-priv", "b-pub"}   # b-priv is hidden
+
+
+def test_list_for_user_anonymous_sees_public_only(app_db):
+    """Anonymous actor (``user=None``): public rows only."""
+    from website.repos import conversions as conv_repo
+
+    alice = _make_user(email="alice@test.test")
+    bob   = _make_user(email="bob@test.test")
+
+    _make_conv(user_id=alice.id, public=True,  name="a-pub")
+    _make_conv(user_id=alice.id, public=False, name="a-priv")
+    _make_conv(user_id=bob.id,   public=True,  name="b-pub")
+
+    names = {c.name for c in conv_repo.list_for_user(None, 1).items}
+    assert names == {"a-pub", "b-pub"}
+
+
+def test_list_for_user_only_mine_restricts_to_the_actor(app_db):
+    """``only_mine='true'`` scopes an authenticated actor to just their own
+    rows, public or private."""
+    from website.repos import conversions as conv_repo
+
+    alice = _make_user(email="alice@test.test")
+    bob   = _make_user(email="bob@test.test")
+
+    _make_conv(user_id=alice.id, public=True,  name="a-pub")
+    _make_conv(user_id=alice.id, public=False, name="a-priv")
+    _make_conv(user_id=bob.id,   public=True,  name="b-pub")
+
+    names = {c.name for c in conv_repo.list_for_user(alice, 1, only_mine="true").items}
+    assert names == {"a-pub", "a-priv"}
+
+
+def test_list_by_user_scopes_to_owner_and_public_filter(app_db):
+    from website.repos import conversions as conv_repo
+
+    alice = _make_user(email="alice@test.test")
+    bob   = _make_user(email="bob@test.test")
+    _make_conv(user_id=alice.id, public=True,  name="a-pub")
+    _make_conv(user_id=alice.id, public=False, name="a-priv")
+    _make_conv(user_id=bob.id,   public=True,  name="b-pub")
+
+    all_alice = conv_repo.list_by_user(1, alice.id)
+    assert {c.name for c in all_alice.items} == {"a-pub", "a-priv"}
+
+    only_public = conv_repo.list_by_user(1, alice.id, filter_public="PUBLIC")
+    assert {c.name for c in only_public.items} == {"a-pub"}
+
+
+def test_list_by_user_returns_none_without_a_user_id(app_db):
+    from website.repos import conversions as conv_repo
+
+    assert conv_repo.list_by_user(1, None) is None
+
+
+def test_search_in_content_returns_snippets_for_matches(app_db):
+    from website.repos import conversions as conv_repo
+
+    conv = conv_repo.create(
+        user_id=None, name="needle in the name", source_format="misp",
+        target_format="stix", input_text="the needle is buried in here too",
+        output_text="OUT", params=None,
+    )
+
+    results = conv_repo.search_in_content("needle", conv.id)
+
+    fields = {r["field"] for r in results}
+    assert "name" in fields and "input" in fields
+    assert all("needle" in r["snippet"].lower() for r in results)
+
+
+def test_search_in_content_guards_empty_query_and_missing_row(app_db):
+    from website.repos import conversions as conv_repo
+
+    conv = conv_repo.create(
+        user_id=None, name="x", source_format="misp", target_format="stix",
+        input_text="IN", output_text="OUT", params=None,
+    )
+    assert conv_repo.search_in_content("", conv.id) == []
+    assert conv_repo.search_in_content("q", 999999) == []
+
+
+def test_list_deleted_preserves_preexisting_is_active_filter(app_db):
+    """Characterization test, NOT an endorsement.
+
+    ``list_deleted`` backs the admin Trash view but filters
+    ``Conversion.is_active`` — so it returns *active* rows, not soft-deleted
+    ones. This is a pre-existing bug; the move preserves it byte-for-byte and
+    a follow-up should flip the filter. Update this test when that fix lands.
+    """
+    from website.repos import conversions as conv_repo
+
+    _make_conv(user_id=None, public=True, name="still-here")
+    deleted = _make_conv(user_id=None, public=True, name="trashed")
+    conv_repo.soft_delete(deleted.id)
+
+    names = {c.name for c in conv_repo.list_deleted(1).items}
+    assert "still-here" in names    # preserved oddity: the active row shows up
+    assert "trashed" not in names   # ...and the actually-deleted row does not
