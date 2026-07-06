@@ -445,7 +445,9 @@ def get_page_history():
     favorites_only  = request.args.get('favorites_only', 'false', type=str) == 'true'
     favorites_user_id = current_user.id if (favorites_only and current_user.is_authenticated) else None
 
-    pagination = ConvertModel.get_convert_page(
+    actor = current_user._get_current_object() if current_user.is_authenticated else None
+    pagination = conv_repo.list_for_user(
+        actor,
         page,
         filter_type=filter_type,
         sort_order=sort_order,
@@ -566,7 +568,7 @@ def search_in_content():
         if current_user.id != convert.user_id and not current_user.is_admin():
             return {"success": False, "message": "Forbidden"}, 403
 
-    results = ConvertModel.search_in_content(query_str, conversion_id, scope=scope)
+    results = conv_repo.search_in_content(query_str, conversion_id, scope=scope)
     return {"success": True, "results": results}, 200
 
 @convert_blueprint.route("/delete_item", methods=['POST', 'DELETE', 'GET'])
@@ -1441,7 +1443,7 @@ def get_trash():
         return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
     page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '', type=str) or None
-    pagination = ConvertModel.get_deleted_converts(page, search=search)
+    pagination = conv_repo.list_deleted(page, search=search)
     return {
         "success": True,
         "list": [c.to_json_list() for c in pagination.items],

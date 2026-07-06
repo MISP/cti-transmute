@@ -12,7 +12,6 @@ from website.web import db
 from website.web.account.account_form import AddNewUserForm, EditUserForm, LoginForm
 from website.web.utils import form_to_dict, generate_api_key
 
-from ..convert import convert_core as ConvertModel
 from ..tags import tags_core as TagsModel
 from . import account_core as AccountModel
 
@@ -164,7 +163,7 @@ def public_converts(user_id):
     if not user:
         return {"success": False, "message": "User not found"}, 404
 
-    pagination = ConvertModel.get_convert_by_user(
+    pagination = conv_repo.list_by_user(
         page, user_id, filter_type, sort_order, search, filter_public="PUBLIC"
     )
 
@@ -275,7 +274,7 @@ def get_user_convert() -> redirect:
     if current_user.is_admin():
         user = AccountModel.get_user(id)
         if user:
-            user_convert = ConvertModel.get_convert_by_user(page, user.id , filter_type, sort_order, searchQuery , filter_public)
+            user_convert = conv_repo.list_by_user(page, user.id , filter_type, sort_order, searchQuery , filter_public)
             if user_convert:
                 user_convert_list = [item.to_json() for item in user_convert.items]
                 return {
@@ -406,7 +405,7 @@ def search_users():
     pagination = AccountModel.search_users_for_follow(query, current_user.id, page=page)
     result = []
     for u in pagination.items:
-        public_count = ConvertModel.get_convert_by_user(1, u.id, filter_public="PUBLIC")
+        public_count = conv_repo.list_by_user(1, u.id, filter_public="PUBLIC")
         result.append({
             "user_id":      u.id,
             "name":         f"{u.first_name} {u.last_name}",
