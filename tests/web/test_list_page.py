@@ -19,7 +19,7 @@ def full_web_client():
     from website.web import application
     from website.web.account.account import account_blueprint
     from website.web.convert.convert import (
-        convert_blueprint,
+        conversions_blueprint,
         legacy_convert_blueprint,
     )
     from website.web.evaluate.evaluate import evaluate_blueprint
@@ -33,7 +33,7 @@ def full_web_client():
     application._got_first_request = False
     for bp, prefix in [
         (home_blueprint, "/"),
-        (convert_blueprint, "/conversions"),
+        (conversions_blueprint, "/conversions"),
         (legacy_convert_blueprint, "/convert"),
         (account_blueprint, "/account"),
         (tags_blueprint, "/tags"),

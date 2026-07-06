@@ -3,8 +3,8 @@ docs page displays must be a class that actually exists in ``db_class/db.py``.
 
 The rename retired the ``Convert*`` model names; the docs page kept showing
 them. JS component names (``ConvertSunburst`` & co.) are exempt until the
-file-rename slice (issue 14) moves the components themselves — renaming the
-docs rows first would make them lie in the other direction.
+file-rename slice moves the components themselves — renaming the docs rows
+first would make them lie in the other direction.
 """
 
 import re

@@ -21,12 +21,12 @@ def web_client(app_db):
     """DB-backed Flask test client with the conversions + account blueprints."""
     from website.web import application
     from website.web.account.account import account_blueprint
-    from website.web.convert.convert import convert_blueprint
+    from website.web.convert.convert import conversions_blueprint
 
     application.config["TESTING"] = True
     application.config["WTF_CSRF_ENABLED"] = False
     for bp, prefix in (
-        (convert_blueprint, "/conversions"),
+        (conversions_blueprint, "/conversions"),
         (account_blueprint, "/account"),
     ):
         if bp.name not in application.blueprints:

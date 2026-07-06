@@ -215,7 +215,7 @@ def test_anonymous_submission_does_not_notify_followers(
 
     called = []
     monkeypatch.setattr(
-        conversions.AccountModel, "notify_followers_new_convert",
+        conversions.AccountModel, "notify_followers_new_conversion",
         lambda *a, **k: called.append(1),
     )
     conversions.submit_conversion(

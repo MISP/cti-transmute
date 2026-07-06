@@ -18,12 +18,13 @@ def web_client(app_db):
     """DB-backed client with the conversions + account blueprints, CSRF off."""
     from website.web import application
     from website.web.account.account import account_blueprint
-    from website.web.convert.convert import convert_blueprint, legacy_convert_blueprint
+    from website.web.convert.convert import (
+        conversions_blueprint, legacy_convert_blueprint)
 
     application.config["TESTING"] = True
     application.config["WTF_CSRF_ENABLED"] = False
     for bp, prefix in (
-        (convert_blueprint, "/conversions"),
+        (conversions_blueprint, "/conversions"),
         (legacy_convert_blueprint, "/convert"),
         (account_blueprint, "/account"),
     ):

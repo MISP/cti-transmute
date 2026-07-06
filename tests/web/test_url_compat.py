@@ -20,13 +20,13 @@ def web_client():
     """
     from website.web import application
     from website.web.convert.convert import (
-        convert_blueprint,
+        conversions_blueprint,
         legacy_convert_blueprint,
     )
 
     application.config["TESTING"] = True
-    if convert_blueprint.name not in application.blueprints:
-        application.register_blueprint(convert_blueprint, url_prefix="/conversions")
+    if conversions_blueprint.name not in application.blueprints:
+        application.register_blueprint(conversions_blueprint, url_prefix="/conversions")
     if legacy_convert_blueprint.name not in application.blueprints:
         application.register_blueprint(legacy_convert_blueprint, url_prefix="/convert")
     return application.test_client()
