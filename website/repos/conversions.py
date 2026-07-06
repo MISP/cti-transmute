@@ -415,14 +415,16 @@ def list_by_user(
 def list_deleted(
         page: int, user_id: int | None = None,
         search: str | None = None) -> Pagination:
-    """Paginated Conversions for the admin Trash view, scoped to ``user_id``.
+    """Paginated soft-deleted Conversions for the admin Trash view, scoped to
+    ``user_id``.
 
-    NOTE (pre-existing oddity): this filters ``Conversion.is_active``, so it
-    returns *active* rows rather than the soft-deleted ones the Trash view
-    intends to show. Preserved byte-for-byte in the move; a follow-up should
-    flip the filter to ``~Conversion.is_active``.
+    Returns rows that have been soft-deleted (``is_active=False``, ``deleted_at``
+    stamped), newest deletion first. (The original ``get_deleted_converts``
+    filtered ``Conversion.is_active`` by mistake, so the Trash view showed *live*
+    conversions and its "Delete permanently" action could destroy them — fixed
+    here to ``~Conversion.is_active``.)
     """
-    query = Conversion.query.filter(Conversion.is_active)
+    query = Conversion.query.filter(~Conversion.is_active)
     if user_id:
         query = query.filter(Conversion.user_id == user_id)
     if search:
