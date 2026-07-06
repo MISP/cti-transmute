@@ -342,7 +342,7 @@ website/
 
                 <div class="dc-model-block">
                     <div class="dc-model-head">
-                        <span class="dc-model-name">ConvertHistory</span>
+                        <span class="dc-model-name">ConversionHistory</span>
                         <span class="dc-model-desc">Version tracking — a snapshot before reconversion</span>
                     </div>
                     <table class="dc-model-tbl">
@@ -404,7 +404,7 @@ website/
                 </div>
                 <div class="dc-model-block">
                     <div class="dc-model-head">
-                        <span class="dc-model-name">ConvertTagAssociation</span>
+                        <span class="dc-model-name">ConversionTagAssociation</span>
                         <span class="dc-model-desc">Bridge: many tags ↔ many conversions</span>
                     </div>
                     <table class="dc-model-tbl">
@@ -422,7 +422,7 @@ website/
                 <div class="dc-subsection-title">Social &amp; Evaluation</div>
                 <div class="dc-model-block">
                     <div class="dc-model-head">
-                        <span class="dc-model-name">ConvertEvaluation</span>
+                        <span class="dc-model-name">ConversionEvaluation</span>
                         <span class="dc-model-desc">Like / dislike / reaction votes per conversion</span>
                     </div>
                     <table class="dc-model-tbl">
@@ -451,14 +451,14 @@ website/
                 </div>
                 <div class="dc-model-block">
                     <div class="dc-model-head">
-                        <span class="dc-model-name">UserFollow / ConvertFavorite / ConvertReport / SystemLog / GraphConfig / PlatformReview</span>
+                        <span class="dc-model-name">UserFollow / ConversionFavorite / ConversionReport / SystemLog / GraphConfig / PlatformReview</span>
                     </div>
                     <table class="dc-model-tbl">
                         <thead><tr><th>Model</th><th>Purpose</th></tr></thead>
                         <tbody>
                             <tr><td><span class="dc-field-name">UserFollow</span></td><td>follower_id → followed_id social graph</td></tr>
-                            <tr><td><span class="dc-field-name">ConvertFavorite</span></td><td>Bookmarked conversions per user</td></tr>
-                            <tr><td><span class="dc-field-name">ConvertReport</span></td><td>Abuse reports: reason + description + status (pending / reviewed / dismissed)</td></tr>
+                            <tr><td><span class="dc-field-name">ConversionFavorite</span></td><td>Bookmarked conversions per user</td></tr>
+                            <tr><td><span class="dc-field-name">ConversionReport</span></td><td>Abuse reports: reason + description + status (pending / reviewed / dismissed)</td></tr>
                             <tr><td><span class="dc-field-name">SystemLog</span></td><td>Audit log — event_type, actor_name, target_id/type, details, created_at</td></tr>
                             <tr><td><span class="dc-field-name">GraphConfig</span></td><td>Saved Pivotick visualization configs per user</td></tr>
                             <tr><td><span class="dc-field-name">PlatformReview</span></td><td>1–5 star platform rating + optional text per user</td></tr>
