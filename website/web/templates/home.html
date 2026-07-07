@@ -304,22 +304,22 @@
     }
 
     const EVENT_CONFIG = {
-        convert_created:            { icon: 'fas fa-plus',        dot: 'dot-green'  },
-        eval_like:                  { icon: 'fas fa-thumbs-up',   dot: 'dot-blue'   },
-        eval_dislike:               { icon: 'fas fa-thumbs-down', dot: 'dot-red'    },
-        eval_reaction:              { icon: 'fas fa-star',         dot: 'dot-amber'  },
-        convert_edited:             { icon: 'fas fa-pen',          dot: 'dot-orange' },
-        convert_visibility_changed: { icon: 'fas fa-globe',        dot: 'dot-teal'   },
-        convert_favorited:          { icon: 'fas fa-star',         dot: 'dot-amber'  },
+        conversion_created:            { icon: 'fas fa-plus',        dot: 'dot-green'  },
+        eval_like:                     { icon: 'fas fa-thumbs-up',   dot: 'dot-blue'   },
+        eval_dislike:                  { icon: 'fas fa-thumbs-down', dot: 'dot-red'    },
+        eval_reaction:                 { icon: 'fas fa-star',         dot: 'dot-amber'  },
+        conversion_edited:             { icon: 'fas fa-pen',          dot: 'dot-orange' },
+        conversion_visibility_changed: { icon: 'fas fa-globe',        dot: 'dot-teal'   },
+        conversion_favorited:          { icon: 'fas fa-star',         dot: 'dot-amber'  }
     };
     const EVENT_VERBS = {
-        convert_created:            'created',
-        eval_like:                  'liked',
-        eval_dislike:               'disliked',
-        eval_reaction:              'reacted to',
-        convert_edited:             'updated',
-        convert_visibility_changed: 'made public',
-        convert_favorited:          'favorited',
+        conversion_created:            'created',
+        eval_like:                     'liked',
+        eval_dislike:                  'disliked',
+        eval_reaction:                 'reacted to',
+        conversion_edited:             'updated',
+        conversion_visibility_changed: 'made public',
+        conversion_favorited:          'favorited'
     };
 
     function eventIcon(t)     { return (EVENT_CONFIG[t] || { icon: 'fas fa-circle' }).icon; }

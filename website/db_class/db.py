@@ -244,11 +244,11 @@ class Notification(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
-    # Types: "comment_reply", "new_follow_convert", "report_submitted"
+    # Types: "comment_reply", "new_follow_conversion", "report_submitted"
     type = db.Column(db.String(50), nullable=False)
     is_read = db.Column(db.Boolean, default=False, index=True)
     related_id = db.Column(db.Integer, nullable=True)    # comment_id or conversion_id
-    related_type = db.Column(db.String(50), nullable=True)  # "comment" or "convert"
+    related_type = db.Column(db.String(50), nullable=True)  # "comment" or "conversion"
     actor_id = db.Column(db.Integer, nullable=True)       # who triggered it
     message = db.Column(db.Text)
     created_at = db.Column(db.DateTime, index=True)
@@ -328,11 +328,11 @@ class SystemLog(db.Model):
     __tablename__ = "system_log"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    # e.g. convert_created, convert_deleted, comment_deleted
+    # e.g. conversion_created, conversion_deleted, comment_deleted
     event_type = db.Column(db.String(60), nullable=False, index=True)
     actor_id = db.Column(db.Integer, nullable=True)
     actor_name = db.Column(db.String(120), nullable=True)
-    target_type = db.Column(db.String(50), nullable=True)   # convert | comment
+    target_type = db.Column(db.String(50), nullable=True)   # conversion | comment
     target_id = db.Column(db.Integer, nullable=True)
     target_name = db.Column(db.String(255), nullable=True)
     details = db.Column(db.Text, nullable=True)

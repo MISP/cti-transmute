@@ -68,9 +68,9 @@ def submit_conversion(
 
 
 def _record_creation(conversion: Conversion, user, now: datetime) -> None:
-    """Add the `convert_created` audit log inside the conversion's transaction."""
+    """Add the `conversion_created` activity-log entry inside the conversion's transaction."""
     _record_event(
-        "convert_created", user, "convert", conversion.id, conversion.name, now,
+        "conversion_created", user, "conversion", conversion.id, conversion.name, now,
         details=f"Type: {conversion.conversion_type}, Public: {conversion.public}",
     )
 
@@ -154,7 +154,7 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
         commit=False
     )
     _record_event(
-        "convert_refreshed", user, "convert", conversion.id, conversion.name, now,
+        "conversion_refreshed", user, "conversion", conversion.id, conversion.name, now,
     )
     try:
         db.session.commit()
@@ -179,7 +179,7 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
     conversion.output_text = history.new_output_text
     conversion.updated_at = now
     _record_event(
-        "convert_history_accepted", user, "convert_history", history.id,
+        "conversion_history_accepted", user, "conversion_history", history.id,
         conversion.name, now,
     )
     try:
@@ -203,7 +203,7 @@ def reject_history(user, history: ConversionHistory) -> ConversionHistory:
     now = datetime.now(timezone.utc)
     conv_repo.set_history_status(history, "rejected", commit=False)
     _record_event(
-        "convert_history_rejected", user, "convert_history", history.id,
+        "conversion_history_rejected", user, "conversion_history", history.id,
         conversion.name, now,
     )
     try:

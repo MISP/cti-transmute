@@ -341,10 +341,10 @@ def notify_followers_new_conversion(conversion, actor_id):
     for fid in follower_ids:
         create_notification(
             user_id=fid,
-            notif_type="new_follow_convert",
+            notif_type="new_follow_conversion",
             message=f"{actor_name} published a new conversion: {conversion.name}",
             related_id=conversion.id,
-            related_type="convert",
+            related_type="conversion",
             actor_id=actor_id
         )
 
@@ -361,7 +361,7 @@ def notify_admins_new_report(conversion, reporter_id):
             notif_type="report_submitted",
             message=f"{reporter_name} reported conversion: {conversion_name}",
             related_id=conversion.id,
-            related_type="convert",
+            related_type="conversion",
             actor_id=reporter_id
         )
 

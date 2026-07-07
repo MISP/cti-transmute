@@ -69,10 +69,10 @@ def toggle_like():
         "eval_like" if result["action"] == "added" else "eval_like_removed",
         actor_id=current_user.id,
         actor_name=current_user.first_name,
-        target_type="convert",
+        target_type="conversion",
         target_id=conversion_id,
         target_name=conversion.name,
-        details=f"{'Liked' if result['action'] == 'added' else 'Removed like from'} convert"
+        details=f"{'Liked' if result['action'] == 'added' else 'Removed like from'} conversion"
     )
     summary = EvalModel.get_summary(conversion_id, current_user.id)
     return {"success": True, **result, "summary": summary}, 200
@@ -99,10 +99,10 @@ def toggle_dislike():
         "eval_dislike" if result["action"] == "added" else "eval_dislike_removed",
         actor_id=current_user.id,
         actor_name=current_user.first_name,
-        target_type="convert",
+        target_type="conversion",
         target_id=conversion_id,
         target_name=conversion.name,
-        details=f"{'Disliked' if result['action'] == 'added' else 'Removed dislike from'} convert"
+        details=f"{'Disliked' if result['action'] == 'added' else 'Removed dislike from'} conversion"
     )
     summary = EvalModel.get_summary(conversion_id, current_user.id)
     return {"success": True, **result, "summary": summary}, 200
@@ -134,7 +134,7 @@ def toggle_reaction():
         "eval_reaction" if result["action"] == "added" else "eval_reaction_removed",
         actor_id=current_user.id,
         actor_name=current_user.first_name,
-        target_type="convert",
+        target_type="conversion",
         target_id=conversion_id,
         target_name=conversion.name,
         details=f"{'Added' if result['action'] == 'added' else 'Removed'} reaction '{reaction_key}'"

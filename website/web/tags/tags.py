@@ -499,8 +499,8 @@ def admin_bulk_scan():
     AccountModel.create_system_log(
         "bulk_tag_scan",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"auto-scan tags on {len(conversion_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"auto-scan tags on {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 
@@ -520,8 +520,8 @@ def admin_bulk_assign():
     AccountModel.create_system_log(
         "bulk_tag_assign",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"assign {len(tag_ids)} tag(s) to {len(conversion_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"assign {len(tag_ids)} tag(s) to {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 
@@ -572,8 +572,8 @@ def admin_bulk_remove_tags():
     AccountModel.create_system_log(
         "bulk_tag_remove",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"remove {len(tag_ids)} tag(s) from {len(conversion_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"remove {len(tag_ids)} tag(s) from {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 
@@ -592,8 +592,8 @@ def admin_bulk_clear_tags():
     AccountModel.create_system_log(
         "bulk_tag_clear",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"clear all tags from {len(conversion_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"clear all tags from {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 

@@ -496,10 +496,10 @@ def toggle_favorite():
         return {"success": False, "error": "Forbidden"}, 403
     is_fav = ConversionModel.toggle_favorite(current_user.id, conversion_id)
     AccountModel.create_system_log(
-        "convert_favorited" if is_fav else "convert_unfavorited",
+        "conversion_favorited" if is_fav else "conversion_unfavorited",
         actor_id=current_user.id,
         actor_name=current_user.first_name,
-        target_type="convert",
+        target_type="conversion",
         target_id=conversion_id,
         target_name=conversion.name,
         details=f"{'Added to' if is_fav else 'Removed from'} favorites by {current_user.first_name}",
@@ -583,7 +583,7 @@ def delete_rule() -> jsonify:
             _conversion_name = conversion.name
             success = conv_repo.soft_delete(item_id)
             if success:
-                AccountModel.create_system_log("convert_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(item_id), target_name=_conversion_name)
+                AccountModel.create_system_log("conversion_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="conversion", target_id=int(item_id), target_name=_conversion_name)
                 return {"success": True, "message": "Conversion history deleted!", "toast_class": "success"}, 200
             else:
                 return {"success": False, "message": "Error during deleting the item!", "toast_class": "danger"}, 500
@@ -643,7 +643,7 @@ def edit(id):
             
             success, message = conv_repo.edit(id, form_dict)
             if success:
-                AccountModel.create_system_log("convert_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(id), target_name=form_dict.get("name", conversion.name))
+                AccountModel.create_system_log("conversion_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="conversion", target_id=int(id), target_name=form_dict.get("name", conversion.name))
                 flash(f"{conversion.name} edit successfully","success")
                 return redirect(f"/conversions/detail/{id}")
             else:
@@ -708,8 +708,8 @@ def edit_public():
                 if success:
                     message = f"This conversion is now {'public' if _bool else 'private'}"
                     AccountModel.create_system_log(
-                        'convert_visibility_changed', actor_id=current_user.id, actor_name=current_user.first_name,
-                        target_type="convert", target_id=id, target_name=conversion.name, details="public" if _bool else "private"
+                        'conversion_visibility_changed', actor_id=current_user.id, actor_name=current_user.first_name,
+                        target_type="conversion", target_id=id, target_name=conversion.name, details="public" if _bool else "private"
                     )
                     return {
                         "success": True,
@@ -1467,7 +1467,7 @@ def restore():
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
     if conv_repo.restore(conversion_id):
         AccountModel.create_system_log(
-            'convert_restored', actor_id=current_user.id, actor_name=current_user.first_name,
+            'conversion_restored', actor_id=current_user.id, actor_name=current_user.first_name,
             target_type='conversion', target_id=conversion_id, target_name=conversion.name
         )
         return {"success": True, "message": f"'{conversion.name}' restored successfully", "toast_class": "success"}, 200
@@ -1489,7 +1489,7 @@ def hard_delete():
     _name = conversion.name
     if conv_repo.hard_delete(conversion_id):
         AccountModel.create_system_log(
-            'convert_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
+            'conversion_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
             target_type='conversion', target_id=conversion_id, target_name=_name
         )
         return {"success": True, "message": f"'{_name}' permanently deleted", "toast_class": "success"}, 200
@@ -1514,7 +1514,7 @@ def bulk_action():
         if action == 'restore':
             if conv_repo.restore(conversion_id):
                 AccountModel.create_system_log(
-                    'convert_restored', actor_id=current_user.id, actor_name=current_user.first_name,
+                    'conversion_restored', actor_id=current_user.id, actor_name=current_user.first_name,
                     target_type='conversion', target_id=conversion_id, target_name=conversion.name
                 )
                 done += 1
@@ -1522,7 +1522,7 @@ def bulk_action():
             _name = conversion.name
             if conv_repo.hard_delete(conversion_id):
                 AccountModel.create_system_log(
-                    'convert_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
+                    'conversion_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
                     target_type='conversion', target_id=conversion_id, target_name=_name
                 )
                 done += 1
@@ -1733,7 +1733,7 @@ def push_to_misp():
         "misp_push",
         actor_id=current_user.id,
         actor_name=current_user.first_name,
-        target_type="convert",
+        target_type="conversion",
         target_id=conversion_id,
         target_name=conversion.name,
         details=f"Pushed to {misp_url} — new event ID: {new_event_id}"

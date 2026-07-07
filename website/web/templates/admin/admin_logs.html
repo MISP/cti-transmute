@@ -91,10 +91,10 @@
                 [[ l.event_type.replace(/_/g,' ') ]]
               </span>
               <span v-else class="admin-status-badge" :style="{
-                background: l.type==='new_follow_convert' ? 'rgba(16,185,129,0.12)' : l.type==='comment_reply' ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)',
-                color: l.type==='new_follow_convert' ? 'var(--success)' : l.type==='comment_reply' ? 'var(--accent)' : 'var(--danger)'
+                background: l.type==='new_follow_conversion' ? 'rgba(16,185,129,0.12)' : l.type==='comment_reply' ? 'rgba(37,99,235,0.12)' : 'rgba(239,68,68,0.12)',
+                color: l.type==='new_follow_conversion' ? 'var(--success)' : l.type==='comment_reply' ? 'var(--accent)' : 'var(--danger)'
               }">
-                <i class="me-1" :class="l.type==='new_follow_convert' ? 'fas fa-bolt' : l.type==='comment_reply' ? 'fas fa-reply' : 'fas fa-flag'"></i>
+                <i class="me-1" :class="l.type==='new_follow_conversion' ? 'fas fa-bolt' : l.type==='comment_reply' ? 'fas fa-reply' : 'fas fa-flag'"></i>
                 [[ (l.type || '').replace(/_/g,' ') ]]
               </span>
             </td>
@@ -187,7 +187,7 @@
       /* ── Navigate ─────────────────────────── */
       function goToLog(l) {
         const rid = l.related_id || l.target_id
-        if (rid && (l.related_type === 'convert' || l.target_type === 'convert')) {
+        if (rid && (l.related_type === 'conversion' || l.target_type === 'conversion')) {
           window.location.href = '/conversions/detail/' + rid
         }
       }
@@ -239,25 +239,25 @@
 
       /* ── Event metadata ──────────────────── */
       const EVENT_META = {
-        convert_created:            { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-plus-circle' },
-        convert_deleted:            { bg: 'rgba(239,68,68,0.12)',   color: 'var(--danger)',  icon: 'fas fa-trash' },
-        convert_restored:           { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-rotate-left' },
-        convert_hard_deleted:       { bg: 'rgba(127,29,29,0.15)',   color: '#dc2626',        icon: 'fas fa-skull' },
-        convert_edited:             { bg: 'rgba(37,99,235,0.12)',   color: 'var(--accent)',  icon: 'fas fa-pen' },
-        convert_visibility_changed: { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-eye' },
-        user_followed:              { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-user-plus' },
-        user_unfollowed:            { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-2)',  icon: 'fas fa-user-minus' },
-        comment_deleted:            { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-comment-slash' },
-        tag_created:                { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-tag' },
-        tag_deleted:                { bg: 'rgba(239,68,68,0.12)',   color: 'var(--danger)',  icon: 'fas fa-trash' },
-        tag_edited:                 { bg: 'rgba(37,99,235,0.12)',   color: 'var(--accent)',  icon: 'fas fa-pen' },
-        tag_approved:               { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-check-circle' },
-        tag_approval_revoked:       { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-ban' },
-        tag_activated:              { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-play' },
-        tag_deactivated:            { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-2)',  icon: 'fas fa-pause' },
-        tag_visibility_changed:     { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-eye' },
-        tag_bulk_action:            { bg: 'rgba(99,102,241,0.12)',  color: 'var(--accent)',  icon: 'fas fa-layer-group' },
-        tags_taxonomy_imported:     { bg: 'rgba(8,145,178,0.12)',   color: '#0891b2',        icon: 'fas fa-download' },
+        conversion_created:            { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-plus-circle' },
+        conversion_deleted:            { bg: 'rgba(239,68,68,0.12)',   color: 'var(--danger)',  icon: 'fas fa-trash' },
+        conversion_restored:           { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-rotate-left' },
+        conversion_hard_deleted:       { bg: 'rgba(127,29,29,0.15)',   color: '#dc2626',        icon: 'fas fa-skull' },
+        conversion_edited:             { bg: 'rgba(37,99,235,0.12)',   color: 'var(--accent)',  icon: 'fas fa-pen' },
+        conversion_visibility_changed: { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-eye' },
+        user_followed:                 { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-user-plus' },
+        user_unfollowed:               { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-2)',  icon: 'fas fa-user-minus' },
+        comment_deleted:               { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-comment-slash' },
+        tag_created:                   { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-tag' },
+        tag_deleted:                   { bg: 'rgba(239,68,68,0.12)',   color: 'var(--danger)',  icon: 'fas fa-trash' },
+        tag_edited:                    { bg: 'rgba(37,99,235,0.12)',   color: 'var(--accent)',  icon: 'fas fa-pen' },
+        tag_approved:                  { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-check-circle' },
+        tag_approval_revoked:          { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-ban' },
+        tag_activated:                 { bg: 'rgba(16,185,129,0.12)',  color: 'var(--success)', icon: 'fas fa-play' },
+        tag_deactivated:               { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-2)',  icon: 'fas fa-pause' },
+        tag_visibility_changed:        { bg: 'rgba(245,158,11,0.12)',  color: 'var(--warning)', icon: 'fas fa-eye' },
+        tag_bulk_action:               { bg: 'rgba(99,102,241,0.12)',  color: 'var(--accent)',  icon: 'fas fa-layer-group' },
+        tags_taxonomy_imported:        { bg: 'rgba(8,145,178,0.12)',   color: '#0891b2',        icon: 'fas fa-download' }
       }
       const DEFAULT_META = { bg: 'rgba(100,116,139,0.12)', color: 'var(--text-2)', icon: 'fas fa-circle-info' }
 

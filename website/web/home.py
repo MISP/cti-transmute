@@ -36,9 +36,9 @@ def get_public_activity():
     from website.db_class.db import Conversion, SystemLog
 
     PUBLIC_EVENTS = [
-        'convert_created', 'eval_like', 'eval_dislike',
-        'eval_reaction', 'convert_edited', 'convert_visibility_changed',
-        'convert_favorited',
+        'conversion_created', 'eval_like', 'eval_dislike',
+        'eval_reaction', 'conversion_edited', 'conversion_visibility_changed',
+        'conversion_favorited',
     ]
     try:
         from website.db_class.db import User
@@ -46,7 +46,7 @@ def get_public_activity():
             SystemLog.query
             .join(Conversion, and_(
                 SystemLog.target_id == Conversion.id,
-                SystemLog.target_type == 'convert'
+                SystemLog.target_type == 'conversion'
             ))
             .filter(
                 SystemLog.event_type.in_(PUBLIC_EVENTS),
@@ -54,7 +54,7 @@ def get_public_activity():
                 Conversion.is_active,
                 SystemLog.actor_name.isnot(None),
                 or_(
-                    SystemLog.event_type != 'convert_visibility_changed',
+                    SystemLog.event_type != 'conversion_visibility_changed',
                     SystemLog.details == 'public'
                 )
             )
