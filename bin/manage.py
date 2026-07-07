@@ -7,7 +7,7 @@ Usage:
 
 Commands:
     init      First-time setup on a new machine (submodules + deps + DB)
-    start     Start the website
+    start     Start the website (applies pending DB migrations first)
     update    Pull latest code + sync deps + run DB migrations
     backup    Backup the PostgreSQL database
     deploy    Full deployment: backup + update + start
@@ -32,6 +32,12 @@ DB_PASSWORD = "cti_pass"
 DB_HOST     = "localhost"
 DB_PORT     = "5432"
 DB_NAME     = "cti_db"
+
+# Revision embodied by a schema built with db.create_all() while the Alembic
+# chain was mid-refactor (the bin/dev_container.sh bootstrap): everything up
+# to this revision is already in the models, so an unstamped database only
+# needs the migrations that come after it (data migrations).
+CREATE_ALL_SCHEMA_REV = "a7b9c1d3e5f7"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,7 +98,7 @@ def cmd_help() -> None:
               {D}  init submodules → sync deps → create DB → run migrations{R}
               {D}→ Run once right after cloning the repo{R}
 
-  {G}start{R}     {D}Start the website{R}
+  {G}start{R}     {D}Start the website (applies pending DB migrations first){R}
               {D}→ Use this every time you want to run the app{R}
 
   {G}update{R}    {D}Pull latest code from git + sync deps + run DB migrations{R}
@@ -141,17 +147,74 @@ def cmd_help() -> None:
 """)
 
 
-def _run_db_upgrade() -> None:
-    """Run flask db upgrade in the correct environment."""
+def _flask_db(*sub: str) -> None:
+    """Run a flask db sub-command in the correct environment."""
     env = os.environ.copy()
     env["TRANSMUTE_HOME"] = str(ROOT)
     env["FLASK_APP"] = "website.web"
-    cmd = ["uv", "run", "flask", "--app", "website.web", "db", "upgrade"]
+    cmd = ["uv", "run", "flask", "--app", "website.web", "db", *sub]
     info(f"$ {' '.join(cmd)}")
     result = subprocess.run(cmd, cwd=ROOT, env=env)
     if result.returncode != 0:
-        error("flask db upgrade failed")
+        error(f"flask db {' '.join(sub)} failed")
         sys.exit(result.returncode)
+
+
+def _db_state() -> str:
+    """How the database was bootstrapped: 'versioned', 'unstamped' or 'fresh'."""
+    try:
+        import psycopg2
+    except ImportError:
+        error("psycopg2 is not installed. Run 'uv sync' first.")
+        sys.exit(1)
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST, port=int(DB_PORT),
+            user=DB_USER, password=DB_PASSWORD,
+            dbname=DB_NAME, connect_timeout=5,
+        )
+    except Exception as e:
+        error(f"Could not connect to the database: {e}")
+        info("Is PostgreSQL running? (macOS container: `service postgresql start` inside it)")
+        sys.exit(1)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT to_regclass('public.alembic_version') IS NOT NULL,"
+            "       to_regclass('public.conversion') IS NOT NULL"
+        )
+        has_alembic, has_schema = cur.fetchone()
+    finally:
+        conn.close()
+    if has_alembic:
+        return "versioned"
+    return "unstamped" if has_schema else "fresh"
+
+
+def _run_db_upgrade() -> None:
+    """Bring the database to the latest migration, whatever its bootstrap.
+
+    - fresh (no tables): build the schema from the models and stamp head —
+      the early migration chain is not replayable on an empty database;
+    - unstamped (tables from a db.create_all() bootstrap, no alembic_version):
+      stamp the revision the models already embody, then upgrade so the
+      migrations that follow it (data migrations) run;
+    - versioned: plain upgrade.
+    """
+    state = _db_state()
+    if state == "fresh":
+        info("Empty database — building the schema from the models…")
+        run([*VENV_UV, "python", "-c",
+             "from website.web import application, db; "
+             "import website.db_class.db; "
+             "ctx = application.app_context(); ctx.push(); db.create_all()"])
+        _flask_db("stamp", "head")
+    elif state == "unstamped":
+        info(f"Schema present but unversioned — stamping {CREATE_ALL_SCHEMA_REV} first…")
+        _flask_db("stamp", CREATE_ALL_SCHEMA_REV)
+        _flask_db("upgrade")
+    else:
+        _flask_db("upgrade")
     ok("Database schema up to date")
 
 
@@ -209,6 +272,8 @@ def cmd_init() -> None:
 
 def cmd_start() -> None:
     header("Starting CTI-Transmute")
+    info("Making sure the database is on the latest migration…")
+    _run_db_upgrade()
     try:
         run([*VENV_UV, "start_website"])
     except KeyboardInterrupt:
