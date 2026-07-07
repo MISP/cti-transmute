@@ -3,7 +3,7 @@
 This is the single place that reads and writes ``Conversion`` and
 ``ConversionHistory`` rows. The conversion use-cases in
 ``website/lib/conversions.py`` and the web views in
-``website/web/convert/`` route their Conversion persistence through here.
+``website/web/conversions/`` route their Conversion persistence through here.
 
 Transaction seam: every write takes ``commit: bool = True``. Web-CRUD callers
 keep the default (each call is its own transaction). The spine use-cases pass
