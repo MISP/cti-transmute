@@ -18,7 +18,7 @@ def full_web_client():
     from website.api import api_blueprint
     from website.web import application
     from website.web.account.account import account_blueprint
-    from website.web.convert.convert import (
+    from website.web.conversions.conversions import (
         conversions_blueprint,
         legacy_convert_blueprint,
     )
@@ -53,7 +53,7 @@ def test_list_page_renders_from_the_registry(full_web_client):
     # The page fetches the registry-driven API listing directly...
     assert "fetch('/api/convert/list')" in html
     # ...and mounts the shared schema-driven param renderer.
-    assert "js/convert/paramSurface.js" in html
+    assert "js/conversions/paramSurface.js" in html
     # The pre-params_schema shape is fully gone from the page.
     assert "feature.parameters" not in html
     assert "/get_features" not in html
@@ -66,7 +66,7 @@ def test_list_page_dependencies_are_servable(full_web_client):
     listing = full_web_client.get("/api/convert/list")
     assert listing.status_code == 200
     assert "available" in listing.get_json()
-    asset = full_web_client.get("/static/js/convert/paramSurface.js")
+    asset = full_web_client.get("/static/js/conversions/paramSurface.js")
     assert asset.status_code == 200
 
 

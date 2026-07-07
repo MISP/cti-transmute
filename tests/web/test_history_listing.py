@@ -21,7 +21,7 @@ def web_client(app_db):
     """DB-backed Flask test client with the conversions + account blueprints."""
     from website.web import application
     from website.web.account.account import account_blueprint
-    from website.web.convert.convert import conversions_blueprint
+    from website.web.conversions.conversions import conversions_blueprint
 
     application.config["TESTING"] = True
     application.config["WTF_CSRF_ENABLED"] = False
@@ -71,7 +71,7 @@ def test_history_listing_anonymous_sees_public_only(web_client):
     _make_conversion(owner_id=alice.id, public=True,  name="a-pub")
     _make_conversion(owner_id=alice.id, public=False, name="a-priv")
 
-    resp = web_client.get("/conversions/get_convert_page_history")
+    resp = web_client.get("/conversions/get_conversion_page_history")
 
     assert resp.status_code == 200
     names = {row["name"] for row in resp.get_json()["list"]}
@@ -87,7 +87,7 @@ def test_history_listing_authenticated_sees_public_plus_own(web_client):
     _make_conversion(owner_id=bob.id,   public=False, name="b-priv")
 
     _login(web_client, alice)
-    resp = web_client.get("/conversions/get_convert_page_history")
+    resp = web_client.get("/conversions/get_conversion_page_history")
 
     assert resp.status_code == 200
     names = {row["name"] for row in resp.get_json()["list"]}

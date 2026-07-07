@@ -10,7 +10,7 @@ remains view-local is turning a typed `ConversionError` into a human message.
 
 def test_error_message_surfaces_invalid_payload_detail():
     from cti_transmute.exceptions import InvalidPayload
-    from website.web.convert.convert import _conversion_error_message
+    from website.web.conversions.conversions import _conversion_error_message
 
     msg = _conversion_error_message(InvalidPayload("Payload is not valid JSON"))
 
@@ -19,7 +19,7 @@ def test_error_message_surfaces_invalid_payload_detail():
 
 def test_error_message_for_persistence_failure_is_about_saving():
     from website.lib.exceptions import PersistenceFailed
-    from website.web.convert.convert import _conversion_error_message
+    from website.web.conversions.conversions import _conversion_error_message
 
     msg = _conversion_error_message(PersistenceFailed("boom")).lower()
 
@@ -28,7 +28,7 @@ def test_error_message_for_persistence_failure_is_about_saving():
 
 def test_error_message_for_unknown_converter_says_unsupported():
     from cti_transmute.exceptions import UnknownConverter
-    from website.web.convert.convert import _conversion_error_message
+    from website.web.conversions.conversions import _conversion_error_message
 
     msg = _conversion_error_message(UnknownConverter("misp->nope")).lower()
 
@@ -37,7 +37,7 @@ def test_error_message_for_unknown_converter_says_unsupported():
 
 def test_error_message_for_invalid_parameters_surfaces_detail():
     from cti_transmute.exceptions import InvalidParameters
-    from website.web.convert.convert import _conversion_error_message
+    from website.web.conversions.conversions import _conversion_error_message
 
     msg = _conversion_error_message(InvalidParameters("distribution must be 0-4"))
 

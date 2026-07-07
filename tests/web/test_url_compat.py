@@ -19,7 +19,7 @@ def web_client():
     ``/convert`` redirect shim mounted, mirroring ``bin/start_website.py``.
     """
     from website.web import application
-    from website.web.convert.convert import (
+    from website.web.conversions.conversions import (
         conversions_blueprint,
         legacy_convert_blueprint,
     )

@@ -23,7 +23,7 @@ def web_client(app_db):
     """
     from website.web import application
     from website.web.account.account import account_blueprint
-    from website.web.convert.convert import (
+    from website.web.conversions.conversions import (
         conversions_blueprint,
         legacy_convert_blueprint,
     )
@@ -222,3 +222,22 @@ def test_dead_success_line_is_removed_from_the_codebase():
         p for p in root.rglob("*.py") if needle in p.read_text(encoding="utf-8")
     ]
     assert offenders == []
+
+
+# --- refresh poll: JSON contract ------------------------------------------
+
+def test_new_conversion_poll_returns_conversion_history_key(web_client, misp_event):
+    """The refresh page polls this endpoint and reads ``conversion_history``
+    (the post-rename key; the retired ``history_convert`` must be gone)."""
+    owner = _make_user(email="owner@test.test")
+    conv = _make_conversion(misp_event, owner.id)
+    _make_history(conv)
+    _login(web_client, owner)
+
+    resp = web_client.get(f"/conversions/get_new_conversion?id={conv.id}")
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["success"] is True
+    assert "conversion_history" in body
+    assert "history_convert" not in body

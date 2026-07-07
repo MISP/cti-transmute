@@ -2,9 +2,8 @@
 docs page displays must be a class that actually exists in ``db_class/db.py``.
 
 The rename retired the ``Convert*`` model names; the docs page kept showing
-them. JS component names (``ConvertSunburst`` & co.) are exempt until the
-file-rename slice moves the components themselves — renaming the docs rows
-first would make them lie in the other direction.
+them. JS component names are exempt: they are Vue components the docs page
+documents, not model claims.
 """
 
 import re
@@ -13,13 +12,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCS_PAGE = REPO_ROOT / "website" / "web" / "templates" / "docs" / "index.html"
 
-# JS components still carrying the retired prefix — accurate until issue 14
-# renames the files; then this allowlist empties out.
+# Vue/JS components the docs page documents — real names, but not models.
 JS_COMPONENT_KEEPS = {
-    "ConvertSunburst",
-    "ConvertTable",
-    "ConvertGraph",
-    "PushConvertToMISP",
+    "ConversionSunburst",
+    "ConversionTable",
+    "ConversionGraph",
+    "PushConversionToMISP",
 }
 
 
@@ -28,7 +26,7 @@ def test_docs_page_names_only_live_models():
 
     # Class-style names built on the retired noun or its replacement:
     # "Convert"/"Conversion" + CamelCase tail ("ConvertHistory",
-    # "ConversionHistory", "PushConvertToMISP"). Deliberately blind to the
+    # "ConversionHistory", "PushConversionToMISP"). Deliberately blind to the
     # verb ("Convert a MISP event"), to "Converter", and to file names
     # ("pushConvertToMISP.js" starts lowercase, so no word boundary matches).
     displayed = set(
