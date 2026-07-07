@@ -150,8 +150,8 @@ def public_profile(user_id):
     )
 
 
-@account_blueprint.route("/public_converts/<int:user_id>")
-def public_converts(user_id):
+@account_blueprint.route("/public_conversions/<int:user_id>")
+def public_conversions(user_id):
     """Paginated public conversions for a user profile page."""
 
     page        = request.args.get('page', 1, type=int)
@@ -174,10 +174,10 @@ def public_converts(user_id):
     items = []
     if pagination:
         ids = [c.id for c in pagination.items]
-        tags_by_convert = TagsModel.get_conversion_tags_batch(ids)
+        tags_by_conversion = TagsModel.get_conversion_tags_batch(ids)
         for c in pagination.items:
             entry = c.to_json_list()
-            entry['tags'] = [a.to_json() for a in tags_by_convert.get(c.id, [])]
+            entry['tags'] = [a.to_json() for a in tags_by_conversion.get(c.id, [])]
             items.append(entry)
 
     return {
@@ -261,9 +261,9 @@ def get_user() -> redirect:
     return abort(403)
 
 
-@account_blueprint.route("/get_user_convert", methods=['GET', "POST"])
+@account_blueprint.route("/get_user_conversions", methods=['GET', "POST"])
 @login_required
-def get_user_convert() -> redirect:
+def get_user_conversions() -> redirect:
     """Manage user section"""
     id = request.args.get('user_id', type=int)
     page = request.args.get('page', 1, type=int)
@@ -274,13 +274,13 @@ def get_user_convert() -> redirect:
     if current_user.is_admin():
         user = AccountModel.get_user(id)
         if user:
-            user_convert = conv_repo.list_by_user(page, user.id , filter_type, sort_order, searchQuery , filter_public)
-            if user_convert:
-                user_convert_list = [item.to_json() for item in user_convert.items]
+            user_conversions = conv_repo.list_by_user(page, user.id , filter_type, sort_order, searchQuery , filter_public)
+            if user_conversions:
+                user_conversion_list = [item.to_json() for item in user_conversions.items]
                 return {
                     "success": True,
-                    "list": user_convert_list,
-                    "total_page": user_convert.pages,
+                    "list": user_conversion_list,
+                    "total_page": user_conversions.pages,
                     "Message": "All good"
                 }, 200
             return {
@@ -500,11 +500,11 @@ def my_comments():
     pagination = AccountModel.get_user_comments(current_user.id, page=page, search=search, is_admin=current_user.is_admin())
     items = []
     for c in pagination.items:
-        convert = conv_repo.get(c.conversion_id, include_deleted=True)
+        conversion = conv_repo.get(c.conversion_id, include_deleted=True)
         item = c.to_json(current_user_id=current_user.id, is_admin=current_user.is_admin())
-        item["convert_name"] = convert.name if convert else "Unknown"
+        item["conversion_name"] = conversion.name if conversion else "Unknown"
         item["conversion_id"] = c.conversion_id
-        item["convert_active"] = bool(convert and convert.is_active)
+        item["conversion_active"] = bool(conversion and conversion.is_active)
         item["has_replies"] = c.replies.count() > 0
         item["is_reply"] = bool(c.parent_id)
         if c.parent_id:
@@ -547,12 +547,23 @@ def admin_logs():
     return render_template("admin/admin_logs.html")
 
 
-@account_blueprint.route("/admin/deleted_converts", methods=['GET'])
+@account_blueprint.route("/admin/deleted_conversions", methods=['GET'])
 @login_required
-def admin_deleted_converts():
+def admin_deleted_conversions():
     if not current_user.is_admin():
         return abort(403)
-    return render_template("admin/deleted_converts.html")
+    return render_template("admin/deleted_conversions.html")
+
+
+@account_blueprint.route("/admin/deleted_converts", methods=['GET'])
+def legacy_admin_deleted_converts():
+    """301 shim for the pre-rename page URL — bookmarks and ``?highlight=``
+    deep links survive one release, like the ticket-04 ``/convert`` shim."""
+    dest = url_for(".admin_deleted_conversions")
+    query = request.query_string.decode()
+    if query:
+        dest += "?" + query
+    return redirect(dest, code=301)
 
 
 @account_blueprint.route("/admin/get_all_notifications", methods=['GET'])
@@ -798,15 +809,15 @@ def get_user_stats():
     return {
         "success": True,
         "stats": {
-            "total_converts": total,
-            "misp_to_stix":   m2s,
-            "stix_to_misp":   s2m,
-            "public":         public,
-            "private":        total - public,
-            "likes":          likes,
-            "dislikes":       dislikes,
-            "reactions":      reactions,
-            "activity":       activity,
+            "total_conversions": total,
+            "misp_to_stix":      m2s,
+            "stix_to_misp":      s2m,
+            "public":            public,
+            "private":           total - public,
+            "likes":             likes,
+            "dislikes":          dislikes,
+            "reactions":         reactions,
+            "activity":          activity
         }
     }, 200
    

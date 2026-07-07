@@ -20,19 +20,19 @@ from website.web import db
 #   Comment service functions     #
 ###################################
 
-def _can_see_comment(comment, convert_is_public, current_user_id, is_admin, convert_owner_id):
+def _can_see_comment(comment, conversion_is_public, current_user_id, is_admin, conversion_owner_id):
     """Determine if a user can see a specific comment."""
     if is_admin:
         return True
-    if not convert_is_public:
+    if not conversion_is_public:
         # Private conversion: only its owner can see
-        return current_user_id is not None and current_user_id == convert_owner_id
+        return current_user_id is not None and current_user_id == conversion_owner_id
     if not comment.is_private:
         return True
     # Private comment on public conversion: owner or comment author only
     if current_user_id is None:
         return False
-    return current_user_id == convert_owner_id or current_user_id == comment.user_id
+    return current_user_id == conversion_owner_id or current_user_id == comment.user_id
 
 
 def create_comment(conversion_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
@@ -58,13 +58,13 @@ def create_comment(conversion_id, user_id, content, is_private=False, parent_id=
         return None
 
 
-def get_comments(conversion_id, current_user_id=None, is_admin=False, convert_owner_id=None):
+def get_comments(conversion_id, current_user_id=None, is_admin=False, conversion_owner_id=None):
     """Return visible top-level comments and their visible replies for a conversion."""
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return []
 
-    convert_is_public = convert.public
+    conversion_is_public = conversion.public
 
     top_level = (
         Comment.query
@@ -76,9 +76,9 @@ def get_comments(conversion_id, current_user_id=None, is_admin=False, convert_ow
 
     result = []
     for c in top_level:
-        if not _can_see_comment(c, convert_is_public, current_user_id, is_admin, convert_owner_id):
+        if not _can_see_comment(c, conversion_is_public, current_user_id, is_admin, conversion_owner_id):
             continue
-        comment_data = c.to_json(current_user_id=current_user_id, is_admin=is_admin, convert_owner_id=convert_owner_id)
+        comment_data = c.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion_owner_id)
         replies = (
             Comment.query
             .filter_by(conversion_id=conversion_id, parent_id=c.id)
@@ -87,9 +87,9 @@ def get_comments(conversion_id, current_user_id=None, is_admin=False, convert_ow
             .all()
         )
         comment_data["replies"] = [
-            r.to_json(current_user_id=current_user_id, is_admin=is_admin, convert_owner_id=convert_owner_id)
+            r.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion_owner_id)
             for r in replies
-            if _can_see_comment(r, convert_is_public, current_user_id, is_admin, convert_owner_id)
+            if _can_see_comment(r, conversion_is_public, current_user_id, is_admin, conversion_owner_id)
         ]
         result.append(comment_data)
     return result
@@ -100,13 +100,13 @@ def delete_comment(comment_id, requesting_user_id, is_admin=False):
     comment = Comment.query.get(comment_id)
     if not comment:
         return False, "Comment not found"
-    convert = conv_repo.get(comment.conversion_id)
-    if not convert:
+    conversion = conv_repo.get(comment.conversion_id)
+    if not conversion:
         return False, "Conversion not found"
     allowed = (
         is_admin or
         requesting_user_id == comment.user_id or
-        requesting_user_id == convert.user_id
+        requesting_user_id == conversion.user_id
     )
     if not allowed:
         return False, "Permission denied"

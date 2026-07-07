@@ -199,15 +199,15 @@ def toggle_reaction(conversion_id: int, user_id: int, reaction_key: str) -> dict
 
 
 def get_admin_list(page: int = 1, per_page: int = 50,
-                   filter_type: str = None, filter_convert: str = None) -> dict:
+                   filter_type: str = None, filter_conversion: str = None) -> dict:
     q = (ConversionEvaluation.query
          .join(ConversionEvaluation.user)
-         .join(ConversionEvaluation.convert))
+         .join(ConversionEvaluation.conversion))
 
     if filter_type:
         q = q.filter(ConversionEvaluation.eval_type == filter_type)
-    if filter_convert:
-        q = q.filter(ConversionEvaluation.conversion_id == int(filter_convert))
+    if filter_conversion:
+        q = q.filter(ConversionEvaluation.conversion_id == int(filter_conversion))
 
     q = q.order_by(ConversionEvaluation.created_at.desc())
     paginated = q.paginate(page=page, per_page=per_page, error_out=False)
@@ -324,7 +324,7 @@ def get_global_stats() -> dict:
     total_reactions = sum(1 for r in rows if r.eval_type == 'reaction')
     like_total      = total_likes + total_dislikes
     like_ratio      = round(total_likes / like_total * 100) if like_total else None
-    converts_evaluated = len({r.conversion_id for r in rows})
+    conversions_evaluated = len({r.conversion_id for r in rows})
 
     tag_counts = Counter(r.reaction_key for r in rows if r.eval_type == 'reaction' and r.reaction_key)
     top_tag_names = [n for n, _ in tag_counts.most_common(10)]
@@ -367,7 +367,7 @@ def get_global_stats() -> dict:
         "total_likes":        total_likes,
         "total_dislikes":     total_dislikes,
         "total_reactions":    total_reactions,
-        "converts_evaluated": converts_evaluated,
+        "conversions_evaluated": conversions_evaluated,
         "like_ratio":         like_ratio,
         "top_tags":           top_tags,
         "category_breakdown": category_breakdown,
@@ -460,7 +460,7 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
 
     Returns a structured dict or None if the conversion does not exist.
     Fields:
-      convert        – basic conversion metadata
+      conversion        – basic conversion metadata
       generated_at   – UTC timestamp string
       overall        – {level, score, total_votes, likes, dislikes, like_ratio}
       dimensions     – list of {key, label, description, level, score, votes, distribution}
@@ -468,8 +468,8 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
       all_tags       – sorted list of tag name strings
       eval_comments  – list of {author, content, created_at}
     """
-    convert = Conversion.query.get(conversion_id)
-    if not convert:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion:
         return None
 
     summary        = get_summary(conversion_id)
@@ -525,20 +525,20 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
         })
 
-    source_fmt = 'MISP'     if convert.conversion_type == 'MISP_TO_STIX' else 'STIX 2.1'
-    target_fmt = 'STIX 2.1' if convert.conversion_type == 'MISP_TO_STIX' else 'MISP'
+    source_fmt = 'MISP'     if conversion.conversion_type == 'MISP_TO_STIX' else 'STIX 2.1'
+    target_fmt = 'STIX 2.1' if conversion.conversion_type == 'MISP_TO_STIX' else 'MISP'
 
     return {
-        'convert': {
-            'id':          convert.id,
-            'name':        convert.name,
-            'uuid':        convert.uuid,
-            'description': convert.description or '',
-            'type':        convert.conversion_type,
+        'conversion': {
+            'id':          conversion.id,
+            'name':        conversion.name,
+            'uuid':        conversion.uuid,
+            'description': conversion.description or '',
+            'type':        conversion.conversion_type,
             'source_fmt':  source_fmt,
             'target_fmt':  target_fmt,
-            'created_at':  convert.created_at.strftime('%Y-%m-%d %H:%M') if convert.created_at else '',
-            'public':      convert.public,
+            'created_at':  conversion.created_at.strftime('%Y-%m-%d %H:%M') if conversion.created_at else '',
+            'public':      conversion.public,
         },
         'generated_at': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
         'overall': {
@@ -560,7 +560,7 @@ def render_evaluation_markdown(report: dict) -> str:
     """
     Render a report dict (from build_evaluation_report) as a Markdown string.
     """
-    c   = report['convert']
+    c   = report['conversion']
     ov  = report['overall']
     now = report['generated_at']
 
@@ -754,12 +754,12 @@ def render_evaluation_pdf(report: dict) -> bytes:
 
 def get_recent_to_evaluate(viewer_id=None, limit=8) -> list:
     """Recent public conversions, with their evaluation summary."""
-    converts = (Conversion.query
+    conversions = (Conversion.query
                 .filter_by(public=True, is_active=True)
                 .order_by(Conversion.created_at.desc())
                 .limit(limit).all())
     result = []
-    for c in converts:
+    for c in conversions:
         summary = get_summary(c.id, viewer_id)
         result.append({
             "id":              c.id,

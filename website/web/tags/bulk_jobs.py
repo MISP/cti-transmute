@@ -59,34 +59,34 @@ def remove(jid: str) -> bool:
 
 # ── Worker launchers ──────────────────────────────────────────────
 
-def start_scan(app, convert_ids: list, user_id: int) -> str:
+def start_scan(app, conversion_ids: list, user_id: int) -> str:
     """Auto-scan each conversion's input JSON and merge matching tags."""
-    jid = create('scan', len(convert_ids))
-    t = threading.Thread(target=_scan_worker, args=(app, jid, convert_ids, user_id), daemon=True)
+    jid = create('scan', len(conversion_ids))
+    t = threading.Thread(target=_scan_worker, args=(app, jid, conversion_ids, user_id), daemon=True)
     t.start()
     return jid
 
 
-def start_assign(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
+def start_assign(app, conversion_ids: list, tag_ids: list, user_id: int) -> str:
     """Merge specific tags into every selected conversion."""
-    jid = create('assign', len(convert_ids))
-    t = threading.Thread(target=_assign_worker, args=(app, jid, convert_ids, tag_ids, user_id), daemon=True)
+    jid = create('assign', len(conversion_ids))
+    t = threading.Thread(target=_assign_worker, args=(app, jid, conversion_ids, tag_ids, user_id), daemon=True)
     t.start()
     return jid
 
 
-def start_remove(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
+def start_remove(app, conversion_ids: list, tag_ids: list, user_id: int) -> str:
     """Remove specific tags from every selected conversion."""
-    jid = create('remove', len(convert_ids))
-    t = threading.Thread(target=_remove_worker, args=(app, jid, convert_ids, tag_ids, user_id), daemon=True)
+    jid = create('remove', len(conversion_ids))
+    t = threading.Thread(target=_remove_worker, args=(app, jid, conversion_ids, tag_ids, user_id), daemon=True)
     t.start()
     return jid
 
 
-def start_clear(app, convert_ids: list, user_id: int) -> str:
+def start_clear(app, conversion_ids: list, user_id: int) -> str:
     """Remove ALL tags from every selected conversion."""
-    jid = create('clear', len(convert_ids))
-    t = threading.Thread(target=_clear_worker, args=(app, jid, convert_ids, user_id), daemon=True)
+    jid = create('clear', len(conversion_ids))
+    t = threading.Thread(target=_clear_worker, args=(app, jid, conversion_ids, user_id), daemon=True)
     t.start()
     return jid
 
@@ -114,7 +114,7 @@ def _trim() -> None:
             del _jobs[jid]
 
 
-def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
+def _scan_worker(app, jid: str, conversion_ids: list, user_id: int) -> None:
     with app.app_context():
         from website.db_class.db import Conversion
         from website.web.tags.tags_core import find_tags_by_names, merge_conversion_tags
@@ -123,7 +123,7 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
         added_total = 0
         skipped = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
                 conv = Conversion.query.get(cid)
                 if not conv:
@@ -152,16 +152,16 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
                     _jobs[jid]['errors'].append(f'#{ cid }: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=added_total, skipped=skipped)
 
-        update(jid, status='done', progress=len(convert_ids), added=added_total, skipped=skipped)
+        update(jid, status='done', progress=len(conversion_ids), added=added_total, skipped=skipped)
 
 
-def _assign_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int) -> None:
+def _assign_worker(app, jid: str, conversion_ids: list, tag_ids: list, user_id: int) -> None:
     with app.app_context():
         from website.web.tags.tags_core import merge_conversion_tags
 
         added_total = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
                 n = merge_conversion_tags(cid, tag_ids, user_id)
                 added_total += n
@@ -170,16 +170,16 @@ def _assign_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int
                     _jobs[jid]['errors'].append(f'#{ cid }: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=added_total)
 
-        update(jid, status='done', progress=len(convert_ids), added=added_total)
+        update(jid, status='done', progress=len(conversion_ids), added=added_total)
 
 
-def _remove_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int) -> None:
+def _remove_worker(app, jid: str, conversion_ids: list, tag_ids: list, user_id: int) -> None:
     with app.app_context():
         from website.web.tags.tags_core import remove_conversion_tags
 
         removed_total = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
                 n = remove_conversion_tags(cid, tag_ids)
                 removed_total += n
@@ -188,7 +188,7 @@ def _remove_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int
                     _jobs[jid]['errors'].append(f'#{cid}: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=removed_total)
 
-        update(jid, status='done', progress=len(convert_ids), added=removed_total)
+        update(jid, status='done', progress=len(conversion_ids), added=removed_total)
 
 
 def _pull_import_worker(app, jid: str, user_id: int) -> None:
@@ -256,13 +256,13 @@ def _pull_import_worker(app, jid: str, user_id: int) -> None:
                galaxy_imported=g_imp, galaxy_skipped=g_skip)
 
 
-def _clear_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
+def _clear_worker(app, jid: str, conversion_ids: list, user_id: int) -> None:
     with app.app_context():
         from website.web.tags.tags_core import clear_conversion_tags
 
         removed_total = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
                 n = clear_conversion_tags(cid)
                 removed_total += n
@@ -271,4 +271,4 @@ def _clear_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
                     _jobs[jid]['errors'].append(f'#{cid}: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=removed_total)
 
-        update(jid, status='done', progress=len(convert_ids), added=removed_total)
+        update(jid, status='done', progress=len(conversion_ids), added=removed_total)

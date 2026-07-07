@@ -127,14 +127,14 @@ def edit_admin(id):
 
 def get_all_conversions_own_by_user_id(id):
     """Change the owner of all the user's conversions to the current user."""
-    convert_list = []
+    conversion_list = []
     user = get_user(id)
     if user:
-        converts = Conversion.query.filter_by(user_id=id).all()
+        conversions = Conversion.query.filter_by(user_id=id).all()
 
-        for convert in converts:
-            convert.user_id = current_user.id
-            convert_list.append(convert)
+        for conversion in conversions:
+            conversion.user_id = current_user.id
+            conversion_list.append(conversion)
 
         db.session.commit()
 
@@ -333,7 +333,7 @@ def get_unread_count(user_id):
     return Notification.query.filter_by(user_id=user_id, is_read=False).count()
 
 
-def notify_followers_new_conversion(convert, actor_id):
+def notify_followers_new_conversion(conversion, actor_id):
     """Notify all followers of actor_id that a new public conversion was created."""
     follower_ids = get_followers_ids(actor_id)
     actor = get_user(actor_id)
@@ -342,40 +342,40 @@ def notify_followers_new_conversion(convert, actor_id):
         create_notification(
             user_id=fid,
             notif_type="new_follow_convert",
-            message=f"{actor_name} published a new conversion: {convert.name}",
-            related_id=convert.id,
+            message=f"{actor_name} published a new conversion: {conversion.name}",
+            related_id=conversion.id,
             related_type="convert",
             actor_id=actor_id
         )
 
 
-def notify_admins_new_report(convert, reporter_id):
+def notify_admins_new_report(conversion, reporter_id):
     """Notify all admin users that a new report was submitted."""
     admins = User.query.filter_by(admin=True).all()
     reporter = get_user(reporter_id)
     reporter_name = reporter.first_name if reporter else "Someone"
-    convert_name = convert.name if convert else "Unknown"
+    conversion_name = conversion.name if conversion else "Unknown"
     for admin in admins:
         create_notification(
             user_id=admin.id,
             notif_type="report_submitted",
-            message=f"{reporter_name} reported conversion: {convert_name}",
-            related_id=convert.id,
+            message=f"{reporter_name} reported conversion: {conversion_name}",
+            related_id=conversion.id,
             related_type="convert",
             actor_id=reporter_id
         )
 
 
-def notify_new_comment(convert, comment, actor_id):
+def notify_new_comment(conversion, comment, actor_id):
     """Notify conversion owner that someone posted a comment on their conversion."""
-    if not convert.user_id or convert.user_id == actor_id:
+    if not conversion.user_id or conversion.user_id == actor_id:
         return
     actor = get_user(actor_id)
     actor_name = actor.first_name if actor else "Someone"
     create_notification(
-        user_id=convert.user_id,
+        user_id=conversion.user_id,
         notif_type="new_comment",
-        message=f"{actor_name} commented on your conversion \"{convert.name}\".",
+        message=f"{actor_name} commented on your conversion \"{conversion.name}\".",
         related_id=comment.id,
         related_type="comment",
         actor_id=actor_id

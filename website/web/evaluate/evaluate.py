@@ -9,22 +9,22 @@ from ..evaluate import evaluate_core as EvalModel
 evaluate_blueprint = Blueprint("evaluate", __name__)
 
 
-def _can_view_conversion(convert: Conversion) -> bool:
+def _can_view_conversion(conversion: Conversion) -> bool:
     """Return True if the current viewer is allowed to see this conversion."""
-    if convert.public:
+    if conversion.public:
         return True
     if current_user.is_authenticated and (
-        current_user.id == convert.user_id or current_user.is_admin()
+        current_user.id == conversion.user_id or current_user.is_admin()
     ):
         return True
     return False
 
 
-def _can_evaluate(convert: Conversion) -> tuple[bool, str]:
+def _can_evaluate(conversion: Conversion) -> tuple[bool, str]:
     """Return (allowed, reason) for evaluation actions."""
     if not current_user.is_authenticated:
         return False, "Login required"
-    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
         return False, "Conversion is private"
     return True, ""
 
@@ -33,17 +33,17 @@ def _can_evaluate(convert: Conversion) -> tuple[bool, str]:
 
 @evaluate_blueprint.route("/summary/<int:conversion_id>", methods=["GET"])
 def get_summary(conversion_id):
-    convert = Conversion.query.get(conversion_id)
-    if not convert or not convert.is_active:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(convert):
+    if not _can_view_conversion(conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
     viewer_id = current_user.id if current_user.is_authenticated else None
     summary = EvalModel.get_summary(conversion_id, viewer_id)
-    summary["can_evaluate"] = _can_evaluate(convert)[0]
+    summary["can_evaluate"] = _can_evaluate(conversion)[0]
     summary["is_owner"] = (
-        current_user.is_authenticated and current_user.id == convert.user_id
+        current_user.is_authenticated and current_user.id == conversion.user_id
     )
     return {"success": True, **summary}, 200
 
@@ -56,11 +56,11 @@ def toggle_like():
     if not conversion_id:
         return {"success": False, "message": "Missing conversion_id"}, 400
 
-    convert = Conversion.query.get(conversion_id)
-    if not convert or not convert.is_active:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
 
-    ok, reason = _can_evaluate(convert)
+    ok, reason = _can_evaluate(conversion)
     if not ok:
         return {"success": False, "message": reason, "toast_class": "danger"}, 403
 
@@ -71,7 +71,7 @@ def toggle_like():
         actor_name=current_user.first_name,
         target_type="convert",
         target_id=conversion_id,
-        target_name=convert.name,
+        target_name=conversion.name,
         details=f"{'Liked' if result['action'] == 'added' else 'Removed like from'} convert"
     )
     summary = EvalModel.get_summary(conversion_id, current_user.id)
@@ -86,11 +86,11 @@ def toggle_dislike():
     if not conversion_id:
         return {"success": False, "message": "Missing conversion_id"}, 400
 
-    convert = Conversion.query.get(conversion_id)
-    if not convert or not convert.is_active:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
 
-    ok, reason = _can_evaluate(convert)
+    ok, reason = _can_evaluate(conversion)
     if not ok:
         return {"success": False, "message": reason, "toast_class": "danger"}, 403
 
@@ -101,7 +101,7 @@ def toggle_dislike():
         actor_name=current_user.first_name,
         target_type="convert",
         target_id=conversion_id,
-        target_name=convert.name,
+        target_name=conversion.name,
         details=f"{'Disliked' if result['action'] == 'added' else 'Removed dislike from'} convert"
     )
     summary = EvalModel.get_summary(conversion_id, current_user.id)
@@ -117,11 +117,11 @@ def toggle_reaction():
     if not conversion_id or not reaction_key:
         return {"success": False, "message": "Missing conversion_id or reaction_key"}, 400
 
-    convert = Conversion.query.get(conversion_id)
-    if not convert or not convert.is_active:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
 
-    ok, reason = _can_evaluate(convert)
+    ok, reason = _can_evaluate(conversion)
     if not ok:
         return {"success": False, "message": reason, "toast_class": "danger"}, 403
 
@@ -136,7 +136,7 @@ def toggle_reaction():
         actor_name=current_user.first_name,
         target_type="convert",
         target_id=conversion_id,
-        target_name=convert.name,
+        target_name=conversion.name,
         details=f"{'Added' if result['action'] == 'added' else 'Removed'} reaction '{reaction_key}'"
     )
     summary = EvalModel.get_summary(conversion_id, current_user.id)
@@ -163,11 +163,11 @@ def admin_list():
     page         = request.args.get("page", 1, type=int)
     per_page     = request.args.get("per_page", 50, type=int)
     filter_type  = request.args.get("type", "").strip() or None
-    filter_conv  = request.args.get("conversion_id", "").strip() or None
+    filter_conversion  = request.args.get("conversion_id", "").strip() or None
 
     data = EvalModel.get_admin_list(
         page=page, per_page=per_page,
-        filter_type=filter_type, filter_convert=filter_conv
+        filter_type=filter_type, filter_conversion=filter_conversion
     )
     return {"success": True, **data}, 200
 
@@ -197,10 +197,10 @@ def admin_delete(eval_id):
 def consensus_tags(conversion_id):
     """Return evaluation tags that have reached the 3-vote threshold.
     Public conversions are accessible to everyone; private ones require auth."""
-    convert = Conversion.query.get(conversion_id)
-    if not convert:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(convert):
+    if not _can_view_conversion(conversion):
         return {"success": False, "message": "Forbidden"}, 403
     threshold = request.args.get("threshold", 3, type=int)
     tags = EvalModel.get_consensus_tags(conversion_id, threshold=threshold)
@@ -260,10 +260,10 @@ def activity_timeline():
 @evaluate_blueprint.route("/export/<int:conversion_id>/markdown")
 def export_evaluation_markdown(conversion_id):
     """Download the evaluation report as a .md file."""
-    convert = Conversion.query.get(conversion_id)
-    if not convert or not convert.is_active:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(convert):
+    if not _can_view_conversion(conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
     report = EvalModel.build_evaluation_report(conversion_id)
@@ -282,10 +282,10 @@ def export_evaluation_markdown(conversion_id):
 @evaluate_blueprint.route("/export/<int:conversion_id>/pdf")
 def export_evaluation_pdf(conversion_id):
     """Download the evaluation report as a .pdf file."""
-    convert = Conversion.query.get(conversion_id)
-    if not convert or not convert.is_active:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(convert):
+    if not _can_view_conversion(conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
     report = EvalModel.build_evaluation_report(conversion_id)

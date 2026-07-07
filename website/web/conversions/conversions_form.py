@@ -37,8 +37,8 @@ class mispToStixParamForm(FlaskForm):
     convert = SubmitField('Conversion')
 
     def validate_name(self, field):
-        existing_convert = Conversion.query.filter_by(name=field.data).first()
-        if existing_convert:
+        existing_conversion = Conversion.query.filter_by(name=field.data).first()
+        if existing_conversion:
             raise ValidationError(
                 'Conversion already registered with this name '
             )
@@ -119,12 +119,12 @@ class stixToMispParamForm(FlaskForm):
 
     def validate_name(self, field):
         if field.data:
-            existing_convert = Conversion.query.filter_by(name=field.data).first()
-            if existing_convert:
+            existing_conversion = Conversion.query.filter_by(name=field.data).first()
+            if existing_conversion:
                 raise ValidationError('Conversion already registered with this name')
         
 
-class editConvertForm(FlaskForm):
+class editConversionForm(FlaskForm):
     name = StringField(
         "Name of the conversion",
         validators=[DataRequired()],
@@ -142,8 +142,8 @@ class editConvertForm(FlaskForm):
     # def validate_name(self, field):
 
 
-    #     existing_convert = Conversion.query.filter_by(name=field.data).first()
-    #     if existing_convert:
+    #     existing_conversion = Conversion.query.filter_by(name=field.data).first()
+    #     if existing_conversion:
     #         raise ValidationError(
     #             f'Conversion already registered with this name '
     #         )

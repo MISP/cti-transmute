@@ -1,4 +1,4 @@
-# website/web/convert/views.py
+# website/web/conversions/conversions.py
 import ipaddress
 import json
 import re
@@ -25,13 +25,13 @@ from website.lib.conversions import (
 from website.lib.exceptions import PermissionDenied, PersistenceFailed
 from website.lib.params import build_params, param_error
 from website.repos import conversions as conv_repo
-from website.web.convert.convert_form import editConvertForm, mispToStixParamForm, stixToMispParamForm
+from website.web.conversions.conversions_form import editConversionForm, mispToStixParamForm, stixToMispParamForm
 from website.web.utils import (
     extract_name_from_misp_json, extract_tag_names_from_misp_json,
     form_to_dict, parse_stix_reports)
 
 from ..account import account_core as AccountModel
-from ..convert import convert_core as ConversionModel
+from ..conversions import conversions_core as ConversionModel
 from ..evaluate import evaluate_core as EvalModel
 from ..tags import tags_core as TagsModel
 
@@ -159,7 +159,7 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
     public = bool(body.get("public", True))
     user = None if current_user.is_anonymous() else current_user
     try:
-        convert = submit_conversion(
+        conversion = submit_conversion(
             user, source, target, payload=payload, params=params,
             name=name, description=description, public=public,
         )
@@ -172,13 +172,13 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
     if not current_user.is_anonymous():
         tag_ids = _manual_tag_ids(body.get("tag_ids"))
         if tag_ids:
-            TagsModel.save_conversion_tags(convert.id, tag_ids, current_user.id)
+            TagsModel.save_conversion_tags(conversion.id, tag_ids, current_user.id)
 
     flash(f"Converted to {target.upper()} successfully!", "success")
     return jsonify({
-        "url": url_for("conversions.detail", id=convert.id),
-        "id": convert.id,
-        "uuid": convert.uuid,
+        "url": url_for("conversions.detail", id=conversion.id),
+        "id": conversion.id,
+        "uuid": conversion.uuid,
     }), 200
 
 
@@ -214,7 +214,7 @@ def misp_to_stix():
     """
     if request.method == 'POST':
         return _submit_via_json("misp", "stix", MispToStixParams, _misp_auto_meta)
-    return render_template("convert/misp_to_stix.html")
+    return render_template("conversions/misp_to_stix.html")
 
 
 @conversions_blueprint.route("/fetch_misp_event", methods=['POST'])
@@ -418,15 +418,15 @@ def stix_to_misp():
     """
     if request.method == 'POST':
         return _submit_via_json("stix", "misp", StixToMispParams, _stix_auto_meta)
-    return render_template("convert/stix_to_misp.html")
+    return render_template("conversions/stix_to_misp.html")
 
 
 @conversions_blueprint.route("/history", methods=['GET'])
 def history():
     """History page of the last conversion"""
-    return render_template("convert/history.html")
+    return render_template("conversions/history.html")
 
-@conversions_blueprint.route("/get_convert_page_history", methods=['GET'])
+@conversions_blueprint.route("/get_conversion_page_history", methods=['GET'])
 def get_page_history():
     """History of the last conversion, with optional filter and sort"""
     page        = request.args.get('page', 1, type=int)
@@ -463,21 +463,21 @@ def get_page_history():
         favorites_user_id=favorites_user_id,
     )
     items = pagination.items
-    convert_list = [item.to_json_list() for item in items]
+    conversion_list = [item.to_json_list() for item in items]
 
     # Batch load tags for all returned conversions
     ids = [item.id for item in items]
-    tags_by_convert = TagsModel.get_conversion_tags_batch(ids)
+    tags_by_conversion = TagsModel.get_conversion_tags_batch(ids)
 
     # Batch load favorites for current user
     fav_ids = ConversionModel.get_favorite_ids(current_user.id) if current_user.is_authenticated else set()
 
-    for entry in convert_list:
-        entry['tags']        = [a.to_json() for a in tags_by_convert.get(entry['id'], [])]
+    for entry in conversion_list:
+        entry['tags']        = [a.to_json() for a in tags_by_conversion.get(entry['id'], [])]
         entry['is_favorite'] = entry['id'] in fav_ids
 
     return {
-        "list": convert_list,
+        "list": conversion_list,
         "total_page": pagination.pages,
     }, 200
 
@@ -489,10 +489,10 @@ def toggle_favorite():
     conversion_id = data.get("conversion_id")
     if not conversion_id:
         return {"success": False, "error": "Missing conversion_id"}, 400
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
         return {"success": False, "error": "Forbidden"}, 403
     is_fav = ConversionModel.toggle_favorite(current_user.id, conversion_id)
     AccountModel.create_system_log(
@@ -501,7 +501,7 @@ def toggle_favorite():
         actor_name=current_user.first_name,
         target_type="convert",
         target_id=conversion_id,
-        target_name=convert.name,
+        target_name=conversion.name,
         details=f"{'Added to' if is_fav else 'Removed from'} favorites by {current_user.first_name}",
     )
     return {"success": True, "is_favorite": is_fav}, 200
@@ -539,8 +539,8 @@ def most_favorited():
     )
 
     items = []
-    for convert, fav_count in results:
-        entry = convert.to_json_list()
+    for conversion, fav_count in results:
+        entry = conversion.to_json_list()
         entry["fav_count"] = fav_count
         items.append(entry)
 
@@ -557,15 +557,15 @@ def search_in_content():
     if not conversion_id or not query_str:
         return {"success": False, "message": "Missing conversion_id or q"}, 400
 
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "message": "Conversion not found"}, 404
 
     # Visibility check
-    if not convert.public:
+    if not conversion.public:
         if not current_user.is_authenticated:
             return {"success": False, "message": "Unauthorized"}, 403
-        if current_user.id != convert.user_id and not current_user.is_admin():
+        if current_user.id != conversion.user_id and not current_user.is_admin():
             return {"success": False, "message": "Forbidden"}, 403
 
     results = conv_repo.search_in_content(query_str, conversion_id, scope=scope)
@@ -577,13 +577,13 @@ def delete_rule() -> jsonify:
     """Delete an item"""
     item_id = request.get_json(silent=True, force=True) or {}
     item_id = item_id.get("id") or request.args.get("id")
-    convert = conv_repo.get(item_id)
-    if convert:
-        if current_user.id == convert.user_id or current_user.is_admin():
-            _convert_name = convert.name
+    conversion = conv_repo.get(item_id)
+    if conversion:
+        if current_user.id == conversion.user_id or current_user.is_admin():
+            _conversion_name = conversion.name
             success = conv_repo.soft_delete(item_id)
             if success:
-                AccountModel.create_system_log("convert_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(item_id), target_name=_convert_name)
+                AccountModel.create_system_log("convert_deleted", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(item_id), target_name=_conversion_name)
                 return {"success": True, "message": "Conversion history deleted!", "toast_class": "success"}, 200
             else:
                 return {"success": False, "message": "Error during deleting the item!", "toast_class": "danger"}, 500
@@ -592,21 +592,21 @@ def delete_rule() -> jsonify:
         return {"success": False, "message": "No item found!", "toast_class": "danger"}, 404
 
 
-def _render_detail(convert):
+def _render_detail(conversion):
     """Shared visibility logic for the detail page."""
-    if not convert:
+    if not conversion:
         flash("The conversion id is unknown", "danger")
         return redirect(url_for("conversions.history"))
 
-    if convert.public:
-        return render_template("convert/detail.html", convert=convert)
+    if conversion.public:
+        return render_template("conversions/detail.html", conversion=conversion)
 
     if not current_user.is_authenticated:
         flash("You must be logged in to view this conversion.", "warning")
         return redirect(url_for("account.login"))
 
-    if current_user.id == convert.user_id or current_user.is_admin():
-        return render_template("convert/detail.html", convert=convert)
+    if current_user.id == conversion.user_id or current_user.is_admin():
+        return render_template("conversions/detail.html", conversion=conversion)
 
     flash("You do not have permission to view this conversion.", "danger")
     return redirect(url_for("conversions.history"))
@@ -625,36 +625,36 @@ def conversion_by_id(id):
 def detail(id):
     """Detail page — accepts numeric ID or UUID string."""
     try:
-        convert = conv_repo.get(int(id))
+        conversion = conv_repo.get(int(id))
     except (ValueError, TypeError):
-        convert = conv_repo.get_by_uuid(id)
-    return _render_detail(convert)
+        conversion = conv_repo.get_by_uuid(id)
+    return _render_detail(conversion)
 
 @conversions_blueprint.route("/edit/<int:id>", methods=['GET', 'POST'])
 @login_required
 def edit(id):
     """Detail page of the conversion"""
 
-    form = editConvertForm()  
-    convert = conv_repo.get(id)
-    if convert.user_id == current_user.id or current_user.is_admin():
+    form = editConversionForm()
+    conversion = conv_repo.get(id)
+    if conversion.user_id == current_user.id or current_user.is_admin():
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             
             success, message = conv_repo.edit(id, form_dict)
             if success:
-                AccountModel.create_system_log("convert_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(id), target_name=form_dict.get("name", convert.name))
-                flash(f"{convert.name} edit successfully","success")
-                return redirect(f"/convert/detail/{id}")
+                AccountModel.create_system_log("convert_edited", actor_id=current_user.id, actor_name=current_user.first_name, target_type="convert", target_id=int(id), target_name=form_dict.get("name", conversion.name))
+                flash(f"{conversion.name} edit successfully","success")
+                return redirect(f"/conversions/detail/{id}")
             else:
                 flash(f"Error : {message}", "danger")
-                return render_template("convert/edit.html", form=form, conversion_id=id )
+                return render_template("conversions/edit.html", form=form, conversion_id=id )
             
         else:
-            form.name.data = convert.name
-            form.description.data = convert.description
+            form.name.data = conversion.name
+            form.description.data = conversion.description
 
-            return render_template("convert/edit.html", form=form, conversion_id=id )
+            return render_template("conversions/edit.html", form=form, conversion_id=id )
     else:
             return abort(403)
         
@@ -664,22 +664,22 @@ def edit(id):
 #   Feature on the conversion  #
 ################################
 
-@conversions_blueprint.route("/get_convert", methods=['GET'])
+@conversions_blueprint.route("/get_conversion", methods=['GET'])
 def get_conversion():
     """Get the conversion thanks to the id to the interface (vue-js)"""
     id = request.args.get('id', 1, type=int)
     if id:
-        convert = conv_repo.get(id)
-        if convert:
+        conversion = conv_repo.get(id)
+        if conversion:
             # Visibility check: private conversions only visible to owner and admins
-            if not convert.public:
+            if not conversion.public:
                 if not current_user.is_authenticated:
                     return {"success": False, "message": "Unauthorized", "toast_class": "danger"}, 403
-                if current_user.id != convert.user_id and not current_user.is_admin():
+                if current_user.id != conversion.user_id and not current_user.is_admin():
                     return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
                 "success": True,
-                "convert": convert.to_json(),
+                "conversion": conversion.to_json(),
                 "message": "Conversion found",
                 "toast_class" : "success"
                 }, 200
@@ -700,20 +700,20 @@ def edit_public():
     """Change the public/private section"""
     id = request.args.get('id', 1, type=int)
     if id:
-        convert = conv_repo.get(id)
-        if convert:
-            if convert.user_id == current_user.id or current_user.is_admin():
-                comment_count = len([c for c in convert.comments if not c.is_deleted])
+        conversion = conv_repo.get(id)
+        if conversion:
+            if conversion.user_id == current_user.id or current_user.is_admin():
+                comment_count = len([c for c in conversion.comments if not c.is_deleted])
                 success , _bool = conv_repo.toggle_visibility(id)
                 if success:
                     message = f"This conversion is now {'public' if _bool else 'private'}"
                     AccountModel.create_system_log(
                         'convert_visibility_changed', actor_id=current_user.id, actor_name=current_user.first_name,
-                        target_type="convert", target_id=id, target_name=convert.name, details="public" if _bool else "private"
+                        target_type="convert", target_id=id, target_name=conversion.name, details="public" if _bool else "private"
                     )
                     return {
                         "success": True,
-                        "convert_public": _bool,
+                        "conversion_public": _bool,
                         "message": message,
                         "comment_count": comment_count,
                         "toast_class" : "success"
@@ -745,12 +745,12 @@ def get_share_key():
     """Get the share key of a conversion"""
     id = request.args.get('id', 1, type=int)
     if id:
-        convert = conv_repo.get(id)
-        if convert:
-            if convert.user_id == current_user.id or current_user.is_admin():
+        conversion = conv_repo.get(id)
+        if conversion:
+            if conversion.user_id == current_user.id or current_user.is_admin():
                 return {
                     "success": True, 
-                    "share_key": convert.share_key,
+                    "share_key": conversion.share_key,
                     "message": "Share key found", 
                     "toast_class" : "success"
                     }, 200
@@ -773,9 +773,9 @@ def regenerate_share_key():
     """Regenerate the share key of a conversion"""
     id = request.args.get('id', 1, type=int)
     if id:
-        convert = conv_repo.get(id)
-        if convert:
-            if convert.user_id == current_user.id or current_user.is_admin():
+        conversion = conv_repo.get(id)
+        if conversion:
+            if conversion.user_id == current_user.id or current_user.is_admin():
                 success , new_share_key = conv_repo.regenerate_share_key(id)
                 if success:
                     return {
@@ -801,7 +801,7 @@ def regenerate_share_key():
         "toast_class" : "danger"
         }, 500
     
-# https://cti-transmute.org/convert/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`
+# https://cti-transmute.org/conversions/share?uuid=${conversion?.uuid || ''}&share_key=${share_key}`
 @conversions_blueprint.route("/share", methods=['GET'])
 def share_conversion():
     """Share a conversion using uuid and share_key"""
@@ -812,16 +812,16 @@ def share_conversion():
         flash("Please provide a valid UUID and Share Key", "danger")
         return redirect(url_for("conversions.history"))
     print(f"UUID: {uuid}, Share Key: {share_key}")
-    convert = conv_repo.get_by_uuid(uuid)
-    if not convert:
+    conversion = conv_repo.get_by_uuid(uuid)
+    if not conversion:
         flash("No conversion found for the provided UUID", "danger")
         return redirect(url_for("conversions.history"))
 
-    if convert.share_key != share_key:
+    if conversion.share_key != share_key:
         flash("The provided Share Key is invalid", "danger")
         return redirect(url_for("conversions.history"))
 
-    return render_template("convert/detail.html", convert=convert)
+    return render_template("conversions/detail.html", conversion=conversion)
 
 
 
@@ -863,9 +863,9 @@ def _build_stix_to_misp_params(form) -> StixToMispParams:
 @conversions_blueprint.route("/refresh/<string:uuid>", methods=['GET', 'POST'])
 @login_required
 def refresh(uuid):
-    convert_obj = conv_repo.get_by_uuid(uuid)
+    conversion_obj = conv_repo.get_by_uuid(uuid)
 
-    if not convert_obj:
+    if not conversion_obj:
         flash("Conversion not found.", "danger")
         return redirect(url_for("conversions.history"))
 
@@ -873,15 +873,15 @@ def refresh(uuid):
     # Anonymous callers were already bounced to login by @login_required.
     user = current_user._get_current_object()
     try:
-        assert_can_refresh(user, convert_obj)
+        assert_can_refresh(user, conversion_obj)
     except PermissionDenied:
         abort(403)
 
     # Choose the WTForm + params builder for this conversion's direction.
-    if convert_obj.conversion_type == "MISP_TO_STIX":
+    if conversion_obj.conversion_type == "MISP_TO_STIX":
         form = mispToStixParamForm()
         build_params = _build_misp_to_stix_params
-    elif convert_obj.conversion_type == "STIX_TO_MISP":
+    elif conversion_obj.conversion_type == "STIX_TO_MISP":
         form = stixToMispParamForm()
         build_params = _build_stix_to_misp_params
     else:
@@ -890,9 +890,9 @@ def refresh(uuid):
 
     # Prefill form (GET)
     if request.method == "GET":
-        form.name.data = convert_obj.name
-        form.description.data = convert_obj.description
-        form.public.data = convert_obj.public
+        form.name.data = conversion_obj.name
+        form.description.data = conversion_obj.description
+        form.public.data = conversion_obj.public
 
     result = None
     diff = None
@@ -900,7 +900,7 @@ def refresh(uuid):
 
     if form.validate_on_submit():
         try:
-            history = refresh_conversion(user, convert_obj, build_params(form))
+            history = refresh_conversion(user, conversion_obj, build_params(form))
         except PermissionDenied:
             abort(403)
         except ConversionError as exc:
@@ -909,7 +909,7 @@ def refresh(uuid):
         else:
             result = history.new_output_text
             is_identical = (
-                (convert_obj.output_text or "").strip()
+                (conversion_obj.output_text or "").strip()
                 == (history.new_output_text or "").strip()
             )
             if is_identical:
@@ -920,13 +920,13 @@ def refresh(uuid):
                 diff = "The new conversion result is DIFFERENT from the previous one."
 
     return render_template(
-        "convert/refresh.html",
+        "conversions/refresh.html",
         form=form,
-        convert_obj=convert_obj,
+        conversion_obj=conversion_obj,
         result=result,
         diff=diff,
         error=error,
-        filename=f"{convert_obj.name}_refresh.json"
+        filename=f"{conversion_obj.name}_refresh.json"
     )
 
 
@@ -937,15 +937,15 @@ def refresh(uuid):
 def get_history():
     id = request.args.get('id', 1, type=int)
     if id:
-        convert_obj = conv_repo.get(id)
-        if convert_obj:
-            if not convert_obj.public and current_user.id != convert_obj.user_id and not current_user.is_admin():
+        conversion_obj = conv_repo.get(id)
+        if conversion_obj:
+            if not conversion_obj.public and current_user.id != conversion_obj.user_id and not current_user.is_admin():
                 return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
-            latest_history = conv_repo.accepted_history_list(convert_obj.id)
+            latest_history = conv_repo.accepted_history_list(conversion_obj.id)
             if latest_history:
                 return {
                     "success": True,
-                    "history_convert": [h.to_json() for h in latest_history],
+                    "conversion_history": [h.to_json() for h in latest_history],
                     "message": "New conversion found",
                     "toast_class" : "success"
                     }, 200
@@ -968,21 +968,21 @@ def get_history():
 
 
 
-@conversions_blueprint.route("/get_new_convert", methods=['GET'])
+@conversions_blueprint.route("/get_new_conversion", methods=['GET'])
 @login_required
 def get_new_conversion():
     """Get the new conversion after a refresh to show the difference"""
     id = request.args.get('id', 1, type=int)
     if id:
-        convert_obj = conv_repo.get(id)
-        if convert_obj:
-            if not convert_obj.public and current_user.id != convert_obj.user_id and not current_user.is_admin():
+        conversion_obj = conv_repo.get(id)
+        if conversion_obj:
+            if not conversion_obj.public and current_user.id != conversion_obj.user_id and not current_user.is_admin():
                 return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
-            latest_history = conv_repo.latest_history_list(convert_obj.id)
+            latest_history = conv_repo.latest_history_list(conversion_obj.id)
             if latest_history:
                 return {
                     "success": True,
-                    "history_convert": [h.to_json() for h in latest_history],
+                    "conversion_history": [h.to_json() for h in latest_history],
                     "message": "New conversion found",
                     "toast_class" : "success"
                     }, 200
@@ -1059,39 +1059,39 @@ def history_action_gone():
 @conversions_blueprint.route("/difference/<int:id>", methods=['GET'])
 def difference(id):
     """Show the difference between two conversion versions"""
-    convert_obj_history = conv_repo.get_history(id)
-    if not convert_obj_history:
+    conversion_obj_history = conv_repo.get_history(id)
+    if not conversion_obj_history:
         flash("Conversion not found.", "danger")
         return redirect(url_for("conversions.history"))
 
-    convert_obj = conv_repo.get(convert_obj_history.conversion_id)
-    if not convert_obj:
+    conversion_obj = conv_repo.get(conversion_obj_history.conversion_id)
+    if not conversion_obj:
         flash("Conversion not found.", "danger")
         return redirect(url_for("conversions.history"))
     
-    if convert_obj.public:
+    if conversion_obj.public:
         if current_user.is_anonymous():
             flash("You must be logged in to view this conversion if you are the owner of this conversion.", "warning")
             return redirect(url_for("account.login"))  
 
-        if current_user.id != convert_obj.user_id and not current_user.is_admin():
+        if current_user.id != conversion_obj.user_id and not current_user.is_admin():
             flash("You do not have permission to view this conversion.", "danger")
             return redirect(url_for("conversions.history"))
         
         return render_template(
-            "convert/compare_version/difference.html",
-            old_result=convert_obj_history.old_output_text,
-            new_result=convert_obj_history.new_output_text,
-            convert_obj=convert_obj,
-            history_id=convert_obj_history.id
+            "conversions/compare_version/difference.html",
+            old_result=conversion_obj_history.old_output_text,
+            new_result=conversion_obj_history.new_output_text,
+            conversion_obj=conversion_obj,
+            history_id=conversion_obj_history.id
         )
     else:
         return render_template(
-            "convert/compare_version/difference.html",
-            old_result=convert_obj_history.old_output_text,
-            new_result=convert_obj_history.new_output_text,
-            convert_obj=convert_obj,
-            history_id=convert_obj_history.id
+            "conversions/compare_version/difference.html",
+            old_result=conversion_obj_history.old_output_text,
+            new_result=conversion_obj_history.new_output_text,
+            conversion_obj=conversion_obj,
+            history_id=conversion_obj_history.id
         )
 
 # get_history_details
@@ -1101,15 +1101,15 @@ def get_history_details():
     """Get the details of a conversion history entry"""
     history_id = request.args.get('history_id', type=int)
     if history_id:
-        convert_history = conv_repo.get_history(history_id)
-        if convert_history:
-            convert_obj = conv_repo.get(convert_history.conversion_id)
-            if convert_obj and not convert_obj.public:
-                if current_user.id != convert_obj.user_id and not current_user.is_admin():
+        conversion_history = conv_repo.get_history(history_id)
+        if conversion_history:
+            conversion_obj = conv_repo.get(conversion_history.conversion_id)
+            if conversion_obj and not conversion_obj.public:
+                if current_user.id != conversion_obj.user_id and not current_user.is_admin():
                     return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
                 "success": True,
-                "history": convert_history.to_json(),
+                "history": conversion_history.to_json(),
                 "message": "Conversion history found",
                 "toast_class" : "success"
                 }, 200
@@ -1136,8 +1136,8 @@ def get_comments():
     if not conversion_id:
         return {"success": False, "message": "Missing conversion_id", "toast_class": "danger"}, 400
 
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
     uid = current_user.id if current_user.is_authenticated else None
@@ -1147,7 +1147,7 @@ def get_comments():
         conversion_id=conversion_id,
         current_user_id=uid,
         is_admin=is_admin,
-        convert_owner_id=convert.user_id
+        conversion_owner_id=conversion.user_id
     )
     return {"success": True, "comments": comments}, 200
 
@@ -1168,11 +1168,11 @@ def add_comment():
     if len(content) > 2000:
         return {"success": False, "message": "Comment is too long (max 2000 characters)", "toast_class": "danger"}, 400
 
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
-    if not convert.public and not current_user.is_admin() and current_user.id != convert.user_id:
+    if not conversion.public and not current_user.is_admin() and current_user.id != conversion.user_id:
         return {"success": False, "message": "You cannot comment on a private conversion", "toast_class": "danger"}, 403
 
     comment = ConversionModel.create_comment(
@@ -1193,7 +1193,7 @@ def add_comment():
         actor_name=current_user.first_name,
         target_type="comment",
         target_id=comment.id,
-        target_name=f"On convert: {convert.name}",
+        target_name=f"On conversion: {conversion.name}",
         details=f"{action.capitalize()} — {content[:120]}{'…' if len(content) > 120 else ''}"
     )
 
@@ -1202,7 +1202,7 @@ def add_comment():
         if parent:
             AccountModel.notify_comment_reply(parent, comment, current_user.id)
     else:
-        AccountModel.notify_new_comment(convert, comment, current_user.id)
+        AccountModel.notify_new_comment(conversion, comment, current_user.id)
 
     return {
         "success": True,
@@ -1211,7 +1211,7 @@ def add_comment():
         "comment": comment.to_json(
             current_user_id=current_user.id,
             is_admin=current_user.is_admin(),
-            convert_owner_id=convert.user_id
+            conversion_owner_id=conversion.user_id
         )
     }, 201
 
@@ -1256,7 +1256,7 @@ def edit_comment():
             actor_name=current_user.first_name,
             target_type="comment",
             target_id=comment_id,
-            target_name=f"On convert #{comment.conversion_id}",
+            target_name=f"On conversion #{comment.conversion_id}",
             details=content[:120] + ('…' if len(content) > 120 else ''),
         )
     return {
@@ -1283,7 +1283,7 @@ def delete_comment():
     if success and comment:
         AccountModel.create_system_log(
             'comment_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
-            target_type='comment', target_id=comment_id, target_name=f'On convert #{comment.conversion_id}',
+            target_type='comment', target_id=comment_id, target_name=f'On conversion #{comment.conversion_id}',
             details=comment.content[:120] if comment.content else None
         )
     return {
@@ -1356,8 +1356,8 @@ def report_conversion():
     if description and len(description) > 1000:
         return {"success": False, "message": "Description is too long (max 1000 characters)", "toast_class": "danger"}, 400
 
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
     report = ConversionModel.create_report(
@@ -1369,7 +1369,7 @@ def report_conversion():
     if not report:
         return {"success": False, "message": "Failed to submit report", "toast_class": "danger"}, 500
 
-    AccountModel.notify_admins_new_report(convert, current_user.id)
+    AccountModel.notify_admins_new_report(conversion, current_user.id)
     return {"success": True, "message": "Report submitted. Thank you.", "toast_class": "success"}, 201
 
 
@@ -1433,7 +1433,7 @@ def admin_delete_report():
 def trash():
     if not current_user.is_admin():
         return redirect(url_for("conversions.history"))
-    return render_template("convert/trash.html")
+    return render_template("conversions/trash.html")
 
 
 @conversions_blueprint.route("/get_trash", methods=['GET'])
@@ -1462,15 +1462,15 @@ def restore():
     conversion_id = data.get('id') or request.args.get('id', type=int)
     if conversion_id:
         conversion_id = int(conversion_id)
-    convert = conv_repo.get(conversion_id, include_deleted=True)
-    if not convert:
+    conversion = conv_repo.get(conversion_id, include_deleted=True)
+    if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
     if conv_repo.restore(conversion_id):
         AccountModel.create_system_log(
             'convert_restored', actor_id=current_user.id, actor_name=current_user.first_name,
-            target_type='convert', target_id=conversion_id, target_name=convert.name
+            target_type='conversion', target_id=conversion_id, target_name=conversion.name
         )
-        return {"success": True, "message": f"'{convert.name}' restored successfully", "toast_class": "success"}, 200
+        return {"success": True, "message": f"'{conversion.name}' restored successfully", "toast_class": "success"}, 200
     return {"success": False, "message": "Error restoring conversion", "toast_class": "danger"}, 500
 
 
@@ -1483,14 +1483,14 @@ def hard_delete():
     conversion_id = data.get('id') or request.args.get('id', type=int)
     if conversion_id:
         conversion_id = int(conversion_id)
-    convert = conv_repo.get(conversion_id, include_deleted=True)
-    if not convert:
+    conversion = conv_repo.get(conversion_id, include_deleted=True)
+    if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
-    _name = convert.name
+    _name = conversion.name
     if conv_repo.hard_delete(conversion_id):
         AccountModel.create_system_log(
             'convert_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
-            target_type='convert', target_id=conversion_id, target_name=_name
+            target_type='conversion', target_id=conversion_id, target_name=_name
         )
         return {"success": True, "message": f"'{_name}' permanently deleted", "toast_class": "success"}, 200
     return {"success": False, "message": "Error deleting conversion", "toast_class": "danger"}, 500
@@ -1508,22 +1508,22 @@ def bulk_action():
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
     done = 0
     for conversion_id in ids:
-        convert = conv_repo.get(conversion_id, include_deleted=True)
-        if not convert:
+        conversion = conv_repo.get(conversion_id, include_deleted=True)
+        if not conversion:
             continue
         if action == 'restore':
             if conv_repo.restore(conversion_id):
                 AccountModel.create_system_log(
                     'convert_restored', actor_id=current_user.id, actor_name=current_user.first_name,
-                    target_type='convert', target_id=conversion_id, target_name=convert.name
+                    target_type='conversion', target_id=conversion_id, target_name=conversion.name
                 )
                 done += 1
         else:
-            _name = convert.name
+            _name = conversion.name
             if conv_repo.hard_delete(conversion_id):
                 AccountModel.create_system_log(
                     'convert_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
-                    target_type='convert', target_id=conversion_id, target_name=_name
+                    target_type='conversion', target_id=conversion_id, target_name=_name
                 )
                 done += 1
     label = "conversion" if done == 1 else "conversions"
@@ -1584,25 +1584,25 @@ def misp_test_connection():
     return {"success": True, "tags": tags, "count": len(tags)}, 200
 
 
-def _can_download(convert) -> bool:
+def _can_download(conversion) -> bool:
     """Return True if the current user is allowed to download this conversion's data."""
-    if convert.public:
+    if conversion.public:
         return True
-    return current_user.is_authenticated and (current_user.id == convert.user_id or current_user.is_admin())
+    return current_user.is_authenticated and (current_user.id == conversion.user_id or current_user.is_admin())
 
 
 @conversions_blueprint.route("/download/<int:conversion_id>/input")
 def download_input(conversion_id):
     """Download the input file (MISP JSON for MISP→STIX, STIX JSON for STIX→MISP)."""
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not _can_download(convert):
+    if not _can_download(conversion):
         return {"success": False, "error": "Forbidden"}, 403
 
-    label    = "misp" if convert.conversion_type == "MISP_TO_STIX" else "stix"
+    label    = "misp" if conversion.conversion_type == "MISP_TO_STIX" else "stix"
     filename = f"{label}-input-{conversion_id}.json"
-    return json.dumps(json.loads(convert.input_text), indent=2), 200, {
+    return json.dumps(json.loads(conversion.input_text), indent=2), 200, {
         "Content-Type": "application/json",
         "Content-Disposition": f'attachment; filename="{filename}"',
     }
@@ -1611,17 +1611,17 @@ def download_input(conversion_id):
 @conversions_blueprint.route("/download/<int:conversion_id>/output")
 def download_output(conversion_id):
     """Download the output file (STIX JSON for MISP→STIX, MISP JSON for STIX→MISP)."""
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not _can_download(convert):
+    if not _can_download(conversion):
         return {"success": False, "error": "Forbidden"}, 403
-    if not convert.output_text:
+    if not conversion.output_text:
         return {"success": False, "error": "No output data"}, 404
 
-    label    = "stix" if convert.conversion_type == "MISP_TO_STIX" else "misp"
+    label    = "stix" if conversion.conversion_type == "MISP_TO_STIX" else "misp"
     filename = f"{label}-output-{conversion_id}.json"
-    return json.dumps(json.loads(convert.output_text), indent=2), 200, {
+    return json.dumps(json.loads(conversion.output_text), indent=2), 200, {
         "Content-Type": "application/json",
         "Content-Disposition": f'attachment; filename="{filename}"',
     }
@@ -1634,17 +1634,17 @@ def download_misp_push(conversion_id):
     would be sent to a MISP instance during a push (includes the
     cti-evaluation object and all community evaluation tags).
     """
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not _can_download(convert):
+    if not _can_download(conversion):
         return {"success": False, "error": "Forbidden"}, 403
 
     summary        = EvalModel.get_summary(conversion_id)
     consensus_tags = EvalModel.get_consensus_tags(conversion_id, threshold=2)
     push_tags      = EvalModel.get_misp_push_tags(conversion_id)
 
-    event_dict, _, _, error = _build_misp_payload(convert, push_tags, consensus_tags, summary)
+    event_dict, _, _, error = _build_misp_payload(conversion, push_tags, consensus_tags, summary)
     if error:
         return {"success": False, "error": error}, 400
 
@@ -1672,10 +1672,10 @@ def push_to_misp():
     if url_error:
         return {"success": False, "error": url_error}, 400
 
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "error": "Conversion not found"}, 404
-    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
         return {"success": False, "error": "Forbidden"}, 403
 
     # Build the full PyMISP payload (event + cti-evaluation object + eval tags)
@@ -1683,7 +1683,7 @@ def push_to_misp():
     consensus_tags = EvalModel.get_consensus_tags(conversion_id, threshold=2)
     push_tags      = EvalModel.get_misp_push_tags(conversion_id)
 
-    event_dict, _, _, build_error = _build_misp_payload(convert, push_tags, consensus_tags, summary)
+    event_dict, _, _, build_error = _build_misp_payload(conversion, push_tags, consensus_tags, summary)
     if build_error:
         return {"success": False, "error": build_error}, 400
 
@@ -1735,7 +1735,7 @@ def push_to_misp():
         actor_name=current_user.first_name,
         target_type="convert",
         target_id=conversion_id,
-        target_name=convert.name,
+        target_name=conversion.name,
         details=f"Pushed to {misp_url} — new event ID: {new_event_id}"
     )
     return {
@@ -1745,7 +1745,7 @@ def push_to_misp():
     }, 200
 
 
-def _build_misp_payload(convert, push_tags, consensus_tags, summary):
+def _build_misp_payload(conversion, push_tags, consensus_tags, summary):
     """
     Build the final MISP event payload using PyMISP.
 
@@ -1766,7 +1766,7 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
         return (m.group(1), m.group(2), m.group(3)) if m else (None, None, None)
 
     # ── 1. Extract the raw MISP event dict from the conversion ──────────────
-    misp_text = convert.input_text if convert.conversion_type == "MISP_TO_STIX" else convert.output_text
+    misp_text = conversion.input_text if conversion.conversion_type == "MISP_TO_STIX" else conversion.output_text
     try:
         misp_data = json.loads(misp_text)
     except (json.JSONDecodeError, TypeError):
@@ -1803,44 +1803,43 @@ def _build_misp_payload(convert, push_tags, consensus_tags, summary):
             ev.add_tag(tag_name)
 
     # ── 4. Build the cti-evaluation MISPObject ───────────────────────────
-    source_fmt    = "MISP"     if convert.conversion_type == "MISP_TO_STIX" else "STIX 2.1"
-    target_fmt    = "STIX 2.1" if convert.conversion_type == "MISP_TO_STIX" else "MISP"
+    source_fmt    = "MISP"     if conversion.conversion_type == "MISP_TO_STIX" else "STIX 2.1"
+    target_fmt    = "STIX 2.1" if conversion.conversion_type == "MISP_TO_STIX" else "MISP"
     overall_level = next((parse_tag(t)[2] for t in push_tags if parse_tag(t)[1] == "overall-score"), None)
     now_iso       = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     obj = MISPObject("cti-evaluation", standalone=False)
 
     # Fixed identity attributes
-    obj.add_attribute("evaluation-id",               value=str(uuid_mod.uuid4()),                          type="text")
-    obj.add_attribute("evaluation-name",             value=f"CTI-Transmute evaluation of {convert.name}",  type="text")
-    obj.add_attribute("evaluated-artifact",          value=convert.name,                                   type="text")
-    obj.add_attribute("evaluation-date",             value=now_iso,                                        type="datetime")
-    obj.add_attribute("evaluator",                   value="CTI-Transmute platform (community)",            type="text")
-    obj.add_attribute("cti-transmute-conversion-id", value=convert.uuid,                                   type="text")
-    obj.add_attribute("cti-transmute-link",          value=f"https://cti-transmute.org/convert/{convert.id}", type="link")
-    obj.add_attribute("source-format",               value=source_fmt,                                     type="text")
-    obj.add_attribute("target-format",               value=target_fmt,                                     type="text")
-    obj.add_attribute("calculation-formula",         value="Mean of community votes mapped to 0-100 (very-low=0, low=25, moderate=50, high=75, very-high=100)", type="text")
+    obj.add_attribute("evaluation-id",               str(uuid_mod.uuid4()),                                    type="text")
+    obj.add_attribute("evaluation-name",             f"CTI-Transmute evaluation of {conversion.name}",         type="text")
+    obj.add_attribute("evaluated-artifact",          conversion.name,                                          type="text")
+    obj.add_attribute("evaluation-date",             now_iso,                                                  type="datetime")
+    obj.add_attribute("evaluator",                   "CTI-Transmute platform (community)",                     type="text")
+    obj.add_attribute("cti-transmute-conversion-id", conversion.uuid,                                          type="text")
+    obj.add_attribute("cti-transmute-link",          f"https://cti-transmute.org/conversions/{conversion.id}", type="link")
+    obj.add_attribute("source-format",               source_fmt,                                               type="text")
+    obj.add_attribute("target-format",               target_fmt,                                               type="text")
+    obj.add_attribute("calculation-formula", "Mean of community votes mapped to 0-100 (very-low=0, low=25, moderate=50, high=75, very-high=100)", type="text")
 
     # Scores
     if overall_level:
-        obj.add_attribute("overall-score",       value=overall_level,                        type="text")
+        obj.add_attribute("overall-score",       overall_level,                    type="text")
     if summary.get("approval_score") is not None:
-        obj.add_attribute("overall-score-value", value=float(summary["approval_score"]),      type="float")
+        obj.add_attribute("overall-score-value", float(summary["approval_score"]), type="float")
 
     # Dimension scores from community consensus (threshold=2)
     for tag in consensus_tags:
         cat, level = tag["category"], tag["level"]
-        obj.add_attribute(cat,            value=level,                           type="text")
-        obj.add_attribute(f"{cat}-score", value=float(SCORE_MAP.get(level, 0)), type="float")
+        obj.add_attribute(cat,            level,                          type="text")
+        obj.add_attribute(f"{cat}-score", float(SCORE_MAP.get(level, 0)), type="float")
 
     # One taxonomy-tag attribute per vote tag
     for tag_name in sorted(push_tags):
         obj.add_attribute("taxonomy-tag", value=tag_name, type="text")
 
-    obj.add_attribute("taxonomy-reference",
-                      value="https://github.com/MISP/misp-taxonomies/blob/main/cti-evaluation/machinetag.json",
-                      type="link")
+    obj.add_attribute("taxonomy-reference", type='link',
+                      value="https://github.com/MISP/misp-taxonomies/blob/main/cti-evaluation/machinetag.json")
 
     ev.add_object(obj)
 
@@ -1895,10 +1894,10 @@ def misp_push_preview(conversion_id):
     preview in the push modal. Includes the full event JSON, the isolated
     cti-evaluation object, and a human-readable attribute table.
     """
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "error": "Conversion not found"}, 404
-    if not convert.public and current_user.id != convert.user_id and not current_user.is_admin():
+    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
         return {"success": False, "error": "Forbidden"}, 403
 
     summary        = EvalModel.get_summary(conversion_id)
@@ -1906,7 +1905,7 @@ def misp_push_preview(conversion_id):
     push_tags      = EvalModel.get_misp_push_tags(conversion_id)
 
     event_dict, cti_obj_dict, attributes_meta, error = _build_misp_payload(
-        convert, push_tags, consensus_tags, summary
+        conversion, push_tags, consensus_tags, summary
     )
 
     if error:
@@ -1954,9 +1953,9 @@ def admin_get_comments():
     items = []
     for c in pagination.items:
         d = c.to_json(current_user_id=current_user.id, is_admin=True)
-        convert = conv_repo.get(c.conversion_id, include_deleted=True)
-        d["convert_name"] = convert.name if convert else "Unknown"
-        d["convert_active"] = bool(convert and convert.is_active)
+        conversion = conv_repo.get(c.conversion_id, include_deleted=True)
+        d["conversion_name"] = conversion.name if conversion else "Unknown"
+        d["conversion_active"] = bool(conversion and conversion.is_active)
         d["is_reply"] = bool(c.parent_id)
         if c.parent_id:
             parent = CommentModel.query.get(c.parent_id)
@@ -2024,16 +2023,16 @@ def get_json_tags(conversion_id):
     """Return tag objects for all tags embedded in the stored MISP/STIX JSON.
     JSON is never modified. Tags are matched against the DB for color/icon;
     unmatched names get a minimal object with nameToColor fallback on the frontend."""
-    convert = conv_repo.get(conversion_id)
-    if not convert:
+    conversion = conv_repo.get(conversion_id)
+    if not conversion:
         return {"success": False, "message": "Not found"}, 404
-    if not convert.public:
+    if not conversion.public:
         if not current_user.is_authenticated:
             return {"success": False, "message": "Unauthorized"}, 403
-        if not current_user.is_admin() and current_user.id != convert.user_id:
+        if not current_user.is_admin() and current_user.id != conversion.user_id:
             return {"success": False, "message": "Forbidden"}, 403
     # STIX→MISP: MISP JSON is in output_text; MISP→STIX: MISP JSON is in input_text
-    misp_text = convert.output_text if convert.conversion_type == "STIX_TO_MISP" else convert.input_text
+    misp_text = conversion.output_text if conversion.conversion_type == "STIX_TO_MISP" else conversion.input_text
     names = extract_tag_names_from_misp_json(misp_text or '')
     if not names:
         return {"success": True, "tags": []}, 200

@@ -447,14 +447,14 @@ def get_conversion_tags(conversion_id, source_type=None):
     return q.all()
 
 
-def get_conversion_tags_batch(convert_ids):
+def get_conversion_tags_batch(conversion_ids):
     """Return {conversion_id: [assoc, ...]} for a list of conversion IDs."""
-    if not convert_ids:
+    if not conversion_ids:
         return {}
     assocs = ConversionTagAssociation.query.filter(
-        ConversionTagAssociation.conversion_id.in_(convert_ids)
+        ConversionTagAssociation.conversion_id.in_(conversion_ids)
     ).all()
-    result = {cid: [] for cid in convert_ids}
+    result = {cid: [] for cid in conversion_ids}
     for a in assocs:
         result[a.conversion_id].append(a)
     return result
