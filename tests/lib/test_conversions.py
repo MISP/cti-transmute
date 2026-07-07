@@ -205,7 +205,7 @@ def test_successful_submission_writes_one_audit_log(app_db, misp_event):
         payload=misp_event, params=MispToStixParams(),
     )
 
-    assert SystemLog.query.filter_by(event_type="convert_created").count() == 1
+    assert SystemLog.query.filter_by(event_type="conversion_created").count() == 1
 
 
 def test_anonymous_submission_does_not_notify_followers(
@@ -300,7 +300,7 @@ def test_owner_refresh_writes_a_pending_history_row_with_params(app_db, misp_eve
     assert history.params == params.model_dump(mode="json", exclude_none=True)
     assert history.new_output_text  # the freshly converted bundle
     assert history.old_output_text == "OLD-OUTPUT"
-    assert SystemLog.query.filter_by(event_type="convert_refreshed").count() == 1
+    assert SystemLog.query.filter_by(event_type="conversion_refreshed").count() == 1
 
 
 def test_stranger_refresh_is_denied_and_writes_nothing(app_db, misp_event):
@@ -345,8 +345,9 @@ def test_admin_refresh_records_admin_as_actor_but_keeps_owner(app_db, misp_event
     history = refresh_conversion(admin, conv, MispToStixParams())
 
     assert history.user_id == owner.id  # ownership unchanged by the admin's refresh
-    log = SystemLog.query.filter_by(event_type="convert_refreshed").one()
+    log = SystemLog.query.filter_by(event_type="conversion_refreshed").one()
     assert log.actor_id == admin.id  # but the audit records who acted
+    assert log.target_type == "conversion"
 
 
 def test_refresh_commit_failure_writes_nothing(app_db, misp_event, monkeypatch):
@@ -366,7 +367,7 @@ def test_refresh_commit_failure_writes_nothing(app_db, misp_event, monkeypatch):
         conversions.refresh_conversion(owner, conv, MispToStixParams())
 
     assert ConversionHistory.query.count() == 0
-    assert SystemLog.query.filter_by(event_type="convert_refreshed").count() == 0
+    assert SystemLog.query.filter_by(event_type="conversion_refreshed").count() == 0
 
 
 def _make_history(conv, *, new_output="NEW-OUTPUT", status="pending"):
@@ -397,7 +398,7 @@ def test_owner_accept_adopts_new_output_and_records_event(app_db, misp_event):
 
     assert result.status == "accepted"
     assert conv.output_text == "NEW-OUTPUT"  # accept = adopt the refreshed result
-    assert SystemLog.query.filter_by(event_type="convert_history_accepted").count() == 1
+    assert SystemLog.query.filter_by(event_type="conversion_history_accepted").count() == 1
 
 
 def test_stranger_accept_is_denied_and_changes_nothing(app_db, misp_event):
@@ -430,7 +431,7 @@ def test_owner_reject_flips_status_without_touching_output(app_db, misp_event):
 
     assert result.status == "rejected"
     assert conv.output_text == "OLD-OUTPUT"  # reject never adopts the new output
-    assert SystemLog.query.filter_by(event_type="convert_history_rejected").count() == 1
+    assert SystemLog.query.filter_by(event_type="conversion_history_rejected").count() == 1
 
 
 def test_stranger_reject_is_denied_and_changes_nothing(app_db, misp_event):
