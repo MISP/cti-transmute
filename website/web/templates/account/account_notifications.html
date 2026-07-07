@@ -44,7 +44,7 @@
            :class="{unread: !n.is_read}"
            style="cursor:pointer;">
         <div class="notif-icon"
-             :class="{'type-reply': n.type==='comment_reply', 'type-convert': n.type==='new_follow_convert', 'type-report': n.type==='report_submitted'}"
+             :class="{'type-reply': n.type==='comment_reply', 'type-conversion': n.type==='new_follow_convert', 'type-report': n.type==='report_submitted'}"
              @click="clickNotif(n)">
           <i :class="n.type==='comment_reply' ? 'fas fa-reply' : n.type==='new_follow_convert' ? 'fas fa-bolt' : 'fas fa-flag'"></i>
         </div>

@@ -366,7 +366,7 @@
 
             async function fetchRecent() {
                 try {
-                    const res  = await fetch('/conversions/get_convert_page_history?page=1&sort_order=desc');
+                    const res  = await fetch('/conversions/get_conversion_page_history?page=1&sort_order=desc');
                     const data = await res.json();
                     if (res.ok) recent_list.value = (data.list || []).slice(0, 10);
                 } catch (e) { console.error(e); }

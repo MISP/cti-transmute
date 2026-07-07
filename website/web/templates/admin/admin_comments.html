@@ -40,15 +40,15 @@
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ c.id ]]</td>
             <td style="font-weight:600;">[[ c.author ]]</td>
             <td style="font-size:0.8rem;">
-              <a v-if="c.convert_active" :href="'/conversions/detail/'+c.conversion_id" style="color:var(--accent);">
-                [[ c.convert_name ]]
+              <a v-if="c.conversion_active" :href="'/conversions/detail/'+c.conversion_id" style="color:var(--accent);">
+                [[ c.conversion_name ]]
               </a>
-              <span v-else style="color:var(--text-3);">[[ c.convert_name ]]</span>
-              <div v-if="!c.convert_active" class="d-flex align-items-center gap-1 mt-1"
+              <span v-else style="color:var(--text-3);">[[ c.conversion_name ]]</span>
+              <div v-if="!c.conversion_active" class="d-flex align-items-center gap-1 mt-1"
                 style="font-size:0.72rem; color:var(--danger);">
                 <i class="fas fa-triangle-exclamation"></i>
                 Deactivated —
-                <a :href="'/account/admin/deleted_converts?highlight='+c.conversion_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
+                <a :href="'/account/admin/deleted_conversions?highlight='+c.conversion_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
                   View in Trash <i class="fas fa-arrow-right" style="font-size:0.65rem;"></i>
                 </a>
               </div>
@@ -91,7 +91,7 @@
             <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ c.created_at ]]</td>
             <td>
               <div class="d-flex gap-1">
-                <a v-if="c.is_reply && c.convert_active"
+                <a v-if="c.is_reply && c.conversion_active"
                   :href="'/conversions/detail/'+c.conversion_id+'#comment-'+c.id"
                   class="btn btn-sm btn-outline-secondary py-0 px-2"
                   style="font-size:0.72rem; color:var(--text-3);"

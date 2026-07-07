@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  ConvertSunburst — CTI data distribution chart
+//  ConversionSunburst — CTI data distribution chart
 //  Apache ECharts (Apache 2.0) — https://echarts.apache.org/
 //  Features: sunburst + treemap, input/output side, dark/light theme,
 //            click-slice → JsonViewer panel (highlight, tree, format, download, copy).
@@ -150,10 +150,10 @@ function detectFormat(text) {
 }
 
 // ── Vue component ─────────────────────────────────────────────────────────────
-const ConvertSunburst = {
+const ConversionSunburst = {
     delimiters: ['[[', ']]'],
     components: { 'json-viewer': JsonViewer },
-    props: { convertData: { type: Object, default: null } },
+    props: { conversionData: { type: Object, default: null } },
     template: `
 <div class="csb-wrapper">
 
@@ -259,10 +259,10 @@ const ConvertSunburst = {
         let resizeObs = null
 
         const detectedFormat = computed(() => {
-            if (!props.convertData) return ''
+            if (!props.conversionData) return ''
             const text = side.value === 'input'
-                ? props.convertData.input_text
-                : props.convertData.output_text
+                ? props.conversionData.input_text
+                : props.conversionData.output_text
             const f = detectFormat(text || '')
             return f === 'misp' ? 'MISP' : f === 'stix' ? 'STIX' : ''
         })
@@ -351,7 +351,7 @@ const ConvertSunburst = {
         }
 
         async function render() {
-            if (!props.convertData) return
+            if (!props.conversionData) return
             loading.value = true
             error.value = ''
             stats.value = null
@@ -360,8 +360,8 @@ const ConvertSunburst = {
             parsedData = null
 
             const text = side.value === 'input'
-                ? props.convertData.input_text
-                : props.convertData.output_text
+                ? props.conversionData.input_text
+                : props.conversionData.output_text
 
             if (!text) { loading.value = false; return }
 
@@ -443,9 +443,9 @@ const ConvertSunburst = {
             chartInst?.dispose()
         })
 
-        // immediate: true — fires right on mount when convertData is already set
+        // immediate: true — fires right on mount when conversionData is already set
         watch(
-            () => props.convertData,
+            () => props.conversionData,
             v => { if (v?.input_text || v?.output_text) render() },
             { immediate: true }
         )
@@ -458,4 +458,4 @@ const ConvertSunburst = {
     },
 }
 
-export default ConvertSunburst
+export default ConversionSunburst

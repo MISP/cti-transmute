@@ -1,13 +1,13 @@
 // Modal component for pushing a conversion's MISP event to an external MISP instance.
-// Register with: app.component('push-convert-to-misp', PushConvertToMISP)
-// Usage: <push-convert-to-misp ref="mispModal" :conversion-id="convert.id" :convert-data="convert">
+// Register with: app.component('push-conversion-to-misp', PushConversionToMISP)
+// Usage: <push-conversion-to-misp ref="mispModal" :conversion-id="conversion.id" :conversion-data="conversion">
 //        Then trigger: $refs.mispModal.open()
 
-const PushConvertToMISP = {
+const PushConversionToMISP = {
     delimiters: ['[[', ']]'],
     props: {
         conversionId:   { type: Number, required: true },
-        convertData: { type: Object, default: null },
+        conversionData: { type: Object, default: null },
     },
     template: `
 <div :id="'misp-push-modal-' + conversionId" class="modal fade" tabindex="-1" aria-hidden="true">
@@ -351,8 +351,8 @@ const PushConvertToMISP = {
 
         function parseMispEvent() {
             mispEventInfo.value = null
-            if (!props.convertData) return
-            const candidates = [props.convertData.input_text, props.convertData.output_text].filter(Boolean)
+            if (!props.conversionData) return
+            const candidates = [props.conversionData.input_text, props.conversionData.output_text].filter(Boolean)
             const MISP_EVENT_KEYS = new Set(['info', 'uuid', 'Attribute', 'Object', 'Tag', 'Galaxy'])
             for (const text of candidates) {
                 try {
@@ -403,7 +403,7 @@ const PushConvertToMISP = {
             setTimeout(() => { copied.value = false }, 1800)
         }
 
-        watch(() => props.convertData, parseMispEvent, { deep: true })
+        watch(() => props.conversionData, parseMispEvent, { deep: true })
 
         async function testConnection() {
             if (!mispUrl.value.trim() || !apiKey.value.trim()) return
@@ -518,4 +518,4 @@ const PushConvertToMISP = {
     },
 }
 
-export default PushConvertToMISP
+export default PushConversionToMISP

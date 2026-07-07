@@ -805,7 +805,7 @@ html.dusk-mode .btn-action:focus {
     background: rgba(245,158,11,.12);
 }
 
-/* ── ConvertSunburst component ───────────────────────────────── */
+/* ── ConversionSunburst component ────────────────────────────── */
 .csb-wrapper {
     padding: 1rem;
 }
@@ -903,7 +903,7 @@ html.dusk-mode .btn-action:focus {
     font-size: .73rem;
 }
 
-/* ── ConvertTable component ──────────────────────────────────── */
+/* ── ConversionTable component ───────────────────────────────── */
 .ctbl-wrapper { padding: 1rem; }
 
 .ctbl-toolbar {

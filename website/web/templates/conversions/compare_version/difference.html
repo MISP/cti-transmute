@@ -33,7 +33,7 @@
             <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
                 <div style="min-width:0;">
                     <h3 class="mb-1 text-truncate" style="font-weight:700; letter-spacing:-0.02em;">
-                        {{ convert_obj.name }}
+                        {{ conversion_obj.name }}
                     </h3>
                     <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
                         <span class="author-badge">
@@ -237,7 +237,7 @@
         </div>
 
         <div class="text-center mb-5">
-            <a href="{{ url_for('conversions.detail', id=convert_obj.id) }}"
+            <a href="{{ url_for('conversions.detail', id=conversion_obj.id) }}"
                 class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
                 <i class="fas fa-arrow-left me-2"></i> Back
             </a>
@@ -272,7 +272,7 @@
             const new_result = ref({{ new_result | tojson | safe }});
             const history_id = "{{ history_id }}";
 
-            const original_params = ref({{ convert_obj.params | tojson | safe }});
+            const original_params = ref({{ conversion_obj.params | tojson | safe }});
 
             const historyObj = ref({});
             const leftHtml = ref('');
@@ -282,7 +282,7 @@
             const filterMode = ref('all');
             const stats = ref({ add: 0, del: 0, leftLines: 0, rightLines: 0 });
 
-            async function fetchConvert() {
+            async function fetchConversion() {
                 const params = new URLSearchParams({ history_id });
                 const res = await fetch(`/conversions/get_history_details?${params}`);
                 const data = await res.json();
@@ -519,7 +519,7 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    window.location.href = `/conversions/refresh/${"{{convert_obj.uuid}}"}`;
+                    window.location.href = `/conversions/refresh/${"{{conversion_obj.uuid}}"}`;
                 } else {
                     create_message(data.message, data.toast_class);
                 }
@@ -542,7 +542,7 @@
 
             async function loadAllData() {
                 try {
-                    await fetchConvert();
+                    await fetchConversion();
                     runDiff();
                 } catch (e) {
                     console.error(e);

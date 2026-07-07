@@ -60,7 +60,7 @@ def asset_url(filename):
 
     The browser caches the asset but re-fetches it the moment the file changes
     (the ``?v=`` stamp changes), so editing a JS/CSS file never needs a manual
-    cache clear. Use in templates: ``src="{{ asset_url('js/convert/x.js') }}"``.
+    cache clear. Use in templates: ``src="{{ asset_url('js/conversions/x.js') }}"``.
     """
     try:
         version = int(os.path.getmtime(os.path.join(application.static_folder, filename)))

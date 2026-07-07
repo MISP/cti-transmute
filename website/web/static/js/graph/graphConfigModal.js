@@ -1,4 +1,4 @@
-import { GRAPH_CONFIG, applyConfig, reRenderGraph } from './convertGraph.js'
+import { GRAPH_CONFIG, applyConfig, reRenderGraph } from './conversionGraph.js'
 
 const SHAPES = ['circle', 'square', 'hexagon', 'triangle']
 

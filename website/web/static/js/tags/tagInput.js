@@ -136,7 +136,7 @@ const TagInput = {
 
         async _loadAppliedTags() {
             try {
-                const r = await fetch(`/tags/for_convert/${this.conversionId}?source_type=user`);
+                const r = await fetch(`/tags/for_conversion/${this.conversionId}?source_type=user`);
                 if (r.ok) {
                     const d = await r.json();
                     if (d.success) {
@@ -200,7 +200,7 @@ const TagInput = {
             if (!this.conversionId) return;
             this.saving = true;
             try {
-                await fetch(`/tags/save_for_convert/${this.conversionId}`, {
+                await fetch(`/tags/save_for_conversion/${this.conversionId}`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ tag_ids: this.selectedTags.map(t => t.id) }),

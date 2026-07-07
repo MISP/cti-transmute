@@ -29,8 +29,8 @@ const OverviewApp = {
         kpi_evaluations() {
             return this.stats ? this.stats.total_evaluations : null
         },
-        kpi_converts() {
-            return this.stats ? this.stats.converts_evaluated : null
+        kpi_conversions() {
+            return this.stats ? this.stats.conversions_evaluated : null
         },
         kpi_like_ratio() {
             return this.stats ? this.stats.like_ratio : null
@@ -59,7 +59,7 @@ const OverviewApp = {
             return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
         },
 
-        openConvert(id) {
+        openConversion(id) {
             sessionStorage.setItem('open_eval_tab', String(id))
             window.location.href = '/conversions/detail/' + id
         },

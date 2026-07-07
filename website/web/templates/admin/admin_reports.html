@@ -47,8 +47,8 @@
           <tr v-for="r in reports" :key="r.id">
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ r.id ]]</td>
             <td>
-              <a :href="'/conversions/detail/'+r.conversion_id" style="color:var(--accent); font-size:0.82rem;" :title="r.convert_name">
-                [[ (r.convert_name || '').slice(0,20) + (r.convert_name?.length > 20 ? '…' : '') ]]
+              <a :href="'/conversions/detail/'+r.conversion_id" style="color:var(--accent); font-size:0.82rem;" :title="r.conversion_name">
+                [[ (r.conversion_name || '').slice(0,20) + (r.conversion_name?.length > 20 ? '…' : '') ]]
               </a>
             </td>
             <td style="font-size:0.82rem;">[[ r.reporter ]]</td>

@@ -12,7 +12,7 @@ const SECTIONS_ADMIN = [
     { icon: 'fa-users',     label: 'Manage Users',     url: '/account/manage_user',            admin: true },
     { icon: 'fa-comments',  label: 'All Comments',     url: '/account/admin/comments',         admin: true },
     { icon: 'fa-flag',      label: 'Reports',          url: '/account/admin/reports',          admin: true },
-    { icon: 'fa-trash-alt', label: 'Deleted Conversions', url: '/account/admin/deleted_converts', admin: true },
+    { icon: 'fa-trash-alt', label: 'Deleted Conversions', url: '/account/admin/deleted_conversions', admin: true },
     { icon: 'fa-stream',    label: 'Activity Logs',    url: '/account/admin/logs',             admin: true },
     { icon: 'fa-tags',      label: 'Tag Management',   url: '/tags/admin/',                    admin: true },
 ]
@@ -77,12 +77,12 @@ const NavbarSearch = {
             if (ma.length) g.push({ id: 's-admin', type: 'section', icon: 'fa-shield-halved', label: 'Admin',    items: ma })
 
             try {
-                const res   = await fetch('/conversions/get_convert_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
+                const res   = await fetch('/conversions/get_conversion_page_history?searchQuery=' + encodeURIComponent(q) + '&page=1')
                 const data  = res.ok ? await res.json() : { list: [] }
                 const items = (data.list || []).slice(0, 5)
                 if (items.length) {
                     g.push({
-                        id: 'converts', type: 'convert',
+                        id: 'conversions', type: 'conversion',
                         icon: 'fa-exchange-alt', label: 'Conversions',
                         items,
                         seeAll: '/conversions/history?search=' + encodeURIComponent(q),
@@ -200,7 +200,7 @@ const NavbarSearch = {
         </template>
 
         <!-- Conversions -->
-        <template v-else-if="g.type==='convert'">
+        <template v-else-if="g.type==='conversion'">
           <div class="nav-sd-group-header">
             <i class="fas fa-exchange-alt me-1"></i>{{ g.label }}
           </div>

@@ -156,10 +156,10 @@
                     <div class="filter-label">Filters</div>
                     <div class="d-flex gap-3 align-items-center">
                         <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
-                            <input class="form-check-input" type="checkbox" id="myConvertsOnly"
+                            <input class="form-check-input" type="checkbox" id="myConversionsOnly"
                                    v-model="only_mine" @change="onSearchInput"
                                    style="width:2.2rem; height:1.2rem; cursor:pointer;">
-                            <label class="form-check-label" for="myConvertsOnly"
+                            <label class="form-check-label" for="myConversionsOnly"
                                    style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
                                 Mine only
                             </label>
@@ -180,10 +180,10 @@
                 <div class="filter-mine-wrap">
                     <div class="filter-label">Mine only</div>
                     <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
-                        <input class="form-check-input" type="checkbox" id="myConvertsOnly"
+                        <input class="form-check-input" type="checkbox" id="myConversionsOnly"
                                v-model="only_mine" @change="onSearchInput"
                                style="width:2.2rem; height:1.2rem; cursor:pointer;">
-                        <label class="form-check-label" for="myConvertsOnly"
+                        <label class="form-check-label" for="myConversionsOnly"
                                style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
                             [[ only_mine ? 'On' : 'Off' ]]
                         </label>
@@ -227,13 +227,13 @@
     <!-- List -->
     <div v-else v-cloak>
         <!-- Pagination -->
-        <app-pagination v-if="convert_history.length > 0"
+        <app-pagination v-if="conversion_history.length > 0"
             :page="current_page" :total="total_pages"
-            @change="fetchConvertHistory" class="mb-4">
+            @change="fetchConversionHistory" class="mb-4">
         </app-pagination>
-        <div v-if="convert_history.length > 0">
+        <div v-if="conversion_history.length > 0">
 
-            <div v-for="item in convert_history" :key="item.id"
+            <div v-for="item in conversion_history" :key="item.id"
                 class="history-card" :class="{ 'hc-expanded': expandedIds.has(item.id) }">
 
                 <!-- ── Summary row (always visible) ── -->
@@ -387,7 +387,7 @@
             </div>
 
             <!-- Modals -->
-            <template v-for="item in convert_history" :key="'modal_'+item.id">
+            <template v-for="item in conversion_history" :key="'modal_'+item.id">
                 <div class="modal fade" :id="'del_modal_'+item.id" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog">
                         <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
@@ -423,9 +423,9 @@
         </div>
 
         <!-- Pagination -->
-        <app-pagination v-if="convert_history.length > 0"
+        <app-pagination v-if="conversion_history.length > 0"
             :page="current_page" :total="total_pages"
-            @change="fetchConvertHistory">
+            @change="fetchConversionHistory">
         </app-pagination>
     </div>
 </div>
@@ -455,27 +455,27 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
         components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay, 'multi-tag-filter': MultiTagFilter },
         delimiters: ['[[', ']]'],
         setup() {
-            const convert_history    = ref([])
-            const current_page       = ref(1)
-            const total_pages        = ref(1)
-            const filter_type        = ref('')
-            const sort_order         = ref('desc')
-            const searchQuery        = ref('')
-            const search_scope       = ref('all')
-            const exact_match        = ref(false)
-            const only_mine          = ref(false)
-            const date_from          = ref('')
-            const date_to            = ref('')
+            const conversion_history    = ref([])
+            const current_page          = ref(1)
+            const total_pages           = ref(1)
+            const filter_type           = ref('')
+            const sort_order            = ref('desc')
+            const searchQuery           = ref('')
+            const search_scope          = ref('all')
+            const exact_match           = ref(false)
+            const only_mine             = ref(false)
+            const date_from             = ref('')
+            const date_to               = ref('')
             const current_user_is_admin = ref()
-            const is_loading         = ref(false)
-            const snippets           = ref({})
-            const selectedTagNames   = ref([])
-            const vis_filter         = ref('')
-            const favorites_only     = ref(false)
-            const filtersOpen        = ref(true)
-            const expandedIds        = ref(new Set())
-            const tagExpandedIds     = ref(new Set())
-            let   searchDebounce     = null
+            const is_loading            = ref(false)
+            const snippets              = ref({})
+            const selectedTagNames      = ref([])
+            const vis_filter            = ref('')
+            const favorites_only        = ref(false)
+            const filtersOpen           = ref(true)
+            const expandedIds           = ref(new Set())
+            const tagExpandedIds        = ref(new Set())
+            let   searchDebounce        = null
 
             function toggleExpand(id) {
                 const s = new Set(expandedIds.value)
@@ -574,7 +574,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             }
 
             // ── Fetch conversion list ───────────────────────────────────────────
-            async function fetchConvertHistory(page) {
+            async function fetchConversionHistory(page) {
                 if (page < 1) return
                 is_loading.value = true
                 snippets.value = {}
@@ -593,10 +593,10 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     vis_filter:     vis_filter.value || '',
                     favorites_only: favorites_only.value,
                 })
-                const res = await fetch('/conversions/get_convert_page_history?' + params.toString())
+                const res = await fetch('/conversions/get_conversion_page_history?' + params.toString())
                 if (res.ok) {
                     const data = await res.json()
-                    convert_history.value = data.list
+                    conversion_history.value = data.list
                     total_pages.value     = data.total_page
                     current_page.value    = page
                 }
@@ -604,7 +604,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
 
                 // Fetch snippets for all visible items
                 if (searchQuery.value && (search_scope.value === 'content' || search_scope.value === 'all')) {
-                    fetchSnippets(convert_history.value.map(i => i.id))
+                    fetchSnippets(conversion_history.value.map(i => i.id))
                 }
             }
 
@@ -612,13 +612,13 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             const _urlSearch = new URLSearchParams(window.location.search).get('search')
             if (_urlSearch) searchQuery.value = _urlSearch
 
-            fetchConvertHistory(1)
+            fetchConversionHistory(1)
 
             async function deleteItem(id) {
                 const params = new URLSearchParams({ id })
                 const res = await fetch('/conversions/delete_item?' + params.toString())
                 if (res.status === 200) {
-                    fetchConvertHistory(current_page.value)
+                    fetchConversionHistory(current_page.value)
                     const el = document.getElementById('del_modal_' + id)
                     bootstrap.Modal.getInstance(el)?.hide()
                 } else if (res.status === 403) {
@@ -650,12 +650,12 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 favorites_only.value   = false
                 selectedTagNames.value = []
                 snippets.value         = {}
-                fetchConvertHistory(1)
+                fetchConversionHistory(1)
             }
 
             function onSearchInput() {
                 clearTimeout(searchDebounce)
-                searchDebounce = setTimeout(() => fetchConvertHistory(1), 350)
+                searchDebounce = setTimeout(() => fetchConversionHistory(1), 350)
             }
 
             async function toggleFavorite(item) {
@@ -675,14 +675,14 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                         data.is_favorite ? 'success-subtle' : 'secondary-subtle'
                     )
                     if (favorites_only.value && !data.is_favorite) {
-                        fetchConvertHistory(current_page.value)
+                        fetchConversionHistory(current_page.value)
                     }
                 }
             }
 
             return {
-                message_list, convert_history, current_page, total_pages,
-                fetchConvertHistory, filter_type, sort_order, deleteItem, current_user_is_admin,
+                message_list, conversion_history, current_page, total_pages,
+                fetchConversionHistory, filter_type, sort_order, deleteItem, current_user_is_admin,
                 only_mine, seeDetails, searchQuery, search_scope, exact_match, date_from, date_to,
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,

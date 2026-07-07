@@ -521,18 +521,18 @@ async function _initViewer(containerId, jsonText, format) {
 //  Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
-let _convertData = null
+let _conversionData = null
 let _renderedSides = { input: false, output: false }
 
 function _renderSide(side) {
-    if (!_convertData || _renderedSides[side]) return
+    if (!_conversionData || _renderedSides[side]) return
     _renderedSides[side] = true
-    const isStixToMisp = _convertData.conversion_type === 'STIX_TO_MISP'
+    const isStixToMisp = _conversionData.conversion_type === 'STIX_TO_MISP'
     const containerId = side === 'input' ? 'graph-container' : 'graph-container-output'
     const format = side === 'input'
         ? (isStixToMisp ? 'stix' : 'misp')
         : (isStixToMisp ? 'misp' : 'stix')
-    const text = side === 'input' ? _convertData.input_text : _convertData.output_text
+    const text = side === 'input' ? _conversionData.input_text : _conversionData.output_text
     _showSpinner(containerId, 'Building graph…')
     _initViewer(containerId, text, format)
 }
@@ -575,7 +575,7 @@ export function applyConfig(patch) {
 
 /** Re-render the currently visible side (call after applyConfig). */
 export function reRenderGraph() {
-    if (!_convertData) return
+    if (!_conversionData) return
     document.querySelectorAll('.alert.alert-warning').forEach(el => {
         if (el.textContent.includes('most connected nodes')) el.remove()
     })
@@ -591,10 +591,10 @@ export function reRenderGraph() {
  * It registers the lazy-render hook so the graph only builds when the tab
  * is first opened.
  *
- * @param {object} convertData  — the object returned by /conversions/get_convert
+ * @param {object} conversionData  — the object returned by /conversions/get_conversion
  */
-export function initConvertGraph(convertData) {
-    _convertData = convertData
+export function initConversionGraph(conversionData) {
+    _conversionData = conversionData
     _renderedSides = { input: false, output: false }
 
     window.onGraphTabClick = function () {

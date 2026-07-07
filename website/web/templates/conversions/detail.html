@@ -29,35 +29,35 @@
             <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
                 <div class="d-flex align-items-center gap-3 flex-wrap" style="min-width:0;">
                     <div style="min-width:0;">
-                        <h3 class="mb-1 text-truncate" :title="convert.name"
+                        <h3 class="mb-1 text-truncate" :title="conversion.name"
                             style="font-weight:700; letter-spacing:-0.02em;">
-                            [[ convert.name ]]
+                            [[ conversion.name ]]
                         </h3>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="type-pill"
-                                :class="convert.conversion_type === 'STIX_TO_MISP' ? 'type-stix' : 'type-misp'">
-                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
+                                :class="conversion.conversion_type === 'STIX_TO_MISP' ? 'type-stix' : 'type-misp'">
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">
                                     STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> MISP
                                 </template>
                                 <template v-else>
                                     MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> STIX
                                 </template>
                             </span>
-                            <span class="vis-badge" :class="convert.public ? 'vis-public' : 'vis-private'">
-                                <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
-                                [[ convert.public ? 'Public' : 'Private' ]]
+                            <span class="vis-badge" :class="conversion.public ? 'vis-public' : 'vis-private'">
+                                <i :class="conversion.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
+                                [[ conversion.public ? 'Public' : 'Private' ]]
                             </span>
-                            <a v-if="convert.user_id" :href="'/account/public/' + convert.user_id"
+                            <a v-if="conversion.user_id" :href="'/account/public/' + conversion.user_id"
                                class="author-badge" style="text-decoration:none; color:inherit;">
                                 <i class="fas fa-user" style="font-size:0.65rem;"></i>
-                                [[ convert.author || 'Anonymous' ]]
+                                [[ conversion.author || 'Anonymous' ]]
                             </a>
                             <span v-else class="author-badge">
                                 <i class="fas fa-user" style="font-size:0.65rem;"></i>
                                 Anonymous
                             </span>
                             {% if current_user.is_authenticated %}
-                            <template v-if="convert.user_id && convert.user_id !== {{ current_user.id }}">
+                            <template v-if="conversion.user_id && conversion.user_id !== {{ current_user.id }}">
                                 <button class="follow-btn" :class="{following: is_following_author}" @click="toggleFollow()" style="font-size:0.68rem; padding:3px 10px;">
                                     <i :class="is_following_author ? 'fas fa-user-check' : 'fas fa-user-plus'"></i>
                                     [[ is_following_author ? 'Following' : 'Follow' ]]
@@ -66,37 +66,37 @@
                             {% endif %}
                             <span class="author-badge">
                                 <i class="fas fa-clock" style="font-size:0.65rem;"></i>
-                                [[ convert.created_at ]]
+                                [[ conversion.created_at ]]
                             </span>
                         </div>
                     </div>
                 </div>
 
                 {% if current_user.is_authenticated %}
-                <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
+                <template v-if="parseInt('{{current_user.id}}') == conversion.user_id || current_user_is_admin">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <button class="btn btn-sm fw-semibold"
-                            :class="convert.public ? 'btn-outline-success' : 'btn-outline-danger'"
-                            :title="convert.public ? 'Set private' : 'Set public'" @click="togglePublic()">
-                            <i v-if="convert.public" class="fas fa-lock-open me-1"></i>
+                            :class="conversion.public ? 'btn-outline-success' : 'btn-outline-danger'"
+                            :title="conversion.public ? 'Set private' : 'Set public'" @click="togglePublic()">
+                            <i v-if="conversion.public" class="fas fa-lock-open me-1"></i>
                             <i v-else class="fas fa-lock me-1"></i>
-                            [[ convert.public ? 'Public' : 'Private' ]]
+                            [[ conversion.public ? 'Public' : 'Private' ]]
                         </button>
-                        <template v-if="!convert.public">
+                        <template v-if="!conversion.public">
                             <button class="btn btn-sm btn-outline-primary" title="Share" data-bs-toggle="modal"
-                                :data-bs-target="'#share_modal_' + {{ convert.id }}">
+                                :data-bs-target="'#share_modal_' + {{ conversion.id }}">
                                 <i class="fas fa-share-nodes me-1"></i> Share
                             </button>
                         </template>
-                        <a href="{{ url_for('conversions.refresh', uuid=convert.uuid) }}"
+                        <a href="{{ url_for('conversions.refresh', uuid=conversion.uuid) }}"
                             class="btn btn-sm btn-action" title="Refresh">
                             <i class="fas fa-sync-alt me-1"></i> Refresh
                         </a>
-                        <a :href="'/conversions/edit/'+convert.id" class="btn btn-sm btn-outline-secondary" title="Edit">
+                        <a :href="'/conversions/edit/'+conversion.id" class="btn btn-sm btn-outline-secondary" title="Edit">
                             <i class="fas fa-edit me-1"></i> Edit
                         </a>
                         <button class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal"
-                            :data-bs-target="'#delete_modal_'+convert.id">
+                            :data-bs-target="'#delete_modal_'+conversion.id">
                             <i class="fas fa-trash me-1"></i> Delete
                         </button>
                         <button class="btn btn-sm btn-outline-primary" title="Push to MISP"
@@ -123,29 +123,29 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/conversions/download/' + convert.id + '/input'">
-                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                       :href="'/conversions/download/' + conversion.id + '/input'">
+                                        <img v-if="conversion.conversion_type === 'MISP_TO_STIX'"
                                             src="/static/image/misp.svg" width="13" height="13"
                                             style="vertical-align:middle; margin-right:6px;">
                                          <img v-else src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
-                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'MISP input' : 'STIX input' ]]
+                                        [[ conversion.conversion_type === 'MISP_TO_STIX' ? 'MISP input' : 'STIX input' ]]
                                         <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/conversions/download/' + convert.id + '/output'">
-                                        <img v-if="convert.conversion_type === 'MISP_TO_STIX'"
+                                       :href="'/conversions/download/' + conversion.id + '/output'">
+                                        <img v-if="conversion.conversion_type === 'MISP_TO_STIX'"
                                             src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">  
                                         <img v-else src="/static/image/misp.svg" width="13" height="13"
                                             style="vertical-align:middle; margin-right:6px;">
-                                        [[ convert.conversion_type === 'MISP_TO_STIX' ? 'STIX output' : 'MISP output' ]]
+                                        [[ conversion.conversion_type === 'MISP_TO_STIX' ? 'STIX output' : 'MISP output' ]]
                                         <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/conversions/download/' + convert.id + '/misp-push'">
+                                       :href="'/conversions/download/' + conversion.id + '/misp-push'">
                                         <img src="/static/image/misp.svg" width="13" height="13"
                                             style="vertical-align:middle; margin-right:6px;">
                                         MISP push payload
@@ -163,7 +163,7 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/evaluate/export/' + convert.id + '/pdf'"
+                                       :href="'/evaluate/export/' + conversion.id + '/pdf'"
                                        download>
                                         <i class="fas fa-file-pdf me-2" style="color:#e05555; width:13px;"></i>
                                         PDF report
@@ -171,7 +171,7 @@
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
-                                       :href="'/evaluate/export/' + convert.id + '/markdown'"
+                                       :href="'/evaluate/export/' + conversion.id + '/markdown'"
                                        download>
                                         <i class="fab fa-markdown me-2" style="color:var(--text-2); width:13px;"></i>
                                         Markdown report
@@ -189,9 +189,9 @@
                     </div>
                 </template>
                 {% else %}
-                <span class="vis-badge" :class="convert.public ? 'vis-public' : 'vis-private'">
-                    <i :class="convert.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
-                    [[ convert.public ? 'Public' : 'Private' ]]
+                <span class="vis-badge" :class="conversion.public ? 'vis-public' : 'vis-private'">
+                    <i :class="conversion.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
+                    [[ conversion.public ? 'Public' : 'Private' ]]
                 </span>
                 {% endif %}
             </div>
@@ -201,8 +201,8 @@
             <div class="col-md-8">
                 <div class="custom-card p-3 h-100">
                     <p class="form-label mb-2">Description</p>
-                    <p class="mb-0" v-if="convert.description" style="font-size:0.9rem; color:var(--text);">
-                        [[ convert.description ]]
+                    <p class="mb-0" v-if="conversion.description" style="font-size:0.9rem; color:var(--text);">
+                        [[ conversion.description ]]
                     </p>
                     <p class="mb-0 fst-italic" v-else style="color:var(--text-3); font-size:0.875rem;">
                         No description provided.
@@ -215,16 +215,16 @@
                     <div class="d-flex flex-column gap-2" style="font-size:0.82rem; color:var(--text-2);">
                         <div>
                             <i class="fas fa-key me-2" style="color:var(--text-3); width:14px;"></i>
-                            <span style="font-family:var(--font-mono); font-size:0.75rem;">[[ convert.uuid ]]</span>
+                            <span style="font-family:var(--font-mono); font-size:0.75rem;">[[ conversion.uuid ]]</span>
                         </div>
-                        <div v-if="!convert.public">
-                            <template v-if="parseInt('{{current_user.id}}') == convert.user_id || current_user_is_admin">
+                        <div v-if="!conversion.public">
+                            <template v-if="parseInt('{{current_user.id}}') == conversion.user_id || current_user_is_admin">
                                 <i class="fas fa-eye me-2" style="color:var(--text-3); width:14px;"></i>
                                 <span style="font-family:var(--font-mono); font-size:0.75rem; max-width:200px;"
                                     class="text-truncate d-inline-block" :title="share_key">
                                     [[ share_key ]]
                                 </span>
-                                <button class="btn btn-link p-0 ms-1" @click="regenerateShareKey(convert.id)"
+                                <button class="btn btn-link p-0 ms-1" @click="regenerateShareKey(conversion.id)"
                                     title="Regenerate" style="font-size:0.75rem; color:var(--text-3);">
                                     <i class="fas fa-arrows-rotate"></i>
                                 </button>
@@ -240,30 +240,30 @@
         </div>
 
         <tag-input
-            :conversion-id="{{ convert.id }}"
+            :conversion-id="{{ conversion.id }}"
             :can-edit="false"
             class="mb-4">
         </tag-input>
 
         <div class="custom-card mb-4">
             <div class="detail-tabs-header">
-                <ul class="nav nav-underline px-3 pt-2" :id="'tabs-'+convert.id" role="tablist">
+                <ul class="nav nav-underline px-3 pt-2" :id="'tabs-'+conversion.id" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="tab" :href="'#input-pane-'+convert.id" role="tab">
+                        <a class="nav-link active" data-bs-toggle="tab" :href="'#input-pane-'+conversion.id" role="tab">
                             <i class="fas fa-file-import me-1"></i>
-                            <template v-if="convert.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
+                            <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
                             <template v-else>MISP Input</template>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" :href="'#output-pane-'+convert.id" role="tab">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#output-pane-'+conversion.id" role="tab">
                             <i class="fas fa-file-export me-1"></i>
-                            <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
+                            <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
                             <template v-else>STIX Output</template>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" :href="'#compare-pane-'+convert.id" role="tab">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#compare-pane-'+conversion.id" role="tab">
                             <i class="fas fa-code-compare me-1"></i> History
                             <span v-if="history_list && history_list.length > 0" class="badge bg-primary ms-1">
                                 [[ history_list.length ]]
@@ -272,31 +272,31 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab"
-                            :href="'#graph-pane-'+convert.id" role="tab"
+                            :href="'#graph-pane-'+conversion.id" role="tab"
                             onclick="onGraphTabClick()">
                             <i class="fas fa-diagram-project me-1"></i> Graph
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab"
-                            :href="'#sunburst-pane-'+convert.id" role="tab">
+                            :href="'#sunburst-pane-'+conversion.id" role="tab">
                             <i class="fas fa-circle-dot me-1"></i> Sunburst
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab"
-                            :href="'#table-pane-'+convert.id" role="tab">
+                            :href="'#table-pane-'+conversion.id" role="tab">
                             <i class="fas fa-table me-1"></i> Table
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="comments">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+conversion.id" role="tab" @click="loadComments()" data-tab="comments">
                             <i class="fas fa-comments me-1"></i> Comments
                             <span v-if="discuss_comments.length > 0" class="badge bg-secondary ms-1">[[ discuss_comments.length ]]</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="tab" :href="'#eval-pane-'+convert.id" role="tab" @click="loadComments()" data-tab="eval">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#eval-pane-'+conversion.id" role="tab" @click="loadComments()" data-tab="eval">
                             <i class="fas fa-chart-bar me-1"></i> Evaluation
                             <span v-if="eval_comments.length > 0" class="badge ms-1" style="background:var(--cs-eval); color:#fff;">[[ eval_comments.length ]]</span>
                         </a>
@@ -306,11 +306,11 @@
 
             <div class="tab-content p-3">
 
-                <div class="tab-pane fade show active" :id="'input-pane-'+convert.id" role="tabpanel">
+                <div class="tab-pane fade show active" :id="'input-pane-'+conversion.id" role="tabpanel">
                     <div class="code-panel-wrapper">
                         <div class="code-panel-toolbar">
                             <span class="code-panel-label">
-                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">STIX</template>
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX</template>
                                 <template v-else>MISP</template>
                                 · JSON
                             </span>
@@ -322,7 +322,7 @@
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    @click="downloadText(convert.name, getRawInput(), $event)">
+                                    @click="downloadText(conversion.name, getRawInput(), $event)">
                                     <i class="fas fa-download me-1"></i> Download
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
@@ -339,16 +339,16 @@
                             id="pre-input"><code class="language-json" id="input-code"></code></pre>
                         <div class="jt-root d-none" id="tree-input"></div>
                         <div class="code-panel-footer">
-                            <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
+                            <small style="color:var(--text-3);">Updated: [[ conversion.updated_at ]]</small>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade" :id="'output-pane-'+convert.id" role="tabpanel">
+                <div class="tab-pane fade" :id="'output-pane-'+conversion.id" role="tabpanel">
                     <div class="code-panel-wrapper">
                         <div class="code-panel-toolbar">
                             <span class="code-panel-label">
-                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP</template>
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP</template>
                                 <template v-else>STIX</template>
                                 · JSON
                             </span>
@@ -360,7 +360,7 @@
                                     <i class="fas fa-align-left me-1"></i> Format
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    @click="downloadText(convert.name, getRawOutput(), $event)">
+                                    @click="downloadText(conversion.name, getRawOutput(), $event)">
                                     <i class="fas fa-download me-1"></i> Download
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
@@ -377,12 +377,12 @@
                             id="pre-output"><code class="language-json" id="output-code"></code></pre>
                         <div class="jt-root d-none" id="tree-output"></div>
                         <div class="code-panel-footer">
-                            <small style="color:var(--text-3);">Updated: [[ convert.updated_at ]]</small>
+                            <small style="color:var(--text-3);">Updated: [[ conversion.updated_at ]]</small>
                         </div>
                     </div>
                 </div>
 
-                <div class="tab-pane fade" :id="'compare-pane-'+convert.id" role="tabpanel">
+                <div class="tab-pane fade" :id="'compare-pane-'+conversion.id" role="tabpanel">
                     <div v-if="history_list && history_list.length > 0" class="table-responsive">
                         <table class="table table-hover align-middle" style="font-size:0.875rem;">
                             <thead>
@@ -413,12 +413,12 @@
                 </div>
 
                 <!-- Graph pane -->
-                <div class="tab-pane fade" :id="'graph-pane-'+convert.id" role="tabpanel">
+                <div class="tab-pane fade" :id="'graph-pane-'+conversion.id" role="tabpanel">
                     <div class="graph-panel-wrapper">
                         <div class="graph-panel-toolbar">
                             <span class="code-panel-label">
                                 <i class="fas fa-diagram-project me-1"></i>
-                                <template v-if="convert.conversion_type === 'STIX_TO_MISP'">
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">
                                     STIX Input &nbsp;→&nbsp; MISP Output
                                 </template>
                                 <template v-else>
@@ -429,13 +429,13 @@
                                 <button class="btn btn-sm btn-outline-secondary"
                                     id="graph-view-input" onclick="showGraphSide('input')">
                                     <i class="fas fa-file-import me-1"></i>
-                                    <template v-if="convert.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
+                                    <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
                                     <template v-else>MISP Input</template>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
                                     id="graph-view-output" onclick="showGraphSide('output')">
                                     <i class="fas fa-file-export me-1"></i>
-                                    <template v-if="convert.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
+                                    <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
                                     <template v-else>STIX Output</template>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
@@ -509,11 +509,11 @@
                 </div>
 
                 <!-- Comments pane -->
-                <div class="tab-pane fade" :id="'comments-pane-'+convert.id" role="tabpanel">
+                <div class="tab-pane fade" :id="'comments-pane-'+conversion.id" role="tabpanel">
                     <div class="comments-section">
 
                         <!-- Visibility banner -->
-                        <div v-if="!convert.public" class="visibility-info-banner private-banner">
+                        <div v-if="!conversion.public" class="visibility-info-banner private-banner">
                             <i class="fas fa-lock mt-1"></i>
                             <span>This conversion is <strong>private</strong>. Only you and admins can see the comments below, regardless of their individual visibility.</span>
                         </div>
@@ -624,37 +624,37 @@
                 </div>
 
                 <!-- ── Sunburst tab ──────────────────────────────── -->
-                <div class="tab-pane fade" :id="'sunburst-pane-'+convert.id" role="tabpanel">
-                    <convert-sunburst :convert-data="convert"></conversions-sunburst>
+                <div class="tab-pane fade" :id="'sunburst-pane-'+conversion.id" role="tabpanel">
+                    <conversion-sunburst :conversion-data="conversion"></conversion-sunburst>
                 </div>
 
                 <!-- ── Table tab ─────────────────────────────────── -->
-                <div class="tab-pane fade" :id="'table-pane-'+convert.id" role="tabpanel">
-                    <convert-table :convert-data="convert"></conversions-table>
+                <div class="tab-pane fade" :id="'table-pane-'+conversion.id" role="tabpanel">
+                    <conversion-table :conversion-data="conversion"></conversion-table>
                 </div>
 
                 <!-- ── Evaluation tab ────────────────────────────── -->
-                <div class="tab-pane fade" :id="'eval-pane-'+convert.id" role="tabpanel">
+                <div class="tab-pane fade" :id="'eval-pane-'+conversion.id" role="tabpanel">
                     <evaluation-panel
-                        :conversion-id="{{ convert.id }}"
+                        :conversion-id="{{ conversion.id }}"
                         :is-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
-                        :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && convert.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
-                        :is-public="convert.public">
+                        :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && conversion.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
+                        :is-public="conversion.public">
                     </evaluation-panel>
-                    <evaluation-charts :conversion-id="{{ convert.id }}"></evaluation-charts>
+                    <evaluation-charts :conversion-id="{{ conversion.id }}"></evaluation-charts>
 
                     <!-- ── Export evaluation report ─────────────────── -->
                     <div class="d-flex align-items-center gap-2 mt-3 mb-1 px-1" style="flex-wrap:wrap;">
                         <span style="font-size:.8rem; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">
                             <i class="fas fa-file-export me-1"></i> Export report
                         </span>
-                        <a href="/evaluate/export/{{ convert.id }}/markdown"
+                        <a href="/evaluate/export/{{ conversion.id }}/markdown"
                            class="btn btn-sm btn-outline-secondary"
                            style="font-size:.78rem;"
                            download>
                             <i class="fab fa-markdown me-1"></i> Markdown
                         </a>
-                        <a href="/evaluate/export/{{ convert.id }}/pdf"
+                        <a href="/evaluate/export/{{ conversion.id }}/pdf"
                            class="btn btn-sm btn-outline-secondary"
                            style="font-size:.78rem;"
                            download>
@@ -786,7 +786,7 @@
 
     </template>
 
-    <div class="modal fade" :id="'delete_modal_'+convert.id" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" :id="'delete_modal_'+conversion.id" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
@@ -795,12 +795,12 @@
                 </div>
                 <div class="modal-body" style="color:var(--text-2); font-size:0.875rem;">
                     Are you sure you want to delete
-                    <strong style="color:var(--text);">[[ convert.name ]]</strong> ?
+                    <strong style="color:var(--text);">[[ conversion.name ]]</strong> ?
                     This action cannot be undone.
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--border);">
                     <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-sm btn-danger" @click="deleteConvert()">
+                    <button class="btn btn-sm btn-danger" @click="deleteConversion()">
                         <i class="fas fa-trash me-1"></i> Delete
                     </button>
                 </div>
@@ -808,12 +808,12 @@
         </div>
     </div>
 
-    <div class="modal fade" :id="'share_modal_' + {{ convert.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" :id="'share_modal_' + {{ conversion.id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
                     <h5 class="modal-title">
-                        <i class="fas fa-share-nodes me-2" style="color:var(--accent);"></i>Share {{ convert.name }}
+                        <i class="fas fa-share-nodes me-2" style="color:var(--accent);"></i>Share {{ conversion.name }}
                     </h5>
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -821,9 +821,9 @@
                     <label class="form-label">Share link</label>
                     <div class="input-group">
                         <input type="text" class="form-control" readonly
-                            :value="`https://cti-transmute.org/conversions/share?uuid=${convert?.uuid || ''}&share_key=${share_key}`">
+                            :value="`https://cti-transmute.org/conversions/share?uuid=${conversion?.uuid || ''}&share_key=${share_key}`">
                         <button class="btn btn-primary" type="button"
-                            @click="copyText('https://cti-transmute.org/conversions/share?uuid='+convert.uuid+'&share_key='+share_key, $event)">
+                            @click="copyText('https://cti-transmute.org/conversions/share?uuid='+conversion.uuid+'&share_key='+share_key, $event)">
                             <i class="fas fa-copy me-1"></i> Copy
                         </button>
                     </div>
@@ -897,14 +897,14 @@
         </div>
     </div>
 
-    <div id="conversion_id" data-conversion-id="{{ convert.id }}"></div>
+    <div id="conversion_id" data-conversion-id="{{ conversion.id }}"></div>
 
     <!-- MISP push modal (component mounted by Vue) -->
-    <push-convert-to-misp
+    <push-conversion-to-misp
         ref="mispModal"
-        :conversion-id="{{ convert.id }}"
-        :convert-data="convert">
-    </push-convert-to-misp>
+        :conversion-id="{{ conversion.id }}"
+        :conversion-data="conversion">
+    </push-conversion-to-misp>
 </div>
 {% endblock %}
 
@@ -913,13 +913,13 @@
     const { createApp, ref, computed, onMounted, watch, nextTick } = Vue
     import { create_message, message_list } from '/static/js/toaster.js';
     import TagInput from '/static/js/tags/tagInput.js';
-    import { initConvertGraph, showGraphSide } from '/static/js/graph/convertGraph.js';
+    import { initConversionGraph, showGraphSide } from '/static/js/graph/conversionGraph.js';
     import { openGraphConfigModal } from '/static/js/graph/graphConfigModal.js';
     import EvaluationPanel from '/static/js/evaluationPanel.js';
     import EvaluationCharts from '/static/js/evaluate/evaluationCharts.js';
-    import PushConvertToMISP from '/static/js/misp/pushConvertToMISP.js';
-    import ConvertSunburst from '/static/js/graph/convertSunburst.js';
-    import ConvertTable from '/static/js/graph/convertTable.js';
+    import PushConversionToMISP from '/static/js/misp/pushConversionToMISP.js';
+    import ConversionSunburst from '/static/js/graph/conversionSunburst.js';
+    import ConversionTable from '/static/js/graph/conversionTable.js';
     window.showGraphSide = showGraphSide;
     window.openGraphConfigModal = openGraphConfigModal;
 
@@ -1107,7 +1107,7 @@
     const app = createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            const convert = ref({})
+            const conversion = ref({})
             const share_key = ref('')
             const history_list = ref([])
             const is_loading = ref(true)
@@ -1143,18 +1143,18 @@
 
 
             
-            async function getConvert() {
-                const res = await fetch(`/conversions/get_convert?id=${conversion_id}`)
+            async function getConversion() {
+                const res = await fetch(`/conversions/get_conversion?id=${conversion_id}`)
                 if (res.ok) {
                     const data = await res.json()
-                    const c = data.convert
+                    const c = data.conversion
 
                     // Keep text in c for the graph viewer, but also store in plain vars
                     // so Vue template never binds to these large strings
                     rawInput  = c.input_text  || ''
                     rawOutput = c.output_text || ''
 
-                    convert.value = c
+                    conversion.value = c
                     is_loading.value = false
 
                     // Wait for Vue to render the v-else block before touching the DOM
@@ -1170,7 +1170,7 @@
                         try { rawInput = JSON.stringify(JSON.parse(rawInput), null, 2); if (elIn) elIn.textContent = rawInput } catch {}
                         try { rawOutput = JSON.stringify(JSON.parse(rawOutput), null, 2); if (elOut) elOut.textContent = rawOutput } catch {}
                         highlightAll()
-                        initConvertGraph(c)
+                        initConversionGraph(c)
                     }, 0)
 
                 } else {
@@ -1189,8 +1189,8 @@
             async function fetchShareKey() {
                 const currentUserId = parseInt('{{current_user.id}}')
                 const isAdmin = current_user_is_admin?.value || false
-                const convertUserId = convert?.value?.user_id
-                if (!isAdmin && currentUserId !== convertUserId) return
+                const conversionUserId = conversion?.value?.user_id
+                if (!isAdmin && currentUserId !== conversionUserId) return
                 if (!conversion_id) return
                 try {
                     const res = await fetch(`/conversions/get_share_key?id=${conversion_id}`)
@@ -1215,7 +1215,7 @@
                 const count = comments.value.filter(c => !c.is_deleted).length
                 if (count > 0) {
                     pending_comment_count.value = count
-                    pending_visibility_action.value = convert.value.public ? 'private' : 'public'
+                    pending_visibility_action.value = conversion.value.public ? 'private' : 'public'
                     new bootstrap.Modal(document.getElementById('visibility_warning_modal')).show()
                     return
                 }
@@ -1231,11 +1231,11 @@
             async function doTogglePublic() {
                 const res = await fetch(`/conversions/edit_public?id=${conversion_id}`)
                 const data = await res.json()
-                if (res.ok) { convert.value.public = data.convert_public; getConvert() }
+                if (res.ok) { conversion.value.public = data.conversion_public; getConversion() }
                 create_message(data.message, data.toast_class)
             }
 
-            async function deleteConvert() {
+            async function deleteConversion() {
                 const res = await fetch('/conversions/delete_item', {
                     method: 'POST',
                     headers: {
@@ -1261,7 +1261,7 @@
                 try {
                     const res = await fetch(`/conversions/get_history?id=${conversion_id}`)
                     const data = await res.json()
-                    history_list.value = res.ok ? data.history_convert : []
+                    history_list.value = res.ok ? data.conversion_history : []
                 } catch {
                     history_list.value = []
                 }
@@ -1429,9 +1429,9 @@
             // ── Follow functions ─────────────────────────────
 
             async function checkFollowStatus() {
-                if (!IS_AUTH || !convert.value.user_id || convert.value.user_id === CURRENT_USER_ID) return
+                if (!IS_AUTH || !conversion.value.user_id || conversion.value.user_id === CURRENT_USER_ID) return
                 try {
-                    const res = await fetch(`/account/is_following?user_id=${convert.value.user_id}`)
+                    const res = await fetch(`/account/is_following?user_id=${conversion.value.user_id}`)
                     if (res.ok) {
                         const data = await res.json()
                         is_following_author.value = data.following
@@ -1440,7 +1440,7 @@
             }
 
             async function toggleFollow() {
-                const res = await fetch(`/account/follow?user_id=${convert.value.user_id}`)
+                const res = await fetch(`/account/follow?user_id=${conversion.value.user_id}`)
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (data.success) {
@@ -1467,7 +1467,7 @@
                 }
             }
 
-            watch([convert, current_user_is_admin], ([c]) => {
+            watch([conversion, current_user_is_admin], ([c]) => {
                 if (c && c.user_id !== undefined) {
                     fetchShareKey()
                     checkFollowStatus()
@@ -1505,7 +1505,7 @@
 
             onMounted(() => {
                 fetchCurrentUser()
-                getConvert()
+                getConversion()
                 getHistory()
                 loadFavoriteStatus()
                 fetch(`/conversions/get_comments?conversion_id=${conversion_id}`)
@@ -1539,10 +1539,10 @@
             })
 
             return {
-                convert, share_key, history_list, is_loading,
+                conversion, share_key, history_list, is_loading,
                 current_user_is_admin, copyText, downloadText,
                 is_favorite, toggleFavorite,
-                togglePublic, deleteConvert, regenerateShareKey,
+                togglePublic, deleteConversion, regenerateShareKey,
                 goToDiff, formatDate, message_list, formatJson,
                 getRawInput, getRawOutput,
                 // Comments
@@ -1567,13 +1567,13 @@
     app.component('tag-input', TagInput)
     app.component('evaluation-panel', EvaluationPanel)
     app.component('evaluation-charts', EvaluationCharts)
-    app.component('push-convert-to-misp', PushConvertToMISP)
-    app.component('convert-sunburst', ConvertSunburst)
-    app.component('convert-table', ConvertTable)
+    app.component('push-conversion-to-misp', PushConversionToMISP)
+    app.component('conversion-sunburst', ConversionSunburst)
+    app.component('conversion-table', ConversionTable)
     app.mount('#main-containers')
 
     // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)
-    const _evalTarget = '{{ convert.id }}'
+    const _evalTarget = '{{ conversion.id }}'
     const _evalSession = sessionStorage.getItem('open_eval_tab')
     const _evalHash = window.location.hash === '#eval-tab'
     if (_evalSession === _evalTarget || _evalHash) {
@@ -1596,5 +1596,5 @@
 
 </script>
 
-<!-- graph logic lives in /static/js/graph/convertGraph.js -->
+<!-- graph logic lives in /static/js/graph/conversionGraph.js -->
 {% endblock %}

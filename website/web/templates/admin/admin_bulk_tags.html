@@ -64,10 +64,10 @@
                   <i class="fas fa-spinner fa-spin me-1"></i> Loading…
                 </td>
               </tr>
-              <tr v-else-if="converts.length === 0">
+              <tr v-else-if="conversions.length === 0">
                 <td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-3);font-style:italic;">No conversions found.</td>
               </tr>
-              <tr v-for="c in converts" :key="c.id"
+              <tr v-for="c in conversions" :key="c.id"
                   @click="toggleOne(c.id)"
                   style="cursor:pointer;"
                   :style="{ background: selected.has(c.id) ? 'rgba(var(--accent-rgb,99,102,241),0.08)' : '' }">
@@ -330,15 +330,15 @@ createApp({
     delimiters: ['[[', ']]'],
     data() {
         return {
-            converts:    [],
-            loading:     false,
-            search:      '',
-            filterType:  'ALL',
-            page:        1,
-            perPage:     50,
-            totalPages:  1,
-            total:       0,
-            selected:    new Set(),
+            conversions:  [],
+            loading:      false,
+            search:       '',
+            filterType:   'ALL',
+            page:         1,
+            perPage:      50,
+            totalPages:   1,
+            total:        0,
+            selected:     new Set(),
             selectingAll: false,
 
             tagSearch:      '',
@@ -363,10 +363,10 @@ createApp({
     },
     computed: {
         allPageSelected() {
-            return this.converts.length > 0 && this.converts.every(c => this.selected.has(c.id));
+            return this.conversions.length > 0 && this.conversions.every(c => this.selected.has(c.id));
         },
         somePageSelected() {
-            return this.converts.some(c => this.selected.has(c.id));
+            return this.conversions.some(c => this.selected.has(c.id));
         },
     },
     watch: {
@@ -380,7 +380,7 @@ createApp({
         },
     },
     async mounted() {
-        await this.loadConverts();
+        await this.loadConversions();
         await this.loadJobs();
 
         this._outsideClick = (e) => {
@@ -396,18 +396,18 @@ createApp({
         clearTimeout(this._rmTagDebounce);
     },
     methods: {
-        async loadConverts() {
+        async loadConversions() {
             this.loading = true;
             try {
                 const p = new URLSearchParams({ page: this.page, per_page: this.perPage });
                 if (this.search.trim()) p.set('search', this.search.trim());
                 if (this.filterType) p.set('type', this.filterType);
-                const r = await fetch('/tags/admin/bulk_converts/list?' + p);
+                const r = await fetch('/tags/admin/bulk_conversions/list?' + p);
                 const d = await r.json();
                 if (d.success) {
-                    this.converts   = d.list;
-                    this.totalPages = d.total_page;
-                    this.total      = d.total;
+                    this.conversions = d.list;
+                    this.totalPages  = d.total_page;
+                    this.total       = d.total;
                 }
             } finally {
                 this.loading = false;
@@ -417,8 +417,8 @@ createApp({
             clearTimeout(this._debounce);
             this._debounce = setTimeout(() => { this.resetPage(); }, 300);
         },
-        resetPage() { this.page = 1; this.loadConverts(); },
-        gotoPage(p) { this.page = p; this.loadConverts(); },
+        resetPage() { this.page = 1; this.loadConversions(); },
+        gotoPage(p) { this.page = p; this.loadConversions(); },
 
         toggleOne(id) {
             const s = new Set(this.selected);
@@ -428,11 +428,11 @@ createApp({
         toggleAll() {
             if (this.allPageSelected) {
                 const s = new Set(this.selected);
-                this.converts.forEach(c => s.delete(c.id));
+                this.conversions.forEach(c => s.delete(c.id));
                 this.selected = s;
             } else {
                 const s = new Set(this.selected);
-                this.converts.forEach(c => s.add(c.id));
+                this.conversions.forEach(c => s.add(c.id));
                 this.selected = s;
             }
         },
@@ -443,7 +443,7 @@ createApp({
                 const p = new URLSearchParams();
                 if (this.search.trim()) p.set('search', this.search.trim());
                 if (this.filterType) p.set('type', this.filterType);
-                const r = await fetch('/tags/admin/bulk_converts/all_ids?' + p);
+                const r = await fetch('/tags/admin/bulk_conversions/all_ids?' + p);
                 const d = await r.json();
                 if (d.success) {
                     const s = new Set(this.selected);
@@ -501,7 +501,7 @@ createApp({
 
         async runScan() {
             const ids = [...this.selected];
-            const r = await fetch('/tags/admin/bulk_converts/scan', {
+            const r = await fetch('/tags/admin/bulk_conversions/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ conversion_ids: ids }),
@@ -512,7 +512,7 @@ createApp({
         async runAssign() {
             const ids = [...this.selected];
             const tagIds = this.chosenTags.map(t => t.id);
-            const r = await fetch('/tags/admin/bulk_converts/assign', {
+            const r = await fetch('/tags/admin/bulk_conversions/assign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ conversion_ids: ids, tag_ids: tagIds }),
@@ -524,7 +524,7 @@ createApp({
         async runRemoveTags() {
             const ids = [...this.selected];
             const tagIds = this.rmTags.map(t => t.id);
-            const r = await fetch('/tags/admin/bulk_converts/remove_tags', {
+            const r = await fetch('/tags/admin/bulk_conversions/remove_tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ conversion_ids: ids, tag_ids: tagIds }),
@@ -534,7 +534,7 @@ createApp({
         },
         async runClearTags() {
             const ids = [...this.selected];
-            const r = await fetch('/tags/admin/bulk_converts/clear_tags', {
+            const r = await fetch('/tags/admin/bulk_conversions/clear_tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ conversion_ids: ids }),
@@ -543,7 +543,7 @@ createApp({
             if (d.success) this._startPolling(d.job_id);
         },
         async deleteJob(jid) {
-            await fetch(`/tags/admin/bulk_converts/job/${jid}`, { method: 'DELETE' });
+            await fetch(`/tags/admin/bulk_conversions/job/${jid}`, { method: 'DELETE' });
             this.jobs = this.jobs.filter(j => j.id !== jid);
         },
 
@@ -555,7 +555,7 @@ createApp({
                 const job = this.jobs.find(j => j.id === jid);
                 if (job && job.status === 'done') {
                     this.jobRunning = false;
-                    await this.loadConverts();
+                    await this.loadConversions();
                 } else {
                     this._pollTimer = setTimeout(poll, 1500);
                 }
@@ -565,7 +565,7 @@ createApp({
 
         async loadJobs() {
             try {
-                const r = await fetch('/tags/admin/bulk_converts/jobs');
+                const r = await fetch('/tags/admin/bulk_conversions/jobs');
                 const d = await r.json();
                 if (d.success) this.jobs = d.jobs;
             } catch (e) {

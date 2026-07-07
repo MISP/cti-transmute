@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  ConvertTable — flat tabular view of MISP / STIX conversion data
+//  ConversionTable — flat tabular view of MISP / STIX conversion data
 //  Parses JSON client-side (no backend round-trip).
 //  Features: search, column sort, pagination, click-row → JsonViewer panel.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,10 +97,10 @@ function detectFormat(text) {
 }
 
 // ── Vue component ─────────────────────────────────────────────────────────────
-const ConvertTable = {
+const ConversionTable = {
     delimiters: ['[[', ']]'],
     components: { 'json-viewer': JsonViewer },
-    props: { convertData: { type: Object, default: null } },
+    props: { conversionData: { type: Object, default: null } },
     template: `
 <div class="ctbl-wrapper">
 
@@ -298,10 +298,10 @@ const ConvertTable = {
         })
 
         function parse() {
-            if (!props.convertData) return
+            if (!props.conversionData) return
             const text = side.value === 'input'
-                ? props.convertData.input_text
-                : props.convertData.output_text
+                ? props.conversionData.input_text
+                : props.conversionData.output_text
 
             if (!text) { parsed.value = null; return }
 
@@ -344,9 +344,9 @@ const ConvertTable = {
             selectedRow.value = selectedRow.value === row ? null : row
         }
 
-        // immediate: true — fires on mount even when convertData is already set
+        // immediate: true — fires on mount even when conversionData is already set
         watch(
-            () => props.convertData,
+            () => props.conversionData,
             v => { if (v?.input_text || v?.output_text) parse() },
             { immediate: true }
         )
@@ -360,4 +360,4 @@ const ConvertTable = {
     },
 }
 
-export default ConvertTable
+export default ConversionTable

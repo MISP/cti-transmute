@@ -78,12 +78,12 @@
                  v-model="search" @input="debounceFetch" placeholder="Search…"
                  @focus="$event.target.style.borderColor='var(--accent)'"
                  @blur="$event.target.style.borderColor='var(--border)'">
-          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="filterType" @change="page=1;fetchConverts()">
+          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="filterType" @change="page=1;fetchConversions()">
             <option value="">All types</option>
             <option value="MISP_TO_STIX">MISP → STIX</option>
             <option value="STIX_TO_MISP">STIX → MISP</option>
           </select>
-          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="sortOrder" @change="page=1;fetchConverts()">
+          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="sortOrder" @change="page=1;fetchConversions()">
             <option value="desc">Newest</option>
             <option value="asc">Oldest</option>
           </select>
@@ -146,17 +146,17 @@
         <!-- Pagination -->
         <div v-if="totalPage > 1" style="display:flex; gap:.4rem; justify-content:center; margin-top:1rem; flex-wrap:wrap;">
           <button style="background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer; color:var(--text);"
-                  :disabled="page === 1" @click="page--;fetchConverts()">
+                  :disabled="page === 1" @click="page--;fetchConversions()">
             <i class="fas fa-chevron-left"></i>
           </button>
           <button v-for="p in pageRange" :key="p"
-                  @click="page=p;fetchConverts()"
+                  @click="page=p;fetchConversions()"
                   :style="p===page ? 'background:var(--accent);border-color:var(--accent);color:#fff;' : 'background:var(--surface-1);color:var(--text);'"
                   style="border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer;">
             [[ p ]]
           </button>
           <button style="background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer; color:var(--text);"
-                  :disabled="page === totalPage" @click="page++;fetchConverts()">
+                  :disabled="page === totalPage" @click="page++;fetchConversions()">
             <i class="fas fa-chevron-right"></i>
           </button>
         </div>
@@ -224,13 +224,13 @@
         return range;
       });
 
-      async function fetchConverts() {
+      async function fetchConversions() {
         loading.value = true;
         try {
           const params = new URLSearchParams({ page: page.value, sort_order: sortOrder.value });
           if (filterType.value) params.set('filter_type', filterType.value);
           if (search.value)     params.set('search', search.value);
-          const res  = await fetch(`/account/public_converts/${USER_ID}?${params}`);
+          const res  = await fetch(`/account/public_conversions/${USER_ID}?${params}`);
           const data = await res.json();
           if (data.success) {
             list.value      = data.list || [];
@@ -243,7 +243,7 @@
 
       function debounceFetch() {
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => { page.value = 1; fetchConverts(); }, 350);
+        debounceTimer = setTimeout(() => { page.value = 1; fetchConversions(); }, 350);
       }
 
       async function toggleFollow() {
@@ -279,10 +279,10 @@
 
       document.documentElement.addEventListener('themechange', renderChart);
       window.addEventListener('resize', () => chartInst?.resize());
-      onMounted(fetchConverts);
+      onMounted(fetchConversions);
 
       return { list, stats, loading, page, totalPage, pageRange, search, filterType, sortOrder,
-               chartEl, is_following, fetchConverts, debounceFetch, toggleFollow, formatDate, adaptTag,
+               chartEl, is_following, fetchConversions, debounceFetch, toggleFollow, formatDate, adaptTag,
                message_list };
     }
   }).mount('#main-containers');

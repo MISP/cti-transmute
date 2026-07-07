@@ -20,7 +20,7 @@
             <a class="dc-toc-link" href="#models">Database Models</a>
             <div class="dc-toc-sub">
                 <a class="dc-toc-link" href="#model-user">User</a>
-                <a class="dc-toc-link" href="#model-convert">Conversion</a>
+                <a class="dc-toc-link" href="#model-conversion">Conversion</a>
                 <a class="dc-toc-link" href="#model-comment">Comments</a>
                 <a class="dc-toc-link" href="#model-tag">Tags</a>
                 <a class="dc-toc-link" href="#model-social">Social &amp; Eval</a>
@@ -37,7 +37,7 @@
         </div>
         <div class="dc-toc-section">
             <div class="dc-toc-group">Web routes</div>
-            <a class="dc-toc-link" href="#routes-convert">Conversions</a>
+            <a class="dc-toc-link" href="#routes-conversions">Conversions</a>
             <a class="dc-toc-link" href="#routes-evaluate">Evaluate</a>
             <a class="dc-toc-link" href="#routes-tags">Tags</a>
             <a class="dc-toc-link" href="#routes-account">Account</a>
@@ -314,7 +314,7 @@ website/
             </div>
 
             <!-- Conversion -->
-            <div class="dc-subsection" id="model-convert">
+            <div class="dc-subsection" id="model-conversion">
                 <div class="dc-subsection-title">Conversion</div>
                 <div class="dc-model-block">
                     <div class="dc-model-head">
@@ -649,7 +649,7 @@ website/
         </section>
 
         <!-- ── WEB ROUTES — CONVERSIONS ──────────────────────────────── -->
-        <section class="dc-section" id="routes-convert">
+        <section class="dc-section" id="routes-conversions">
             <h2 class="dc-section-title"><i class="fas fa-arrows-left-right"></i> Web Routes — Conversions</h2>
             <p class="dc-lead">All routes under <code>/conversions</code>. JSON routes return <code>{"success": bool, "message": "...", "toast_class": "..."}</code>.</p>
 
@@ -677,8 +677,8 @@ website/
                 <div class="dc-subsection-title">History &amp; browsing</div>
                 <div class="dc-routes">
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/history</code><p class="dc-route-desc">History listing page (Vue SPA shell).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_convert_page_history</code><p class="dc-route-desc">Paginated JSON list. Filters: <code>type</code>, <code>sort</code>, <code>date_from/to</code>, <code>tags[]</code>, <code>favorites_only</code>, <code>search</code>, <code>search_scope</code>.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_convert?id=&lt;id&gt;</code><p class="dc-route-desc">Get one conversion by DB id or UUID. Returns full object including input/output text.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_conversion_page_history</code><p class="dc-route-desc">Paginated JSON list. Filters: <code>type</code>, <code>sort</code>, <code>date_from/to</code>, <code>tags[]</code>, <code>favorites_only</code>, <code>search</code>, <code>search_scope</code>.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/get_conversion?id=&lt;id&gt;</code><p class="dc-route-desc">Get one conversion by DB id or UUID. Returns full object including input/output text.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/detail/&lt;id&gt;</code><p class="dc-route-desc">Detail page with all tabs (Input, Output, Graph, Sunburst, Table, Comments, Evaluation).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/difference/&lt;id&gt;</code><p class="dc-route-desc">Side-by-side diff of a history version vs the current output.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/search_in_content?q=&lt;q&gt;</code><p class="dc-route-desc">Full-text search with snippet extraction. Returns matching conversion IDs + context snippets.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
@@ -764,9 +764,9 @@ website/
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/create</code><p class="dc-route-desc">Create a custom tag. Auto-approved for admins creating Vulnerability tags.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/list</code><p class="dc-route-desc">Paginated list of tags accessible to the current user.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/available</code><p class="dc-route-desc">Tags available for attachment. Filter <code>?evaluation=1</code> for eval-only tags.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/for_convert/&lt;id&gt;</code><p class="dc-route-desc">Tags currently attached to a conversion (filtered by source_type if provided).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/save_for_convert/&lt;id&gt;</code><p class="dc-route-desc">Replace all tags on a conversion. Body: <code>{"tag_ids": [1, 2, 3]}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/extract_from_convert/&lt;id&gt;</code><p class="dc-route-desc">Auto-extract tag names from the stored JSON and match them against the tag library.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/for_conversion/&lt;id&gt;</code><p class="dc-route-desc">Tags currently attached to a conversion (filtered by source_type if provided).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/save_for_conversion/&lt;id&gt;</code><p class="dc-route-desc">Replace all tags on a conversion. Body: <code>{"tag_ids": [1, 2, 3]}</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/extract_from_conversion/&lt;id&gt;</code><p class="dc-route-desc">Auto-extract tag names from the stored JSON and match them against the tag library.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                 </div>
             </div>
 
@@ -777,8 +777,8 @@ website/
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/approve/&lt;id&gt;</code><p class="dc-route-desc">Toggle approval status of a tag.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_taxonomies</code><p class="dc-route-desc">Import all tags from <code>vendor/misp-taxonomies</code> submodule (~12 380 tags).</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_galaxies</code><p class="dc-route-desc">Import cluster names from <code>vendor/misp-galaxy</code> submodule.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_converts/scan</code><p class="dc-route-desc">Background job: scan all conversions and auto-assign matching tags from their JSON.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_converts/job/&lt;id&gt;</code><p class="dc-route-desc">Poll the status of a background bulk-tag job.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_conversions/scan</code><p class="dc-route-desc">Background job: scan all conversions and auto-assign matching tags from their JSON.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_conversions/job/&lt;id&gt;</code><p class="dc-route-desc">Poll the status of a background bulk-tag job.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                 </div>
             </div>
         </section>
@@ -840,17 +840,17 @@ website/
                     <pre><code class="language-javascript">const MyComponent = {
     delimiters: ['[[', ']]'],   // avoid conflict with Jinja2 {{ '{{' }} {{ '}}' }}
     props: {
-        convertData: { type: Object, default: null },
+        conversionData: { type: Object, default: null },
     },
     components: { 'json-viewer': JsonViewer },
     template: `
 &lt;div class="mc-wrapper"&gt;
-    [[ convertData?.name ]]
+    [[ conversionData?.name ]]
 &lt;/div&gt;`,
     setup(props) {
         const { ref, watch } = Vue
         // ...
-        watch(() =&gt; props.convertData, v =&gt; {
+        watch(() =&gt; props.conversionData, v =&gt; {
             if (v) doWork()
         }, { immediate: true })  // fires immediately on mount
 
@@ -905,13 +905,13 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                 <div class="dc-comp-list-head">
                     <div>Component</div><div>File</div><div>Description</div>
                 </div>
-                <div class="dc-comp-row"><span class="dc-comp-name">ConvertSunburst</span><span class="dc-comp-file">js/graph/convertSunburst.js</span><span class="dc-comp-desc">ECharts sunburst + treemap of CTI data by category/type. Click a slice → JsonViewer drill-down.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">ConvertTable</span><span class="dc-comp-file">js/graph/convertTable.js</span><span class="dc-comp-desc">Flat tabular view with search, sortable columns, pagination (50 rows/page). Click a row → JsonViewer.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">ConversionSunburst</span><span class="dc-comp-file">js/graph/conversionSunburst.js</span><span class="dc-comp-desc">ECharts sunburst + treemap of CTI data by category/type. Click a slice → JsonViewer drill-down.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">ConversionTable</span><span class="dc-comp-file">js/graph/conversionTable.js</span><span class="dc-comp-desc">Flat tabular view with search, sortable columns, pagination (50 rows/page). Click a row → JsonViewer.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">JsonViewer</span><span class="dc-comp-file">js/graph/jsonViewer.js</span><span class="dc-comp-desc">Reusable JSON display: hljs syntax highlighting, collapsible tree, format, download, copy.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">ConvertGraph</span><span class="dc-comp-file">js/graph/convertGraph.js</span><span class="dc-comp-desc">Force-directed graph via Pivotick. Input/Output toggle. Config modal via graphConfigModal.js.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">ConversionGraph</span><span class="dc-comp-file">js/graph/conversionGraph.js</span><span class="dc-comp-desc">Force-directed graph via Pivotick. Input/Output toggle. Config modal via graphConfigModal.js.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">EvaluationPanel</span><span class="dc-comp-file">js/evaluationPanel.js</span><span class="dc-comp-desc">Like / dislike / reaction-tag voting panel per conversion.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">EvaluationCharts</span><span class="dc-comp-file">js/evaluate/evaluationCharts.js</span><span class="dc-comp-desc">Aggregated vote charts for a single conversion's evaluation tab.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">PushConvertToMISP</span><span class="dc-comp-file">js/misp/pushConvertToMISP.js</span><span class="dc-comp-desc">Modal: configure MISP URL + key and push the conversion with evaluation tags.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">PushConversionToMISP</span><span class="dc-comp-file">js/misp/pushConversionToMISP.js</span><span class="dc-comp-desc">Modal: configure MISP URL + key and push the conversion with evaluation tags.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">TagInput</span><span class="dc-comp-file">js/tags/tagInput.js</span><span class="dc-comp-desc">Tag selector + display per conversion. Uses Select2-style dropdown with search.</span></div>
             </div>
 
@@ -920,7 +920,7 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                 <p class="dc-lead">
                     The detail page (<code>templates/conversions/detail.html</code>) uses Bootstrap 5 tabs.
                     Each tab is a <code>nav-link</code> + a matching <code>tab-pane</code>.
-                    The visualization components receive the conversion object as <code>:convert-data="convert"</code>
+                    The visualization components receive the conversion object as <code>:conversion-data="conversion"</code>
                     and auto-render when the prop becomes available via <code>watch({ immediate: true })</code>.
                 </p>
                 <div class="dc-comp-list">
@@ -929,8 +929,8 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                     <div class="dc-comp-row"><span class="dc-comp-name">Output</span><span class="dc-comp-file">#output-pane-{id}</span><span class="dc-comp-desc">Same as Input for the conversion result</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">History</span><span class="dc-comp-file">#compare-pane-{id}</span><span class="dc-comp-desc">Version table, click row → /conversions/difference/{id}</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">Graph</span><span class="dc-comp-file">#graph-pane-{id}</span><span class="dc-comp-desc">Pivotick force-directed graph, loaded on tab click</span></div>
-                    <div class="dc-comp-row"><span class="dc-comp-name">Sunburst</span><span class="dc-comp-file">#sunburst-pane-{id}</span><span class="dc-comp-desc">&lt;convert-sunburst&gt; — ECharts, lazy CDN load</span></div>
-                    <div class="dc-comp-row"><span class="dc-comp-name">Table</span><span class="dc-comp-file">#table-pane-{id}</span><span class="dc-comp-desc">&lt;convert-table&gt; — pure JS parse + render</span></div>
+                    <div class="dc-comp-row"><span class="dc-comp-name">Sunburst</span><span class="dc-comp-file">#sunburst-pane-{id}</span><span class="dc-comp-desc">&lt;conversion-sunburst&gt; — ECharts, lazy CDN load</span></div>
+                    <div class="dc-comp-row"><span class="dc-comp-name">Table</span><span class="dc-comp-file">#table-pane-{id}</span><span class="dc-comp-desc">&lt;conversion-table&gt; — pure JS parse + render</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">Comments</span><span class="dc-comp-file">#comments-pane-{id}</span><span class="dc-comp-desc">Discussion thread, loaded on first tab click</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">Evaluation</span><span class="dc-comp-file">#eval-pane-{id}</span><span class="dc-comp-desc">EvaluationPanel + EvaluationCharts + eval comments</span></div>
                 </div>
@@ -943,7 +943,7 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
             <p class="dc-lead">
                 All visualization components follow the same pattern.
                 They live in <code>website/web/static/js/graph/</code>,
-                receive <code>convertData</code> as a prop, and parse JSON client-side — no extra API call needed.
+                receive <code>conversionData</code> as a prop, and parse JSON client-side — no extra API call needed.
             </p>
 
             <div class="dc-steps">
@@ -951,7 +951,7 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                     <div class="dc-step-num">1</div>
                     <div>
                         <div class="dc-step-title">Create the component file</div>
-                        <div class="dc-step-desc">Create <code>website/web/static/js/graph/myViz.js</code>. The component receives <code>convertData</code> (the full conversion object with <code>input_text</code> and <code>output_text</code> fields). Use <code>watch({ immediate: true })</code> so it auto-renders as soon as the prop is populated — even before the user clicks the tab.</div>
+                        <div class="dc-step-desc">Create <code>website/web/static/js/graph/myViz.js</code>. The component receives <code>conversionData</code> (the full conversion object with <code>input_text</code> and <code>output_text</code> fields). Use <code>watch({ immediate: true })</code> so it auto-renders as soon as the prop is populated — even before the user clicks the tab.</div>
                     </div>
                 </div>
                 <div class="dc-step">
@@ -979,7 +979,7 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                     <div class="dc-step-num">5</div>
                     <div>
                         <div class="dc-step-title">Add the tab in <code>detail.html</code></div>
-                        <div class="dc-step-desc">Add a <code>&lt;li class="nav-item"&gt;</code> with <code>data-bs-toggle="tab"</code> pointing to <code>#myviz-pane-[[convert.id]]</code>. Add the matching tab-pane below. Place <code>&lt;my-viz :convert-data="convert"&gt;&lt;/my-viz&gt;</code> inside it. Import and register the component in the <code>&lt;script type="module"&gt;</code> block. Add CSS with a unique class prefix to <code>detail.css</code>.</div>
+                        <div class="dc-step-desc">Add a <code>&lt;li class="nav-item"&gt;</code> with <code>data-bs-toggle="tab"</code> pointing to <code>#myviz-pane-[[conversion.id]]</code>. Add the matching tab-pane below. Place <code>&lt;my-viz :conversion-data="conversion"&gt;&lt;/my-viz&gt;</code> inside it. Import and register the component in the <code>&lt;script type="module"&gt;</code> block. Add CSS with a unique class prefix to <code>detail.css</code>.</div>
                     </div>
                 </div>
             </div>
@@ -1017,7 +1017,7 @@ function detectFormat(text) {
 const MyViz = {
     delimiters: ['[[', ']]'],
     components: { 'json-viewer': JsonViewer },
-    props: { convertData: { type: Object, default: null } },
+    props: { conversionData: { type: Object, default: null } },
     template: `
 &lt;div class="mvz-wrapper"&gt;
     &lt;div class="mvz-toolbar"&gt;
@@ -1038,12 +1038,12 @@ const MyViz = {
         let inst = null, resizeObs = null
 
         async function render() {
-            if (!props.convertData) return
+            if (!props.conversionData) return
             loading.value = true
             error.value = ''
             const text = side.value === 'input'
-                ? props.convertData.input_text
-                : props.convertData.output_text
+                ? props.conversionData.input_text
+                : props.conversionData.output_text
             if (!text) { loading.value = false; return }
 
             const fmt = detectFormat(text)
@@ -1071,7 +1071,7 @@ const MyViz = {
             inst?.dispose?.()
         })
 
-        watch(() =&gt; props.convertData, v =&gt; { if (v?.input_text || v?.output_text) render() }, { immediate: true })
+        watch(() =&gt; props.conversionData, v =&gt; { if (v?.input_text || v?.output_text) render() }, { immediate: true })
         return { side, loading, error, chartEl, setSide }
     },
 }
@@ -1130,8 +1130,8 @@ export default MyViz</code></pre>
                 <p class="dc-lead">Each Vue component uses a unique 3–4 character prefix for all its CSS classes to prevent collisions with Bootstrap and other components.</p>
                 <div class="dc-comp-list">
                     <div class="dc-comp-list-head"><div>Prefix</div><div>Component</div><div>File</div></div>
-                    <div class="dc-comp-row"><span class="dc-comp-name">csb-</span><span class="dc-comp-file">ConvertSunburst</span><span class="dc-comp-desc">detail.css</span></div>
-                    <div class="dc-comp-row"><span class="dc-comp-name">ctbl-</span><span class="dc-comp-file">ConvertTable</span><span class="dc-comp-desc">detail.css</span></div>
+                    <div class="dc-comp-row"><span class="dc-comp-name">csb-</span><span class="dc-comp-file">ConversionSunburst</span><span class="dc-comp-desc">detail.css</span></div>
+                    <div class="dc-comp-row"><span class="dc-comp-name">ctbl-</span><span class="dc-comp-file">ConversionTable</span><span class="dc-comp-desc">detail.css</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">jv-</span><span class="dc-comp-file">JsonViewer</span><span class="dc-comp-desc">detail.css</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">jt-</span><span class="dc-comp-file">JSON Tree (inline)</span><span class="dc-comp-desc">detail.css — shared by JsonViewer + raw viewer</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">dc-</span><span class="dc-comp-file">Docs page</span><span class="dc-comp-desc">docs.css</span></div>

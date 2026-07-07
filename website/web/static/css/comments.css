@@ -400,7 +400,7 @@
     color: var(--accent);
 }
 
-.notif-icon.type-convert {
+.notif-icon.type-conversion {
     background: rgba(16, 185, 129, 0.12);
     color: var(--success);
 }
@@ -548,14 +548,14 @@
     border-bottom: none;
 }
 
-.my-comment-convert-link {
+.my-comment-conversion-link {
     font-size: 0.72rem;
     color: var(--accent);
     font-weight: 600;
     text-decoration: none;
 }
 
-.my-comment-convert-link:hover {
+.my-comment-conversion-link:hover {
     text-decoration: underline;
 }
 
@@ -829,7 +829,7 @@
     background: rgba(37, 99, 235, 0.18);
 }
 
-.notif-item.unread .notif-icon.type-convert {
+.notif-item.unread .notif-icon.type-conversion {
     background: rgba(16, 185, 129, 0.18);
 }
 

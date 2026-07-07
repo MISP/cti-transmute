@@ -18,7 +18,7 @@
     <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
       <div class="search-bar-wrapper" style="max-width:220px;">
         <i class="fas fa-hashtag search-bar-icon"></i>
-        <input class="search-bar-input" type="number" v-model="filter_convert"
+        <input class="search-bar-input" type="number" v-model="filter_conversion"
                @input="debounceLoad" placeholder="Filter by conversion ID…">
       </div>
       <select class="form-select form-select-sm" style="max-width:160px; background:var(--bg-2); color:var(--text); border-color:var(--border);"
@@ -125,21 +125,21 @@
   createApp({
     delimiters: ['[[', ']]'],
     setup() {
-      const items          = ref([])
-      const loading        = ref(true)
-      const page           = ref(1)
-      const pages          = ref(1)
-      const total          = ref(0)
-      const filter_type    = ref('')
-      const filter_convert = ref('')
-      let debounceTimer    = null
+      const items             = ref([])
+      const loading           = ref(true)
+      const page              = ref(1)
+      const pages             = ref(1)
+      const total             = ref(0)
+      const filter_type       = ref('')
+      const filter_conversion = ref('')
+      let debounceTimer       = null
 
       async function loadPage(p = 1) {
         loading.value = true
         page.value    = p
         const params  = new URLSearchParams({ page: p, per_page: 50 })
         if (filter_type.value)    params.set('type',       filter_type.value)
-        if (filter_convert.value) params.set('conversion_id', filter_convert.value)
+        if (filter_conversion.value) params.set('conversion_id', filter_conversion.value)
 
         const res  = await fetch('/evaluate/admin/list?' + params)
         const data = await res.json()
@@ -182,7 +182,7 @@
 
       loadPage(1)
 
-      return { items, loading, page, pages, total, filter_type, filter_convert,
+      return { items, loading, page, pages, total, filter_type, filter_conversion,
                loadPage, debounceLoad, typeIcon, reactionIcon, deleteEval }
     }
   }).mount('#main-container')

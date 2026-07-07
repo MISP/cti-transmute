@@ -587,7 +587,7 @@ createApp({
       clearInterval(_pullPollTimer)
       _pullPollTimer = setInterval(async () => {
         try {
-          const r = await fetch(`/tags/admin/bulk_converts/job/${jid}`)
+          const r = await fetch(`/tags/admin/bulk_conversions/job/${jid}`)
           const d = await r.json()
           if (d.success) {
             pullJob.value = d.job

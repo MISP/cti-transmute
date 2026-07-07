@@ -18,11 +18,11 @@
                 <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
                     <span class="author-badge">
                         <i class="fas fa-tag" style="font-size:0.65rem;"></i>
-                        {{ convert_obj.name }}
+                        {{ conversion_obj.name }}
                     </span>
                     <span class="type-pill
-                        {% if convert_obj.conversion_type == 'STIX_TO_MISP' %}type-stix{% else %}type-misp{% endif %}">
-                        {% if convert_obj.conversion_type == 'STIX_TO_MISP' %}
+                        {% if conversion_obj.conversion_type == 'STIX_TO_MISP' %}type-stix{% else %}type-misp{% endif %}">
+                        {% if conversion_obj.conversion_type == 'STIX_TO_MISP' %}
                         STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> MISP
                         {% else %}
                         MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> STIX
@@ -36,7 +36,7 @@
                     {% endif %}
                 </div>
             </div>
-            <a href="{{ url_for('conversions.detail', id=convert_obj.id) }}" class="btn btn-outline-secondary btn-sm px-3">
+            <a href="{{ url_for('conversions.detail', id=conversion_obj.id) }}" class="btn btn-outline-secondary btn-sm px-3">
                 <i class="fas fa-arrow-left me-1"></i> Back
             </a>
         </div>
@@ -45,19 +45,19 @@
     <div class="custom-card p-4 mb-4">
         <p class="refresh-options-heading">
             <i class="fas fa-sliders me-2" style="color:var(--accent);"></i>
-            {% if convert_obj.conversion_type == "MISP_TO_STIX" %}
+            {% if conversion_obj.conversion_type == "MISP_TO_STIX" %}
             MISP → STIX Options
-            {% elif convert_obj.conversion_type == "STIX_TO_MISP" %}
+            {% elif conversion_obj.conversion_type == "STIX_TO_MISP" %}
             STIX → MISP Options
             {% else %}
             Conversion Options
             {% endif %}
         </p>
 
-        {% if convert_obj.conversion_type == "MISP_TO_STIX" %}
+        {% if conversion_obj.conversion_type == "MISP_TO_STIX" %}
         {% from "macros/form_refresh/misp_to_stix_form.html" import misp_to_stix_form %}
         {{ misp_to_stix_form(form, uploaded_filename=filename) }}
-        {% elif convert_obj.conversion_type == "STIX_TO_MISP" %}
+        {% elif conversion_obj.conversion_type == "STIX_TO_MISP" %}
         {% from "macros/form_refresh/stix_to_misp_form.html" import stix_to_misp_form %}
         {{ stix_to_misp_form(form, uploaded_filename=filename) }}
         {% else %}
@@ -191,7 +191,7 @@
     </div>
 
     <div class="text-center mb-5">
-        <a href="{{ url_for('conversions.detail', id=convert_obj.id) }}"
+        <a href="{{ url_for('conversions.detail', id=conversion_obj.id) }}"
             class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
             <i class="fas fa-arrow-left me-2"></i> Back
         </a>
@@ -211,9 +211,9 @@
             const history_list = ref([]);
 
             async function getHistory() {
-                const res = await fetch(`/conversions/get_new_convert?id={{ convert_obj.id }}`);
+                const res = await fetch(`/conversions/get_new_conversion?id={{ conversion_obj.id }}`);
                 const data = await res.json();
-                history_list.value = (res.ok && data.history_convert) ? data.history_convert : [];
+                history_list.value = (res.ok && data.conversion_history) ? data.conversion_history : [];
             }
 
             const latest_pending = computed(() => {

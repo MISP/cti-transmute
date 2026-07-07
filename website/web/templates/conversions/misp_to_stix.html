@@ -300,7 +300,7 @@
 
 {% block script %}
 <script type="module">
-    import ParamSurface from '{{ asset_url('js/convert/paramSurface.js') }}';
+    import ParamSurface from '{{ asset_url('js/conversions/paramSurface.js') }}';
 
     const { createApp, onMounted } = Vue;
     const CONVERTER_URL = '/api/convert/misp_to_stix';
