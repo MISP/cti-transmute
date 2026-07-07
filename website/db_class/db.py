@@ -179,7 +179,7 @@ class Comment(db.Model):
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     is_evaluation = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
 
-    convert = db.relationship("Conversion", backref=db.backref("comments", lazy=True, cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("comments", lazy=True, cascade="all, delete-orphan"))
     replies = db.relationship(
         "Comment",
         backref=db.backref("parent", remote_side=[id]),
@@ -194,7 +194,7 @@ class Comment(db.Model):
             return user.first_name if user else "Deleted User"
         return "Anonymous"
 
-    def to_json(self, current_user_id=None, is_admin=False, convert_owner_id=None):
+    def to_json(self, current_user_id=None, is_admin=False, conversion_owner_id=None):
         reactions_grouped = {}
         for r in self.reactions:
             if r.emoji not in reactions_grouped:
@@ -215,7 +215,7 @@ class Comment(db.Model):
             "is_deleted": self.is_deleted,
             "reactions": reactions_grouped,
             "can_delete": bool(current_user_id and (
-                current_user_id == self.user_id or is_admin or current_user_id == convert_owner_id
+                current_user_id == self.user_id or is_admin or current_user_id == conversion_owner_id
             )),
             "can_toggle_private": bool(current_user_id and (
                 current_user_id == self.user_id or is_admin
@@ -302,16 +302,16 @@ class ConversionReport(db.Model):
     reviewed_at = db.Column(db.DateTime, nullable=True)
     reviewed_by = db.Column(db.Integer, nullable=True)
 
-    convert = db.relationship("Conversion", backref=db.backref("reports", lazy=True, cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("reports", lazy=True, cascade="all, delete-orphan"))
 
     def to_json(self):
-        convert = Conversion.query.get(self.conversion_id)
+        conversion = Conversion.query.get(self.conversion_id)
         reviewer = User.query.get(self.reviewed_by) if self.reviewed_by else None
         reporter = User.query.get(self.user_id) if self.user_id else None
         return {
             "id": self.id,
             "conversion_id": self.conversion_id,
-            "convert_name": convert.name if convert else None,
+            "conversion_name": conversion.name if conversion else None,
             "user_id": self.user_id,
             "reporter": f"{reporter.first_name} {reporter.last_name}" if reporter else "Anonymous",
             "reason": self.reason,
@@ -381,7 +381,7 @@ class ConversionHistory(db.Model):
     comment = db.Column(db.Text, nullable=True)
 
     # Relationship
-    convert = db.relationship("Conversion", backref=db.backref(
+    conversion = db.relationship("Conversion", backref=db.backref(
         "history",
         lazy=True,
         cascade="all, delete-orphan"
@@ -502,9 +502,9 @@ class ConversionTagAssociation(db.Model):
     # "user" = manually added via UI | "json" = extracted from MISP/STIX JSON by admin scan
     source_type = db.Column(db.String(10), nullable=False, default="user", server_default="user")
 
-    convert = db.relationship('Conversion', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
-    tag = db.relationship('Tag', backref=db.backref('convert_associations', lazy='dynamic'))
-    user = db.relationship('User', backref=db.backref('convert_tag_associations', lazy='dynamic'))
+    conversion = db.relationship('Conversion', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
+    tag = db.relationship('Tag', backref=db.backref('conversion_associations', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('conversion_tag_associations', lazy='dynamic'))
 
     def to_json(self):
         tag = self.tag
@@ -536,7 +536,7 @@ class ConversionFavorite(db.Model):
     __table_args__ = (db.UniqueConstraint("user_id", "conversion_id", name="uq_favorite_user_convert"),)
 
     user    = db.relationship("User",    backref=db.backref("favorites", lazy="dynamic"))
-    convert = db.relationship("Conversion", backref=db.backref("favorited_by", lazy="dynamic", cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("favorited_by", lazy="dynamic", cascade="all, delete-orphan"))
 
 
 class ConversionEvaluation(db.Model):
@@ -552,7 +552,7 @@ class ConversionEvaluation(db.Model):
     reaction_key = db.Column(db.String(50),  nullable=True)
     created_at   = db.Column(db.DateTime, index=True)
 
-    convert = db.relationship("Conversion", backref=db.backref("evaluations", lazy="dynamic", cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("evaluations", lazy="dynamic", cascade="all, delete-orphan"))
     user    = db.relationship("User",    backref=db.backref("evaluations", lazy="dynamic"))
 
     def to_json(self):
