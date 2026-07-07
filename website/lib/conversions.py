@@ -37,9 +37,9 @@ def submit_conversion(
     now = datetime.now(timezone.utc)
     # One all-or-nothing transaction — the Conversion row and its audit log
     # commit together, or not at all. The repo stages the row (add + flush,
-    # assigning convert.id and minting its uuid/share_key); this use-case owns
+    # assigning conversion.id and minting its uuid/share_key); this use-case owns
     # the commit so the audit entry lands in the same transaction.
-    convert = conv_repo.create(
+    conversion = conv_repo.create(
         user_id=None if user is None else user.id,
         name=name or f"{source}_to_{target}_{now.strftime('%Y%m%d%H%M%S')}".upper(),
         source_format=source,
@@ -53,7 +53,7 @@ def submit_conversion(
         public=public,
         commit=False
     )
-    _record_creation(convert, user, now)
+    _record_creation(conversion, user, now)
     try:
         db.session.commit()
     except Exception as exc:  # noqa: BLE001
@@ -63,15 +63,15 @@ def submit_conversion(
     # External side effects fire only after commit. Notify followers for an
     # authenticated, public submission.
     if user is not None and public:
-        AccountModel.notify_followers_new_conversion(convert, user.id)
-    return convert
+        AccountModel.notify_followers_new_conversion(conversion, user.id)
+    return conversion
 
 
-def _record_creation(convert: Conversion, user, now: datetime) -> None:
+def _record_creation(conversion: Conversion, user, now: datetime) -> None:
     """Add the `convert_created` audit log inside the conversion's transaction."""
     _record_event(
-        "convert_created", user, "convert", convert.id, convert.name, now,
-        details=f"Type: {convert.conversion_type}, Public: {convert.public}",
+        "convert_created", user, "convert", conversion.id, conversion.name, now,
+        details=f"Type: {conversion.conversion_type}, Public: {conversion.public}",
     )
 
 
@@ -171,7 +171,7 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
     ``accepted`` and copies its ``new_output_text`` onto the parent Conversion
     (the established 'accept the refresh' meaning), atomically with the audit log.
     """
-    conversion = history.convert
+    conversion = history.conversion
     assert_can_moderate(user, conversion)
 
     now = datetime.now(timezone.utc)
@@ -197,7 +197,7 @@ def reject_history(user, history: ConversionHistory) -> ConversionHistory:
     `accept_history` — but a rejection never adopts the new output onto the
     parent Conversion.
     """
-    conversion = history.convert
+    conversion = history.conversion
     assert_can_moderate(user, conversion)
 
     now = datetime.now(timezone.utc)
