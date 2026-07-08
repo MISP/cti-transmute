@@ -8,6 +8,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from website.db_class.db import Conversion, Tag
+from website.lib import access
 from website.web import csrf, db
 from website.web.tags import bulk_jobs
 from website.web.utils import extract_tag_names_from_misp_json
@@ -392,7 +393,7 @@ def for_conversion(conversion_id):
     if not conversion.public:
         if not current_user.is_authenticated:
             return {"success": False, "message": "Unauthorized"}, 403
-        if current_user.id != conversion.user_id and not current_user.is_admin():
+        if not access.is_owner_or_admin(current_user, conversion):
             return {"success": False, "message": "Forbidden"}, 403
     source_type = request.args.get("source_type") or None
     assocs = TagsModel.get_conversion_tags(conversion_id, source_type=source_type)

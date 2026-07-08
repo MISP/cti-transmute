@@ -13,6 +13,7 @@ from sqlalchemy import or_
 from website.db_class.db import (
     Comment, CommentReaction, ConversionFavorite,
     ConversionReport, GraphConfig)
+from website.lib import access
 from website.repos import conversions as conv_repo
 from website.web import db
 
@@ -20,19 +21,16 @@ from website.web import db
 #   Comment service functions     #
 ###################################
 
-def _can_see_comment(comment, conversion_is_public, current_user_id, is_admin, conversion_owner_id):
-    """Determine if a user can see a specific comment."""
-    if is_admin:
-        return True
-    if not conversion_is_public:
-        # Private conversion: only its owner can see
-        return current_user_id is not None and current_user_id == conversion_owner_id
+def _can_see_comment(comment, conversion, user):
+    """Determine if the Submitter can see a specific comment."""
+    if not conversion.public:
+        # Private conversion: only its owner or an admin
+        return access.is_owner_or_admin(user, conversion)
     if not comment.is_private:
         return True
-    # Private comment on public conversion: owner or comment author only
-    if current_user_id is None:
-        return False
-    return current_user_id == conversion_owner_id or current_user_id == comment.user_id
+    # Private comment on a public conversion: the conversion's owner, the
+    # comment's author, or an admin
+    return access.is_owner_or_admin(user, conversion) or access.is_owner(user, comment)
 
 
 def create_comment(conversion_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
@@ -58,13 +56,16 @@ def create_comment(conversion_id, user_id, content, is_private=False, parent_id=
         return None
 
 
-def get_comments(conversion_id, current_user_id=None, is_admin=False, conversion_owner_id=None):
-    """Return visible top-level comments and their visible replies for a conversion."""
+def get_comments(conversion_id, user=None):
+    """Return the top-level comments and replies the Submitter may see."""
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return []
 
-    conversion_is_public = conversion.public
+    # `to_json` renders viewer-dependent fields (can_edit/can_delete/…) from
+    # primitives; derive them from the Submitter once.
+    current_user_id = getattr(user, "id", None)
+    is_admin = access.is_admin(user)
 
     top_level = (
         Comment.query
@@ -76,9 +77,9 @@ def get_comments(conversion_id, current_user_id=None, is_admin=False, conversion
 
     result = []
     for c in top_level:
-        if not _can_see_comment(c, conversion_is_public, current_user_id, is_admin, conversion_owner_id):
+        if not _can_see_comment(c, conversion, user):
             continue
-        comment_data = c.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion_owner_id)
+        comment_data = c.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion.user_id)
         replies = (
             Comment.query
             .filter_by(conversion_id=conversion_id, parent_id=c.id)
@@ -87,15 +88,15 @@ def get_comments(conversion_id, current_user_id=None, is_admin=False, conversion
             .all()
         )
         comment_data["replies"] = [
-            r.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion_owner_id)
+            r.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion.user_id)
             for r in replies
-            if _can_see_comment(r, conversion_is_public, current_user_id, is_admin, conversion_owner_id)
+            if _can_see_comment(r, conversion, user)
         ]
         result.append(comment_data)
     return result
 
 
-def delete_comment(comment_id, requesting_user_id, is_admin=False):
+def delete_comment(comment_id, user):
     """Soft-delete a comment. Only author, conversion owner, or admin can delete."""
     comment = Comment.query.get(comment_id)
     if not comment:
@@ -103,11 +104,8 @@ def delete_comment(comment_id, requesting_user_id, is_admin=False):
     conversion = conv_repo.get(comment.conversion_id)
     if not conversion:
         return False, "Conversion not found"
-    allowed = (
-        is_admin or
-        requesting_user_id == comment.user_id or
-        requesting_user_id == conversion.user_id
-    )
+    # comment author or admin — or the owner of the conversion it sits on
+    allowed = access.is_owner_or_admin(user, comment) or access.is_owner(user, conversion)
     if not allowed:
         return False, "Permission denied"
     comment.is_deleted = True
@@ -116,12 +114,12 @@ def delete_comment(comment_id, requesting_user_id, is_admin=False):
     return True, "Comment deleted"
 
 
-def toggle_comment_private(comment_id, requesting_user_id, is_admin=False):
+def toggle_comment_private(comment_id, user):
     """Toggle the private/public flag of a comment. Only author or admin."""
     comment = Comment.query.get(comment_id)
     if not comment:
         return False, "Comment not found", None
-    if not is_admin and requesting_user_id != comment.user_id:
+    if not access.is_owner_or_admin(user, comment):
         return False, "Permission denied", None
     comment.is_private = not comment.is_private
     db.session.commit()
@@ -153,14 +151,14 @@ def react_to_comment(comment_id, user_id, emoji):
         return False, False
 
 
-def edit_comment(comment_id, requesting_user_id, content):
-    """Edit a comment's content. Only the original author can edit."""
+def edit_comment(comment_id, user, content):
+    """Edit a comment's content. Only the original author can edit — not even an admin."""
     comment = Comment.query.get(comment_id)
     if not comment:
         return False, "Comment not found"
     if comment.is_deleted:
         return False, "Cannot edit a deleted comment"
-    if comment.user_id != requesting_user_id:
+    if not access.is_owner(user, comment):
         return False, "Permission denied"
     content = content.strip()
     if not content:

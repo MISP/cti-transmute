@@ -2,6 +2,7 @@ from flask import Blueprint, Response, abort, render_template, request
 from flask_login import current_user, login_required
 
 from website.db_class.db import Conversion
+from website.lib import access
 
 from ..account import account_core as AccountModel
 from ..evaluate import evaluate_core as EvalModel
@@ -9,22 +10,11 @@ from ..evaluate import evaluate_core as EvalModel
 evaluate_blueprint = Blueprint("evaluate", __name__)
 
 
-def _can_view_conversion(conversion: Conversion) -> bool:
-    """Return True if the current viewer is allowed to see this conversion."""
-    if conversion.public:
-        return True
-    if current_user.is_authenticated and (
-        current_user.id == conversion.user_id or current_user.is_admin()
-    ):
-        return True
-    return False
-
-
 def _can_evaluate(conversion: Conversion) -> tuple[bool, str]:
     """Return (allowed, reason) for evaluation actions."""
     if not current_user.is_authenticated:
         return False, "Login required"
-    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
+    if not access.can_see(current_user, conversion):
         return False, "Conversion is private"
     return True, ""
 
@@ -36,7 +26,7 @@ def get_summary(conversion_id):
     conversion = Conversion.query.get(conversion_id)
     if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(conversion):
+    if not access.can_see(current_user, conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
     viewer_id = current_user.id if current_user.is_authenticated else None
@@ -200,7 +190,7 @@ def consensus_tags(conversion_id):
     conversion = Conversion.query.get(conversion_id)
     if not conversion:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(conversion):
+    if not access.can_see(current_user, conversion):
         return {"success": False, "message": "Forbidden"}, 403
     threshold = request.args.get("threshold", 3, type=int)
     tags = EvalModel.get_consensus_tags(conversion_id, threshold=threshold)
@@ -263,7 +253,7 @@ def export_evaluation_markdown(conversion_id):
     conversion = Conversion.query.get(conversion_id)
     if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(conversion):
+    if not access.can_see(current_user, conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
     report = EvalModel.build_evaluation_report(conversion_id)
@@ -285,7 +275,7 @@ def export_evaluation_pdf(conversion_id):
     conversion = Conversion.query.get(conversion_id)
     if not conversion or not conversion.is_active:
         return {"success": False, "message": "Not found"}, 404
-    if not _can_view_conversion(conversion):
+    if not access.can_see(current_user, conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
     report = EvalModel.build_evaluation_report(conversion_id)

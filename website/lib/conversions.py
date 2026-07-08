@@ -12,7 +12,8 @@ from typing import Any
 
 from cti_transmute import transmute
 from website.db_class.db import Conversion, ConversionHistory, SystemLog
-from website.lib.exceptions import PermissionDenied, PersistenceFailed
+from website.lib.access import assert_can_moderate, assert_can_refresh
+from website.lib.exceptions import PersistenceFailed
 from website.repos import conversions as conv_repo
 from website.web import db
 from website.web.account import account_core as AccountModel
@@ -69,21 +70,21 @@ def submit_conversion(
 
 def _record_creation(conversion: Conversion, user, now: datetime) -> None:
     """Add the `conversion_created` activity-log entry inside the conversion's transaction."""
-    _record_event(
+    _record_activity(
         "conversion_created", user, "conversion", conversion.id, conversion.name, now,
         details=f"Type: {conversion.conversion_type}, Public: {conversion.public}",
     )
 
 
-def _record_event(event_type: str, actor, target_type: str, target_id: int,
-                  target_name: str, now: datetime, details: str | None = None) -> None:
-    """Add an audit-log row inside the current transaction.
+def _record_activity(event_type: str, actor, target_type: str, target_id: int,
+                     target_name: str, now: datetime, details: str | None = None) -> None:
+    """Add an Activity-log (``SystemLog``) row to the current transaction.
 
-    Until Candidate 3's event bus lands, the use-cases record their audit trail
-    by writing a ``SystemLog`` row directly (one per mutation), the same in-tx
-    pattern as `_record_creation` (audit is atomic with the change).
-    ``actor`` is the *acting* user (e.g. an admin refreshing someone else's
-    Conversion), which can differ from the row's owner.
+    Staged, not committed: the caller owns the commit, so the entry lands
+    atomically with the mutation it describes — the clean commit boundary is
+    the point, not durability (the Activity log is disposable display data,
+    ADR-0016). ``actor`` is the *acting* user (e.g. an admin refreshing
+    someone else's Conversion), which can differ from the row's owner.
     """
     db.session.add(
         SystemLog(
@@ -98,31 +99,6 @@ def _record_event(event_type: str, actor, target_type: str, target_id: int,
             created_at=now
         )
     )
-
-
-def _is_owner_or_admin(user, conversion: Conversion) -> bool:
-    if user is None:
-        return False
-    if getattr(user, "id", None) == conversion.user_id:
-        return True
-    is_admin = getattr(user, "is_admin", None)
-    return bool(is_admin()) if callable(is_admin) else False
-
-
-def assert_can_refresh(user, conversion: Conversion) -> None:
-    """Allow only the Conversion's owner or an admin to refresh it.
-
-    Anonymous (``user is None``) and any other user raise ``PermissionDenied``.
-    Inline here for this slice; Candidate 2 lifts it into ``website/lib/access.py``.
-    """
-    if not _is_owner_or_admin(user, conversion):
-        raise PermissionDenied("You may not refresh this conversion.")
-
-
-def assert_can_moderate(user, conversion: Conversion) -> None:
-    """Allow only the Conversion's owner or an admin to accept/reject its history."""
-    if not _is_owner_or_admin(user, conversion):
-        raise PermissionDenied("You may not moderate this conversion's history.")
 
 
 def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistory:
@@ -153,7 +129,7 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
         created_at=now,
         commit=False
     )
-    _record_event(
+    _record_activity(
         "conversion_refreshed", user, "conversion", conversion.id, conversion.name, now,
     )
     try:
@@ -178,7 +154,7 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
     conv_repo.set_history_status(history, "accepted", commit=False)
     conversion.output_text = history.new_output_text
     conversion.updated_at = now
-    _record_event(
+    _record_activity(
         "conversion_history_accepted", user, "conversion_history", history.id,
         conversion.name, now,
     )
@@ -202,7 +178,7 @@ def reject_history(user, history: ConversionHistory) -> ConversionHistory:
 
     now = datetime.now(timezone.utc)
     conv_repo.set_history_status(history, "rejected", commit=False)
-    _record_event(
+    _record_activity(
         "conversion_history_rejected", user, "conversion_history", history.id,
         conversion.name, now,
     )

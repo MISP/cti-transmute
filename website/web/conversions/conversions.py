@@ -19,9 +19,9 @@ from cti_transmute.exceptions import ConversionError, InvalidParameters, Invalid
 from website.db_class.db import Comment as CommentModel
 from website.db_class.db import Conversion, ConversionFavorite, db
 from website.db_class.db import Tag as TagModel
+from website.lib import access
 from website.lib.conversions import (
-    accept_history, assert_can_refresh, refresh_conversion, reject_history,
-    submit_conversion)
+    accept_history, refresh_conversion, reject_history, submit_conversion)
 from website.lib.exceptions import PermissionDenied, PersistenceFailed
 from website.lib.params import build_params, param_error
 from website.repos import conversions as conv_repo
@@ -492,7 +492,7 @@ def toggle_favorite():
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
+    if not access.can_see(current_user, conversion):
         return {"success": False, "error": "Forbidden"}, 403
     is_fav = ConversionModel.toggle_favorite(current_user.id, conversion_id)
     AccountModel.create_system_log(
@@ -565,7 +565,7 @@ def search_in_content():
     if not conversion.public:
         if not current_user.is_authenticated:
             return {"success": False, "message": "Unauthorized"}, 403
-        if current_user.id != conversion.user_id and not current_user.is_admin():
+        if not access.is_owner_or_admin(current_user, conversion):
             return {"success": False, "message": "Forbidden"}, 403
 
     results = conv_repo.search_in_content(query_str, conversion_id, scope=scope)
@@ -579,7 +579,7 @@ def delete_rule() -> jsonify:
     item_id = item_id.get("id") or request.args.get("id")
     conversion = conv_repo.get(item_id)
     if conversion:
-        if current_user.id == conversion.user_id or current_user.is_admin():
+        if access.is_owner_or_admin(current_user, conversion):
             _conversion_name = conversion.name
             success = conv_repo.soft_delete(item_id)
             if success:
@@ -605,7 +605,7 @@ def _render_detail(conversion):
         flash("You must be logged in to view this conversion.", "warning")
         return redirect(url_for("account.login"))
 
-    if current_user.id == conversion.user_id or current_user.is_admin():
+    if access.is_owner_or_admin(current_user, conversion):
         return render_template("conversions/detail.html", conversion=conversion)
 
     flash("You do not have permission to view this conversion.", "danger")
@@ -637,7 +637,7 @@ def edit(id):
 
     form = editConversionForm()
     conversion = conv_repo.get(id)
-    if conversion.user_id == current_user.id or current_user.is_admin():
+    if access.is_owner_or_admin(current_user, conversion):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             
@@ -675,7 +675,7 @@ def get_conversion():
             if not conversion.public:
                 if not current_user.is_authenticated:
                     return {"success": False, "message": "Unauthorized", "toast_class": "danger"}, 403
-                if current_user.id != conversion.user_id and not current_user.is_admin():
+                if not access.is_owner_or_admin(current_user, conversion):
                     return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
                 "success": True,
@@ -702,7 +702,7 @@ def edit_public():
     if id:
         conversion = conv_repo.get(id)
         if conversion:
-            if conversion.user_id == current_user.id or current_user.is_admin():
+            if access.is_owner_or_admin(current_user, conversion):
                 comment_count = len([c for c in conversion.comments if not c.is_deleted])
                 success , _bool = conv_repo.toggle_visibility(id)
                 if success:
@@ -747,9 +747,9 @@ def get_share_key():
     if id:
         conversion = conv_repo.get(id)
         if conversion:
-            if conversion.user_id == current_user.id or current_user.is_admin():
+            if access.is_owner_or_admin(current_user, conversion):
                 return {
-                    "success": True, 
+                    "success": True,
                     "share_key": conversion.share_key,
                     "message": "Share key found", 
                     "toast_class" : "success"
@@ -775,7 +775,7 @@ def regenerate_share_key():
     if id:
         conversion = conv_repo.get(id)
         if conversion:
-            if conversion.user_id == current_user.id or current_user.is_admin():
+            if access.is_owner_or_admin(current_user, conversion):
                 success , new_share_key = conv_repo.regenerate_share_key(id)
                 if success:
                     return {
@@ -873,7 +873,7 @@ def refresh(uuid):
     # Anonymous callers were already bounced to login by @login_required.
     user = current_user._get_current_object()
     try:
-        assert_can_refresh(user, conversion_obj)
+        access.assert_can_refresh(user, conversion_obj)
     except PermissionDenied:
         abort(403)
 
@@ -939,7 +939,7 @@ def get_history():
     if id:
         conversion_obj = conv_repo.get(id)
         if conversion_obj:
-            if not conversion_obj.public and current_user.id != conversion_obj.user_id and not current_user.is_admin():
+            if not access.can_see(current_user, conversion_obj):
                 return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             latest_history = conv_repo.accepted_history_list(conversion_obj.id)
             if latest_history:
@@ -976,7 +976,7 @@ def get_new_conversion():
     if id:
         conversion_obj = conv_repo.get(id)
         if conversion_obj:
-            if not conversion_obj.public and current_user.id != conversion_obj.user_id and not current_user.is_admin():
+            if not access.can_see(current_user, conversion_obj):
                 return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             latest_history = conv_repo.latest_history_list(conversion_obj.id)
             if latest_history:
@@ -1104,9 +1104,8 @@ def get_history_details():
         conversion_history = conv_repo.get_history(history_id)
         if conversion_history:
             conversion_obj = conv_repo.get(conversion_history.conversion_id)
-            if conversion_obj and not conversion_obj.public:
-                if current_user.id != conversion_obj.user_id and not current_user.is_admin():
-                    return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
+            if conversion_obj and not access.can_see(current_user, conversion_obj):
+                return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
                 "success": True,
                 "history": conversion_history.to_json(),
@@ -1140,15 +1139,8 @@ def get_comments():
     if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
-    uid = current_user.id if current_user.is_authenticated else None
-    is_admin = current_user.is_admin() if current_user.is_authenticated else False
-
-    comments = ConversionModel.get_comments(
-        conversion_id=conversion_id,
-        current_user_id=uid,
-        is_admin=is_admin,
-        conversion_owner_id=conversion.user_id
-    )
+    actor = current_user._get_current_object() if current_user.is_authenticated else None
+    comments = ConversionModel.get_comments(conversion_id, actor)
     return {"success": True, "comments": comments}, 200
 
 
@@ -1172,7 +1164,7 @@ def add_comment():
     if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
-    if not conversion.public and not current_user.is_admin() and current_user.id != conversion.user_id:
+    if not access.can_see(current_user, conversion):
         return {"success": False, "message": "You cannot comment on a private conversion", "toast_class": "danger"}, 403
 
     comment = ConversionModel.create_comment(
@@ -1246,7 +1238,7 @@ def edit_comment():
     comment = ConversionModel.get_comment(comment_id)
     success, message = ConversionModel.edit_comment(
         comment_id=comment_id,
-        requesting_user_id=current_user.id,
+        user=current_user._get_current_object(),
         content=content,
     )
     if success and comment:
@@ -1277,8 +1269,7 @@ def delete_comment():
     comment = ConversionModel.get_comment(comment_id)
     success, message = ConversionModel.delete_comment(
         comment_id=comment_id,
-        requesting_user_id=current_user.id,
-        is_admin=current_user.is_admin()
+        user=current_user._get_current_object(),
     )
     if success and comment:
         AccountModel.create_system_log(
@@ -1303,8 +1294,7 @@ def toggle_comment_private():
 
     success, message, new_private = ConversionModel.toggle_comment_private(
         comment_id=comment_id,
-        requesting_user_id=current_user.id,
-        is_admin=current_user.is_admin()
+        user=current_user._get_current_object(),
     )
     return {
         "success": success,
@@ -1584,20 +1574,13 @@ def misp_test_connection():
     return {"success": True, "tags": tags, "count": len(tags)}, 200
 
 
-def _can_download(conversion) -> bool:
-    """Return True if the current user is allowed to download this conversion's data."""
-    if conversion.public:
-        return True
-    return current_user.is_authenticated and (current_user.id == conversion.user_id or current_user.is_admin())
-
-
 @conversions_blueprint.route("/download/<int:conversion_id>/input")
 def download_input(conversion_id):
     """Download the input file (MISP JSON for MISP→STIX, STIX JSON for STIX→MISP)."""
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not _can_download(conversion):
+    if not access.can_see(current_user, conversion):
         return {"success": False, "error": "Forbidden"}, 403
 
     label    = "misp" if conversion.conversion_type == "MISP_TO_STIX" else "stix"
@@ -1614,7 +1597,7 @@ def download_output(conversion_id):
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not _can_download(conversion):
+    if not access.can_see(current_user, conversion):
         return {"success": False, "error": "Forbidden"}, 403
     if not conversion.output_text:
         return {"success": False, "error": "No output data"}, 404
@@ -1637,7 +1620,7 @@ def download_misp_push(conversion_id):
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "error": "Not found"}, 404
-    if not _can_download(conversion):
+    if not access.can_see(current_user, conversion):
         return {"success": False, "error": "Forbidden"}, 403
 
     summary        = EvalModel.get_summary(conversion_id)
@@ -1675,7 +1658,7 @@ def push_to_misp():
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "error": "Conversion not found"}, 404
-    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
+    if not access.can_see(current_user, conversion):
         return {"success": False, "error": "Forbidden"}, 403
 
     # Build the full PyMISP payload (event + cti-evaluation object + eval tags)
@@ -1897,7 +1880,7 @@ def misp_push_preview(conversion_id):
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "error": "Conversion not found"}, 404
-    if not conversion.public and current_user.id != conversion.user_id and not current_user.is_admin():
+    if not access.can_see(current_user, conversion):
         return {"success": False, "error": "Forbidden"}, 403
 
     summary        = EvalModel.get_summary(conversion_id)
@@ -2029,7 +2012,7 @@ def get_json_tags(conversion_id):
     if not conversion.public:
         if not current_user.is_authenticated:
             return {"success": False, "message": "Unauthorized"}, 403
-        if not current_user.is_admin() and current_user.id != conversion.user_id:
+        if not access.is_owner_or_admin(current_user, conversion):
             return {"success": False, "message": "Forbidden"}, 403
     # STIX→MISP: MISP JSON is in output_text; MISP→STIX: MISP JSON is in input_text
     misp_text = conversion.output_text if conversion.conversion_type == "STIX_TO_MISP" else conversion.input_text
