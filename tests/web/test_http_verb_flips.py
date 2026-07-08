@@ -3,9 +3,9 @@
 Six operations used to mutate on an HTTP **GET** — a CSRF/correctness smell, a
 state change reachable from a cross-site ``<img>``/link or a crawler: visibility
 toggle, share-key regeneration, comment delete, comment-privacy toggle, report
-review, and report delete. We flips them to POST/DELETE, and the soft-delete
-route (``/delete_item``) drops GET. Each must now reject GET with **405** and
-succeed under its new verb.
+review, and report delete. Flips them to POST/DELETE, and the soft-delete
+route (``/delete_item``) drops GET. Each must now reject GET with **405**
+and succeed under its new verb.
 
 Prior art for HTTP-method/URL assertions via the Flask test client:
 ``test_admin_route_renames.py`` and ``test_url_compat.py``. CSRF is disabled here

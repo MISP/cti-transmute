@@ -45,7 +45,7 @@ RETIRED_VALUE_PATTERNS = [
 
 # Positional writes slip past the kwarg pattern; catch 'convert' literals on
 # the activity-log/notification call-site line itself.
-_CALL_SITES = re.compile(r"create_system_log|create_notification|_record_event")
+_CALL_SITES = re.compile(r"create_system_log|create_notification|_record_activity")
 _BARE_VALUE = re.compile(r"[\"']convert(_history)?[\"']")
 
 
