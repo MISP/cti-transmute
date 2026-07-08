@@ -1202,7 +1202,10 @@
 
             async function regenerateShareKey(conversionId) {
                 try {
-                    const res = await fetch(`/conversions/regenerate_share_key?id=${conversionId}`)
+                    const res = await fetch(`/conversions/regenerate_share_key?id=${conversionId}`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                    })
                     const data = await res.json()
                     if (res.ok) share_key.value = data.share_key
                     create_message(data.message, data.toast_class)
@@ -1229,7 +1232,10 @@
             }
 
             async function doTogglePublic() {
-                const res = await fetch(`/conversions/edit_public?id=${conversion_id}`)
+                const res = await fetch(`/conversions/edit_public?id=${conversion_id}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
                 const data = await res.json()
                 if (res.ok) { conversion.value.public = data.conversion_public; getConversion() }
                 create_message(data.message, data.toast_class)
@@ -1387,14 +1393,20 @@
             }
 
             async function deleteComment(comment_id) {
-                const res = await fetch(`/conversions/delete_comment?comment_id=${comment_id}`)
+                const res = await fetch(`/conversions/delete_comment?comment_id=${comment_id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (data.success) await refreshComments()
             }
 
             async function toggleCommentPrivate(comment_id) {
-                const res = await fetch(`/conversions/toggle_comment_private?comment_id=${comment_id}`)
+                const res = await fetch(`/conversions/toggle_comment_private?comment_id=${comment_id}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (data.success) await refreshComments()

@@ -152,7 +152,10 @@
 
       async function deleteComment(c) {
         if (!confirm(`Delete comment #${c.id}?`)) return
-        const res = await fetch(`/conversions/delete_comment?comment_id=${c.id}`)
+        const res = await fetch(`/conversions/delete_comment?comment_id=${c.id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) comments.value = comments.value.filter(x => x.id !== c.id)

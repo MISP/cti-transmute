@@ -616,7 +616,10 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
 
             async function deleteItem(id) {
                 const params = new URLSearchParams({ id })
-                const res = await fetch('/conversions/delete_item?' + params.toString())
+                const res = await fetch('/conversions/delete_item?' + params.toString(), {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
                 if (res.status === 200) {
                     fetchConversionHistory(current_page.value)
                     const el = document.getElementById('del_modal_' + id)

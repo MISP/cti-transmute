@@ -571,7 +571,7 @@ def search_in_content():
     results = conv_repo.search_in_content(query_str, conversion_id, scope=scope)
     return {"success": True, "results": results}, 200
 
-@conversions_blueprint.route("/delete_item", methods=['POST', 'DELETE', 'GET'])
+@conversions_blueprint.route("/delete_item", methods=['POST', 'DELETE'])
 @login_required
 def delete_rule() -> jsonify:
     """Delete an item"""
@@ -694,7 +694,7 @@ def get_conversion():
         "toast_class" : "danger"
         }, 400
 
-@conversions_blueprint.route("/edit_public", methods=['GET'])
+@conversions_blueprint.route("/edit_public", methods=['POST'])
 @login_required
 def edit_public():
     """Change the public/private section"""
@@ -767,7 +767,7 @@ def get_share_key():
         }, 500
 
 
-@conversions_blueprint.route("/regenerate_share_key", methods=['GET'])
+@conversions_blueprint.route("/regenerate_share_key", methods=['POST'])
 @login_required
 def regenerate_share_key():
     """Regenerate the share key of a conversion"""
@@ -1266,7 +1266,7 @@ def edit_comment():
     }, 200 if success else 403
 
 
-@conversions_blueprint.route("/delete_comment", methods=['GET'])
+@conversions_blueprint.route("/delete_comment", methods=['DELETE'])
 @login_required
 def delete_comment():
     """Soft-delete a comment."""
@@ -1293,7 +1293,7 @@ def delete_comment():
     }, 200 if success else 403
 
 
-@conversions_blueprint.route("/toggle_comment_private", methods=['GET'])
+@conversions_blueprint.route("/toggle_comment_private", methods=['POST'])
 @login_required
 def toggle_comment_private():
     """Toggle the private/public visibility of a comment."""
@@ -1390,7 +1390,7 @@ def admin_get_reports():
     }, 200
 
 
-@conversions_blueprint.route("/admin/review_report", methods=['GET'])
+@conversions_blueprint.route("/admin/review_report", methods=['POST'])
 @login_required
 def admin_review_report():
     """Admin: mark a report as reviewed or dismissed."""
@@ -1408,7 +1408,7 @@ def admin_review_report():
     }, 200 if success else 500
 
 
-@conversions_blueprint.route("/admin/delete_report", methods=['GET'])
+@conversions_blueprint.route("/admin/delete_report", methods=['DELETE'])
 @login_required
 def admin_delete_report():
     """Admin: permanently delete a report."""

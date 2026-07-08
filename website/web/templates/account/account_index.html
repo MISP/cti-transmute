@@ -349,7 +349,10 @@
 
       async function deleteMyComment(c) {
         if (!confirm('Delete this comment permanently?')) return
-        const res = await fetch(`/conversions/delete_comment?comment_id=${c.id}`)
+        const res = await fetch(`/conversions/delete_comment?comment_id=${c.id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) my_comments.value = my_comments.value.filter(x => x.id !== c.id)

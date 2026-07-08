@@ -123,7 +123,10 @@
       }
 
       async function reviewReport(report_id, status) {
-        const res = await fetch(`/conversions/admin/review_report?report_id=${report_id}&status=${status}`)
+        const res = await fetch(`/conversions/admin/review_report?report_id=${report_id}&status=${status}`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) await load()
@@ -131,7 +134,10 @@
 
       async function deleteReport(report_id) {
         if (!confirm('Delete this report permanently? This cannot be undone.')) return
-        const res = await fetch(`/conversions/admin/delete_report?report_id=${report_id}`)
+        const res = await fetch(`/conversions/admin/delete_report?report_id=${report_id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) reports.value = reports.value.filter(r => r.id !== report_id)
