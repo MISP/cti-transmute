@@ -29,6 +29,8 @@ from website.lib.conversions import add_comment as add_comment_use_case
 from website.lib.conversions import bulk_action as bulk_action_use_case
 from website.lib.conversions import report_conversion as report_conversion_use_case
 from website.lib.exceptions import PermissionDenied, PersistenceFailed, ValidationFailed
+from website.lib.misp import (
+    MispAuthFailed, MispError, MispHttpError, MispUnreachable, _misp_request)
 from website.lib.params import build_params, param_error
 from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
@@ -63,6 +65,15 @@ def _validate_misp_url(misp_url: str) -> str | None:
     except ValueError:
         pass  # it's a domain name — OK
     return None
+
+
+def _misp_error_status(exc: MispError) -> int:
+    """HTTP status for a typed remote-MISP transport error."""
+    if isinstance(exc, MispAuthFailed):
+        return 403
+    if isinstance(exc, MispUnreachable) and exc.reason == "timeout":
+        return 408
+    return 400
 
 
 def _conversion_error_message(exc) -> str:
@@ -275,40 +286,18 @@ def fetch_misp_event():
         if param in data and data[param] not in (None, "", []):
             body[param] = data[param]
 
-    fetch_url = f"{misp_url}/events/restSearch"
     try:
-        resp = requests.post(
-            fetch_url,
-            headers={
-                "Authorization": api_key,
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            },
-            json=body,
-            timeout=30,
-            verify=True,
-            allow_redirects=False,
-        )
-    except requests.exceptions.SSLError:
-        return jsonify({"error": "SSL certificate verification failed for that MISP instance"}), 400
-    except requests.exceptions.ConnectionError:
-        return jsonify({"error": "Could not reach the MISP instance — check the URL"}), 400
-    except requests.exceptions.Timeout:
-        return jsonify({"error": "MISP instance did not respond in time (timeout 30 s)"}), 408
-    except requests.exceptions.RequestException as exc:
-        return jsonify({"error": f"Request failed: {exc}"}), 400
-
-    if resp.status_code in (401, 403):
-        return jsonify({"error": "Authentication failed — check your API key"}), 403
-    if resp.status_code == 404:
-        return jsonify({"error": "Event(s) not found on that instance"}), 404
-    if resp.status_code == 429:
-        return jsonify({"error": "MISP rate limit exceeded"}), 429
-
-    try:
-        result = resp.json()
-    except Exception:
-        return jsonify({"error": "MISP returned a non-JSON response"}), 400
+        result = _misp_request(
+            "POST", "/events/restSearch",
+            url=misp_url, key=api_key, body=body, timeout=30)
+    except MispHttpError as exc:
+        if exc.status == 404:
+            return jsonify({"error": "Event(s) not found on that instance"}), 404
+        if exc.status == 429:
+            return jsonify({"error": "MISP rate limit exceeded"}), 429
+        return jsonify({"error": str(exc)}), 400
+    except MispError as exc:
+        return jsonify({"error": str(exc)}), _misp_error_status(exc)
 
     # Normalize to {"response": [{"Event": {...}}, ...]}
     response_list = result.get("response")
@@ -355,33 +344,11 @@ def misp_search_events():
         search_body["searchdateto"] = data["date_to"].strip()
 
     try:
-        resp = requests.post(
-            f"{misp_url}/events/index",
-            headers={"Authorization": api_key, "Accept": "application/json",
-                     "Content-Type": "application/json"},
-            json=search_body,
-            timeout=15,
-            verify=True,
-            allow_redirects=False,
-        )
-    except requests.exceptions.SSLError:
-        return jsonify({"error": "SSL certificate verification failed"}), 400
-    except requests.exceptions.ConnectionError:
-        return jsonify({"error": "Cannot reach the MISP instance — check the URL"}), 400
-    except requests.exceptions.Timeout:
-        return jsonify({"error": "MISP instance timed out (15 s)"}), 408
-    except requests.exceptions.RequestException as exc:
-        return jsonify({"error": f"Request failed: {exc}"}), 400
-
-    if resp.status_code in (401, 403):
-        return jsonify({"error": "Authentication failed — check your API key"}), 403
-    if resp.status_code != 200:
-        return jsonify({"error": f"MISP returned HTTP {resp.status_code}"}), 400
-
-    try:
-        raw = resp.json()
-    except Exception:
-        return jsonify({"error": "MISP returned a non-JSON response"}), 400
+        raw = _misp_request(
+            "POST", "/events/index",
+            url=misp_url, key=api_key, body=search_body, timeout=15)
+    except MispError as exc:
+        return jsonify({"error": str(exc)}), _misp_error_status(exc)
 
     # Normalise the various response shapes MISP can return
     if isinstance(raw, dict):
@@ -1542,31 +1509,10 @@ def misp_test_connection():
         return {"success": False, "error": url_error}, 400
 
     try:
-        resp = requests.get(
-            f"{misp_url}/tags/index",
-            headers={"Authorization": api_key, "Accept": "application/json"},
-            timeout=10,
-            verify=True,
-            allow_redirects=False,
-        )
-    except requests.exceptions.SSLError:
-        return {"success": False, "error": "SSL certificate verification failed for that MISP instance"}, 400
-    except requests.exceptions.ConnectionError:
-        return {"success": False, "error": "Cannot reach the MISP instance — check the URL"}, 400
-    except requests.exceptions.Timeout:
-        return {"success": False, "error": "MISP instance timed out (10 s)"}, 408
-    except requests.exceptions.RequestException as exc:
-        return {"success": False, "error": f"Request failed: {exc}"}, 400
-
-    if resp.status_code in (401, 403):
-        return {"success": False, "error": "Authentication failed — check your API key"}, 403
-    if resp.status_code != 200:
-        return {"success": False, "error": f"MISP returned HTTP {resp.status_code}"}, 400
-
-    try:
-        result = resp.json()
-    except Exception:
-        return {"success": False, "error": "MISP returned a non-JSON response"}, 400
+        result = _misp_request(
+            "GET", "/tags/index", url=misp_url, key=api_key, timeout=10)
+    except MispError as exc:
+        return {"success": False, "error": str(exc)}, _misp_error_status(exc)
 
     raw_tags = result if isinstance(result, list) else result.get("Tag", [])
     tags = [
