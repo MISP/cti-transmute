@@ -244,3 +244,47 @@ def test_private_comment_on_public_conversion_is_visible_to_an_admin(web_client)
     admin = _make_user("admin_pcom@t.t", admin=True)
     _login(web_client, admin)
     assert _comment_contents(web_client, conv.id) == ["whisper"]
+
+
+# --- /comment: the thin adapter maps the use-case's typed exceptions to HTTP ------
+
+def test_posting_a_comment_returns_201_with_the_comment(web_client):
+    author = _make_user("author_post@t.t")
+    conv = _make_conversion(author.id)
+    _login(web_client, author)
+    resp = web_client.post("/conversions/comment",
+                           json={"conversion_id": conv.id, "content": "hello"})
+    assert resp.status_code == 201
+    assert resp.get_json()["comment"]["content"] == "hello"
+
+
+def test_commenting_on_a_private_conversion_is_403_for_strangers(web_client):
+    owner = _make_user("owner_c403@t.t")
+    stranger = _make_user("stranger_c403@t.t")
+    conv = _make_conversion(owner.id, public=False)
+    _login(web_client, stranger)
+    resp = web_client.post("/conversions/comment",
+                           json={"conversion_id": conv.id, "content": "psst"})
+    assert resp.status_code == 403
+    assert resp.get_json()["success"] is False
+
+
+def test_an_overlong_comment_is_400(web_client):
+    author = _make_user("author_c400@t.t")
+    conv = _make_conversion(author.id)
+    _login(web_client, author)
+    resp = web_client.post("/conversions/comment",
+                           json={"conversion_id": conv.id, "content": "x" * 2001})
+    assert resp.status_code == 400
+    assert "too long" in resp.get_json()["message"]
+
+
+def test_a_reply_to_a_missing_parent_is_400(web_client):
+    author = _make_user("author_c404p@t.t")
+    conv = _make_conversion(author.id)
+    _login(web_client, author)
+    resp = web_client.post(
+        "/conversions/comment",
+        json={"conversion_id": conv.id, "content": "re", "parent_id": 4242})
+    assert resp.status_code == 400
+    assert resp.get_json()["success"] is False
