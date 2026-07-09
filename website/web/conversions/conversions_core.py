@@ -1,9 +1,11 @@
 """Feature-level persistence for the conversions blueprint's non-Conversion concerns.
 
 Conversion and ConversionHistory rows — including their listing, access-scoped
-search, and Trash queries — now live in ``website/repos/conversions.py``. This
-module (imported as ``ConversionModel``) keeps the comment, report, reaction,
-favorite, and graph-config helpers used by the conversion views.
+search, and Trash queries - live in ``website/repos/conversions.py``; Comment
+and CommentReaction writes live in ``website/repos/comments.py`` (this module
+keeps only the comment read/query helpers and the pure ``_can_see_comment``
+visibility rule). This module (imported as ``ConversionModel``) also keeps the
+report, favorite, and graph-config helpers used by the conversion views.
 """
 import uuid
 from datetime import datetime, timezone
@@ -11,14 +13,13 @@ from datetime import datetime, timezone
 from sqlalchemy import or_
 
 from website.db_class.db import (
-    Comment, CommentReaction, ConversionFavorite,
-    ConversionReport, GraphConfig)
+    Comment, ConversionFavorite, ConversionReport, GraphConfig)
 from website.lib import access
 from website.repos import conversions as conv_repo
 from website.web import db
 
 ###################################
-#   Comment service functions     #
+#   Comment read/query helpers    #
 ###################################
 
 def _can_see_comment(comment, conversion, user):
@@ -31,29 +32,6 @@ def _can_see_comment(comment, conversion, user):
     # Private comment on a public conversion: the conversion's owner, the
     # comment's author, or an admin
     return access.is_owner_or_admin(user, conversion) or access.is_owner(user, comment)
-
-
-def create_comment(conversion_id, user_id, content, is_private=False, parent_id=None, is_evaluation=False):
-    """Create a new comment or reply on a conversion."""
-    try:
-        now = datetime.now(timezone.utc)
-        comment = Comment(
-            conversion_id=conversion_id,
-            user_id=user_id,
-            content=content.strip(),
-            is_private=is_private,
-            parent_id=parent_id,
-            created_at=now,
-            is_deleted=False,
-            is_evaluation=bool(is_evaluation) if not parent_id else False,
-        )
-        db.session.add(comment)
-        db.session.commit()
-        return comment
-    except Exception as e:
-        db.session.rollback()
-        print("create_comment error:", e)
-        return None
 
 
 def get_comments(conversion_id, user=None):
@@ -94,82 +72,6 @@ def get_comments(conversion_id, user=None):
         ]
         result.append(comment_data)
     return result
-
-
-def delete_comment(comment_id, user):
-    """Soft-delete a comment. Only author, conversion owner, or admin can delete."""
-    comment = Comment.query.get(comment_id)
-    if not comment:
-        return False, "Comment not found"
-    conversion = conv_repo.get(comment.conversion_id)
-    if not conversion:
-        return False, "Conversion not found"
-    # comment author or admin — or the owner of the conversion it sits on
-    allowed = access.is_owner_or_admin(user, comment) or access.is_owner(user, conversion)
-    if not allowed:
-        return False, "Permission denied"
-    comment.is_deleted = True
-    comment.content = "[deleted]"
-    db.session.commit()
-    return True, "Comment deleted"
-
-
-def toggle_comment_private(comment_id, user):
-    """Toggle the private/public flag of a comment. Only author or admin."""
-    comment = Comment.query.get(comment_id)
-    if not comment:
-        return False, "Comment not found", None
-    if not access.is_owner_or_admin(user, comment):
-        return False, "Permission denied", None
-    comment.is_private = not comment.is_private
-    db.session.commit()
-    return True, "Visibility updated", comment.is_private
-
-
-def react_to_comment(comment_id, user_id, emoji):
-    """Toggle an emoji reaction on a comment. Returns (added: bool)."""
-    try:
-        existing = CommentReaction.query.filter_by(
-            comment_id=comment_id, user_id=user_id, emoji=emoji
-        ).first()
-        if existing:
-            db.session.delete(existing)
-            db.session.commit()
-            return True, False  # success, added=False (removed)
-        reaction = CommentReaction(
-            comment_id=comment_id,
-            user_id=user_id,
-            emoji=emoji,
-            created_at=datetime.now(timezone.utc)
-        )
-        db.session.add(reaction)
-        db.session.commit()
-        return True, True  # success, added=True
-    except Exception as e:
-        db.session.rollback()
-        print("react_to_comment error:", e)
-        return False, False
-
-
-def edit_comment(comment_id, user, content):
-    """Edit a comment's content. Only the original author can edit — not even an admin."""
-    comment = Comment.query.get(comment_id)
-    if not comment:
-        return False, "Comment not found"
-    if comment.is_deleted:
-        return False, "Cannot edit a deleted comment"
-    if not access.is_owner(user, comment):
-        return False, "Permission denied"
-    content = content.strip()
-    if not content:
-        return False, "Content cannot be empty"
-    comment.content = content
-    db.session.commit()
-    return True, "Comment updated"
-
-
-def get_comment(comment_id):
-    return Comment.query.get(comment_id)
 
 
 def get_all_comments_admin(page=1, search=None):

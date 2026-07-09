@@ -20,6 +20,15 @@ class InvalidApiKey(Exception):
     """
 
 
+class ValidationFailed(Exception):
+    """The submitted data is invalid (bad length, missing referent, …);
+    nothing was written.
+
+    Not a conversion failure, so it does not subclass ``ConversionError``.
+    Transports map it to HTTP 400 with ``str(exc)`` as the message.
+    """
+
+
 class PermissionDenied(Exception):
     """The actor may not perform this action on the Conversion.
 

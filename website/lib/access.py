@@ -57,3 +57,15 @@ def assert_can_moderate(user, conversion) -> None:
     """Allow only the Conversion's owner or an admin to accept/reject its history."""
     if not is_owner_or_admin(user, conversion):
         raise PermissionDenied("You may not moderate this conversion's history.")
+
+
+def assert_can_comment(user, conversion) -> None:
+    """Allow an authenticated Submitter to comment on a Conversion they can see.
+
+    Anonymous (``user is None``) may not comment at all; a private Conversion
+    accepts comments only from its owner or an admin (the ``can_see`` rule).
+    """
+    if user is None:
+        raise PermissionDenied("You must be logged in to comment.")
+    if not can_see(user, conversion):
+        raise PermissionDenied("You cannot comment on a private conversion.")

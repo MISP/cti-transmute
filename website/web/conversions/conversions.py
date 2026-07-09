@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import requests
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Blueprint, abort, flash, jsonify, redirect, render_template,
+    request, url_for)
 from flask_login import current_user, login_required
 from pydantic import ValidationError
 from pymisp import MISPEvent, MISPObject
@@ -15,17 +17,21 @@ from sqlalchemy import func
 
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
-from cti_transmute.exceptions import ConversionError, InvalidParameters, InvalidPayload, UnknownConverter
+from cti_transmute.exceptions import (
+    ConversionError, InvalidParameters, InvalidPayload, UnknownConverter)
 from website.db_class.db import Comment as CommentModel
 from website.db_class.db import Conversion, ConversionFavorite, db
 from website.db_class.db import Tag as TagModel
 from website.lib import access
 from website.lib.conversions import (
     accept_history, refresh_conversion, reject_history, submit_conversion)
-from website.lib.exceptions import PermissionDenied, PersistenceFailed
+from website.lib.conversions import add_comment as add_comment_use_case
+from website.lib.exceptions import PermissionDenied, PersistenceFailed, ValidationFailed
 from website.lib.params import build_params, param_error
+from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
-from website.web.conversions.conversions_form import editConversionForm, mispToStixParamForm, stixToMispParamForm
+from website.web.conversions.conversions_form import (
+    editConversionForm, mispToStixParamForm, stixToMispParamForm)
 from website.web.utils import (
     extract_name_from_misp_json, extract_tag_names_from_misp_json,
     form_to_dict, parse_stix_reports)
@@ -1147,54 +1153,35 @@ def get_comments():
 @conversions_blueprint.route("/comment", methods=['POST'])
 @login_required
 def add_comment():
-    """Create a comment or reply on a conversion."""
-    data = request.get_json(silent=True) or {}
-    conversion_id    = data.get('conversion_id')
-    content       = (data.get('content') or '').strip()
-    is_private    = bool(data.get('is_private', False))
-    is_evaluation = bool(data.get('is_evaluation', False))
-    parent_id     = data.get('parent_id')
+    """Create a comment or reply on a conversion.
 
-    if not conversion_id or not content:
+    Thin adapter over the ``add_comment`` use-case: resolve the Conversion,
+    call the use-case, map its typed exceptions to HTTP/JSON.
+    """
+    data = request.get_json(silent=True) or {}
+    conversion_id = data.get('conversion_id')
+
+    if not conversion_id:
         return {"success": False, "message": "Missing content or conversion_id", "toast_class": "danger"}, 400
-    if len(content) > 2000:
-        return {"success": False, "message": "Comment is too long (max 2000 characters)", "toast_class": "danger"}, 400
 
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
-    if not access.can_see(current_user, conversion):
-        return {"success": False, "message": "You cannot comment on a private conversion", "toast_class": "danger"}, 403
-
-    comment = ConversionModel.create_comment(
-        conversion_id=conversion_id,
-        user_id=current_user.id,
-        content=content,
-        is_private=is_private,
-        parent_id=parent_id if parent_id else None,
-        is_evaluation=is_evaluation,
-    )
-    if not comment:
+    # Content validation (blank, too long) is the use-case's, surfaced as a 400.
+    try:
+        comment = add_comment_use_case(
+            current_user._get_current_object(), conversion, data.get('content') or '',
+            is_private=bool(data.get('is_private', False)),
+            parent_id=data.get('parent_id') or None,
+            is_evaluation=bool(data.get('is_evaluation', False))
+        )
+    except ValidationFailed as exc:
+        return {"success": False, "message": str(exc), "toast_class": "danger"}, 400
+    except PermissionDenied as exc:
+        return {"success": False, "message": str(exc), "toast_class": "danger"}, 403
+    except PersistenceFailed:
         return {"success": False, "message": "Failed to save comment", "toast_class": "danger"}, 500
-
-    action = "reply" if parent_id else "comment"
-    AccountModel.create_system_log(
-        "comment_created",
-        actor_id=current_user.id,
-        actor_name=current_user.first_name,
-        target_type="comment",
-        target_id=comment.id,
-        target_name=f"On conversion: {conversion.name}",
-        details=f"{action.capitalize()} — {content[:120]}{'…' if len(content) > 120 else ''}"
-    )
-
-    if parent_id:
-        parent = ConversionModel.get_comment(parent_id)
-        if parent:
-            AccountModel.notify_comment_reply(parent, comment, current_user.id)
-    else:
-        AccountModel.notify_new_comment(conversion, comment, current_user.id)
 
     return {
         "success": True,
@@ -1214,13 +1201,13 @@ def get_comment_info():
     comment_id = request.args.get('comment_id', type=int)
     if not comment_id:
         return {"success": False}, 400
-    comment = ConversionModel.get_comment(comment_id)
+    comment = comments_repo.get(comment_id)
     if not comment:
         return {"success": False}, 404
     # For replies, the evaluation flag lives on the parent comment
     is_eval = comment.is_evaluation
     if comment.parent_id:
-        parent = ConversionModel.get_comment(comment.parent_id)
+        parent = comments_repo.get(comment.parent_id)
         if parent:
             is_eval = parent.is_evaluation
     return {"success": True, "conversion_id": comment.conversion_id, "is_evaluation": is_eval}, 200
@@ -1229,18 +1216,24 @@ def get_comment_info():
 @conversions_blueprint.route("/edit_comment", methods=['POST'])
 @login_required
 def edit_comment():
-    """Edit the content of a comment (author only)."""
+    """Edit the content of a comment (author only - not even an admin)."""
     data = request.get_json(silent=True) or {}
     comment_id = data.get('comment_id')
-    content    = data.get('content', '')
+    content    = (data.get('content') or '').strip()
     if not comment_id:
         return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
-    comment = ConversionModel.get_comment(comment_id)
-    success, message = ConversionModel.edit_comment(
-        comment_id=comment_id,
-        user=current_user._get_current_object(),
-        content=content,
-    )
+    comment = comments_repo.get(comment_id)
+    if not comment:
+        success, message = False, "Comment not found"
+    elif comment.is_deleted:
+        success, message = False, "Cannot edit a deleted comment"
+    elif not access.is_owner(current_user, comment):
+        success, message = False, "Permission denied"
+    elif not content:
+        success, message = False, "Content cannot be empty"
+    else:
+        comments_repo.set_content(comment, content)
+        success, message = True, "Comment updated"
     if success and comment:
         AccountModel.create_system_log(
             "comment_edited",
@@ -1266,11 +1259,20 @@ def delete_comment():
     if not comment_id:
         return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
 
-    comment = ConversionModel.get_comment(comment_id)
-    success, message = ConversionModel.delete_comment(
-        comment_id=comment_id,
-        user=current_user._get_current_object(),
-    )
+    comment = comments_repo.get(comment_id)
+    conversion = conv_repo.get(comment.conversion_id) if comment else None
+    if not comment:
+        success, message = False, "Comment not found"
+    elif not conversion:
+        success, message = False, "Conversion not found"
+    # deletable by the comment's author or an admin - or the owner of the
+    # conversion it sits on
+    elif not (access.is_owner_or_admin(current_user, comment)
+              or access.is_owner(current_user, conversion)):
+        success, message = False, "Permission denied"
+    else:
+        comments_repo.soft_delete(comment)
+        success, message = True, "Comment deleted"
     if success and comment:
         AccountModel.create_system_log(
             'comment_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
@@ -1292,10 +1294,14 @@ def toggle_comment_private():
     if not comment_id:
         return {"success": False, "message": "Missing comment_id", "toast_class": "danger"}, 400
 
-    success, message, new_private = ConversionModel.toggle_comment_private(
-        comment_id=comment_id,
-        user=current_user._get_current_object(),
-    )
+    comment = comments_repo.get(comment_id)
+    if not comment:
+        success, message, new_private = False, "Comment not found", None
+    elif not access.is_owner_or_admin(current_user, comment):
+        success, message, new_private = False, "Permission denied", None
+    else:
+        new_private = comments_repo.toggle_private(comment)
+        success, message = True, "Visibility updated"
     return {
         "success": success,
         "message": message,
@@ -1316,8 +1322,10 @@ def react():
     if not comment_id or emoji not in allowed_emojis:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
 
-    success, added = ConversionModel.react_to_comment(comment_id, current_user.id, emoji)
-    if not success:
+    try:
+        added = comments_repo.toggle_reaction(comment_id, current_user.id, emoji)
+    except Exception:  # noqa: BLE001 - e.g. reacting to a deleted comment (FK)
+        db.session.rollback()
         return {"success": False, "message": "Failed to update reaction", "toast_class": "danger"}, 500
 
     return {

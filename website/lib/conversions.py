@@ -1,9 +1,15 @@
-"""The conversion use-case: convert-and-save.
+"""The conversion-domain use-cases.
 
 `submit_conversion` runs a conversion through the Flask-free engine
 (`transmute.convert`) and persists the result.
 The converter runs *outside* the DB transaction, and the persistence is
 one all-or-nothing transaction.
+
+`add_comment` is the first catalogue mutation on the same seam:
+validate → authz → one atomic mutate+activity transaction → post-commit notification.
+Every use-case takes the acting Submitter (``User | None``) explicitly - no
+``current_user`` in here — and raises the typed exceptions from
+``website/lib/exceptions.py``.
 """
 
 import json
@@ -11,12 +17,16 @@ from datetime import datetime, timezone
 from typing import Any
 
 from cti_transmute import transmute
-from website.db_class.db import Conversion, ConversionHistory, SystemLog
-from website.lib.access import assert_can_moderate, assert_can_refresh
-from website.lib.exceptions import PersistenceFailed
+from website.db_class.db import Comment, Conversion, ConversionHistory, SystemLog
+from website.lib.access import (
+    assert_can_comment, assert_can_moderate, assert_can_refresh)
+from website.lib.exceptions import PersistenceFailed, ValidationFailed
+from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
 from website.web import db
 from website.web.account import account_core as AccountModel
+
+COMMENT_MAX_LENGTH = 2000
 
 
 def _to_text(value: Any) -> str:
@@ -99,6 +109,66 @@ def _record_activity(event_type: str, actor, target_type: str, target_id: int,
             created_at=now
         )
     )
+
+
+def add_comment(
+    user, conversion: Conversion, content: str, *,
+    is_private: bool = False, parent_id: int | None = None,
+    is_evaluation: bool = False) -> Comment:
+    """Comment on a Conversion (or reply to one of its comments) and record it.
+
+    Validate → authz → atomic mutate+activity → post-commit notification: the
+    content is length-checked, the Submitter must be authenticated and able to
+    see the Conversion (``assert_can_comment``), and the comment row commits
+    atomically with its Activity log entry - a failure rolls back both and
+    raises ``PersistenceFailed``. Only after the commit does the notification
+    fire: a reply notifies the parent comment's author, a top-level comment
+    notifies the Conversion's owner.
+    """
+    content = content.strip()
+    if not content:
+        raise ValidationFailed("Missing content")
+    if len(content) > COMMENT_MAX_LENGTH:
+        raise ValidationFailed(
+            f"Comment is too long (max {COMMENT_MAX_LENGTH} characters)")
+    assert_can_comment(user, conversion)
+
+    parent = comments_repo.get(parent_id) if parent_id else None
+    if parent_id and (parent is None or parent.conversion_id != conversion.id):
+        raise ValidationFailed("Parent comment not found")
+
+    now = datetime.now(timezone.utc)
+    # The repo stages the comment row (add + flush); this use-case owns the
+    # commit so the activity entry lands in the same transaction.
+    comment = comments_repo.create(
+        conversion_id=conversion.id,
+        user_id=user.id,
+        content=content,
+        is_private=is_private,
+        parent_id=parent.id if parent else None,
+        # A reply never carries the flag: evaluation context lives on the parent.
+        is_evaluation=bool(is_evaluation) if not parent else False,
+        created_at=now,
+        commit=False
+    )
+    action = "reply" if parent else "comment"
+    _record_activity(
+        "comment_created", user, "comment", comment.id,
+        f"On conversion: {conversion.name}", now,
+        details=f"{action.capitalize()} — {content[:120]}{'…' if len(content) > 120 else ''}"
+    )
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        raise PersistenceFailed("Failed to save comment") from exc
+
+    # External side effects fire only after commit.
+    if parent is not None:
+        AccountModel.notify_comment_reply(parent, comment, user.id)
+    else:
+        AccountModel.notify_new_comment(conversion, comment, user.id)
+    return comment
 
 
 def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistory:
