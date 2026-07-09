@@ -26,10 +26,12 @@ from website.lib import access
 from website.lib.conversions import (
     accept_history, refresh_conversion, reject_history, submit_conversion)
 from website.lib.conversions import add_comment as add_comment_use_case
+from website.lib.conversions import report_conversion as report_conversion_use_case
 from website.lib.exceptions import PermissionDenied, PersistenceFailed, ValidationFailed
 from website.lib.params import build_params, param_error
 from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
+from website.repos import reports as reports_repo
 from website.web.conversions.conversions_form import (
     editConversionForm, mispToStixParamForm, stixToMispParamForm)
 from website.web.utils import (
@@ -1343,31 +1345,32 @@ def react():
 @conversions_blueprint.route("/report", methods=['POST'])
 @login_required
 def report_conversion():
-    """Submit a report on a conversion."""
+    """Submit a report on a conversion.
+
+    Thin adapter over the ``report_conversion`` use-case: resolve the Conversion,
+    call the use-case, map its typed exceptions to HTTP/JSON. Reason validation
+    (allowed set, description length) is the use-case's, surfaced as a 400.
+    """
     data = request.get_json(silent=True) or {}
     conversion_id = data.get('conversion_id')
-    reason = data.get('reason', '').strip()
-    description = (data.get('description') or '').strip() or None
-
-    if not conversion_id or reason not in ConversionModel.REPORT_REASONS:
+    if not conversion_id:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
-    if description and len(description) > 1000:
-        return {"success": False, "message": "Description is too long (max 1000 characters)", "toast_class": "danger"}, 400
 
     conversion = conv_repo.get(conversion_id)
     if not conversion:
         return {"success": False, "message": "Conversion not found", "toast_class": "danger"}, 404
 
-    report = ConversionModel.create_report(
-        conversion_id=conversion_id,
-        user_id=current_user.id,
-        reason=reason,
-        description=description
-    )
-    if not report:
+    try:
+        report_conversion_use_case(
+            current_user._get_current_object(), conversion,
+            data.get('reason') or '',
+            description=data.get('description') or None
+        )
+    except ValidationFailed as exc:
+        return {"success": False, "message": str(exc), "toast_class": "danger"}, 400
+    except PersistenceFailed:
         return {"success": False, "message": "Failed to submit report", "toast_class": "danger"}, 500
 
-    AccountModel.notify_admins_new_report(conversion, current_user.id)
     return {"success": True, "message": "Report submitted. Thank you.", "toast_class": "success"}, 201
 
 
@@ -1398,7 +1401,7 @@ def admin_review_report():
     new_status = request.args.get('status', type=str)
     if not report_id or new_status not in ('reviewed', 'dismissed'):
         return {"success": False, "message": "Invalid params", "toast_class": "danger"}, 400
-    success = ConversionModel.review_report(report_id, new_status, current_user.id)
+    success = reports_repo.set_status(report_id, new_status, current_user.id)
     return {
         "success": success,
         "message": f"Report marked as {new_status}" if success else "Failed",
@@ -1418,7 +1421,7 @@ def admin_delete_report():
     report = ConversionModel.get_report(report_id)
     if not report:
         return {"success": False, "message": "Report not found", "toast_class": "danger"}, 404
-    ConversionModel.delete_report(report_id)
+    reports_repo.delete(report_id)
     return {"success": True, "message": "Report deleted", "toast_class": "success"}, 200
 
 

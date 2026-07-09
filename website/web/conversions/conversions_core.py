@@ -83,30 +83,12 @@ def get_all_comments_admin(page=1, search=None):
 
 
 ###################################
-#   Report service functions      #
+#   Report read/query helpers     #
 ###################################
-
-REPORT_REASONS = ["spam", "inappropriate", "inaccurate", "other"]
-
-
-def create_report(conversion_id, user_id, reason, description=None):
-    """Submit a report on a conversion."""
-    try:
-        report = ConversionReport(
-            conversion_id=conversion_id,
-            user_id=user_id,
-            reason=reason,
-            description=description,
-            status="pending",
-            created_at=datetime.now(timezone.utc)
-        )
-        db.session.add(report)
-        db.session.commit()
-        return report
-    except Exception as e:
-        db.session.rollback()
-        print("create_report error:", e)
-        return None
+# Report writes (create / set_status / delete) live in
+# ``website/repos/reports.py`` - the single persistence home for the
+# ConversionReport aggregate. This module keeps only the admin read/query
+# helpers below.
 
 
 def get_reports(page=1, status=None, search=None):
@@ -122,27 +104,8 @@ def get_reports(page=1, status=None, search=None):
     return query.order_by(ConversionReport.created_at.desc()).paginate(page=page, per_page=20)
 
 
-def review_report(report_id, new_status, reviewed_by_id):
-    """Admin: update report status (reviewed / dismissed)."""
-    report = ConversionReport.query.get(report_id)
-    if not report:
-        return False
-    report.status = new_status
-    report.reviewed_at = datetime.now(timezone.utc)
-    report.reviewed_by = reviewed_by_id
-    db.session.commit()
-    return True
-
-
 def get_report(report_id):
     return ConversionReport.query.get(report_id)
-
-
-def delete_report(report_id):
-    report = ConversionReport.query.get(report_id)
-    if report:
-        db.session.delete(report)
-        db.session.commit()
 
 ###################################
 #   Graph configs                 #

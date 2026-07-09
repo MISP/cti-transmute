@@ -17,16 +17,20 @@ from datetime import datetime, timezone
 from typing import Any
 
 from cti_transmute import transmute
-from website.db_class.db import Comment, Conversion, ConversionHistory, SystemLog
+from website.db_class.db import (
+    Comment, Conversion, ConversionHistory, ConversionReport, SystemLog)
 from website.lib.access import (
     assert_can_comment, assert_can_moderate, assert_can_refresh)
 from website.lib.exceptions import PersistenceFailed, ValidationFailed
 from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
+from website.repos import reports as reports_repo
 from website.web import db
 from website.web.account import account_core as AccountModel
 
 COMMENT_MAX_LENGTH = 2000
+REPORT_REASONS = ("spam", "inappropriate", "inaccurate", "other")
+REPORT_DESCRIPTION_MAX_LENGTH = 1000
 
 
 def _to_text(value: Any) -> str:
@@ -169,6 +173,54 @@ def add_comment(
     else:
         AccountModel.notify_new_comment(conversion, comment, user.id)
     return comment
+
+
+def report_conversion(
+    user, conversion: Conversion, reason: str, *,
+    description: str | None = None) -> ConversionReport:
+    """Report a Conversion for abuse and notify admins.
+
+    Validate → atomic report+activity → post-commit admin notification: the
+    reason is checked against the allowed set (and the description length-capped)
+    *before* any write, the report row commits atomically with its Activity log
+    entry - a failure rolls back both and raises ``PersistenceFailed`` - and the
+    admin notification fires only after the commit lands. Reporting carries no
+    ownership rule, so there is no authz gate here; the Submitter
+    (``User | None``) only stamps the report's ``user_id``.
+    """
+    reason = (reason or "").strip()
+    if reason not in REPORT_REASONS:
+        raise ValidationFailed("Invalid report reason")
+    description = (description or "").strip() or None
+    if description and len(description) > REPORT_DESCRIPTION_MAX_LENGTH:
+        raise ValidationFailed(
+            f"Description is too long (max {REPORT_DESCRIPTION_MAX_LENGTH} characters)")
+
+    now = datetime.now(timezone.utc)
+    # The repo stages the report row (add + flush); this use-case owns the
+    # commit so the activity entry lands in the same transaction.
+    report = reports_repo.create(
+        conversion_id=conversion.id,
+        user_id=None if user is None else user.id,
+        reason=reason,
+        description=description,
+        created_at=now,
+        commit=False
+    )
+    _record_activity(
+        "conversion_reported", user, "conversion", conversion.id, conversion.name, now,
+        details=f"Reason: {reason}"
+    )
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        raise PersistenceFailed("Failed to submit report") from exc
+
+    # External side effects fire only after commit.
+    AccountModel.notify_admins_new_report(
+        conversion, None if user is None else user.id)
+    return report
 
 
 def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistory:
