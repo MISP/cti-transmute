@@ -20,7 +20,8 @@ from cti_transmute import transmute
 from website.db_class.db import (
     Comment, Conversion, ConversionHistory, ConversionReport, SystemLog)
 from website.lib.access import (
-    assert_can_comment, assert_can_moderate, assert_can_refresh)
+    assert_can_comment, assert_can_moderate, assert_can_refresh,
+    is_owner_or_admin)
 from website.lib.exceptions import PersistenceFailed, ValidationFailed
 from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
@@ -31,6 +32,7 @@ from website.web.account import account_core as AccountModel
 COMMENT_MAX_LENGTH = 2000
 REPORT_REASONS = ("spam", "inappropriate", "inaccurate", "other")
 REPORT_DESCRIPTION_MAX_LENGTH = 1000
+BULK_ACTIONS = ("restore", "hard_delete")
 
 
 def _to_text(value: Any) -> str:
@@ -221,6 +223,49 @@ def report_conversion(
     AccountModel.notify_admins_new_report(
         conversion, None if user is None else user.id)
     return report
+
+
+def bulk_action(user, action: str, conversion_ids: list[int]) -> int:
+    """Restore or permanently delete a batch of trashed Conversions.
+
+    Per-item best-effort - deliberately *not* all-or-nothing: each id is
+    resolved (missing → skipped), gated on the owner-or-admin rule (denied →
+    skipped, so an anonymous Submitter acts on nothing), and mutated atomically
+    with its own Activity log entry - a failed item rolls back alone and the
+    batch carries on. Restoring a Conversion that is not in the trash is a
+    skip, not an error. Returns the number of items actually acted on; only
+    ``action`` itself is validated up front (``ValidationFailed``).
+    """
+    if action not in BULK_ACTIONS:
+        raise ValidationFailed("Invalid bulk action")
+    done = 0
+    for conversion_id in conversion_ids:
+        conversion = conv_repo.get(conversion_id, include_deleted=True)
+        if conversion is None or not is_owner_or_admin(user, conversion):
+            continue
+        # Captured before the mutation: a hard-deleted row can't be read back.
+        target_id, target_name = conversion.id, conversion.name
+        now = datetime.now(timezone.utc)
+        # The whole mutate+activity+commit unit is the item's transaction: a
+        # failure anywhere in it (staging included) skips this item alone.
+        try:
+            if action == "restore":
+                applied = conv_repo.restore(target_id, commit=False)
+                event_type = "conversion_restored"
+            else:
+                applied = conv_repo.hard_delete(target_id, commit=False)
+                event_type = "conversion_hard_deleted"
+            if not applied:
+                continue
+            _record_activity(
+                event_type, user, "conversion", target_id, target_name, now
+            )
+            db.session.commit()
+        except Exception:  # noqa: BLE001
+            db.session.rollback()
+            continue
+        done += 1
+    return done
 
 
 def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistory:

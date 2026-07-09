@@ -26,6 +26,7 @@ from website.lib import access
 from website.lib.conversions import (
     accept_history, refresh_conversion, reject_history, submit_conversion)
 from website.lib.conversions import add_comment as add_comment_use_case
+from website.lib.conversions import bulk_action as bulk_action_use_case
 from website.lib.conversions import report_conversion as report_conversion_use_case
 from website.lib.exceptions import PermissionDenied, PersistenceFailed, ValidationFailed
 from website.lib.params import build_params, param_error
@@ -1500,33 +1501,24 @@ def hard_delete():
 @conversions_blueprint.route("/bulk_action", methods=['POST'])
 @login_required
 def bulk_action():
+    """Bulk-restore or bulk-hard-delete trashed Conversions.
+
+    Thin adapter over the ``bulk_action`` use-case, which owns the per-item
+    best-effort loop (missing/denied/failed items are skipped) and each item's
+    atomic mutate+activity transaction. Action validation is the use-case's,
+    surfaced as a 400.
+    """
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
     data = request.get_json(silent=True) or {}
     action = data.get('action')
     ids = data.get('ids', [])
-    if not ids or action not in ('restore', 'hard_delete'):
+    if not ids:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
-    done = 0
-    for conversion_id in ids:
-        conversion = conv_repo.get(conversion_id, include_deleted=True)
-        if not conversion:
-            continue
-        if action == 'restore':
-            if conv_repo.restore(conversion_id):
-                AccountModel.create_system_log(
-                    'conversion_restored', actor_id=current_user.id, actor_name=current_user.first_name,
-                    target_type='conversion', target_id=conversion_id, target_name=conversion.name
-                )
-                done += 1
-        else:
-            _name = conversion.name
-            if conv_repo.hard_delete(conversion_id):
-                AccountModel.create_system_log(
-                    'conversion_hard_deleted', actor_id=current_user.id, actor_name=current_user.first_name,
-                    target_type='conversion', target_id=conversion_id, target_name=_name
-                )
-                done += 1
+    try:
+        done = bulk_action_use_case(current_user._get_current_object(), action, ids)
+    except ValidationFailed:
+        return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
     label = "conversion" if done == 1 else "conversions"
     if action == 'restore':
         msg = f"{done} {label} restored"
