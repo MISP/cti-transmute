@@ -39,4 +39,5 @@ manage         = "bin.manage:main"
 [dependency-groups]
 dev = [
     "pytest>=9.0.3",
+    "responses>=0.26.2"
 ]
