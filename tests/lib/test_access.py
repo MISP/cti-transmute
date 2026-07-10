@@ -12,6 +12,7 @@ import pytest
 
 from website.lib.access import (
     assert_can_moderate,
+    assert_can_push,
     assert_can_refresh,
     can_see,
     is_admin,
@@ -134,3 +135,21 @@ def test_owner_and_admin_pass_the_asserts(check):
 def test_stranger_and_anonymous_fail_the_asserts(check, actor):
     with pytest.raises(PermissionDenied):
         check(actor, _conversion(owner_id=7))
+
+
+# --- assert_can_push: the can_see rule ----------------------------------------
+
+@pytest.mark.parametrize("actor", [None, _user(id=8)])
+def test_anyone_may_push_a_public_conversion(actor):
+    assert_can_push(actor, _conversion(owner_id=7, public=True))
+
+
+def test_owner_and_admin_may_push_a_private_conversion():
+    assert_can_push(_user(id=7), _conversion(owner_id=7, public=False))
+    assert_can_push(_user(id=8, admin=True), _conversion(owner_id=7, public=False))
+
+
+@pytest.mark.parametrize("actor", [None, _user(id=8)])
+def test_stranger_and_anonymous_may_not_push_a_private_conversion(actor):
+    with pytest.raises(PermissionDenied):
+        assert_can_push(actor, _conversion(owner_id=7, public=False))
