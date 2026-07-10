@@ -15,7 +15,7 @@ Run with `uv run start_website`.
 A feature lives in `website/web/<feature>/` as a trio: `<feature>.py` (routes),
 `<feature>_core.py` (DB + logic, imported as `FeatureModel`), and an optional
 `<feature>_form.py` (WTForms). All models are in `website/db_class/db.py`.
-Features: `convert`, `evaluate`, `tags`, `account`.
+Features: `conversions`, `evaluate`, `tags`, `account`.
 
 `website/lib/` is the other shelf inside `website/`: cross-cutting **service**
 logic that bridges Flask and the engine but isn't a UI feature — the conversion
