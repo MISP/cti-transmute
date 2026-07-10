@@ -15,7 +15,7 @@ import pytest
 import requests
 import responses
 
-MISP_URL = "https://misp.example.com"
+MISP_URL = "https://misp.example.org"
 
 
 @pytest.fixture
@@ -123,7 +123,7 @@ def test_fetch_forwards_multiple_ids_and_optional_restsearch_params(web_client):
 @responses.activate
 def test_fetch_rejects_a_bad_event_id_and_a_non_https_url_without_calling_misp(web_client):
     bad_id = _fetch(web_client, event_id="5; DROP TABLE")
-    bad_url = _fetch(web_client, misp_url="http://misp.example.com")
+    bad_url = _fetch(web_client, misp_url="http://misp.example.org")
 
     assert bad_id.status_code == 400
     assert bad_url.status_code == 400

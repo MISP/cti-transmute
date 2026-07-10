@@ -1,0 +1,4 @@
+{
+  "url": "https://misp.example.org",
+  "auth": "test-api-key"
+}
