@@ -1,19 +1,12 @@
 import datetime
-import re
 from collections import Counter
 
 from website.db_class.db import Comment, Conversion, ConversionEvaluation, Tag
+from website.lib.misp import overall_level as _overall_level
+from website.lib.misp import parse_eval_tag as _parse_eval_tag
 from website.web import db
 
 VALUE_ORDER = ['very-low', 'low', 'moderate', 'high', 'very-high']
-
-
-def _parse_eval_tag(name: str):
-    """Parse 'ns:category="value"' → (ns, category, value) or (None, None, None)."""
-    m = re.match(r'^([\w-]+):([\w.-]+)="([\w.-]+)"$', name or '')
-    if m:
-        return m.group(1), m.group(2), m.group(3)
-    return None, None, None
 
 
 def get_tlp_tags() -> list[dict]:
@@ -477,12 +470,7 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
     push_tags      = get_misp_push_tags(conversion_id)
 
     # Overall level from push tags
-    overall_level = None
-    for t in push_tags:
-        _, cat, val = _parse_eval_tag(t)
-        if cat == 'overall-score':
-            overall_level = val
-            break
+    overall_level = _overall_level(push_tags)
 
     like_total  = summary['likes'] + summary['dislikes']
     like_ratio  = round(summary['likes'] / like_total * 100) if like_total else None

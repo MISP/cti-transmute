@@ -59,6 +59,15 @@ def assert_can_moderate(user, conversion) -> None:
         raise PermissionDenied("You may not moderate this conversion's history.")
 
 
+def assert_can_push(user, conversion) -> None:
+    """Allow pushing a Conversion to a remote MISP instance under the
+    ``can_see`` rule: public is pushable by anyone (the push lands on the
+    Submitter's *own* MISP instance), private only by its owner or an admin.
+    """
+    if not can_see(user, conversion):
+        raise PermissionDenied("You may not push this conversion.")
+
+
 def assert_can_comment(user, conversion) -> None:
     """Allow an authenticated Submitter to comment on a Conversion they can see.
 

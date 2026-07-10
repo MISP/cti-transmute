@@ -20,14 +20,16 @@ from cti_transmute import transmute
 from website.db_class.db import (
     Comment, Conversion, ConversionHistory, ConversionReport, SystemLog)
 from website.lib.access import (
-    assert_can_comment, assert_can_moderate, assert_can_refresh,
-    is_owner_or_admin)
+    assert_can_comment, assert_can_moderate, assert_can_push,
+    assert_can_refresh, is_owner_or_admin)
 from website.lib.exceptions import PersistenceFailed, ValidationFailed
+from website.lib.misp import MispHttpError, _misp_request, build_misp_push_payload
 from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
 from website.repos import reports as reports_repo
 from website.web import db
 from website.web.account import account_core as AccountModel
+from website.web.evaluate import evaluate_core as EvalModel
 
 COMMENT_MAX_LENGTH = 2000
 REPORT_REASONS = ("spam", "inappropriate", "inaccurate", "other")
@@ -266,6 +268,60 @@ def bulk_action(user, action: str, conversion_ids: list[int]) -> int:
             continue
         done += 1
     return done
+
+
+def push_to_misp(user, conversion: Conversion, *, misp_url: str, api_key: str,
+                 extra_tags: list[str] | None = None) -> str | None:
+    """Push a Conversion's MISP event to a remote MISP instance and record it.
+
+    Authorize → build → POST → record: visibility-gated (``assert_can_push``),
+    the payload comes from the pure builder plus any ``extra_tags`` the
+    Submitter picked (``ValidationFailed`` when the stored data holds no MISP
+    event), and the POST goes through the thin transport helper - anything the
+    instance does wrong surfaces as a typed ``MispError``, including the MISP
+    quirk of reporting ``errors`` inside a 2xx body (``MispHttpError``). Only
+    a push that landed records the ``misp_push`` Activity entry, and that
+    entry is best-effort: the event already exists remotely, so a failed log
+    write rolls back and is swallowed rather than misreporting the push (the
+    Activity log is disposable display data). Returns the new MISP event id
+    when the instance reports one.
+    """
+    assert_can_push(user, conversion)
+
+    summary        = EvalModel.get_summary(conversion.id)
+    consensus_tags = EvalModel.get_consensus_tags(conversion.id, threshold=2)
+    push_tags      = EvalModel.get_misp_push_tags(conversion.id)
+    event_dict, _  = build_misp_push_payload(
+        conversion, push_tags, consensus_tags, summary
+    )
+
+    # Merge the Submitter's extra tags that are not already on the event
+    existing_names = {t.get("name", "") for t in (event_dict.get("Tag") or [])}
+    for tag_name in extra_tags or []:
+        if tag_name and tag_name not in existing_names:
+            event_dict.setdefault("Tag", []).append(
+                {"name": tag_name, "exportable": True}
+            )
+
+    result = _misp_request("POST", "/events", url=misp_url, key=api_key,
+                           body={"Event": event_dict}, timeout=30)
+    result = result if isinstance(result, dict) else {}
+    if result.get("errors"):
+        raise MispHttpError(200, str(result["errors"]))
+    new_event_id = (result.get("Event") or {}).get("id")
+
+    now = datetime.now(timezone.utc)
+    _record_activity(
+        "misp_push", user, "conversion", conversion.id, conversion.name, now,
+        details=f"Pushed to {misp_url} - new event ID: {new_event_id}"
+    )
+    try:
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        # The push already landed remotely - swallowing the lost entry beats
+        # misreporting a successful push (the log is disposable).
+        db.session.rollback()
+    return new_event_id
 
 
 def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistory:
