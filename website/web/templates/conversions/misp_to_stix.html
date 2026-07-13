@@ -32,19 +32,6 @@
         <form id="convert-form" novalidate>
 
             <div class="row mb-3">
-                <div class="col-md-6">
-                    <label class="form-label cf-label" for="conv-name">Name</label>
-                    <input type="text" class="form-control" id="conv-name" name="name"
-                        placeholder="Enter a name for the conversion">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label cf-label" for="conv-description">Description</label>
-                    <input type="text" class="form-control" id="conv-description" name="description"
-                        placeholder="Optional description...">
-                </div>
-            </div>
-
-            <div class="row mb-3">
                 <div class="col-md-12">
                     <label class="form-label cf-label">
                         MISP Input <span class="text-danger">*</span>
@@ -252,6 +239,20 @@
                             </div><!-- /tab-misp -->
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Name + description (fixed submission envelope) -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label cf-label" for="conv-name">Name</label>
+                    <input type="text" class="form-control" id="conv-name" name="name"
+                        placeholder="Enter a name for the conversion">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label cf-label" for="conv-description">Description</label>
+                    <input type="text" class="form-control" id="conv-description" name="description"
+                        placeholder="Optional description...">
                 </div>
             </div>
 
