@@ -139,11 +139,8 @@ def test_my_comments_emits_conversion_name_and_active_keys(admin_client):
     )
     db.session.add(conv)
     db.session.commit()
-    # is_deleted=True because get_user_comments filters `Comment.is_deleted`
-    # truthy — despite its docstring saying deleted comments are excluded
-    # (pre-existing behavior, not this slice's to change).
     db.session.add(Comment(conversion_id=conv.id, user_id=user.id,
-                           content="hi", created_at=now, is_deleted=True))
+                           content="hi", created_at=now, is_deleted=False))
     db.session.commit()
     _login(admin_client, user)
 
