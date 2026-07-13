@@ -301,14 +301,12 @@ website/
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
                             <tr><td><span class="dc-field-name">id</span></td><td><span class="dc-field-type">Integer PK</span></td><td>Auto-increment primary key</td></tr>
-                            <tr><td><span class="dc-field-name">uuid</span></td><td><span class="dc-field-type">String(36)</span></td><td>UUID4, unique</td></tr>
                             <tr><td><span class="dc-field-name">first_name / last_name</span></td><td><span class="dc-field-type">String(64)</span></td><td>Display name</td></tr>
                             <tr><td><span class="dc-field-name">email</span></td><td><span class="dc-field-type">String(64)</span></td><td>Unique, used for login</td></tr>
-                            <tr><td><span class="dc-field-name">password</span></td><td><span class="dc-field-type">String(300)</span></td><td>bcrypt hash</td></tr>
-                            <tr><td><span class="dc-field-name">role</span></td><td><span class="dc-field-type">String(36)</span></td><td><code>"user"</code> or <code>"admin"</code></td></tr>
+                            <tr><td><span class="dc-field-name">password_hash</span></td><td><span class="dc-field-type">String(165)</span></td><td>Hash only — set via the write-only <code>password</code> property</td></tr>
+                            <tr><td><span class="dc-field-name">admin</span></td><td><span class="dc-field-type">Boolean</span></td><td>Admin flag</td></tr>
                             <tr><td><span class="dc-field-name">api_key</span></td><td><span class="dc-field-type">String(60)</span></td><td>REST API key, sent in the <code>X-API-KEY</code> header</td></tr>
                             <tr><td><span class="dc-field-name">is_connected</span></td><td><span class="dc-field-type">Boolean</span></td><td>Online status flag</td></tr>
-                            <tr><td><span class="dc-field-name">created_at / last_seen</span></td><td><span class="dc-field-type">DateTime</span></td><td>UTC timestamps</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -326,14 +324,13 @@ website/
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
                             <tr><td><span class="dc-field-name">id / uuid</span></td><td><span class="dc-field-type">Integer / String(36)</span></td><td>PK + UUID4</td></tr>
-                            <tr><td><span class="dc-field-name">name</span></td><td><span class="dc-field-type">String(256)</span></td><td>User-defined label</td></tr>
+                            <tr><td><span class="dc-field-name">name</span></td><td><span class="dc-field-type">String(255)</span></td><td>User-defined label</td></tr>
                             <tr><td><span class="dc-field-name">description</span></td><td><span class="dc-field-type">Text</span></td><td>Optional free text</td></tr>
                             <tr><td><span class="dc-field-name">source_format / target_format</span></td><td><span class="dc-field-type">String(50)</span></td><td>Converter slugs, e.g. <code>"misp"</code> / <code>"stix"</code></td></tr>
-                            <tr><td><span class="dc-field-name">conversion_type</span></td><td><span class="dc-field-type">String (derived)</span></td><td>Computed from the slugs, e.g. <code>"MISP_TO_STIX"</code> — not stored</td></tr>
                             <tr><td><span class="dc-field-name">params</span></td><td><span class="dc-field-type">JSON</span></td><td>Params the conversion ran with (<code>null</code> for legacy rows)</td></tr>
                             <tr><td><span class="dc-field-name">input_text / output_text</span></td><td><span class="dc-field-type">Text</span></td><td>Raw JSON strings</td></tr>
                             <tr><td><span class="dc-field-name">public</span></td><td><span class="dc-field-type">Boolean</span></td><td>Visibility flag</td></tr>
-                            <tr><td><span class="dc-field-name">share_key</span></td><td><span class="dc-field-type">String(64)</span></td><td>Token for sharing private conversions</td></tr>
+                            <tr><td><span class="dc-field-name">share_key</span></td><td><span class="dc-field-type">String(36)</span></td><td>Token for sharing private conversions</td></tr>
                             <tr><td><span class="dc-field-name">is_active</span></td><td><span class="dc-field-type">Boolean</span></td><td>Soft-delete flag</td></tr>
                             <tr><td><span class="dc-field-name">user_id</span></td><td><span class="dc-field-type">FK → User</span></td><td>Owner</td></tr>
                             <tr><td><span class="dc-field-name">created_at / updated_at / deleted_at</span></td><td><span class="dc-field-type">DateTime</span></td><td>UTC timestamps</td></tr>
@@ -350,8 +347,10 @@ website/
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
                             <tr><td><span class="dc-field-name">version</span></td><td><span class="dc-field-type">Integer</span></td><td>Auto-incremented per conversion</td></tr>
-                            <tr><td><span class="dc-field-name">status</span></td><td><span class="dc-field-type">String</span></td><td><code>"pending"</code> | <code>"accepted"</code> | <code>"rejected"</code></td></tr>
-                            <tr><td><span class="dc-field-name">input_text / output_text</span></td><td><span class="dc-field-type">Text</span></td><td>Snapshot of the conversion at that version</td></tr>
+                            <tr><td><span class="dc-field-name">status</span></td><td><span class="dc-field-type">String(20)</span></td><td><code>"pending"</code> | <code>"accepted"</code> | <code>"rejected"</code></td></tr>
+                            <tr><td><span class="dc-field-name">input_text</span></td><td><span class="dc-field-type">Text</span></td><td>Input snapshot the refresh ran on</td></tr>
+                            <tr><td><span class="dc-field-name">old_output_text / new_output_text</span></td><td><span class="dc-field-type">Text</span></td><td>Output before and after the refresh — the diff's two sides</td></tr>
+                            <tr><td><span class="dc-field-name">params / public</span></td><td><span class="dc-field-type">JSON / Boolean</span></td><td>Snapshot of the conversion's params and visibility</td></tr>
                             <tr><td><span class="dc-field-name">comment</span></td><td><span class="dc-field-type">Text</span></td><td>Optional change note</td></tr>
                             <tr><td><span class="dc-field-name">conversion_id</span></td><td><span class="dc-field-type">FK → Conversion</span></td><td>Parent conversion</td></tr>
                         </tbody>
@@ -393,12 +392,12 @@ website/
                     <table class="dc-model-tbl">
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
-                            <tr><td><span class="dc-field-name">name</span></td><td><span class="dc-field-type">String(256)</span></td><td>Unique tag name (e.g. <code>tlp:red</code>)</td></tr>
-                            <tr><td><span class="dc-field-name">colour</span></td><td><span class="dc-field-type">String(7)</span></td><td>Hex color code</td></tr>
-                            <tr><td><span class="dc-field-name">icon</span></td><td><span class="dc-field-type">String(64)</span></td><td>FontAwesome class name</td></tr>
-                            <tr><td><span class="dc-field-name">source_type</span></td><td><span class="dc-field-type">String(32)</span></td><td><code>"Manual"</code> | <code>"Taxonomy"</code> | <code>"Vulnerability"</code></td></tr>
-                            <tr><td><span class="dc-field-name">is_approved / is_active</span></td><td><span class="dc-field-type">Boolean</span></td><td>Admin approval workflow</td></tr>
-                            <tr><td><span class="dc-field-name">is_public</span></td><td><span class="dc-field-type">Boolean</span></td><td>Visible to non-admin users</td></tr>
+                            <tr><td><span class="dc-field-name">name</span></td><td><span class="dc-field-type">Text</span></td><td>Unique tag name (e.g. <code>tlp:red</code>)</td></tr>
+                            <tr><td><span class="dc-field-name">color</span></td><td><span class="dc-field-type">String(50)</span></td><td>Hex color code</td></tr>
+                            <tr><td><span class="dc-field-name">icon</span></td><td><span class="dc-field-type">String(50)</span></td><td>FontAwesome class name</td></tr>
+                            <tr><td><span class="dc-field-name">source</span></td><td><span class="dc-field-type">String(255)</span></td><td>Tag origin: <code>"Taxonomy"</code>, <code>"Galaxy"</code>, <code>"Vulnerability"</code>, manual</td></tr>
+                            <tr><td><span class="dc-field-name">is_approved_by_admin / is_active</span></td><td><span class="dc-field-type">Boolean</span></td><td>Admin approval workflow</td></tr>
+                            <tr><td><span class="dc-field-name">visibility</span></td><td><span class="dc-field-type">String(255)</span></td><td>Visibility scope for non-admin users</td></tr>
                             <tr><td><span class="dc-field-name">is_evaluation_tag</span></td><td><span class="dc-field-type">Boolean</span></td><td>Available as reaction in evaluation voting</td></tr>
                         </tbody>
                     </table>
@@ -412,7 +411,8 @@ website/
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
                             <tr><td><span class="dc-field-name">conversion_id / tag_id</span></td><td><span class="dc-field-type">FK</span></td><td>Composite unique constraint</td></tr>
-                            <tr><td><span class="dc-field-name">added_by</span></td><td><span class="dc-field-type">String</span></td><td><code>"user"</code> or <code>"auto-scan"</code></td></tr>
+                            <tr><td><span class="dc-field-name">user_id / added_at</span></td><td><span class="dc-field-type">FK → User / DateTime</span></td><td>Who attached the tag, and when</td></tr>
+                            <tr><td><span class="dc-field-name">source_type</span></td><td><span class="dc-field-type">String(10)</span></td><td><code>"user"</code> or <code>"json"</code> (auto-extracted from content)</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -429,9 +429,9 @@ website/
                     <table class="dc-model-tbl">
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
-                            <tr><td><span class="dc-field-name">vote_type</span></td><td><span class="dc-field-type">String</span></td><td><code>"like"</code> | <code>"dislike"</code> | <code>"reaction"</code></td></tr>
-                            <tr><td><span class="dc-field-name">reaction_key</span></td><td><span class="dc-field-type">String</span></td><td>Tag name used as evaluation reaction</td></tr>
-                            <tr><td><span class="dc-field-name">conversion_id / user_id</span></td><td><span class="dc-field-type">FK</span></td><td>Unique per (user, conversion, vote_type)</td></tr>
+                            <tr><td><span class="dc-field-name">eval_type</span></td><td><span class="dc-field-type">String(20)</span></td><td><code>"like"</code> | <code>"dislike"</code> | <code>"reaction"</code></td></tr>
+                            <tr><td><span class="dc-field-name">reaction_key</span></td><td><span class="dc-field-type">String(50)</span></td><td>Tag name used as evaluation reaction</td></tr>
+                            <tr><td><span class="dc-field-name">conversion_id / user_id</span></td><td><span class="dc-field-type">FK</span></td><td>Unique per (user, conversion, eval_type)</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -443,9 +443,10 @@ website/
                     <table class="dc-model-tbl">
                         <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
                         <tbody>
-                            <tr><td><span class="dc-field-name">notif_type</span></td><td><span class="dc-field-type">String</span></td><td><code>comment_reply</code>, <code>new_follow_conversion</code>, <code>report_submitted</code>, …</td></tr>
+                            <tr><td><span class="dc-field-name">type</span></td><td><span class="dc-field-type">String(50)</span></td><td><code>comment_reply</code>, <code>new_follow_conversion</code>, <code>report_submitted</code>, …</td></tr>
                             <tr><td><span class="dc-field-name">is_read</span></td><td><span class="dc-field-type">Boolean</span></td><td>Unread badge count in navbar</td></tr>
-                            <tr><td><span class="dc-field-name">target_id / target_type</span></td><td><span class="dc-field-type">Integer / String</span></td><td>Polymorphic target (conversion, comment, …)</td></tr>
+                            <tr><td><span class="dc-field-name">related_id / related_type</span></td><td><span class="dc-field-type">Integer / String(50)</span></td><td>Polymorphic target (conversion, comment, …)</td></tr>
+                            <tr><td><span class="dc-field-name">actor_id / message</span></td><td><span class="dc-field-type">Integer / Text</span></td><td>Who triggered it, and the rendered text</td></tr>
                             <tr><td><span class="dc-field-name">user_id</span></td><td><span class="dc-field-type">FK → User</span></td><td>Recipient</td></tr>
                         </tbody>
                     </table>
@@ -720,7 +721,8 @@ website/
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/fetch_misp_event</code><p class="dc-route-desc">Fetch MISP events from a remote MISP instance via restSearch. Body: <code>misp_url</code>, <code>api_key</code>, <code>event_id</code> (or <code>event_ids</code>).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/misp_search_events</code><p class="dc-route-desc">Search events on a remote MISP by info/tag/date. Returns a list of matching events.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/refresh/&lt;uuid&gt;</code><p class="dc-route-desc">Re-run a conversion with the original input and show a diff preview.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/refresh</code><p class="dc-route-desc">Accept or reject a pending history version. Body: <code>history_id</code>, <code>action</code> (<code>"accept"</code> | <code>"reject"</code>).</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/history/&lt;history_id&gt;/accept</code><p class="dc-route-desc">Accept a pending refresh (owner-or-admin) — adopts its output.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/history/&lt;history_id&gt;/reject</code><p class="dc-route-desc">Reject a pending refresh (owner-or-admin) — leaves the Conversion as-is.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                 </div>
             </div>
 
