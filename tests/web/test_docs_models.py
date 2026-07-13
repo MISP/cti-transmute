@@ -49,6 +49,38 @@ def test_docs_page_names_only_live_models():
     )
 
 
+def test_docs_page_model_fields_are_real_columns():
+    """Every field row in a model card must be a column of that model.
+
+    The model-name guard above can't see field-level drift (``role`` vs
+    ``admin``, ``colour`` vs ``color``); this walks each ``dc-model-name``
+    card and checks its ``dc-field-name`` entries against the model's actual
+    table. The combined overview card (slash-separated model names) lists
+    models, not fields, and is skipped.
+    """
+    import website.db_class.db as models
+
+    cards = re.split(r'<span class="dc-model-name">', DOCS_PAGE.read_text())[1:]
+    problems = []
+    for card in cards:
+        name = card.split("<", 1)[0].strip()
+        if "/" in name:
+            continue
+        cls = getattr(models, name, None)
+        assert cls is not None and hasattr(cls, "__table__"), (
+            f"docs page documents a model that does not exist: {name}"
+        )
+        columns = {column.name for column in cls.__table__.columns}
+        body = card.split("</table>", 1)[0]
+        for field in re.findall(r'dc-field-name">([^<]+)</span>', body):
+            for part in re.split(r"\s*/\s*", field.strip()):
+                if part and part not in columns:
+                    problems.append(f"{name}.{part}")
+    assert not problems, (
+        f"docs page documents fields that are not columns: {problems}"
+    )
+
+
 def test_docs_page_states_current_api_facts():
     """The API section documents the optional ``X-API-KEY`` header and opt-in
     persistence; the pre-spine Bearer-token wording must not resurface."""
