@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 from pydantic import ValidationError
 from sqlalchemy import func
 
+from cti_transmute import transmute
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
 from cti_transmute.exceptions import (
@@ -32,8 +33,7 @@ from website.lib.params import build_params, param_error
 from website.repos import comments as comments_repo
 from website.repos import conversions as conv_repo
 from website.repos import reports as reports_repo
-from website.web.conversions.conversions_form import (
-    editConversionForm, mispToStixParamForm, stixToMispParamForm)
+from website.web.conversions.conversions_form import editConversionForm
 from website.web.utils import (
     extract_name_from_misp_json, extract_tag_names_from_misp_json,
     form_to_dict, parse_stix_reports)
@@ -802,40 +802,17 @@ def share_conversion():
 #   Refresh a conversion  #
 ###########################
 
-def _build_misp_to_stix_params(form) -> MispToStixParams:
-    """Build MISP → STIX params from the refresh page's WTForm cleaned data.
-
-    The conversion page is schema-driven and submits params as JSON; the refresh
-    page still uses a classic WTForm POST, so it keeps this builder.
-    """
-    return MispToStixParams(version=form.version.data)
-
-
-def _build_stix_to_misp_params(form) -> StixToMispParams:
-    """Build STIX → MISP params from the refresh page's WTForm cleaned data.
-
-    Strips strings and drops blanks/``None`` to defaults. Kept for the refresh
-    page's classic WTForm POST (the conversion page submits params as JSON via
-    `website.lib.params.build_params`).
-    """
-    raw = {
-        "distribution": form.distribution.data,
-        "sharing_group_id": form.sharing_group_id.data,
-        "galaxies_as_tags": form.galaxies_as_tags.data,
-        "no_force_contextual_data": form.no_force_contextual_data.data,
-        "cluster_distribution": form.cluster_distribution.data,
-        "cluster_sharing_group_id": form.cluster_sharing_group_id.data,
-        "organisation_uuid": form.organisation_uuid.data,
-        "single_event": form.single_event.data,
-        "producer": form.producer.data,
-        "title": form.title.data
-    }
-    return build_params(StixToMispParams, raw)
-
-
 @conversions_blueprint.route("/refresh/<string:uuid>", methods=['GET', 'POST'])
 @login_required
 def refresh(uuid):
+    """Refresh page: re-run a Conversion with (possibly changed) parameters.
+
+    GET renders the page; its param controls are drawn client-side from the
+    Converter's Parameter schema, prefilled from the stored params. POST is a
+    fetch/JSON re-run — ``{"params": {...}}`` in, ``{message, identical,
+    history_id}`` out; a shape violation returns the shared ``{error, fields}``
+    400 every param surface returns.
+    """
     conversion_obj = conv_repo.get_by_uuid(uuid)
 
     if not conversion_obj:
@@ -850,57 +827,57 @@ def refresh(uuid):
     except PermissionDenied:
         abort(403)
 
-    # Choose the WTForm + params builder for this conversion's direction.
-    if conversion_obj.conversion_type == "MISP_TO_STIX":
-        form = mispToStixParamForm()
-        build_params = _build_misp_to_stix_params
-    elif conversion_obj.conversion_type == "STIX_TO_MISP":
-        form = stixToMispParamForm()
-        build_params = _build_stix_to_misp_params
-    else:
+    # A refresh re-runs the same direction, so the registry - the canonical
+    # answer to "what can this service do?" - resolves the Converter whose
+    # params_class shapes the re-run's parameters.
+    try:
+        params_class = transmute.lookup(
+            conversion_obj.source_format, conversion_obj.target_format
+        ).params_class
+    except UnknownConverter as exc:
+        if request.method == "POST":
+            return (
+                jsonify({"error": _conversion_error_message(exc)}),
+                _status_for_conversion_error(exc),
+            )
         flash("Unsupported conversion type.", "danger")
         return redirect(url_for("conversions.history"))
 
-    # Prefill form (GET)
     if request.method == "GET":
-        form.name.data = conversion_obj.name
-        form.description.data = conversion_obj.description
-        form.public.data = conversion_obj.public
+        return render_template(
+            "conversions/refresh.html",
+            conversion_obj=conversion_obj,
+            filename=f"{conversion_obj.name}_refresh.json"
+        )
 
-    result = None
-    diff = None
-    error = None
+    body = request.get_json(silent=True) or {}
+    try:
+        params = build_params(params_class, body.get("params") or {})
+    except ValidationError as exc:
+        error_body, status = param_error(exc)
+        return jsonify(error_body), status
 
-    if form.validate_on_submit():
-        try:
-            history = refresh_conversion(user, conversion_obj, build_params(form))
-        except PermissionDenied:
-            abort(403)
-        except ConversionError as exc:
-            error = _conversion_error_message(exc)
-            flash(error, "danger")
-        else:
-            result = history.new_output_text
-            is_identical = (
-                (conversion_obj.output_text or "").strip()
-                == (history.new_output_text or "").strip()
-            )
-            if is_identical:
-                flash("Conversion re-executed successfully! No changes detected.", "success")
-                diff = "The new conversion result is IDENTICAL to the previous one."
-            else:
-                flash("Conversion re-executed successfully! Changes detected.", "success")
-                diff = "The new conversion result is DIFFERENT from the previous one."
+    try:
+        history = refresh_conversion(user, conversion_obj, params)
+    except ConversionError as exc:
+        return (
+            jsonify({"error": _conversion_error_message(exc)}),
+            _status_for_conversion_error(exc)
+        )
 
-    return render_template(
-        "conversions/refresh.html",
-        form=form,
-        conversion_obj=conversion_obj,
-        result=result,
-        diff=diff,
-        error=error,
-        filename=f"{conversion_obj.name}_refresh.json"
+    identical = (
+        (conversion_obj.output_text or "").strip()
+        == (history.new_output_text or "").strip()
     )
+    message = (
+        "Conversion re-executed successfully! No changes detected." if identical
+        else "Conversion re-executed successfully! Changes detected."
+    )
+    return jsonify({
+        "message": message,
+        "identical": identical,
+        "history_id": history.id
+    }), 200
 
 
 # get_history
