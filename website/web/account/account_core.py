@@ -403,19 +403,19 @@ def notify_comment_reply(parent_comment, reply_comment, actor_id):
 ###################################
 
 def get_user_comments(user_id, page=1, search=None, is_admin=False):
-    """Return paginated comments made by a user.
+    """Return paginated live (non-soft-deleted) comments made by a user.
     Excludes comments on conversions that are deleted, private (unless owned by the user), or inactive.
-    Admins bypass all visibility filters.
+    Admins bypass the conversion visibility filters, not the is_deleted one.
     """
     if is_admin:
-        query = Comment.query.filter(Comment.user_id == user_id, Comment.is_deleted)
+        query = Comment.query.filter(Comment.user_id == user_id, ~Comment.is_deleted)
     else:
         query = (
             Comment.query
             .join(Conversion, Comment.conversion_id == Conversion.id)
             .filter(
                 Comment.user_id == user_id,
-                Comment.is_deleted,
+                ~Comment.is_deleted,
                 Conversion.is_active,
                 or_(Conversion.public, Conversion.user_id == user_id),
             )
