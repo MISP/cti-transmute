@@ -111,26 +111,53 @@ def test_owner_can_open_the_refresh_form(web_client, misp_event):
     assert resp.status_code == 200
 
 
-def test_owner_post_refresh_writes_a_pending_history_row(web_client, misp_event):
+def test_owner_post_refresh_json_writes_a_pending_history_row(web_client, misp_event):
+    """The refresh POST is a fetch/JSON submission (ADR-0006): params travel in
+    the body, the response reports identical/different plus the pending row's id."""
     from website.db_class.db import ConversionHistory
 
     owner = _make_user(email="owner@test.test")
     conv = _make_conversion(misp_event, owner.id)
     _login(web_client, owner)
 
-    # A novel name dodges the form's own validate_name uniqueness check.
     resp = web_client.post(
         f"/conversions/refresh/{conv.uuid}",
-        data={"version": "2.1", "name": "fresh-run-1"},
+        json={"params": {"version": "2.1"}},
     )
 
     assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["identical"] is False  # a fresh bundle differs from "OLD-OUTPUT"
+    assert "message" in body
     rows = ConversionHistory.query.filter_by(conversion_id=conv.id).all()
     assert len(rows) == 1
     assert rows[0].status == "pending"
+    assert rows[0].params == {"version": "2.1"}
+    assert body["history_id"] == rows[0].id
 
 
-def _make_history(conv, *, new_output="NEW-OUTPUT"):
+def test_post_refresh_shape_violation_returns_error_fields_400(web_client, misp_event):
+    """A params shape violation returns the shared ``{error, fields}`` 400 every
+    param surface returns, so the client can highlight the offending control."""
+    from website.db_class.db import ConversionHistory
+
+    owner = _make_user(email="owner@test.test")
+    conv = _make_conversion(misp_event, owner.id)
+    _login(web_client, owner)
+
+    resp = web_client.post(
+        f"/conversions/refresh/{conv.uuid}",
+        json={"params": {"version": "9.9"}},
+    )
+
+    assert resp.status_code == 400
+    body = resp.get_json()
+    assert body["error"]
+    assert "version" in body["fields"]
+    assert ConversionHistory.query.count() == 0
+
+
+def _make_history(conv, *, new_output="NEW-OUTPUT", params=None):
     from website.db_class.db import ConversionHistory
     from website.web import db
 
@@ -139,7 +166,7 @@ def _make_history(conv, *, new_output="NEW-OUTPUT"):
         user_id=conv.user_id, conversion_id=conv.id, version=2,
         uuid=str(_uuid.uuid4()), status="pending", public=conv.public,
         input_text=conv.input_text, old_output_text=conv.output_text,
-        new_output_text=new_output, params=None, created_at=now,
+        new_output_text=new_output, params=params, created_at=now
     )
     db.session.add(history)
     db.session.commit()
@@ -161,6 +188,24 @@ def test_owner_accept_endpoint_transitions_status(web_client, misp_event):
     assert resp.status_code == 200
     assert resp.get_json()["success"] is True
     assert ConversionHistory.query.get(history.id).status == "accepted"
+
+
+def test_accept_endpoint_adopts_params_onto_conversion(web_client, misp_event):
+    """Accepting a refresh adopts its params alongside its output - otherwise
+    ``Conversion.params`` goes stale and poisons the refresh page's prefill."""
+    from website.db_class.db import Conversion
+
+    owner = _make_user(email="owner@test.test")
+    conv = _make_conversion(misp_event, owner.id)
+    history = _make_history(conv, params={"version": "2.0"})
+    _login(web_client, owner)
+
+    resp = web_client.post(f"/conversions/history/{history.id}/accept")
+
+    assert resp.status_code == 200
+    refreshed = Conversion.query.get(conv.id)
+    assert refreshed.params == {"version": "2.0"}
+    assert refreshed.output_text == "NEW-OUTPUT"
 
 
 def test_owner_reject_endpoint_transitions_status(web_client, misp_event):

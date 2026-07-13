@@ -370,7 +370,7 @@ def test_refresh_commit_failure_writes_nothing(app_db, misp_event, monkeypatch):
     assert SystemLog.query.filter_by(event_type="conversion_refreshed").count() == 0
 
 
-def _make_history(conv, *, new_output="NEW-OUTPUT", status="pending"):
+def _make_history(conv, *, new_output="NEW-OUTPUT", status="pending", params=None):
     from website.db_class.db import ConversionHistory
     from website.web import db
 
@@ -379,7 +379,7 @@ def _make_history(conv, *, new_output="NEW-OUTPUT", status="pending"):
         user_id=conv.user_id, conversion_id=conv.id, version=2,
         uuid=str(_uuid.uuid4()), status=status, public=conv.public,
         input_text=conv.input_text, old_output_text=conv.output_text,
-        new_output_text=new_output, params=None, created_at=now,
+        new_output_text=new_output, params=params, created_at=now,
     )
     db.session.add(history)
     db.session.commit()
@@ -399,6 +399,37 @@ def test_owner_accept_adopts_new_output_and_records_event(app_db, misp_event):
     assert result.status == "accepted"
     assert conv.output_text == "NEW-OUTPUT"  # accept = adopt the refreshed result
     assert SystemLog.query.filter_by(event_type="conversion_history_accepted").count() == 1
+
+
+def test_owner_accept_adopts_params_alongside_output(app_db, misp_event):
+    """`Conversion.params` documents "the params the conversion ran with" - an
+    accepted refresh must adopt the history row's params, or the stored params
+    go stale and poison the refresh page's prefill."""
+    from website.lib.conversions import accept_history
+
+    owner = _make_user(email="owner@test.test")
+    conv = _make_conversion(misp_event, owner_id=owner.id, output="OLD-OUTPUT")
+    conv.params = {"version": "2.0"}
+    history = _make_history(conv, new_output="NEW-OUTPUT",
+                            params={"version": "2.1"})
+
+    accept_history(owner, history)
+
+    assert conv.params == {"version": "2.1"}  # accept = adopt output AND params
+
+
+def test_owner_reject_leaves_params_untouched(app_db, misp_event):
+    from website.lib.conversions import reject_history
+
+    owner = _make_user(email="owner@test.test")
+    conv = _make_conversion(misp_event, owner_id=owner.id, output="OLD-OUTPUT")
+    conv.params = {"version": "2.0"}
+    history = _make_history(conv, new_output="NEW-OUTPUT",
+                            params={"version": "2.1"})
+
+    reject_history(owner, history)
+
+    assert conv.params == {"version": "2.0"}  # reject stays hands-off
 
 
 def test_stranger_accept_is_denied_and_changes_nothing(app_db, misp_event):
