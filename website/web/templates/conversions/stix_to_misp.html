@@ -79,7 +79,7 @@
                                 </div>
                                 <div class="file-selected-info d-none" id="file-info">
                                     <i class="fas fa-file-code file-selected-icon"></i>
-                                    <span id="file-name"></span>
+                                    <span id="file-name" class="file-selected-name"></span>
                                     <button type="button" class="file-remove-btn" id="btn-remove-file">
                                         <i class="fas fa-times"></i>
                                     </button>
@@ -242,7 +242,10 @@
                 const fileName = document.getElementById('file-name');
                 const fileDropContent = dropZone?.querySelector('.file-drop-content');
                 const showFile = (name) => {
-                    if (fileName) fileName.textContent = name;
+                    if (fileName) {
+                        fileName.textContent = name;
+                        fileName.title = name;
+                    }
                     fileInfo?.classList.remove('d-none');
                     fileDropContent?.classList.add('d-none');
                 };

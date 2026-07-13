@@ -101,7 +101,7 @@
                                     </div>
                                     <div class="file-selected-info d-none" id="file-info">
                                         <i class="fas fa-file-code file-selected-icon"></i>
-                                        <span id="file-name"></span>
+                                        <span id="file-name" class="file-selected-name"></span>
                                         <button type="button" class="file-remove-btn" id="btn-remove-file">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -869,6 +869,7 @@
                 const fileDropContent = dropZone?.querySelector('.file-drop-content');
                 function showFile(name) {
                     fileNameEl.textContent = name;
+                    fileNameEl.title = name;
                     fileInfo.classList.remove('d-none');
                     fileDropContent.classList.add('d-none');
                 }
