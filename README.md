@@ -11,7 +11,8 @@ An **online service for converting cyber threat intelligence format** ([CTI-Tran
 * **History**: Keeping track of all the conversions (**private and public**). API clients opt in with **`?persist=true`** (see [API authentication and persistence](#api-authentication-and-persistence)).
 * **Diffing**: **Reviewing changes** of conversions and updates in the CTI file converted — available for any conversion saved via the UI or a persisting API call.
 * **Share**: A **Share link** to allow users to share conversions with private groups — persisted API conversions get one too.
-* **Live Conversion**: Users can directly convert **rules** in the **UI or via the API**.
+* **Live Conversion**: Users can directly convert **CTI documents** (MISP events, STIX bundles) in the **UI or via the API**.
+* **MISP Integration**: **Browse and import events** straight from a connected **MISP instance** on the conversion page, and **push converted events back** to an instance.
 
 ## Demo
 
@@ -21,7 +22,7 @@ A video walkthrough of CTI-Transmute is available on YouTube. It covers the main
 
 ## Screenshots
 
-| Dashboard Overview | Component Details | Asset Management |
+| Home Dashboard | Conversion Detail | Conversion History |
 | :---: | :---: | :---: |
 | <img src="docs/screenshots/home.png" width="400"> | <img src="docs/screenshots/convert_detail.png" width="400"> | <img src="docs/screenshots/history.png" width="400"> |
 
