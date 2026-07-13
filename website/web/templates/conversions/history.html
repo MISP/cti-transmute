@@ -269,7 +269,7 @@
                             </span>
                             <span class="hc-meta-sep">·</span>
                             <span class="hc-meta-item">
-                                <i class="fas fa-clock" style="font-size:0.6rem;"></i> [[ item.created_at ]]
+                                <i class="fas fa-clock" style="font-size:0.6rem;"></i> [[ formatDateTime(item.created_at) ]]
                             </span>
                             <template v-if="item.tags && item.tags.length > 0">
                                 <span class="hc-meta-sep">·</span>
@@ -692,6 +692,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
                 favorites_only, toggleFavorite,
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
+                formatDateTime: ctiDate.formatDateTime
             }
         }
     })

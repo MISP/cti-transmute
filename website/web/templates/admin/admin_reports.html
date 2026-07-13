@@ -59,7 +59,7 @@
             <td>
               <span class="admin-status-badge" :class="'status-'+r.status">[[ r.status ]]</span>
             </td>
-            <td style="color:var(--text-3); font-size:0.78rem;">[[ r.created_at ]]</td>
+            <td style="color:var(--text-3); font-size:0.78rem;">[[ formatDateTime(r.created_at) ]]</td>
             <td>
               <div class="d-flex gap-1">
                 <button v-if="r.status === 'pending'" class="btn btn-sm btn-outline-success" @click="reviewReport(r.id, 'reviewed')" title="Mark reviewed">
@@ -144,7 +144,8 @@
       }
 
       onMounted(load)
-      return { reports, loading, page, total_page, status_filter, search, load, debounceSearch, reviewReport, deleteReport, message_list }
+      return { reports, loading, page, total_page, status_filter, search, load, debounceSearch, reviewReport, deleteReport, message_list,
+               formatDateTime: ctiDate.formatDateTime }
     }
   }).mount('#main-containers')
 </script>

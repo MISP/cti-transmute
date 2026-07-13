@@ -358,7 +358,7 @@ function _renderSavedList(list) {
 
     const meta = document.createElement('span')
     meta.className = 'gcm-config-meta'
-    meta.textContent = (cfg.is_default ? '' : cfg.author + ' · ') + (cfg.created_at || '')
+    meta.textContent = (cfg.is_default ? '' : cfg.author + ' · ') + ctiDate.formatDateTime(cfg.created_at, '')
     row.appendChild(meta)
 
     const loadBtn = document.createElement('button')

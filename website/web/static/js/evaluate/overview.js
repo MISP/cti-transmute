@@ -53,11 +53,7 @@ const OverviewApp = {
     },
 
     methods: {
-        formatDate(str) {
-            if (!str) return ''
-            const d = new Date(str.replace(' ', 'T'))
-            return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
-        },
+        formatDate: ctiDate.formatDate,
 
         openConversion(id) {
             sessionStorage.setItem('open_eval_tab', String(id))

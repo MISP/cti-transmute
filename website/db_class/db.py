@@ -13,6 +13,15 @@ def load_user(user_id):
     """Loads the user from the session."""
     return User.query.get(int(user_id))
 
+def utc_iso(dt):
+    """Serialize a stored UTC wall-clock datetime as ISO-8601 with the Z marker.
+
+    The wire format must carry an explicit offset: an offset-less string is
+    parsed as viewer-local time by browsers, shifting every displayed date by
+    the viewer's UTC offset. None passes through for nullable columns.
+    """
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ') if dt else None
+
 class User(UserMixin, db.Model):
     """User model for authentication and authorization."""
     
@@ -127,8 +136,8 @@ class Conversion(db.Model):
             "target_format": self.target_format,
             "params": self.params,
             "output_text": self.output_text,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "public": self.public,
             "uuid": self.uuid,
             "author": self.get_user_name_by_id()
@@ -141,13 +150,13 @@ class Conversion(db.Model):
             "name": self.name,
             "description": self.description,
             "conversion_type": self.conversion_type,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "public": self.public,
             "uuid": self.uuid,
             "author": self.get_user_name_by_id(),
             "is_active": self.is_active,
-            "deleted_at": self.deleted_at.strftime('%Y-%m-%d %H:%M') if self.deleted_at else None,
+            "deleted_at": utc_iso(self.deleted_at)
         }
     def to_share(self):
         return {
@@ -155,8 +164,8 @@ class Conversion(db.Model):
             "name": self.name,
             "description": self.description,
             "conversion_type": self.conversion_type,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "public": self.public,
             "uuid": self.uuid,
             "author": self.get_user_name_by_id(),
@@ -211,7 +220,7 @@ class Comment(db.Model):
             "content": self.content if not self.is_deleted else "[deleted]",
             "is_private": self.is_private,
             "parent_id": self.parent_id,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at),
             "is_deleted": self.is_deleted,
             "reactions": reactions_grouped,
             "can_delete": bool(current_user_id and (
@@ -272,7 +281,7 @@ class Notification(db.Model):
             "actor_id": self.actor_id,
             "actor_name": self.get_actor_name(),
             "message": self.message,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at)
         }
 
 
@@ -317,8 +326,8 @@ class ConversionReport(db.Model):
             "reason": self.reason,
             "description": self.description,
             "status": self.status,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
-            "reviewed_at": self.reviewed_at.strftime('%Y-%m-%d %H:%M') if self.reviewed_at else None,
+            "created_at": utc_iso(self.created_at),
+            "reviewed_at": utc_iso(self.reviewed_at),
             "reviewed_by": reviewer.first_name if reviewer else None,
         }
 
@@ -348,7 +357,7 @@ class SystemLog(db.Model):
             "target_id": self.target_id,
             "target_name": self.target_name,
             "details": self.details,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at)
         }
 
 
@@ -397,7 +406,7 @@ class ConversionHistory(db.Model):
             "old_output_text": self.old_output_text,
             "new_output_text": self.new_output_text,
             "params": self.params,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at),
             "comment": self.comment,
             "status": self.status,
             "public": self.public
@@ -437,8 +446,8 @@ class Tag(db.Model):
             "uuid": self.uuid,
             "name": self.name,
             "description": self.description,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M') if self.updated_at else None,
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "is_active": self.is_active,
             "visibility": self.visibility,
             "color": self.color,
@@ -481,7 +490,7 @@ class GraphConfig(db.Model):
             "author":     self.creator.first_name if self.creator else "System",
             "is_default": self.is_default,
             "is_active":  self.is_active,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at),
             "can_delete": (
                 is_admin or
                 (current_user_id and self.created_by == current_user_id and not self.is_default)
@@ -519,8 +528,8 @@ class ConversionTagAssociation(db.Model):
             "tag_icon": tag.icon if tag else None,
             "tag_visibility": tag.visibility if tag else None,
             "tag_description": tag.description if tag else None,
-            "added_at": self.added_at.strftime('%Y-%m-%d %H:%M') if self.added_at else None,
-            "source_type": self.source_type,
+            "added_at": utc_iso(self.added_at),
+            "source_type": self.source_type
         }
 
 
@@ -563,7 +572,7 @@ class ConversionEvaluation(db.Model):
             "username":     self.user.first_name if self.user else "Unknown",
             "eval_type":    self.eval_type,
             "reaction_key": self.reaction_key,
-            "created_at":   self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at":   utc_iso(self.created_at)
         }
 
 
@@ -585,5 +594,5 @@ class PlatformReview(db.Model):
             "rating":     self.rating,
             "comment":    self.comment,
             "author":     self.user.first_name if self.user else "Anonymous",
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at)
         }

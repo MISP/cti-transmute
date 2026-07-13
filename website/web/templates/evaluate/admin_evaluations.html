@@ -78,7 +78,7 @@
               </span>
               <span v-else style="color:var(--text-3);">—</span>
             </td>
-            <td style="font-size:0.78rem; color:var(--text-3);">[[ e.created_at || '—' ]]</td>
+            <td style="font-size:0.78rem; color:var(--text-3);">[[ formatDateTime(e.created_at, '—') ]]</td>
             <td>
               <button class="btn btn-sm"
                 style="color:var(--danger); border-color:var(--danger); background:transparent; padding:2px 8px; font-size:0.75rem;"
@@ -183,7 +183,8 @@
       loadPage(1)
 
       return { items, loading, page, pages, total, filter_type, filter_conversion,
-               loadPage, debounceLoad, typeIcon, reactionIcon, deleteEval }
+               loadPage, debounceLoad, typeIcon, reactionIcon, deleteEval,
+               formatDateTime: ctiDate.formatDateTime }
     }
   }).mount('#main-container')
 </script>

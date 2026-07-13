@@ -108,7 +108,7 @@
                                 </td>
                                 <td><span class="badge bg-primary">v[[ latest_pending.version ]]</span></td>
                                 <td><span class="badge bg-warning text-dark">Pending</span></td>
-                                <td style="color:var(--text-2);">[[ formatDate(latest_pending.created_at) ]]</td>
+                                <td style="color:var(--text-2);">[[ formatDateTime(latest_pending.created_at) ]]</td>
                                 <td class="text-truncate" style="max-width:250px; color:var(--text-2);">
                                     [[ latest_pending.comment || '—' ]]
                                 </td>
@@ -162,7 +162,7 @@
                                         [[ h.status ]]
                                     </span>
                                 </td>
-                                <td style="color:var(--text-2);">[[ formatDate(h.created_at) ]]</td>
+                                <td style="color:var(--text-2);">[[ formatDateTime(h.created_at) ]]</td>
                                 <td class="text-truncate" style="max-width:250px; color:var(--text-2);">
                                     [[ h.comment || '—' ]]
                                 </td>
@@ -295,15 +295,11 @@
                 window.location.href = `/conversions/difference/${id}`;
             }
 
-            function formatDate(str) {
-                if (!str) return 'N/A';
-                const d = new Date(str.replace(' ', 'T'));
-                return isNaN(d) ? str : d.toLocaleString();
-            }
+            const formatDateTime = ctiDate.formatDateTime;
 
             getHistory();
 
-            return { latest_pending, history_archive, goToDiff, historyAction, formatDate, message_list };
+            return { latest_pending, history_archive, goToDiff, historyAction, formatDateTime, message_list };
         }
     }).mount('#main-containers');
 </script>

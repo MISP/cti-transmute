@@ -182,11 +182,7 @@
     return { id: t.tag_id, name: t.tag_name || '', color: t.tag_color || null,
              icon: t.tag_icon || null, description: t.tag_description || '', visibility: t.tag_visibility || 'public' };
   }
-  function formatDate(str) {
-    if (!str) return '';
-    const d = new Date(str.replace(' ', 'T'));
-    return isNaN(d) ? str : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  }
+  const formatDate = ctiDate.formatDate;
 
   let _echartsPromise = null;
   function loadECharts() {

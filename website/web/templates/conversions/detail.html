@@ -66,7 +66,7 @@
                             {% endif %}
                             <span class="author-badge">
                                 <i class="fas fa-clock" style="font-size:0.65rem;"></i>
-                                [[ conversion.created_at ]]
+                                [[ formatDateTime(conversion.created_at) ]]
                             </span>
                         </div>
                     </div>
@@ -339,7 +339,7 @@
                             id="pre-input"><code class="language-json" id="input-code"></code></pre>
                         <div class="jt-root d-none" id="tree-input"></div>
                         <div class="code-panel-footer">
-                            <small style="color:var(--text-3);">Updated: [[ conversion.updated_at ]]</small>
+                            <small style="color:var(--text-3);">Updated: [[ formatDateTime(conversion.updated_at) ]]</small>
                         </div>
                     </div>
                 </div>
@@ -377,7 +377,7 @@
                             id="pre-output"><code class="language-json" id="output-code"></code></pre>
                         <div class="jt-root d-none" id="tree-output"></div>
                         <div class="code-panel-footer">
-                            <small style="color:var(--text-3);">Updated: [[ conversion.updated_at ]]</small>
+                            <small style="color:var(--text-3);">Updated: [[ formatDateTime(conversion.updated_at) ]]</small>
                         </div>
                     </div>
                 </div>
@@ -400,7 +400,7 @@
                                             [[ h.status ]]
                                         </span>
                                     </td>
-                                    <td style="color:var(--text-2);">[[ formatDate(h.created_at) ]]</td>
+                                    <td style="color:var(--text-2);">[[ formatDateTime(h.created_at) ]]</td>
                                     <td class="text-truncate" style="max-width:250px; color:var(--text-2);">[[ h.comment || '—' ]]</td>
                                 </tr>
                             </tbody>
@@ -563,7 +563,7 @@
                                         <div class="comment-header">
                                             <div class="comment-avatar">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
                                             <span class="comment-author">[[ comment.author ]]</span>
-                                            <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
+                                            <span class="comment-date">[[ formatDateTime(comment.created_at) ]]</span>
                                             <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                                         </div>
                                         <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
@@ -599,7 +599,7 @@
                                                 <div class="comment-header">
                                                     <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
                                                     <span class="comment-author">[[ reply.author ]]</span>
-                                                    <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
+                                                    <span class="comment-date">[[ formatDateTime(reply.created_at) ]]</span>
                                                     <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                                                 </div>
                                                 <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
@@ -709,7 +709,7 @@
                                 <div class="comment-header">
                                     <div class="comment-avatar comment-avatar--eval">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
                                     <span class="comment-author">[[ comment.author ]]</span>
-                                    <span class="comment-date">[[ formatDate(comment.created_at) ]]</span>
+                                    <span class="comment-date">[[ formatDateTime(comment.created_at) ]]</span>
                                     <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                                 </div>
                                 <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
@@ -745,7 +745,7 @@
                                         <div class="comment-header">
                                             <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
                                             <span class="comment-author">[[ reply.author ]]</span>
-                                            <span class="comment-date">[[ formatDate(reply.created_at) ]]</span>
+                                            <span class="comment-date">[[ formatDateTime(reply.created_at) ]]</span>
                                             <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                                         </div>
                                         <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
@@ -1275,11 +1275,7 @@
 
             function goToDiff(id) { window.location.href = `/conversions/difference/${id}` }
 
-            function formatDate(str) {
-                if (!str) return 'N/A'
-                const d = new Date(str.replace(' ', 'T'))
-                return isNaN(d) ? str : d.toLocaleString()
-            }
+            const formatDateTime = ctiDate.formatDateTime
 
             const getRawInput  = () => rawInput
             const getRawOutput = () => rawOutput
@@ -1555,7 +1551,7 @@
                 current_user_is_admin, copyText, downloadText,
                 is_favorite, toggleFavorite,
                 togglePublic, deleteConversion, regenerateShareKey,
-                goToDiff, formatDate, message_list, formatJson,
+                goToDiff, formatDateTime, message_list, formatJson,
                 getRawInput, getRawOutput,
                 // Comments
                 comments, comments_total, comments_loading,

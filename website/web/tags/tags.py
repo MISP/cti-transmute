@@ -7,7 +7,7 @@ from flask import (
     Blueprint, abort, current_app, redirect, render_template, request, url_for)
 from flask_login import current_user, login_required
 
-from website.db_class.db import Conversion, Tag
+from website.db_class.db import Conversion, Tag, utc_iso
 from website.lib import access
 from website.web import csrf, db
 from website.web.tags import bulk_jobs
@@ -468,7 +468,7 @@ def admin_bulk_conversions_list():
 
     items = [
         {"id": c.id, "name": c.name, "conversion_type": c.conversion_type,
-         "created_at": c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else "",
+         "created_at": utc_iso(c.created_at) or "",
          "tag_count": len(tag_map.get(c.id, []))}
         for c in pagination.items
     ]

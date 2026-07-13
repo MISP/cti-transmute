@@ -169,7 +169,7 @@
                             </span>
                         </td>
                         <td class="du-td-desc">[[ conv.description || '—' ]]</td>
-                        <td class="du-td-date">[[ conv.created_at ]]</td>
+                        <td class="du-td-date">[[ formatDateTime(conv.created_at) ]]</td>
                         <td>
                             <span class="du-visibility-pill"
                                   :class="conv.public ? 'du-vis-public' : 'du-vis-private'">
@@ -568,6 +568,7 @@
                 fetchConversions, onSearchInput, goTo,
                 changeAdminRight, openEditModal, saveEdit,
                 message_list,
+                formatDateTime: ctiDate.formatDateTime
             }
         }
     }).mount('#main-containers')

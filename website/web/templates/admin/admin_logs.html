@@ -103,7 +103,7 @@
               <span v-if="l.source==='system'">[[ l.target_name || '' ]] <span v-if="l.details" style="color:var(--text-3);">· [[ l.details ]]</span></span>
               <span v-else>[[ l.message ]]</span>
             </td>
-            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ l.created_at ]]</td>
+            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ formatDateTime(l.created_at) ]]</td>
             <td @click.stop>
               <button class="btn btn-sm btn-outline-danger" @click="deleteLog(l)" title="Delete">
                 <i class="fas fa-trash"></i>
@@ -278,6 +278,7 @@
         load, resetPage, debounceSearch,
         goToLog, deleteLog, deleteSelected, confirmDeleteAll,
         eventStyle, eventIcon,
+        formatDateTime: ctiDate.formatDateTime
       }
     }
   }).mount('#main-containers')

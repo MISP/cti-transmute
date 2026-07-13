@@ -49,7 +49,7 @@
           <i :class="n.type==='comment_reply' ? 'fas fa-reply' : n.type==='new_follow_conversion' ? 'fas fa-bolt' : 'fas fa-flag'"></i>
         </div>
         <div class="notif-message" @click="clickNotif(n)">[[ n.message ]]</div>
-        <div class="notif-date" @click="clickNotif(n)">[[ n.created_at ]]</div>
+        <div class="notif-date" @click="clickNotif(n)">[[ formatDateTime(n.created_at) ]]</div>
         <div v-if="!n.is_read" class="unread-dot" @click="clickNotif(n)"></div>
         <button class="notif-delete-btn" @click.stop="deleteNotif(n)" title="Delete">
           <i class="fas fa-times"></i>
@@ -142,7 +142,8 @@
       }
 
       onMounted(load)
-      return { notifications, loading, page, total_page, only_unread, search, unread_count, load, debounceSearch, markAllRead, clickNotif, deleteNotif, message_list }
+      return { notifications, loading, page, total_page, only_unread, search, unread_count, load, debounceSearch, markAllRead, clickNotif, deleteNotif, message_list,
+               formatDateTime: ctiDate.formatDateTime }
     }
   }).mount('#main-containers')
 </script>

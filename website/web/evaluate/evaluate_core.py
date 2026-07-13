@@ -510,7 +510,7 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
         eval_comments.append({
             'author':     u.first_name if u else 'Anonymous',
             'content':    c.content,
-            'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
+            'created_at': c.created_at.strftime('%Y-%m-%d %H:%M UTC') if c.created_at else ''
         })
 
     source_fmt = 'MISP'     if conversion.conversion_type == 'MISP_TO_STIX' else 'STIX 2.1'
@@ -525,7 +525,7 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
             'type':        conversion.conversion_type,
             'source_fmt':  source_fmt,
             'target_fmt':  target_fmt,
-            'created_at':  conversion.created_at.strftime('%Y-%m-%d %H:%M') if conversion.created_at else '',
+            'created_at':  conversion.created_at.strftime('%Y-%m-%d %H:%M UTC') if conversion.created_at else '',
             'public':      conversion.public,
         },
         'generated_at': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),

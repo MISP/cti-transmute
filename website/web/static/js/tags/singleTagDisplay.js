@@ -71,7 +71,8 @@ const SingleTagDisplay = {
             tooltip.style.top = (r.top - 10) + 'px';
         }
 
-        return { getTextColor, mapIcon, resolvedColor, label, hlLabel, positionTooltip };
+        return { getTextColor, mapIcon, resolvedColor, label, hlLabel, positionTooltip,
+                 formatDate: ctiDate.formatDate };
     },
 
     template: `
@@ -120,7 +121,7 @@ const SingleTagDisplay = {
                             [[ tag.visibility || 'private' ]]
                         </span>
                         <span v-if="tag.created_at" class="text-white-50">
-                            <i class="far fa-calendar-alt me-1"></i>[[ tag.created_at ]]
+                            <i class="far fa-calendar-alt me-1"></i>[[ formatDate(tag.created_at) ]]
                         </span>
                     </div>
                 </div>

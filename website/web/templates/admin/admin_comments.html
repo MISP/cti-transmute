@@ -88,7 +88,7 @@
                 [[ c.is_private ? 'Private' : 'Public' ]]
               </span>
             </td>
-            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ c.created_at ]]</td>
+            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ formatDateTime(c.created_at) ]]</td>
             <td>
               <div class="d-flex gap-1">
                 <a v-if="c.is_reply && c.conversion_active"
@@ -162,7 +162,8 @@
       }
 
       onMounted(load)
-      return { comments, loading, page, total_page, search, load, debounceSearch, deleteComment, message_list }
+      return { comments, loading, page, total_page, search, load, debounceSearch, deleteComment, message_list,
+               formatDateTime: ctiDate.formatDateTime }
     }
   }).mount('#main-containers')
 </script>

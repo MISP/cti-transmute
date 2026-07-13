@@ -79,7 +79,7 @@
                     [[ c.conversion_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
                   </span>
                 </td>
-                <td style="color:var(--text-3);">[[ c.created_at ]]</td>
+                <td style="color:var(--text-3);">[[ formatDateTime(c.created_at) ]]</td>
                 <td style="text-align:center;">
                   <span v-if="c.tag_count > 0" class="badge" style="background:var(--surface-2);color:var(--text-2);font-size:0.72rem;">[[ c.tag_count ]]</span>
                   <span v-else style="color:var(--text-3);font-size:0.75rem;">—</span>
@@ -396,6 +396,7 @@ createApp({
         clearTimeout(this._rmTagDebounce);
     },
     methods: {
+        formatDateTime: ctiDate.formatDateTime,
         async loadConversions() {
             this.loading = true;
             try {

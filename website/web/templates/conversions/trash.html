@@ -106,7 +106,7 @@
                         </span>
                     </td>
                     <td style="color:var(--text-3); font-size:0.8rem; white-space:nowrap;">
-                        <i class="fas fa-clock me-1" style="opacity:0.5;"></i>[[ c.deleted_at || '—' ]]
+                        <i class="fas fa-clock me-1" style="opacity:0.5;"></i>[[ formatDateTime(c.deleted_at, '—') ]]
                     </td>
                     <td>
                         <div class="d-flex gap-2 align-items-center">
@@ -236,7 +236,8 @@
 
             onMounted(load)
             return { list, loading, page, total_page, total_count, search, selected, allSelected,
-                     load, debounceSearch, toggleSelect, toggleSelectAll, clearSelection, doAction, bulkAction, message_list }
+                     load, debounceSearch, toggleSelect, toggleSelectAll, clearSelection, doAction, bulkAction, message_list,
+                     formatDateTime: ctiDate.formatDateTime }
         }
     }).mount('#main-containers')
 </script>

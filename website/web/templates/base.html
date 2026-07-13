@@ -155,10 +155,8 @@
     <script src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
     <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/datetime.js') }}"></script>
     <script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dayjs/dayjs.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dayjs/dayjs-utc.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dayjs/dayjs-relativeTime.js') }}"></script>
 
     <script>
 
@@ -352,7 +350,7 @@
 
                         const date = document.createElement('div')
                         date.className = 'notif-panel-item-date'
-                        date.textContent = n.created_at
+                        date.textContent = ctiDate.formatDateTime(n.created_at, '')
 
                         body.append(msg, date)
                         item.append(icon, body)

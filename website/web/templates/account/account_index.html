@@ -140,7 +140,7 @@
                     <i class="fas fa-external-link-alt me-1"></i>[[ c.conversion_name ]]
                   </a>
                   <span v-else class="my-comment-conversion-link" style="cursor:default; opacity:0.6;">[[ c.conversion_name ]]</span>
-                  <span class="comment-date">[[ c.created_at ]]</span>
+                  <span class="comment-date">[[ formatDateTime(c.created_at) ]]</span>
                   <span v-if="c.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                   <span v-if="c.has_replies" class="has-reply-badge"><i class="fas fa-reply"></i> Has replies</span>
                   <div class="d-flex gap-1 ms-auto">
@@ -503,6 +503,7 @@
         followers_search, debounceFollowers, loadFollowers,
         followSearch, followResults, followSearchLoading, followPage, followTotalPage,
         debounceFollowSearch, runFollowSearch, toggleFollowModal,
+        formatDateTime: ctiDate.formatDateTime
       }
     }
   }).mount('#main-containers')

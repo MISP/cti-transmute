@@ -81,7 +81,7 @@
                     <div class="d-flex flex-column gap-2" style="font-size:0.82rem; color:var(--text-2);">
                         <div>
                             <i class="fas fa-clock me-2" style="color:var(--text-3); width:14px;"></i>
-                            <span>[[ formatDate(historyObj.created_at) ]]</span>
+                            <span>[[ formatDateTime(historyObj.created_at) ]]</span>
                         </div>
                         <div>
                             <i class="fa-solid fa-circle me-2" style="color:var(--text-3); width:14px;"></i>
@@ -525,11 +525,7 @@
                 }
             }
 
-            function formatDate(str) {
-                if (!str) return 'N/A';
-                const d = new Date(str.replace(' ', 'T'));
-                return isNaN(d) ? str : d.toLocaleString();
-            }
+            const formatDateTime = ctiDate.formatDateTime;
 
             function copyText(text, event) {
                 const btn = event.target.closest('button');
@@ -556,7 +552,7 @@
                 old_result, new_result, leftHtml, rightHtml,
                 historyObj, panelHeight, filterMode, stats,
                 is_loading, historyAction, toggleFilter,
-                copyText, formatDate, paramsState, fmtParam
+                copyText, formatDateTime, paramsState, fmtParam
             };
         }
     }).mount('#main-containers');
