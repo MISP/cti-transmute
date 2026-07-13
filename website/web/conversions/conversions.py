@@ -1019,30 +1019,20 @@ def difference(id):
         flash("Conversion not found.", "danger")
         return redirect(url_for("conversions.history"))
     
-    if conversion_obj.public:
-        if current_user.is_anonymous():
-            flash("You must be logged in to view this conversion if you are the owner of this conversion.", "warning")
-            return redirect(url_for("account.login"))  
+    if not access.can_see(current_user, conversion_obj):
+        if not current_user.is_authenticated:
+            flash("You must be logged in to view this conversion.", "warning")
+            return redirect(url_for("account.login"))
+        flash("You do not have permission to view this conversion.", "danger")
+        return redirect(url_for("conversions.history"))
 
-        if current_user.id != conversion_obj.user_id and not current_user.is_admin():
-            flash("You do not have permission to view this conversion.", "danger")
-            return redirect(url_for("conversions.history"))
-        
-        return render_template(
-            "conversions/compare_version/difference.html",
-            old_result=conversion_obj_history.old_output_text,
-            new_result=conversion_obj_history.new_output_text,
-            conversion_obj=conversion_obj,
-            history_id=conversion_obj_history.id
-        )
-    else:
-        return render_template(
-            "conversions/compare_version/difference.html",
-            old_result=conversion_obj_history.old_output_text,
-            new_result=conversion_obj_history.new_output_text,
-            conversion_obj=conversion_obj,
-            history_id=conversion_obj_history.id
-        )
+    return render_template(
+        "conversions/compare_version/difference.html",
+        old_result=conversion_obj_history.old_output_text,
+        new_result=conversion_obj_history.new_output_text,
+        conversion_obj=conversion_obj,
+        history_id=conversion_obj_history.id
+    )
 
 # get_history_details
 @conversions_blueprint.route("/get_history_details", methods=['GET'])
