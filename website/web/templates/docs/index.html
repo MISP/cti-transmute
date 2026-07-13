@@ -33,6 +33,7 @@
                 <a class="dc-toc-link" href="#api-list">List converters</a>
                 <a class="dc-toc-link" href="#api-m2s">MISP → STIX</a>
                 <a class="dc-toc-link" href="#api-s2m">STIX → MISP</a>
+                <a class="dc-toc-link" href="#api-persist">Persistence</a>
             </div>
         </div>
         <div class="dc-toc-section">
@@ -305,7 +306,7 @@ website/
                             <tr><td><span class="dc-field-name">email</span></td><td><span class="dc-field-type">String(64)</span></td><td>Unique, used for login</td></tr>
                             <tr><td><span class="dc-field-name">password</span></td><td><span class="dc-field-type">String(300)</span></td><td>bcrypt hash</td></tr>
                             <tr><td><span class="dc-field-name">role</span></td><td><span class="dc-field-type">String(36)</span></td><td><code>"user"</code> or <code>"admin"</code></td></tr>
-                            <tr><td><span class="dc-field-name">api_key</span></td><td><span class="dc-field-type">String(60)</span></td><td>Bearer token for REST API</td></tr>
+                            <tr><td><span class="dc-field-name">api_key</span></td><td><span class="dc-field-type">String(60)</span></td><td>REST API key, sent in the <code>X-API-KEY</code> header</td></tr>
                             <tr><td><span class="dc-field-name">is_connected</span></td><td><span class="dc-field-type">Boolean</span></td><td>Online status flag</td></tr>
                             <tr><td><span class="dc-field-name">created_at / last_seen</span></td><td><span class="dc-field-type">DateTime</span></td><td>UTC timestamps</td></tr>
                         </tbody>
@@ -472,15 +473,16 @@ website/
         <section class="dc-section" id="rest-api">
             <h2 class="dc-section-title"><i class="fas fa-plug"></i> REST API</h2>
             <p class="dc-lead">
-                The conversion REST API runs on <strong>port 6868</strong> via the Pivotick service.
-                It is also proxied internally by Flask — call it from Flask at
-                <code>http://127.0.0.1:6868/api/convert/...</code>.
+                The REST API is part of the same Flask app as the web UI, on
+                <strong>port 6868</strong>, under <code>/api/convert/...</code>.
             </p>
 
             <div class="dc-note">
                 <i class="fas fa-circle-info"></i>
-                Authentication is via <strong>Bearer token</strong>: send the user's <code>api_key</code>
-                in the <code>Authorization</code> header. Some endpoints are public.
+                Authentication is <strong>optional</strong>: send your <code>api_key</code> in the
+                <strong><code>X-API-KEY</code></strong> header to act as your account. Without the
+                header the call is anonymous; a wrong key is rejected with <strong>403</strong>
+                rather than treated as anonymous.
             </div>
 
             <!-- List -->
@@ -503,13 +505,37 @@ website/
                     </div>
                     <pre><code class="language-json">{
     "available": {
-        "misp_to_stix": {
-            "version": ["2.1"],
-            "description": "Convert a MISP event to a STIX 2.1 bundle"
+        "/api/convert/misp_to_stix": {
+            "source": "misp",
+            "target": "stix",
+            "method": "POST",
+            "description": "Convert a MISP data collection to STIX format.",
+            "params_schema": {
+                "additionalProperties": false,
+                "properties": {
+                    "version": {
+                        "default": "2.1",
+                        "description": "STIX specification version of the generated bundle.",
+                        "enum": ["2.0", "2.1"],
+                        "title": "STIX Version",
+                        "type": "string"
+                    }
+                },
+                "title": "MispToStixParams",
+                "type": "object"
+            }
         },
-        "stix_to_misp": {
-            "params": ["distribution", "galaxies_as_tags", "single_event", "..."],
-            "description": "Convert a STIX bundle to a MISP event"
+        "/api/convert/stix_to_misp": {
+            "source": "stix",
+            "target": "misp",
+            "method": "POST",
+            "description": "Convert a STIX data collection to MISP format.",
+            "params_schema": {
+                "additionalProperties": false,
+                "properties": { "distribution": { "..." : "..." }, "galaxies_as_tags": { "..." : "..." }, "..." : "..." },
+                "title": "StixToMispParams",
+                "type": "object"
+            }
         }
     }
 }</code></pre>
@@ -526,7 +552,7 @@ website/
                             <code class="dc-route-path">/api/convert/misp_to_stix?version=2.1</code>
                             <p class="dc-route-desc">Convert a MISP JSON event to a STIX 2.1 bundle. Body is the raw MISP JSON.</p>
                         </div>
-                        <div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div>
+                        <div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public · key optional</span></div>
                     </div>
                 </div>
 
@@ -607,7 +633,7 @@ website/
                             <code class="dc-route-path">/api/convert/stix_to_misp</code>
                             <p class="dc-route-desc">Convert a STIX 2.x bundle to a MISP event. All params are query strings.</p>
                         </div>
-                        <div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div>
+                        <div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public · key optional</span></div>
                     </div>
                 </div>
 
@@ -646,6 +672,31 @@ website/
 }</code></pre>
                 </div>
             </div>
+
+            <!-- Persistence -->
+            <div class="dc-subsection" id="api-persist">
+                <div class="dc-subsection-title">Saving the result — <code>?persist=true</code></div>
+                <p class="dc-lead">
+                    Both convert routes are <strong>stateless by default</strong>: the response body is the
+                    converted document and nothing is saved. Add <code>?persist=true</code> to save the
+                    result as a Conversion with the full catalogue treatment (History, refresh/diff,
+                    Share link, comments) — owned by your account when the call carries an
+                    <code>X-API-KEY</code> header, saved anonymously otherwise. The response is then an
+                    envelope instead of the bare document:
+                </p>
+                <div class="dc-code-block">
+                    <div class="dc-code-head">
+                        <span class="dc-code-label"><i class="fas fa-arrow-down"></i> Response (persisted)</span>
+                        <button class="dc-code-copy" onclick="dcCopy(this)"><i class="fas fa-copy"></i> Copy</button>
+                    </div>
+                    <pre><code class="language-json">{
+    "conversion": { "type": "bundle", "id": "bundle--...", "objects": [ "..." ] },
+    "id": 42,
+    "uuid": "5bf21cfe-487e-431d-9514-773a9365cde1",
+    "url": "/conversions/42"
+}</code></pre>
+                </div>
+            </div>
         </section>
 
         <!-- ── WEB ROUTES — CONVERSIONS ──────────────────────────────── -->
@@ -664,10 +715,10 @@ website/
             <div class="dc-subsection">
                 <div class="dc-subsection-title">Conversion</div>
                 <div class="dc-routes">
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/misp_to_stix</code><p class="dc-route-desc">Submit a MISP JSON for conversion. Params: <code>stix_version</code>, <code>name</code>, <code>description</code>, <code>public</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/stix_to_misp</code><p class="dc-route-desc">Submit a STIX bundle. Same params plus all STIX→MISP options (distribution, galaxies_as_tags, etc.).</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/fetch_misp_event</code><p class="dc-route-desc">Fetch a MISP event from a remote MISP instance via restSearch. Body: <code>misp_url</code>, <code>misp_key</code>, <code>event_id</code>.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/misp_search_events</code><p class="dc-route-desc">Search events on a remote MISP by info/tag/date. Returns a list of matching events.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/misp_to_stix</code><p class="dc-route-desc">Submit a MISP JSON for conversion. JSON body: <code>payload</code>, <code>params</code> (schema-driven, e.g. <code>version</code>), <code>name</code>, <code>description</code>, <code>public</code>, <code>tag_ids</code>.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/stix_to_misp</code><p class="dc-route-desc">Submit a STIX bundle. Same JSON body; <code>params</code> carries the STIX→MISP options (distribution, galaxies_as_tags, …).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/fetch_misp_event</code><p class="dc-route-desc">Fetch MISP events from a remote MISP instance via restSearch. Body: <code>misp_url</code>, <code>api_key</code>, <code>event_id</code> (or <code>event_ids</code>).</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/misp_search_events</code><p class="dc-route-desc">Search events on a remote MISP by info/tag/date. Returns a list of matching events.</p></div><div class="dc-route-auth"><span class="dc-auth public"><i class="fas fa-globe"></i> Public</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/conversions/refresh/&lt;uuid&gt;</code><p class="dc-route-desc">Re-run a conversion with the original input and show a diff preview.</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/conversions/refresh</code><p class="dc-route-desc">Accept or reject a pending history version. Body: <code>history_id</code>, <code>action</code> (<code>"accept"</code> | <code>"reject"</code>).</p></div><div class="dc-route-auth"><span class="dc-auth auth"><i class="fas fa-lock"></i> Auth</span></div></div>
                 </div>
