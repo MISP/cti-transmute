@@ -364,11 +364,12 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
 
 
 def accept_history(user, history: ConversionHistory) -> ConversionHistory:
-    """Accept a pending refresh: adopt its output onto the Conversion.
+    """Accept a pending refresh: adopt its output and params onto the Conversion.
 
     Owner-or-admin only (``assert_can_moderate``). Marks the history row
-    ``accepted`` and copies its ``new_output_text`` onto the parent Conversion
-    (the established 'accept the refresh' meaning), atomically with the audit log.
+    ``accepted`` and copies its ``new_output_text`` and ``params`` onto the
+    parent Conversion (``Conversion.params`` stays "the params the conversion
+    ran with"), atomically with the audit log.
     """
     conversion = history.conversion
     assert_can_moderate(user, conversion)
@@ -376,6 +377,7 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
     now = datetime.now(timezone.utc)
     conv_repo.set_history_status(history, "accepted", commit=False)
     conversion.output_text = history.new_output_text
+    conversion.params = history.params
     conversion.updated_at = now
     _record_activity(
         "conversion_history_accepted", user, "conversion_history", history.id,
