@@ -25,115 +25,115 @@
         </div>
     </div>
 
-    <form id="convert-form" class="mb-4" novalidate>
+    <div class="custom-card p-4 mb-4">
+        <form id="convert-form" novalidate>
 
-        <!-- STIX INPUT TABS -->
-        <div class="row mb-3">
-            <div class="col-md-12">
-                <label class="form-label">STIX Input <span class="text-danger">*</span></label>
-                <div class="input-tab-container">
-                    <div class="input-tab-header">
-                        <button type="button" class="input-tab-btn active" data-tab="paste">
-                            <i class="fas fa-paste me-1"></i> Paste JSON
-                        </button>
-                        <button type="button" class="input-tab-btn" data-tab="file">
-                            <i class="fas fa-upload me-1"></i> Upload File
-                        </button>
-                    </div>
-                    <div class="input-tab-body">
-                        <!-- PASTE TAB -->
-                        <div class="input-tab-pane active" id="tab-paste">
-                            <div class="json-editor-wrapper">
-                                <div class="json-editor-toolbar">
-                                    <span class="json-editor-label">
-                                        <i class="fas fa-code me-1"></i> JSON
-                                    </span>
-                                    <div class="json-editor-actions">
-                                        <button type="button" class="json-action-btn" id="btn-format">
-                                            <i class="fas fa-align-left me-1"></i> Format
-                                        </button>
-                                        <button type="button" class="json-action-btn" id="btn-clear">
-                                            <i class="fas fa-times me-1"></i> Clear
+            <!-- STIX INPUT TABS -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label class="form-label cf-label">STIX Input <span class="text-danger">*</span></label>
+                    <div class="input-tab-container">
+                        <div class="input-tab-header">
+                            <button type="button" class="input-tab-btn active" data-tab="paste">
+                                <i class="fas fa-paste me-1"></i> Paste JSON
+                            </button>
+                            <button type="button" class="input-tab-btn" data-tab="file">
+                                <i class="fas fa-upload me-1"></i> Upload File
+                            </button>
+                        </div>
+                        <div class="input-tab-body">
+                            <!-- PASTE TAB -->
+                            <div class="input-tab-pane active" id="tab-paste">
+                                <div class="json-editor-wrapper">
+                                    <div class="json-editor-toolbar">
+                                        <span class="json-editor-label">
+                                            <i class="fas fa-code me-1"></i> JSON
+                                        </span>
+                                        <div class="json-editor-actions">
+                                            <button type="button" class="json-action-btn" id="btn-format">
+                                                <i class="fas fa-align-left me-1"></i> Format
+                                            </button>
+                                            <button type="button" class="json-action-btn" id="btn-clear">
+                                                <i class="fas fa-times me-1"></i> Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <textarea class="json-editor" id="stix_content" name="stix_content"
+                                        placeholder='{&#10; "type": "bundle",&#10; "objects": [&#10; ...&#10; ]&#10;}'
+                                        rows="14" spellcheck="false"></textarea>
+                                    <div class="json-editor-footer">
+                                        <span id="json-status" class="json-status"></span>
+                                        <span id="json-chars" class="json-chars">0 chars</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- FILE TAB -->
+                            <div class="input-tab-pane" id="tab-file">
+                                <div class="file-drop-zone" id="drop-zone">
+                                    <input type="file" id="file" name="file" accept=".json" class="file-drop-input">
+                                    <div class="file-drop-content">
+                                        <i class="fas fa-cloud-upload-alt file-drop-icon"></i>
+                                        <p class="file-drop-text">Drag & drop your STIX JSON file here</p>
+                                        <p class="file-drop-subtext">or</p>
+                                        <label for="file" class="btn-browse">Browse file</label>
+                                        <p class="file-drop-hint">.json files only</p>
+                                    </div>
+                                    <div class="file-selected-info d-none" id="file-info">
+                                        <i class="fas fa-file-code file-selected-icon"></i>
+                                        <span id="file-name" class="file-selected-name"></span>
+                                        <button type="button" class="file-remove-btn" id="btn-remove-file">
+                                            <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                 </div>
-                                <textarea class="json-editor" id="stix_content" name="stix_content"
-                                    placeholder='{&#10; "type": "bundle",&#10; "objects": [&#10; ...&#10; ]&#10;}'
-                                    rows="14" spellcheck="false"></textarea>
-                                <div class="json-editor-footer">
-                                    <span id="json-status" class="json-status"></span>
-                                    <span id="json-chars" class="json-chars">0 chars</span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- FILE TAB -->
-                        <div class="input-tab-pane" id="tab-file">
-                            <div class="file-drop-zone" id="drop-zone">
-                                <input type="file" id="file" name="file" accept=".json" class="file-drop-input">
-                                <div class="file-drop-content">
-                                    <i class="fas fa-cloud-upload-alt file-drop-icon"></i>
-                                    <p class="file-drop-text">Drag & drop your STIX JSON file here</p>
-                                    <p class="file-drop-subtext">or</p>
-                                    <label for="file" class="btn-browse">Browse file</label>
-                                    <p class="file-drop-hint">.json files only</p>
-                                </div>
-                                <div class="file-selected-info d-none" id="file-info">
-                                    <i class="fas fa-file-code file-selected-icon"></i>
-                                    <span id="file-name" class="file-selected-name"></span>
-                                    <button type="button" class="file-remove-btn" id="btn-remove-file">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Name + description (fixed submission envelope) -->
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <label class="form-label" for="conv-name">Name</label>
-                <input type="text" class="form-control" id="conv-name" name="name"
-                    placeholder="Enter a name for the conversion"
-                    style="background-color:var(--color-navbar); color:var(--color-text);">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label" for="conv-description">Description</label>
-                <textarea class="form-control" id="conv-description" name="description"
-                    placeholder="Optional description..."
-                    style="background-color:var(--color-navbar); color:var(--color-text);"></textarea>
-            </div>
-        </div>
-
-        <!-- Converter parameters — rendered from the Parameter schema -->
-        <div class="mb-3">
-            <label class="form-label d-block mb-2">Parameters</label>
-            <div id="param-surface"></div>
-        </div>
-
-        <!-- Public switch + tags -->
-        <div class="row mb-3">
-            <div class="col-md-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="publicSwitch" name="public" checked>
-                    <label class="form-check-label" for="publicSwitch">Public</label>
+            <!-- Name + description (fixed submission envelope) -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label cf-label" for="conv-name">Name</label>
+                    <input type="text" class="form-control" id="conv-name" name="name"
+                        placeholder="Enter a name for the conversion">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label cf-label" for="conv-description">Description</label>
+                    <textarea class="form-control" id="conv-description" name="description"
+                        placeholder="Optional description..."></textarea>
                 </div>
             </div>
-        </div>
 
-        {% if current_user.is_authenticated %}
-        <div class="mb-4">
-            <input type="hidden" name="tag_ids" id="tag-ids-hidden-s2m">
-            <div id="tag-input-mount-s2m"></div>
-        </div>
-        {% endif %}
+            <!-- Converter parameters — rendered from the Parameter schema -->
+            <div class="mb-3">
+                <label class="form-label cf-label d-block mb-2">Parameters</label>
+                <div id="param-surface"></div>
+            </div>
 
-        <button type="submit" id="convert-submit" class="btn btn-primary">
-            <i class="fas fa-exchange-alt me-1"></i> Conversion
-        </button>
-    </form>
+            <!-- Public switch + tags -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="publicSwitch" name="public" checked>
+                        <label class="form-check-label" for="publicSwitch">Public</label>
+                    </div>
+                </div>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <div class="mb-4">
+                <input type="hidden" name="tag_ids" id="tag-ids-hidden-s2m">
+                <div id="tag-input-mount-s2m"></div>
+            </div>
+            {% endif %}
+
+            <button type="submit" id="convert-submit" name="convert" class="btn btn-primary fw-semibold">
+                <i class="fas fa-exchange-alt me-1"></i> Conversion
+            </button>
+        </form>
+    </div>
 
     <!-- Error surface (populated by the fetch submit) -->
     <div class="custom-card mb-4 cf-error-card d-none" id="convert-error">
