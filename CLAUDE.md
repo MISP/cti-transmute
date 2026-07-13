@@ -20,22 +20,31 @@ Features: `conversions`, `evaluate`, `tags`, `account`.
 `website/lib/` is the other shelf inside `website/`: cross-cutting **service**
 logic that bridges Flask and the engine but isn't a UI feature — the conversion
 use-cases (`conversions.py` → `submit_conversion`), the service-layer exceptions
-(`exceptions.py` → `PersistenceFailed`, `InvalidApiKey`), and API auth (`auth.py`
-→ `resolve_api_actor` / `@api_actor`). It may import Flask (`db`, `g`) but holds
-no routes or templates. New cross-cutting *service/use-case* logic belongs here;
-*aggregate persistence* (DB reads/writes) belongs in the sibling `website/repos/`
-shelf (e.g. `conversions.py`) — neither goes in a feature trio or the Flask-free
-`cti_transmute/`.
+(`exceptions.py` → `PersistenceFailed`, `InvalidApiKey`), API auth (`auth.py`
+→ `resolve_api_actor` / `@api_actor`), authorization rules (`access.py`), the
+remote-MISP request helper (`misp.py`), and param plumbing (`params.py`). It may
+import Flask (`db`, `g`) but holds no routes or templates. New cross-cutting
+*service/use-case* logic belongs here; *aggregate persistence* (DB reads/writes)
+belongs in the sibling `website/repos/` shelf (e.g. `conversions.py`) — neither
+goes in a feature trio or the Flask-free `cti_transmute/`.
 
-## Source of truth
+## Vocabulary
 
-The architecture is mid-refactor, so trust the docs over the current code, and
-dig layer/feature specifics out of the code when you get there rather than from here:
-- **`CONTEXT.md`** — domain glossary; canonical terms. (The code's `Convert` /
-  `convert` is becoming **Conversion** = the record and **Converter** = the engine.)
-- **`docs/adr/`** — decisions already made; don't re-litigate them.
-- **`.scratch/<feature>/`** — in-flight plans (PRD + issues), e.g.
-  `conversion-use-case-refactor/`.
+**`CONTEXT.md`** is the domain glossary — canonical terms. The short version:
+**Conversion** is the saved record (the catalogue entry); **Converter** is the
+engine that performs one direction (MISP→STIX, STIX→MISP). "convert" survives
+only as the verb and in the public URLs (`/api/convert/...`, the legacy
+`/convert` blueprint).
+
+## Maintainer-local docs
+
+The maintainer's checkout carries design docs that are deliberately **not
+committed**: `docs/adr/` (settled decisions — don't re-litigate them),
+`docs/architecture-roadmap.md`, `docs/handoff/`, `docs/architecture-review/`,
+`docs/agents/` (agent-skill config), and `.scratch/<feature>/` (plans + issue
+tickets). ADR references in this file and in tickets point there, and the
+*Agent skills* section below assumes them. If those files are absent from your
+checkout, the code, `CONTEXT.md`, and this file stand alone.
 
 ---
 
