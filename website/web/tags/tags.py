@@ -1,4 +1,5 @@
 import functools
+import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,15 @@ def _fa_solid_icons():
     if not svg_dir.exists():
         return []
     return sorted(f.stem for f in svg_dir.glob("*.svg"))
+
+
+def _icon_is_valid(icon):
+    """The icon slug ends up in a FontAwesome class name client-side, so only
+    catalogue slugs are accepted (bare-slug regex if the catalogue is absent)."""
+    icons = _fa_solid_icons()
+    if icons:
+        return icon in icons
+    return bool(re.fullmatch(r"[a-z0-9-]{1,40}", icon))
 
 
 tags_blueprint = Blueprint(
@@ -293,6 +303,8 @@ def admin_edit(tag_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
     data = request.get_json(silent=True) or {}
+    if data.get("icon") and not _icon_is_valid(data["icon"]):
+        return {"success": False, "message": "Unknown icon", "toast_class": "danger"}, 400
     tag, err = TagsModel.edit_tag(tag_id, current_user.id, is_admin=True, **data)
     if tag:
         changed = [k for k in ("name", "description", "color", "icon", "source", "visibility", "is_active", "is_approved_by_admin", "is_evaluation_tag") if k in data and data[k] is not None]
@@ -320,6 +332,10 @@ def create_tag():
     if source not in ("Manual", "Vulnerability"):
         source = "Manual"
 
+    icon = data.get("icon") or None
+    if icon and not _icon_is_valid(icon):
+        return {"success": False, "message": "Unknown icon", "toast_class": "danger"}, 400
+
     if Tag.query.filter_by(name=name).first():
         return {"success": False, "message": "A tag with this name already exists", "toast_class": "warning"}, 409
 
@@ -332,7 +348,7 @@ def create_tag():
         name=name,
         description=data.get("description"),
         color=data.get("color"),
-        icon=data.get("icon"),
+        icon=icon,
         source=source,
         created_by=current_user.id,
         visibility="public" if auto_approve else "private",

@@ -84,7 +84,7 @@ const SingleTagDisplay = {
             @dblclick.stop="$emit('dblclick')"
         >
             <span class="tag-split shadow-sm on-hover-zoom">
-                <span class="tag-left" v-html="mapIcon(tag.icon)"></span>
+                <span class="tag-left"><i :class="mapIcon(tag.icon)"></i></span>
                 <span
                     class="tag-right"
                     :style="{ backgroundColor: resolvedColor(tag) }"
@@ -103,7 +103,7 @@ const SingleTagDisplay = {
                     class="tooltip-header"
                     :style="{ borderLeft: '4px solid ' + resolvedColor(tag) }"
                 >
-                    <span v-html="mapIcon(tag.icon)" class="me-1 text-white"></span>
+                    <span class="me-1 text-white"><i :class="mapIcon(tag.icon)"></i></span>
                     <strong class="text-white">[[ tag.name ]]</strong>
                 </div>
                 <div class="tooltip-body">
