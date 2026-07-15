@@ -120,7 +120,9 @@ class Conversion(db.Model):
         return func.upper(cls.source_format + "_to_" + cls.target_format)
 
     def get_user_name_by_id(self):
-        user = User.query.get(self.user_id)  
+        if self.user_id is None:
+            return None
+        user = db.session.get(User, self.user_id)
         return user.first_name if user else None
 
     def to_json(self):
