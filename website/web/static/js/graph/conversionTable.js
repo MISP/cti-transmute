@@ -4,6 +4,7 @@
 //  Features: search, column sort, pagination, click-row → JsonViewer panel.
 // ─────────────────────────────────────────────────────────────────────────────
 import JsonViewer from '/static/js/graph/jsonViewer.js'
+import { highlightMatches } from './searchHighlight.js'
 
 const PAGE_SIZE = 50
 
@@ -263,10 +264,7 @@ const ConversionTable = {
         function stixColor(type) { return STIX_COLORS[type] || '#64748b' }
 
         function highlight(text) {
-            if (!search.value) return text
-            const q = search.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            const re = new RegExp(`(${q})`, 'gi')
-            return text.replace(re, '<mark class="ctbl-mark">$1</mark>')
+            return highlightMatches(text, search.value)
         }
 
         const filteredRows = computed(() => {
