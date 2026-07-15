@@ -1,14 +1,21 @@
 import functools
+import re
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
-from flask import Blueprint, render_template, request, abort
+from flask import (
+    Blueprint, abort, current_app, redirect, render_template, request, url_for)
 from flask_login import current_user, login_required
 
-from website.db_class.db import Convert, Tag
-from website.web import csrf
-from . import tags_core as TagsModel
-from ..account import account_core as AccountModel
+from website.db_class.db import Conversion, Tag, utc_iso
+from website.lib import access
+from website.web import csrf, db
+from website.web.tags import bulk_jobs
 from website.web.utils import extract_tag_names_from_misp_json
+
+from ..account import account_core as AccountModel
+from . import tags_core as TagsModel
 
 
 @functools.lru_cache(maxsize=1)
@@ -17,6 +24,15 @@ def _fa_solid_icons():
     if not svg_dir.exists():
         return []
     return sorted(f.stem for f in svg_dir.glob("*.svg"))
+
+
+def _icon_is_valid(icon):
+    """The icon slug ends up in a FontAwesome class name client-side, so only
+    catalogue slugs are accepted (bare-slug regex if the catalogue is absent)."""
+    icons = _fa_solid_icons()
+    if icons:
+        return icon in icons
+    return bool(re.fullmatch(r"[a-z0-9-]{1,40}", icon))
 
 
 tags_blueprint = Blueprint(
@@ -159,13 +175,12 @@ def admin_import_galaxies():
     }, 200
 
 
-@tags_blueprint.route("/admin/vendor_status", methods=["GET"])
+@tags_blueprint.route("/admin/submodule_status", methods=["GET"])
 @login_required
-def admin_vendor_status():
-    """Return commit SHA + date for each MISP vendor submodule."""
+def admin_submodule_status():
+    """Return commit SHA + date for each MISP dataset submodule."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    import subprocess
 
     def _git_info(path):
         try:
@@ -183,7 +198,7 @@ def admin_vendor_status():
 
     return {
         "success":    True,
-        "taxonomies": _git_info(TagsModel.VENDOR_PATH),
+        "taxonomies": _git_info(TagsModel.TAXONOMIES_PATH),
         "galaxies":   _git_info(TagsModel.GALAXY_PATH),
     }, 200
 
@@ -191,14 +206,13 @@ def admin_vendor_status():
 @tags_blueprint.route("/admin/pull_and_import", methods=["POST"])
 @login_required
 def admin_pull_and_import():
-    """Pull latest MISP vendor submodules then import new tags as a background job."""
+    """Pull latest MISP dataset submodules then import new tags as a background job."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
+
     jid = bulk_jobs.start_pull_and_import(current_app._get_current_object(), current_user.id)
     AccountModel.create_system_log(
-        "tags_vendor_pull_started",
+        "tags_submodule_pull_started",
         actor_id=current_user.id, actor_name=current_user.first_name,
         target_type="tag", details=f"job {jid}",
     )
@@ -266,10 +280,8 @@ def admin_toggle_visibility(tag_id):
     tag = TagsModel.get_tag(tag_id)
     if not tag:
         return {"success": False, "message": "Not found", "toast_class": "danger"}, 404
-    import datetime
     tag.visibility = "private" if tag.visibility == "public" else "public"
-    tag.updated_at = datetime.datetime.utcnow()
-    from website.web import db
+    tag.updated_at = datetime.now(timezone.utc)
     try:
         db.session.commit()
         label = "public" if tag.visibility == "public" else "private"
@@ -291,6 +303,8 @@ def admin_edit(tag_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
     data = request.get_json(silent=True) or {}
+    if data.get("icon") and not _icon_is_valid(data["icon"]):
+        return {"success": False, "message": "Unknown icon", "toast_class": "danger"}, 400
     tag, err = TagsModel.edit_tag(tag_id, current_user.id, is_admin=True, **data)
     if tag:
         changed = [k for k in ("name", "description", "color", "icon", "source", "visibility", "is_active", "is_approved_by_admin", "is_evaluation_tag") if k in data and data[k] is not None]
@@ -318,6 +332,10 @@ def create_tag():
     if source not in ("Manual", "Vulnerability"):
         source = "Manual"
 
+    icon = data.get("icon") or None
+    if icon and not _icon_is_valid(icon):
+        return {"success": False, "message": "Unknown icon", "toast_class": "danger"}, 400
+
     if Tag.query.filter_by(name=name).first():
         return {"success": False, "message": "A tag with this name already exists", "toast_class": "warning"}, 409
 
@@ -330,7 +348,7 @@ def create_tag():
         name=name,
         description=data.get("description"),
         color=data.get("color"),
-        icon=data.get("icon"),
+        icon=icon,
         source=source,
         created_by=current_user.id,
         visibility="public" if auto_approve else "private",
@@ -367,13 +385,13 @@ def list_tags():
 
 
 ###################################
-#   Convert tag association       #
+#   Conversion tag association    #
 ###################################
 
 @tags_blueprint.route("/available", methods=["GET"])
 @login_required
 def available_tags():
-    """Tags available to the current user for attaching to a convert."""
+    """Tags available to the current user for attaching to a conversion."""
     search = request.args.get("search", "", type=str).strip() or None
     source = request.args.get("source", "", type=str).strip() or None
     is_evaluation = request.args.get("is_evaluation", "false", type=str).lower() == "true"
@@ -381,36 +399,36 @@ def available_tags():
     return {"success": True, "list": [t.to_json() for t in tags]}, 200
 
 
-@tags_blueprint.route("/for_convert/<int:convert_id>", methods=["GET"])
-def for_convert(convert_id):
-    """Get tags attached to a convert.
+@tags_blueprint.route("/for_conversion/<int:conversion_id>", methods=["GET"])
+def for_conversion(conversion_id):
+    """Get tags attached to a conversion.
     Optional ?source_type=user|json to filter by origin."""
-    convert = Convert.query.get(convert_id)
-    if not convert:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion:
         return {"success": False, "message": "Not found"}, 404
-    if not convert.public:
+    if not conversion.public:
         if not current_user.is_authenticated:
             return {"success": False, "message": "Unauthorized"}, 403
-        if current_user.id != convert.user_id and not current_user.is_admin():
+        if not access.is_owner_or_admin(current_user, conversion):
             return {"success": False, "message": "Forbidden"}, 403
     source_type = request.args.get("source_type") or None
-    assocs = TagsModel.get_convert_tags(convert_id, source_type=source_type)
+    assocs = TagsModel.get_conversion_tags(conversion_id, source_type=source_type)
     return {"success": True, "list": [a.to_json() for a in assocs]}, 200
 
 
-@tags_blueprint.route("/save_for_convert/<int:convert_id>", methods=["POST"])
+@tags_blueprint.route("/save_for_conversion/<int:conversion_id>", methods=["POST"])
 @login_required
 @csrf.exempt
-def save_for_convert(convert_id):
-    """Replace all tags for a convert. Owner or admin only."""
-    convert = Convert.query.get(convert_id)
-    if not convert:
-        return {"success": False, "message": "Convert not found"}, 404
-    if convert.user_id != current_user.id and not current_user.is_admin():
+def save_for_conversion(conversion_id):
+    """Replace all tags for a conversion. Owner or admin only."""
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion:
+        return {"success": False, "message": "Conversion not found"}, 404
+    if conversion.user_id != current_user.id and not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
     data = request.get_json(silent=True) or {}
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
-    TagsModel.save_convert_tags(convert_id, tag_ids, current_user.id)
+    TagsModel.save_conversion_tags(conversion_id, tag_ids, current_user.id)
     return {"success": True, "message": "Tags saved"}, 200
 
 
@@ -432,17 +450,28 @@ def delete_tag(tag_id):
     return {"success": False, "message": err or "Error", "toast_class": "danger"}, 403
 
 
-@tags_blueprint.route("/admin/bulk_converts")
+@tags_blueprint.route("/admin/bulk_conversions")
 @login_required
-def admin_bulk_converts():
+def admin_bulk_conversions():
     if not current_user.is_admin():
         return abort(403)
     return render_template("admin/admin_bulk_tags.html")
 
 
-@tags_blueprint.route("/admin/bulk_converts/list", methods=["GET"])
+@tags_blueprint.route("/admin/bulk_converts")
+def legacy_admin_bulk_converts():
+    """301 shim for the pre-rename page URL. Only the bookmarkable page gets
+    one; the fetch sub-routes move shim-less with their callers."""
+    dest = url_for(".admin_bulk_conversions")
+    query = request.query_string.decode()
+    if query:
+        dest += "?" + query
+    return redirect(dest, code=301)
+
+
+@tags_blueprint.route("/admin/bulk_conversions/list", methods=["GET"])
 @login_required
-def admin_bulk_converts_list():
+def admin_bulk_conversions_list():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
     page = request.args.get("page", 1, type=int)
@@ -450,149 +479,138 @@ def admin_bulk_converts_list():
     search = request.args.get("search", "", type=str).strip() or None
     conv_type = request.args.get("type", "ALL", type=str).strip() or "ALL"
 
-    pagination = TagsModel.get_converts_page(page, per_page=per_page, search=search, conv_type=conv_type)
-    tag_map = TagsModel.get_convert_tags_batch([c.id for c in pagination.items])
+    pagination = TagsModel.get_conversions_page(page, per_page=per_page, search=search, conv_type=conv_type)
+    tag_map = TagsModel.get_conversion_tags_batch([c.id for c in pagination.items])
 
     items = [
         {"id": c.id, "name": c.name, "conversion_type": c.conversion_type,
-         "created_at": c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else "",
+         "created_at": utc_iso(c.created_at) or "",
          "tag_count": len(tag_map.get(c.id, []))}
         for c in pagination.items
     ]
     return {"success": True, "list": items, "total_page": pagination.pages, "total": pagination.total}, 200
 
 
-@tags_blueprint.route("/admin/bulk_converts/all_ids", methods=["GET"])
+@tags_blueprint.route("/admin/bulk_conversions/all_ids", methods=["GET"])
 @login_required
-def admin_bulk_converts_all_ids():
+def admin_bulk_conversions_all_ids():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
     search = request.args.get("search", "", type=str).strip() or None
     conv_type = request.args.get("type", "ALL", type=str).strip() or "ALL"
-    ids = TagsModel.get_convert_ids(search=search, conv_type=conv_type)
+    ids = TagsModel.get_conversion_ids(search=search, conv_type=conv_type)
     return {"success": True, "ids": ids}, 200
 
 
-@tags_blueprint.route("/admin/bulk_converts/scan", methods=["POST"])
+@tags_blueprint.route("/admin/bulk_conversions/scan", methods=["POST"])
 @login_required
 @csrf.exempt
 def admin_bulk_scan():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
-    convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
-    if not convert_ids:
-        return {"success": False, "message": "No converts selected"}, 400
-    jid = bulk_jobs.start_scan(current_app._get_current_object(), convert_ids, current_user.id)
+    conversion_ids = [int(i) for i in data.get("conversion_ids", []) if str(i).isdigit()]
+    if not conversion_ids:
+        return {"success": False, "message": "No conversions selected"}, 400
+    jid = bulk_jobs.start_scan(current_app._get_current_object(), conversion_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_scan",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"auto-scan tags on {len(convert_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"auto-scan tags on {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 
 
-@tags_blueprint.route("/admin/bulk_converts/assign", methods=["POST"])
+@tags_blueprint.route("/admin/bulk_conversions/assign", methods=["POST"])
 @login_required
 @csrf.exempt
 def admin_bulk_assign():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
-    convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
+    conversion_ids = [int(i) for i in data.get("conversion_ids", []) if str(i).isdigit()]
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
-    if not convert_ids or not tag_ids:
-        return {"success": False, "message": "No converts or tags selected"}, 400
-    jid = bulk_jobs.start_assign(current_app._get_current_object(), convert_ids, tag_ids, current_user.id)
+    if not conversion_ids or not tag_ids:
+        return {"success": False, "message": "No conversions or tags selected"}, 400
+    jid = bulk_jobs.start_assign(current_app._get_current_object(), conversion_ids, tag_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_assign",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"assign {len(tag_ids)} tag(s) to {len(convert_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"assign {len(tag_ids)} tag(s) to {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 
 
-@tags_blueprint.route("/admin/bulk_converts/job/<job_id>", methods=["GET"])
+@tags_blueprint.route("/admin/bulk_conversions/job/<job_id>", methods=["GET"])
 @login_required
 def admin_bulk_job_status(job_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from website.web.tags import bulk_jobs
     job = bulk_jobs.get(job_id)
     if not job:
         return {"success": False, "message": "Job not found"}, 404
     return {"success": True, "job": job}, 200
 
 
-@tags_blueprint.route("/admin/bulk_converts/jobs", methods=["GET"])
+@tags_blueprint.route("/admin/bulk_conversions/jobs", methods=["GET"])
 @login_required
 def admin_bulk_jobs_list():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from website.web.tags import bulk_jobs
     return {"success": True, "jobs": bulk_jobs.list_recent()}, 200
 
 
-@tags_blueprint.route("/admin/bulk_converts/job/<job_id>", methods=["DELETE"])
+@tags_blueprint.route("/admin/bulk_conversions/job/<job_id>", methods=["DELETE"])
 @login_required
 @csrf.exempt
 def admin_bulk_job_delete(job_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from website.web.tags import bulk_jobs
     removed = bulk_jobs.remove(job_id)
     if removed:
         return {"success": True}, 200
     return {"success": False, "message": "Job not found"}, 404
 
 
-@tags_blueprint.route("/admin/bulk_converts/remove_tags", methods=["POST"])
+@tags_blueprint.route("/admin/bulk_conversions/remove_tags", methods=["POST"])
 @login_required
 @csrf.exempt
 def admin_bulk_remove_tags():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
-    convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
+    conversion_ids = [int(i) for i in data.get("conversion_ids", []) if str(i).isdigit()]
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
-    if not convert_ids or not tag_ids:
-        return {"success": False, "message": "No converts or tags selected"}, 400
-    jid = bulk_jobs.start_remove(current_app._get_current_object(), convert_ids, tag_ids, current_user.id)
+    if not conversion_ids or not tag_ids:
+        return {"success": False, "message": "No conversions or tags selected"}, 400
+    jid = bulk_jobs.start_remove(current_app._get_current_object(), conversion_ids, tag_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_remove",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"remove {len(tag_ids)} tag(s) from {len(convert_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"remove {len(tag_ids)} tag(s) from {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 
 
-@tags_blueprint.route("/admin/bulk_converts/clear_tags", methods=["POST"])
+@tags_blueprint.route("/admin/bulk_conversions/clear_tags", methods=["POST"])
 @login_required
 @csrf.exempt
 def admin_bulk_clear_tags():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    from flask import current_app
-    from website.web.tags import bulk_jobs
     data = request.get_json(silent=True) or {}
-    convert_ids = [int(i) for i in data.get("convert_ids", []) if str(i).isdigit()]
-    if not convert_ids:
-        return {"success": False, "message": "No converts selected"}, 400
-    jid = bulk_jobs.start_clear(current_app._get_current_object(), convert_ids, current_user.id)
+    conversion_ids = [int(i) for i in data.get("conversion_ids", []) if str(i).isdigit()]
+    if not conversion_ids:
+        return {"success": False, "message": "No conversions selected"}, 400
+    jid = bulk_jobs.start_clear(current_app._get_current_object(), conversion_ids, current_user.id)
     AccountModel.create_system_log(
         "bulk_tag_clear",
         actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="convert",
-        details=f"clear all tags from {len(convert_ids)} convert(s), job={jid}",
+        target_type="conversion",
+        details=f"clear all tags from {len(conversion_ids)} conversion(s), job={jid}"
     )
     return {"success": True, "job_id": jid}, 200
 
@@ -617,17 +635,17 @@ def extract_from_json():
     return {"success": True, "list": [t.to_json() for t in tags], "found_names": len(names)}, 200
 
 
-@tags_blueprint.route("/extract_from_convert/<int:convert_id>", methods=["GET"])
+@tags_blueprint.route("/extract_from_conversion/<int:conversion_id>", methods=["GET"])
 @login_required
-def extract_from_convert(convert_id):
-    """Extract tags from a stored convert's MISP JSON and return available matching tags."""
-    convert = Convert.query.get(convert_id)
-    if not convert:
-        return {"success": False, "message": "Convert not found"}, 404
-    if convert.user_id != current_user.id and not current_user.is_admin():
+def extract_from_conversion(conversion_id):
+    """Extract tags from a stored conversion's MISP JSON and return available matching tags."""
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion:
+        return {"success": False, "message": "Conversion not found"}, 404
+    if conversion.user_id != current_user.id and not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
     # STIX→MISP: MISP JSON is in output_text; MISP→STIX: MISP JSON is in input_text
-    misp_text = convert.output_text if convert.conversion_type == "STIX_TO_MISP" else convert.input_text
+    misp_text = conversion.output_text if conversion.conversion_type == "STIX_TO_MISP" else conversion.input_text
     names = extract_tag_names_from_misp_json(misp_text or '')
     tags = TagsModel.find_tags_by_names(current_user.id, names)
     return {"success": True, "list": [t.to_json() for t in tags], "found_names": len(names)}, 200

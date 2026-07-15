@@ -14,8 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -196,6 +196,7 @@ cython_debug/
 
 website/db_class/backups/*
 
-vendor/pivotick/node_modules/
+submodules/pivotick/node_modules/
 
 /to_do
+tests/lib/misp_config.json

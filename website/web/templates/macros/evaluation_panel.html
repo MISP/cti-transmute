@@ -6,10 +6,10 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/evaluation.css') }}">
 {% endmacro %}
 
-{% macro evaluation_panel(convert, current_user) %}
+{% macro evaluation_panel(conversion, current_user) %}
 {# Log de contrôle pour vérifier que Jinja reçoit bien les données #}
 <script>
-    console.log("Jinja Debug - Tentative de rendu du panel pour convert ID:", "{{ convert.id if convert else 'NULL' }}");
+    console.log("Jinja Debug - Tentative de rendu du panel pour conversion ID:", "{{ conversion.id if conversion else 'NULL' }}");
 </script>
 
 <div class="eval-section">
@@ -17,11 +17,11 @@
         <i class="fas fa-chart-bar"></i> Evaluation
     </div>
     <div class="eval-panel"
-         id="eval-panel-{{ convert.id }}"
-         data-convert-id="{{ convert.id }}"
+         id="eval-panel-{{ conversion.id }}"
+         data-conversion-id="{{ conversion.id }}"
          data-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
-         data-owner="{{ 'true' if current_user.is_authenticated and convert.user_id == current_user.id else 'false' }}"
-         data-public="{{ 'true' if convert.public else 'false' }}">
+         data-owner="{{ 'true' if current_user.is_authenticated and conversion.user_id == current_user.id else 'false' }}"
+         data-public="{{ 'true' if conversion.public else 'false' }}">
     </div>
 </div>
 {% endmacro %}

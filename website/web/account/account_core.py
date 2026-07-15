@@ -1,10 +1,12 @@
-import datetime
-from flask_login import current_user
-from sqlalchemy import desc, or_
-from website.db_class.db import Comment, Convert, Notification, SystemLog, User, UserFollow
-from website.web.utils import generate_api_key
-from .. import db
+from datetime import datetime, timezone
 
+from flask_login import current_user
+from sqlalchemy import or_
+
+from website.db_class.db import Comment, Conversion, Notification, SystemLog, User, UserFollow
+from website.web.utils import generate_api_key
+
+from .. import db
 
 # CRUD
 
@@ -123,16 +125,16 @@ def edit_admin(id):
     return False , False
 
 
-def get_all_convert_own_by_user_id(id):
-    """Change the owner of all the user's converts to the current user."""
-    convert_list = []
+def get_all_conversions_own_by_user_id(id):
+    """Change the owner of all the user's conversions to the current user."""
+    conversion_list = []
     user = get_user(id)
     if user:
-        converts = Convert.query.filter_by(user_id=id).all()
+        conversions = Conversion.query.filter_by(user_id=id).all()
 
-        for convert in converts:
-            convert.user_id = current_user.id
-            convert_list.append(convert)
+        for conversion in conversions:
+            conversion.user_id = current_user.id
+            conversion_list.append(conversion)
 
         db.session.commit()
 
@@ -167,7 +169,7 @@ def follow_user(follower_id, followed_id):
         follow = UserFollow(
             follower_id=follower_id,
             followed_id=followed_id,
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(follow)
         db.session.commit()
@@ -270,7 +272,7 @@ def create_notification(user_id, notif_type, message, related_id=None, related_t
             related_type=related_type,
             actor_id=actor_id,
             message=message,
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(notif)
         db.session.commit()
@@ -331,49 +333,49 @@ def get_unread_count(user_id):
     return Notification.query.filter_by(user_id=user_id, is_read=False).count()
 
 
-def notify_followers_new_convert(convert, actor_id):
-    """Notify all followers of actor_id that a new public convert was created."""
+def notify_followers_new_conversion(conversion, actor_id):
+    """Notify all followers of actor_id that a new public conversion was created."""
     follower_ids = get_followers_ids(actor_id)
     actor = get_user(actor_id)
     actor_name = actor.first_name if actor else "Someone"
     for fid in follower_ids:
         create_notification(
             user_id=fid,
-            notif_type="new_follow_convert",
-            message=f"{actor_name} published a new conversion: {convert.name}",
-            related_id=convert.id,
-            related_type="convert",
+            notif_type="new_follow_conversion",
+            message=f"{actor_name} published a new conversion: {conversion.name}",
+            related_id=conversion.id,
+            related_type="conversion",
             actor_id=actor_id
         )
 
 
-def notify_admins_new_report(convert, reporter_id):
+def notify_admins_new_report(conversion, reporter_id):
     """Notify all admin users that a new report was submitted."""
     admins = User.query.filter_by(admin=True).all()
     reporter = get_user(reporter_id)
     reporter_name = reporter.first_name if reporter else "Someone"
-    convert_name = convert.name if convert else "Unknown"
+    conversion_name = conversion.name if conversion else "Unknown"
     for admin in admins:
         create_notification(
             user_id=admin.id,
             notif_type="report_submitted",
-            message=f"{reporter_name} reported convert: {convert_name}",
-            related_id=convert.id,
-            related_type="convert",
+            message=f"{reporter_name} reported conversion: {conversion_name}",
+            related_id=conversion.id,
+            related_type="conversion",
             actor_id=reporter_id
         )
 
 
-def notify_new_comment(convert, comment, actor_id):
-    """Notify convert owner that someone posted a comment on their convert."""
-    if not convert.user_id or convert.user_id == actor_id:
+def notify_new_comment(conversion, comment, actor_id):
+    """Notify conversion owner that someone posted a comment on their conversion."""
+    if not conversion.user_id or conversion.user_id == actor_id:
         return
     actor = get_user(actor_id)
     actor_name = actor.first_name if actor else "Someone"
     create_notification(
-        user_id=convert.user_id,
+        user_id=conversion.user_id,
         notif_type="new_comment",
-        message=f"{actor_name} commented on your convert \"{convert.name}\".",
+        message=f"{actor_name} commented on your conversion \"{conversion.name}\".",
         related_id=comment.id,
         related_type="comment",
         actor_id=actor_id
@@ -401,21 +403,21 @@ def notify_comment_reply(parent_comment, reply_comment, actor_id):
 ###################################
 
 def get_user_comments(user_id, page=1, search=None, is_admin=False):
-    """Return paginated comments made by a user.
-    Excludes comments on converts that are deleted, private (unless owned by the user), or inactive.
-    Admins bypass all visibility filters.
+    """Return paginated live (non-soft-deleted) comments made by a user.
+    Excludes comments on conversions that are deleted, private (unless owned by the user), or inactive.
+    Admins bypass the conversion visibility filters, not the is_deleted one.
     """
     if is_admin:
-        query = Comment.query.filter(Comment.user_id == user_id, Comment.is_deleted == False)
+        query = Comment.query.filter(Comment.user_id == user_id, ~Comment.is_deleted)
     else:
         query = (
             Comment.query
-            .join(Convert, Comment.convert_id == Convert.id)
+            .join(Conversion, Comment.conversion_id == Conversion.id)
             .filter(
                 Comment.user_id == user_id,
-                Comment.is_deleted == False,
-                Convert.is_active == True,
-                or_(Convert.public == True, Convert.user_id == user_id),
+                ~Comment.is_deleted,
+                Conversion.is_active,
+                or_(Conversion.public, Conversion.user_id == user_id),
             )
         )
     if search:
@@ -437,7 +439,7 @@ def create_system_log(event_type, actor_id=None, actor_name=None, target_type=No
             target_id=target_id,
             target_name=target_name,
             details=details,
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
+            created_at=datetime.now(timezone.utc),
         )
         db.session.add(log)
         db.session.commit()
@@ -487,13 +489,17 @@ def delete_all_logs(log_type='all', date_from=None, date_to=None):
     count = 0
     if log_type in ('all', 'system'):
         q = SystemLog.query
-        if date_from: q = q.filter(SystemLog.created_at >= date_from)
-        if date_to:   q = q.filter(SystemLog.created_at <= date_to)
+        if date_from:
+            q = q.filter(SystemLog.created_at >= date_from)
+        if date_to:
+            q = q.filter(SystemLog.created_at <= date_to)
         count += q.delete(synchronize_session=False)
     if log_type in ('all', 'notifications'):
         q = Notification.query
-        if date_from: q = q.filter(Notification.created_at >= date_from)
-        if date_to:   q = q.filter(Notification.created_at <= date_to)
+        if date_from:
+            q = q.filter(Notification.created_at >= date_from)
+        if date_to:
+            q = q.filter(Notification.created_at <= date_to)
         count += q.delete(synchronize_session=False)
     db.session.commit()
     return count

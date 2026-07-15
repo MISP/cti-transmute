@@ -1,8 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify, abort
+from flask import Blueprint, abort, jsonify, render_template
 from flask_login import current_user
 from sqlalchemy import and_, or_
-import requests
-
 
 home_blueprint = Blueprint(
     "home",
@@ -27,26 +25,6 @@ def list():
     """List page"""
     return render_template("list.html")
 
-@home_blueprint.route("/get_features", methods=["GET"])
-def get_features():
-    """Get all the features of the API"""
-    try:
-        response = requests.get("http://127.0.0.1:6868/api/convert/list")
-        response.raise_for_status()
-
-        data = response.json()
-        return jsonify({
-            "status": "success",
-            "features": data.get("available", {})
-        }), 200
-
-    except requests.RequestException as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e),
-            "features": {}
-        }), 500
-
 @home_blueprint.route("/get_current_user", methods=['GET'])
 def get_current_user() -> jsonify:
     """Is the current user admin or not for vue js"""
@@ -54,29 +32,29 @@ def get_current_user() -> jsonify:
 
 @home_blueprint.route("/get_public_activity")
 def get_public_activity():
-    """Public activity feed for the homepage, based on system logs for public converts."""
-    from website.db_class.db import SystemLog, Convert
+    """Public activity feed for the homepage, based on system logs for public conversions."""
+    from website.db_class.db import Conversion, SystemLog
 
     PUBLIC_EVENTS = [
-        'convert_created', 'eval_like', 'eval_dislike',
-        'eval_reaction', 'convert_edited', 'convert_visibility_changed',
-        'convert_favorited',
+        'conversion_created', 'eval_like', 'eval_dislike',
+        'eval_reaction', 'conversion_edited', 'conversion_visibility_changed',
+        'conversion_favorited',
     ]
     try:
         from website.db_class.db import User
         logs = (
             SystemLog.query
-            .join(Convert, and_(
-                SystemLog.target_id == Convert.id,
-                SystemLog.target_type == 'convert'
+            .join(Conversion, and_(
+                SystemLog.target_id == Conversion.id,
+                SystemLog.target_type == 'conversion'
             ))
             .filter(
                 SystemLog.event_type.in_(PUBLIC_EVENTS),
-                Convert.public == True,
-                Convert.is_active == True,
+                Conversion.public,
+                Conversion.is_active,
                 SystemLog.actor_name.isnot(None),
                 or_(
-                    SystemLog.event_type != 'convert_visibility_changed',
+                    SystemLog.event_type != 'conversion_visibility_changed',
                     SystemLog.details == 'public'
                 )
             )

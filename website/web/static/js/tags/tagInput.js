@@ -3,7 +3,7 @@ import SingleTagDisplay from './singleTagDisplay.js';
 const TagInput = {
     components: { 'single-tag': SingleTagDisplay },
     props: {
-        convertId:     { type: Number,  default: null },
+        conversionId:     { type: Number,  default: null },
         hiddenInputId: { type: String,  default: '' },
         canEdit:       { type: Boolean, default: true },
     },
@@ -76,7 +76,7 @@ const TagInput = {
         },
     },
     async mounted() {
-        if (this.convertId) {
+        if (this.conversionId) {
             // Load all three sections in parallel
             await Promise.all([
                 this._loadEvaluationTags(),
@@ -93,7 +93,7 @@ const TagInput = {
         document.addEventListener('click', this._outsideClick);
 
         this._evalUpdated = (e) => {
-            if (this.convertId && e.detail?.convertId === this.convertId)
+            if (this.conversionId && e.detail?.conversionId === this.conversionId)
                 this._loadEvaluationTags();
         };
         document.addEventListener('evaluate:updated', this._evalUpdated);
@@ -105,10 +105,10 @@ const TagInput = {
     },
     methods: {
         async _loadEvaluationTags() {
-            if (!this.convertId) return;
+            if (!this.conversionId) return;
             this.loadingEval = true;
             try {
-                const r = await fetch(`/evaluate/consensus_tags/${this.convertId}?threshold=1`);
+                const r = await fetch(`/evaluate/consensus_tags/${this.conversionId}?threshold=1`);
                 if (r.ok) {
                     const d = await r.json();
                     if (d.success) this.evaluationTags = d.tags || [];
@@ -120,10 +120,10 @@ const TagInput = {
         },
 
         async _loadContentTags() {
-            if (!this.convertId) return;
+            if (!this.conversionId) return;
             this.loadingContent = true;
             try {
-                const r = await fetch(`/convert/json_tags/${this.convertId}`);
+                const r = await fetch(`/conversions/json_tags/${this.conversionId}`);
                 if (r.ok) {
                     const d = await r.json();
                     if (d.success) this.contentTags = d.tags || [];
@@ -136,7 +136,7 @@ const TagInput = {
 
         async _loadAppliedTags() {
             try {
-                const r = await fetch(`/tags/for_convert/${this.convertId}?source_type=user`);
+                const r = await fetch(`/tags/for_conversion/${this.conversionId}?source_type=user`);
                 if (r.ok) {
                     const d = await r.json();
                     if (d.success) {
@@ -189,18 +189,18 @@ const TagInput = {
             }
             this.search = '';
             this.dropdownOpen = false;
-            if (this.convertId) this._saveRemote();
+            if (this.conversionId) this._saveRemote();
         },
         removeTag(tagId) {
             this.selectedTags = this.selectedTags.filter(t => t.id !== tagId);
-            if (this.convertId) this._saveRemote();
+            if (this.conversionId) this._saveRemote();
         },
 
         async _saveRemote() {
-            if (!this.convertId) return;
+            if (!this.conversionId) return;
             this.saving = true;
             try {
-                await fetch(`/tags/save_for_convert/${this.convertId}`, {
+                await fetch(`/tags/save_for_conversion/${this.conversionId}`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ tag_ids: this.selectedTags.map(t => t.id) }),
@@ -217,7 +217,7 @@ const TagInput = {
         <div class="tag-input-wrapper">
 
             <!-- ══ 1. EVALUATION CONSENSUS TAGS (≥3 votes, read-only) ═════════ -->
-            <template v-if="convertId && (loadingEval || evaluationTags.length > 0)">
+            <template v-if="conversionId && (loadingEval || evaluationTags.length > 0)">
                 <div class="ti-section-header" style="margin-bottom:0.4rem;">
                     <span class="form-label mb-0" style="font-size:0.83rem; font-weight:600; color:var(--text-2);">
                         <i class="fas fa-chart-bar me-1" style="color:#f59e0b;"></i> Evaluation Tags
@@ -258,7 +258,7 @@ const TagInput = {
             </template>
 
             <!-- ══ 2. CONTENT TAGS (embedded in JSON, read-only) ════════════ -->
-            <template v-if="convertId">
+            <template v-if="conversionId">
                 <div class="ti-section-header" style="margin-bottom:0.4rem;">
                     <span class="form-label mb-0" style="font-size:0.83rem; font-weight:600; color:var(--text-2);">
                         <i class="fas fa-file-code me-1" style="color:var(--text-3);"></i> Content Tags

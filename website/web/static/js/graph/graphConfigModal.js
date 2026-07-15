@@ -1,4 +1,4 @@
-import { GRAPH_CONFIG, applyConfig, reRenderGraph } from './convertGraph.js'
+import { GRAPH_CONFIG, applyConfig, reRenderGraph } from './conversionGraph.js'
 
 const SHAPES = ['circle', 'square', 'hexagon', 'triangle']
 
@@ -315,7 +315,7 @@ async function _loadSavedConfigs() {
   const container = document.getElementById('gcm-saved-list')
   container.innerHTML = '<div class="text-center py-3" style="color:var(--text-3);font-size:0.85rem;"><div class="spinner-border spinner-border-sm me-1"></div>Loading…</div>'
   try {
-    const res = await fetch('/convert/graph_config/list')
+    const res = await fetch('/conversions/graph_config/list')
     if (!res.ok) {
       const msg = res.status === 500
         ? 'Server error — run <code>flask db upgrade</code> to create the table.'
@@ -358,7 +358,7 @@ function _renderSavedList(list) {
 
     const meta = document.createElement('span')
     meta.className = 'gcm-config-meta'
-    meta.textContent = (cfg.is_default ? '' : cfg.author + ' · ') + (cfg.created_at || '')
+    meta.textContent = (cfg.is_default ? '' : cfg.author + ' · ') + ctiDate.formatDateTime(cfg.created_at, '')
     row.appendChild(meta)
 
     const loadBtn = document.createElement('button')
@@ -403,7 +403,7 @@ async function _deleteConfig(id, btn) {
   btn.disabled = true
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'
   try {
-    const res = await fetch('/convert/graph_config/delete', {
+    const res = await fetch('/conversions/graph_config/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf() },
       body: JSON.stringify({ id }),
@@ -435,7 +435,7 @@ async function _saveCurrentConfig() {
   saveBtn.disabled = true
   saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving…'
   try {
-    const res = await fetch('/convert/graph_config/save', {
+    const res = await fetch('/conversions/graph_config/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf() },
       body: JSON.stringify({ name, config_json: JSON.stringify(_formToPatch()) }),

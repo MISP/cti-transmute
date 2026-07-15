@@ -3,19 +3,19 @@
 <div>
   <div class="list-header">
     <div class="home-hero-badge"><i class="fas fa-layer-group"></i> Admin</div>
-    <h1 class="list-title">Bulk Tag Converts</h1>
-    <p class="list-subtitle">Select converts and auto-scan their JSON for tags, or assign specific tags to all selected.</p>
+    <h1 class="list-title">Bulk Tag Conversions</h1>
+    <p class="list-subtitle">Select conversions and auto-scan their JSON for tags, or assign specific tags to all selected.</p>
   </div>
 
   <div id="bulk-tags-app">
 
-    <!-- ── Layout: left = convert list, right = actions + jobs ── -->
+    <!-- ── Layout: left = conversion list, right = actions + jobs ── -->
     <div class="d-flex gap-3 flex-wrap flex-lg-nowrap">
 
-      <!-- ── Convert List ─────────────────────────────────── -->
+      <!-- ── Conversion List ─────────────────────────────────── -->
       <div class="custom-card p-3 flex-grow-1" style="min-width:0;">
         <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
-          <span style="font-weight:600; font-size:0.9rem;"><i class="fas fa-list me-1"></i> Converts</span>
+          <span style="font-weight:600; font-size:0.9rem;"><i class="fas fa-list me-1"></i> Conversions</span>
           <input class="form-control form-control-sm" style="width:180px;"
                  type="text" v-model="search" @input="debounceSearch" placeholder="Search name…">
           <select class="form-select form-select-sm" style="width:160px;" v-model="filterType" @change="resetPage">
@@ -64,10 +64,10 @@
                   <i class="fas fa-spinner fa-spin me-1"></i> Loading…
                 </td>
               </tr>
-              <tr v-else-if="converts.length === 0">
-                <td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-3);font-style:italic;">No converts found.</td>
+              <tr v-else-if="conversions.length === 0">
+                <td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-3);font-style:italic;">No conversions found.</td>
               </tr>
-              <tr v-for="c in converts" :key="c.id"
+              <tr v-for="c in conversions" :key="c.id"
                   @click="toggleOne(c.id)"
                   style="cursor:pointer;"
                   :style="{ background: selected.has(c.id) ? 'rgba(var(--accent-rgb,99,102,241),0.08)' : '' }">
@@ -79,7 +79,7 @@
                     [[ c.conversion_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
                   </span>
                 </td>
-                <td style="color:var(--text-3);">[[ c.created_at ]]</td>
+                <td style="color:var(--text-3);">[[ formatDateTime(c.created_at) ]]</td>
                 <td style="text-align:center;">
                   <span v-if="c.tag_count > 0" class="badge" style="background:var(--surface-2);color:var(--text-2);font-size:0.72rem;">[[ c.tag_count ]]</span>
                   <span v-else style="color:var(--text-3);font-size:0.75rem;">—</span>
@@ -107,12 +107,12 @@
           <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.8rem;">
             <i class="fas fa-wand-magic-sparkles me-1"></i> Actions
             <span v-if="selected.size > 0" style="font-size:0.78rem;font-weight:normal;color:var(--accent);margin-left:4px;">
-              on [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+              on [[ selected.size ]] conversion[[ selected.size > 1 ? 's' : '' ]]
             </span>
           </div>
 
           <div v-if="selected.size === 0" style="font-size:0.82rem;color:var(--text-3);font-style:italic;">
-            Select converts from the list first.
+            Select conversions from the list first.
           </div>
           <template v-else>
             <!-- Auto-scan -->
@@ -121,11 +121,11 @@
                 <i class="fas fa-magnifying-glass-plus me-1"></i> Auto-scan JSON
               </div>
               <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
-                Detect tags from each convert's stored MISP JSON.
+                Detect tags from each conversion's stored MISP JSON.
               </div>
               <button type="button" class="btn btn-sm btn-outline-primary w-100"
                       @click="runScan" :disabled="jobRunning">
-                <i class="fas fa-play me-1"></i> Scan [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+                <i class="fas fa-play me-1"></i> Scan [[ selected.size ]] conversion[[ selected.size > 1 ? 's' : '' ]]
               </button>
             </div>
 
@@ -137,7 +137,7 @@
                 <i class="fas fa-tag me-1"></i> Assign specific tags
               </div>
               <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
-                Pick tags to add to all selected converts.
+                Pick tags to add to all selected conversions.
               </div>
 
               <!-- Tag search -->
@@ -186,7 +186,7 @@
               <button type="button" class="btn btn-sm btn-outline-success w-100"
                       @click="runAssign"
                       :disabled="jobRunning || chosenTags.length === 0">
-                <i class="fas fa-check me-1"></i> Assign to [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+                <i class="fas fa-check me-1"></i> Assign to [[ selected.size ]] conversion[[ selected.size > 1 ? 's' : '' ]]
               </button>
             </div>
 
@@ -201,7 +201,7 @@
               <!-- Remove specific tags -->
               <div class="mb-2">
                 <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
-                  Remove specific tags from all selected converts.
+                  Remove specific tags from all selected conversions.
                 </div>
                 <!-- Reuse same tag search for remove -->
                 <div class="position-relative mb-2">
@@ -245,19 +245,19 @@
                 <button type="button" class="btn btn-sm btn-outline-danger w-100"
                         @click="runRemoveTags"
                         :disabled="jobRunning || rmTags.length === 0">
-                  <i class="fas fa-minus me-1"></i> Remove [[ rmTags.length ]] tag[[ rmTags.length > 1 ? 's' : '' ]] from [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+                  <i class="fas fa-minus me-1"></i> Remove [[ rmTags.length ]] tag[[ rmTags.length > 1 ? 's' : '' ]] from [[ selected.size ]] conversion[[ selected.size > 1 ? 's' : '' ]]
                 </button>
               </div>
 
               <!-- Clear all tags -->
               <div class="mt-2">
                 <div style="font-size:0.78rem;color:var(--text-3);margin-bottom:0.5rem;">
-                  Remove <strong>all</strong> tags from selected converts.
+                  Remove <strong>all</strong> tags from selected conversions.
                 </div>
                 <button type="button" class="btn btn-sm btn-danger w-100"
                         @click="runClearTags"
                         :disabled="jobRunning">
-                  <i class="fas fa-trash me-1"></i> Clear all tags from [[ selected.size ]] convert[[ selected.size > 1 ? 's' : '' ]]
+                  <i class="fas fa-trash me-1"></i> Clear all tags from [[ selected.size ]] conversion[[ selected.size > 1 ? 's' : '' ]]
                 </button>
               </div>
             </div>
@@ -330,15 +330,15 @@ createApp({
     delimiters: ['[[', ']]'],
     data() {
         return {
-            converts:    [],
-            loading:     false,
-            search:      '',
-            filterType:  'ALL',
-            page:        1,
-            perPage:     50,
-            totalPages:  1,
-            total:       0,
-            selected:    new Set(),
+            conversions:  [],
+            loading:      false,
+            search:       '',
+            filterType:   'ALL',
+            page:         1,
+            perPage:      50,
+            totalPages:   1,
+            total:        0,
+            selected:     new Set(),
             selectingAll: false,
 
             tagSearch:      '',
@@ -363,10 +363,10 @@ createApp({
     },
     computed: {
         allPageSelected() {
-            return this.converts.length > 0 && this.converts.every(c => this.selected.has(c.id));
+            return this.conversions.length > 0 && this.conversions.every(c => this.selected.has(c.id));
         },
         somePageSelected() {
-            return this.converts.some(c => this.selected.has(c.id));
+            return this.conversions.some(c => this.selected.has(c.id));
         },
     },
     watch: {
@@ -380,7 +380,7 @@ createApp({
         },
     },
     async mounted() {
-        await this.loadConverts();
+        await this.loadConversions();
         await this.loadJobs();
 
         this._outsideClick = (e) => {
@@ -396,18 +396,19 @@ createApp({
         clearTimeout(this._rmTagDebounce);
     },
     methods: {
-        async loadConverts() {
+        formatDateTime: ctiDate.formatDateTime,
+        async loadConversions() {
             this.loading = true;
             try {
                 const p = new URLSearchParams({ page: this.page, per_page: this.perPage });
                 if (this.search.trim()) p.set('search', this.search.trim());
                 if (this.filterType) p.set('type', this.filterType);
-                const r = await fetch('/tags/admin/bulk_converts/list?' + p);
+                const r = await fetch('/tags/admin/bulk_conversions/list?' + p);
                 const d = await r.json();
                 if (d.success) {
-                    this.converts   = d.list;
-                    this.totalPages = d.total_page;
-                    this.total      = d.total;
+                    this.conversions = d.list;
+                    this.totalPages  = d.total_page;
+                    this.total       = d.total;
                 }
             } finally {
                 this.loading = false;
@@ -417,8 +418,8 @@ createApp({
             clearTimeout(this._debounce);
             this._debounce = setTimeout(() => { this.resetPage(); }, 300);
         },
-        resetPage() { this.page = 1; this.loadConverts(); },
-        gotoPage(p) { this.page = p; this.loadConverts(); },
+        resetPage() { this.page = 1; this.loadConversions(); },
+        gotoPage(p) { this.page = p; this.loadConversions(); },
 
         toggleOne(id) {
             const s = new Set(this.selected);
@@ -428,11 +429,11 @@ createApp({
         toggleAll() {
             if (this.allPageSelected) {
                 const s = new Set(this.selected);
-                this.converts.forEach(c => s.delete(c.id));
+                this.conversions.forEach(c => s.delete(c.id));
                 this.selected = s;
             } else {
                 const s = new Set(this.selected);
-                this.converts.forEach(c => s.add(c.id));
+                this.conversions.forEach(c => s.add(c.id));
                 this.selected = s;
             }
         },
@@ -443,7 +444,7 @@ createApp({
                 const p = new URLSearchParams();
                 if (this.search.trim()) p.set('search', this.search.trim());
                 if (this.filterType) p.set('type', this.filterType);
-                const r = await fetch('/tags/admin/bulk_converts/all_ids?' + p);
+                const r = await fetch('/tags/admin/bulk_conversions/all_ids?' + p);
                 const d = await r.json();
                 if (d.success) {
                     const s = new Set(this.selected);
@@ -501,10 +502,10 @@ createApp({
 
         async runScan() {
             const ids = [...this.selected];
-            const r = await fetch('/tags/admin/bulk_converts/scan', {
+            const r = await fetch('/tags/admin/bulk_conversions/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids }),
+                body: JSON.stringify({ conversion_ids: ids }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);
@@ -512,10 +513,10 @@ createApp({
         async runAssign() {
             const ids = [...this.selected];
             const tagIds = this.chosenTags.map(t => t.id);
-            const r = await fetch('/tags/admin/bulk_converts/assign', {
+            const r = await fetch('/tags/admin/bulk_conversions/assign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids, tag_ids: tagIds }),
+                body: JSON.stringify({ conversion_ids: ids, tag_ids: tagIds }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);
@@ -524,26 +525,26 @@ createApp({
         async runRemoveTags() {
             const ids = [...this.selected];
             const tagIds = this.rmTags.map(t => t.id);
-            const r = await fetch('/tags/admin/bulk_converts/remove_tags', {
+            const r = await fetch('/tags/admin/bulk_conversions/remove_tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids, tag_ids: tagIds }),
+                body: JSON.stringify({ conversion_ids: ids, tag_ids: tagIds }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);
         },
         async runClearTags() {
             const ids = [...this.selected];
-            const r = await fetch('/tags/admin/bulk_converts/clear_tags', {
+            const r = await fetch('/tags/admin/bulk_conversions/clear_tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ convert_ids: ids }),
+                body: JSON.stringify({ conversion_ids: ids }),
             });
             const d = await r.json();
             if (d.success) this._startPolling(d.job_id);
         },
         async deleteJob(jid) {
-            await fetch(`/tags/admin/bulk_converts/job/${jid}`, { method: 'DELETE' });
+            await fetch(`/tags/admin/bulk_conversions/job/${jid}`, { method: 'DELETE' });
             this.jobs = this.jobs.filter(j => j.id !== jid);
         },
 
@@ -555,7 +556,7 @@ createApp({
                 const job = this.jobs.find(j => j.id === jid);
                 if (job && job.status === 'done') {
                     this.jobRunning = false;
-                    await this.loadConverts();
+                    await this.loadConversions();
                 } else {
                     this._pollTimer = setTimeout(poll, 1500);
                 }
@@ -565,7 +566,7 @@ createApp({
 
         async loadJobs() {
             try {
-                const r = await fetch('/tags/admin/bulk_converts/jobs');
+                const r = await fetch('/tags/admin/bulk_conversions/jobs');
                 const d = await r.json();
                 if (d.success) this.jobs = d.jobs;
             } catch (e) {

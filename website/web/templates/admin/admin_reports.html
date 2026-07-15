@@ -7,7 +7,7 @@
 
   <div class="list-header">
     <div class="home-hero-badge"><i class="fas fa-flag"></i> Admin</div>
-    <h1 class="list-title">Convert Reports</h1>
+    <h1 class="list-title">Conversion Reports</h1>
     <p class="list-subtitle">Review and act on user-submitted reports.</p>
   </div>
 
@@ -40,15 +40,15 @@
       <table class="table table-hover align-middle" style="font-size:0.875rem;">
         <thead>
           <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
-            <th>ID</th><th>Convert</th><th>Reporter</th><th>Reason</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th>
+            <th>ID</th><th>Conversion</th><th>Reporter</th><th>Reason</th><th>Description</th><th>Status</th><th>Date</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="r in reports" :key="r.id">
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ r.id ]]</td>
             <td>
-              <a :href="'/convert/detail/'+r.convert_id" style="color:var(--accent); font-size:0.82rem;" :title="r.convert_name">
-                [[ (r.convert_name || '').slice(0,20) + (r.convert_name?.length > 20 ? '…' : '') ]]
+              <a :href="'/conversions/detail/'+r.conversion_id" style="color:var(--accent); font-size:0.82rem;" :title="r.conversion_name">
+                [[ (r.conversion_name || '').slice(0,20) + (r.conversion_name?.length > 20 ? '…' : '') ]]
               </a>
             </td>
             <td style="font-size:0.82rem;">[[ r.reporter ]]</td>
@@ -59,7 +59,7 @@
             <td>
               <span class="admin-status-badge" :class="'status-'+r.status">[[ r.status ]]</span>
             </td>
-            <td style="color:var(--text-3); font-size:0.78rem;">[[ r.created_at ]]</td>
+            <td style="color:var(--text-3); font-size:0.78rem;">[[ formatDateTime(r.created_at) ]]</td>
             <td>
               <div class="d-flex gap-1">
                 <button v-if="r.status === 'pending'" class="btn btn-sm btn-outline-success" @click="reviewReport(r.id, 'reviewed')" title="Mark reviewed">
@@ -107,7 +107,7 @@
           const params = new URLSearchParams({ page: page.value })
           if (status_filter.value) params.set('status', status_filter.value)
           if (search.value) params.set('search', search.value)
-          const res = await fetch(`/convert/admin/get_reports?${params}`)
+          const res = await fetch(`/conversions/admin/get_reports?${params}`)
           if (res.ok) {
             const data = await res.json()
             reports.value = data.list || []
@@ -123,7 +123,10 @@
       }
 
       async function reviewReport(report_id, status) {
-        const res = await fetch(`/convert/admin/review_report?report_id=${report_id}&status=${status}`)
+        const res = await fetch(`/conversions/admin/review_report?report_id=${report_id}&status=${status}`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) await load()
@@ -131,14 +134,18 @@
 
       async function deleteReport(report_id) {
         if (!confirm('Delete this report permanently? This cannot be undone.')) return
-        const res = await fetch(`/convert/admin/delete_report?report_id=${report_id}`)
+        const res = await fetch(`/conversions/admin/delete_report?report_id=${report_id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) reports.value = reports.value.filter(r => r.id !== report_id)
       }
 
       onMounted(load)
-      return { reports, loading, page, total_page, status_filter, search, load, debounceSearch, reviewReport, deleteReport, message_list }
+      return { reports, loading, page, total_page, status_filter, search, load, debounceSearch, reviewReport, deleteReport, message_list,
+               formatDateTime: ctiDate.formatDateTime }
     }
   }).mount('#main-containers')
 </script>

@@ -37,7 +37,7 @@
       <div class="custom-card p-0 overflow-hidden">
         <div class="profile-section-header"><i class="fas fa-chart-bar me-2"></i>Stats</div>
         <div class="profile-field">
-          <span class="profile-field-label"><i class="fas fa-globe"></i> Public converts</span>
+          <span class="profile-field-label"><i class="fas fa-globe"></i> Public conversions</span>
           <span class="profile-field-value">[[ stats.total ]]</span>
         </div>
         <div class="profile-field">
@@ -67,7 +67,7 @@
 
     </div>
 
-    <!-- Right: converts list in a tabbed card -->
+    <!-- Right: conversions list in a tabbed card -->
     <div class="custom-card p-0 overflow-hidden">
       <div class="detail-tabs-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; padding:.75rem 1rem .5rem;">
         <span style="font-weight:600; font-size:.85rem; color:var(--text);">
@@ -78,12 +78,12 @@
                  v-model="search" @input="debounceFetch" placeholder="Search…"
                  @focus="$event.target.style.borderColor='var(--accent)'"
                  @blur="$event.target.style.borderColor='var(--border)'">
-          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="filterType" @change="page=1;fetchConverts()">
+          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="filterType" @change="page=1;fetchConversions()">
             <option value="">All types</option>
             <option value="MISP_TO_STIX">MISP → STIX</option>
             <option value="STIX_TO_MISP">STIX → MISP</option>
           </select>
-          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="sortOrder" @change="page=1;fetchConverts()">
+          <select class="btn btn-sm btn-outline-secondary" style="font-size:.78rem;" v-model="sortOrder" @change="page=1;fetchConversions()">
             <option value="desc">Newest</option>
             <option value="asc">Oldest</option>
           </select>
@@ -105,7 +105,7 @@
 
         <!-- List -->
         <div v-else>
-          <a v-for="c in list" :key="c.id" :href="'/convert/detail/' + c.id"
+          <a v-for="c in list" :key="c.id" :href="'/conversions/detail/' + c.id"
              class="following-item" style="text-decoration:none; color:var(--text);">
             <div style="display:flex; align-items:center; gap:.6rem; min-width:0; flex:1;">
               <div style="flex-shrink:0;">
@@ -146,17 +146,17 @@
         <!-- Pagination -->
         <div v-if="totalPage > 1" style="display:flex; gap:.4rem; justify-content:center; margin-top:1rem; flex-wrap:wrap;">
           <button style="background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer; color:var(--text);"
-                  :disabled="page === 1" @click="page--;fetchConverts()">
+                  :disabled="page === 1" @click="page--;fetchConversions()">
             <i class="fas fa-chevron-left"></i>
           </button>
           <button v-for="p in pageRange" :key="p"
-                  @click="page=p;fetchConverts()"
+                  @click="page=p;fetchConversions()"
                   :style="p===page ? 'background:var(--accent);border-color:var(--accent);color:#fff;' : 'background:var(--surface-1);color:var(--text);'"
                   style="border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer;">
             [[ p ]]
           </button>
           <button style="background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:.3rem .65rem; font-size:.8rem; cursor:pointer; color:var(--text);"
-                  :disabled="page === totalPage" @click="page++;fetchConverts()">
+                  :disabled="page === totalPage" @click="page++;fetchConversions()">
             <i class="fas fa-chevron-right"></i>
           </button>
         </div>
@@ -182,11 +182,7 @@
     return { id: t.tag_id, name: t.tag_name || '', color: t.tag_color || null,
              icon: t.tag_icon || null, description: t.tag_description || '', visibility: t.tag_visibility || 'public' };
   }
-  function formatDate(str) {
-    if (!str) return '';
-    const d = new Date(str.replace(' ', 'T'));
-    return isNaN(d) ? str : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  }
+  const formatDate = ctiDate.formatDate;
 
   let _echartsPromise = null;
   function loadECharts() {
@@ -224,13 +220,13 @@
         return range;
       });
 
-      async function fetchConverts() {
+      async function fetchConversions() {
         loading.value = true;
         try {
           const params = new URLSearchParams({ page: page.value, sort_order: sortOrder.value });
           if (filterType.value) params.set('filter_type', filterType.value);
           if (search.value)     params.set('search', search.value);
-          const res  = await fetch(`/account/public_converts/${USER_ID}?${params}`);
+          const res  = await fetch(`/account/public_conversions/${USER_ID}?${params}`);
           const data = await res.json();
           if (data.success) {
             list.value      = data.list || [];
@@ -243,7 +239,7 @@
 
       function debounceFetch() {
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => { page.value = 1; fetchConverts(); }, 350);
+        debounceTimer = setTimeout(() => { page.value = 1; fetchConversions(); }, 350);
       }
 
       async function toggleFollow() {
@@ -279,10 +275,10 @@
 
       document.documentElement.addEventListener('themechange', renderChart);
       window.addEventListener('resize', () => chartInst?.resize());
-      onMounted(fetchConverts);
+      onMounted(fetchConversions);
 
       return { list, stats, loading, page, totalPage, pageRange, search, filterType, sortOrder,
-               chartEl, is_following, fetchConverts, debounceFetch, toggleFollow, formatDate, adaptTag,
+               chartEl, is_following, fetchConversions, debounceFetch, toggleFollow, formatDate, adaptTag,
                message_list };
     }
   }).mount('#main-containers');

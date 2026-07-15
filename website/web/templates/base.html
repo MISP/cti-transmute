@@ -155,10 +155,8 @@
     <script src="{{ url_for('static', filename='js/jquery-ui.js') }}"></script>
     <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/datetime.js') }}"></script>
     <script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dayjs/dayjs.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dayjs/dayjs-utc.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dayjs/dayjs-relativeTime.js') }}"></script>
 
     <script>
 
@@ -309,13 +307,13 @@
             function notifIcon(type) {
                 if (type === 'comment_reply') return 'fa-reply'
                 if (type === 'new_comment')   return 'fa-comment'
-                if (type === 'new_follow_convert') return 'fa-bolt'
+                if (type === 'new_follow_conversion') return 'fa-bolt'
                 return 'fa-flag'
             }
             function notifColor(type) {
                 if (type === 'comment_reply') return 'type-reply'
                 if (type === 'new_comment')   return 'type-reply'
-                if (type === 'new_follow_convert') return 'type-convert'
+                if (type === 'new_follow_conversion') return 'type-conversion'
                 return 'type-report'
             }
 
@@ -352,7 +350,7 @@
 
                         const date = document.createElement('div')
                         date.className = 'notif-panel-item-date'
-                        date.textContent = n.created_at
+                        date.textContent = ctiDate.formatDateTime(n.created_at, '')
 
                         body.append(msg, date)
                         item.append(icon, body)
@@ -377,18 +375,18 @@
                             }
                             if (relType === 'comment' && related) {
                                 try {
-                                    const r = await fetch(`/convert/get_comment_info?comment_id=${related}`)
+                                    const r = await fetch(`/conversions/get_comment_info?comment_id=${related}`)
                                     if (r.ok) {
                                         const d = await r.json()
-                                        if (d.convert_id) {
+                                        if (d.conversion_id) {
                                             const tabParam = d.is_evaluation ? '?open_tab=eval' : ''
-                                            window.location.href = `/convert/detail/${d.convert_id}${tabParam}#comment-${related}`
+                                            window.location.href = `/conversions/detail/${d.conversion_id}${tabParam}#comment-${related}`
                                             return
                                         }
                                     }
                                 } catch {}
                             }
-                            if (related) window.location.href = '/convert/detail/' + related
+                            if (related) window.location.href = '/conversions/detail/' + related
                         })
 
                         list.appendChild(item)

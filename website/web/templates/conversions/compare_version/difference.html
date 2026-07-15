@@ -1,0 +1,560 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/difference.css') }}">
+<link id="hljs-theme" rel="stylesheet" href="">
+<style>
+    .params-table td, .params-table th { padding: .3rem .5rem; vertical-align: top; }
+    .params-table tr.param-row-changed { background: rgba(245, 158, 11, .12); }
+    .params-table tr.param-row-changed td { font-weight: 600; }
+    .params-missing { color: var(--text-3); font-style: italic; font-size: .875rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container my-5" id="main-container" v-cloak>
+    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+
+    <template v-if="is_loading">
+        <div class="d-flex justify-content-center align-items-center" style="min-height:400px;">
+            <div class="text-center">
+                <div class="spinner-border" role="status"
+                    style="width:3rem; height:3rem; color:var(--accent); border-width:3px;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 mb-0" style="color:var(--text-2); font-size:0.875rem;">Loading diff...</p>
+            </div>
+        </div>
+    </template>
+
+    <template v-else>
+
+        <div class="custom-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div style="min-width:0;">
+                    <h3 class="mb-1 text-truncate" style="font-weight:700; letter-spacing:-0.02em;">
+                        {{ conversion_obj.name }}
+                    </h3>
+                    <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                        <span class="author-badge">
+                            <i class="fas fa-code-compare" style="font-size:0.65rem;"></i>
+                            Version diff
+                        </span>
+                        <span class="author-badge">
+                            <i class="fas fa-hashtag" style="font-size:0.65rem;"></i>
+                            History #[[ historyObj.id ]]
+                        </span>
+                        <span class="badge bg-primary" style="font-size:0.7rem;">v[[ historyObj.version ]]</span>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <template v-if="historyObj.status === 'pending'">
+                        <button class="btn btn-sm btn-outline-success fw-semibold"
+                            @click="historyAction(historyObj.id, 'accept')">
+                            <i class="fas fa-check me-1"></i> Accept
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger fw-semibold"
+                            @click="historyAction(historyObj.id, 'reject')">
+                            <i class="fas fa-xmark me-1"></i> Reject
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-8">
+                <div class="custom-card p-3 h-100">
+                    <p class="form-label mb-2">Comment</p>
+                    <p class="mb-0" v-if="historyObj.comment" style="font-size:0.9rem; color:var(--text);">
+                        [[ historyObj.comment ]]
+                    </p>
+                    <p class="mb-0 fst-italic" v-else style="color:var(--text-3); font-size:0.875rem;">
+                        No comment provided.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="custom-card p-3 h-100">
+                    <p class="form-label mb-2">Details</p>
+                    <div class="d-flex flex-column gap-2" style="font-size:0.82rem; color:var(--text-2);">
+                        <div>
+                            <i class="fas fa-clock me-2" style="color:var(--text-3); width:14px;"></i>
+                            <span>[[ formatDateTime(historyObj.created_at) ]]</span>
+                        </div>
+                        <div>
+                            <i class="fa-solid fa-circle me-2" style="color:var(--text-3); width:14px;"></i>
+                            <span class="badge"
+                                :class="{'bg-success': historyObj.status==='accepted', 'bg-danger': historyObj.status==='rejected', 'bg-warning text-dark': historyObj.status==='pending'}"
+                                style="font-size:0.7rem;">
+                                [[ historyObj.status ]]
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="custom-card p-3 mb-4">
+            <p class="form-label mb-2">
+                <i class="fas fa-sliders me-1" style="color:var(--text-3);"></i>
+                Parameters used
+            </p>
+
+            <p class="params-missing mb-0" v-if="!paramsState.recorded">
+                Parameters not recorded — this conversion predates parameter tracking.
+            </p>
+
+            <template v-else>
+                <div v-if="paramsState.identical"
+                    class="alert alert-success py-2 px-3 mb-2" style="font-size:0.85rem;">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Same parameters used — the difference comes from input edits or library-version drift.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 params-table" style="font-size:0.82rem;">
+                        <thead>
+                            <tr>
+                                <th style="width:40%;">Parameter</th>
+                                <th>Original</th>
+                                <th>New</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="r in paramsState.rows" :key="r.key"
+                                :class="r.changed ? 'param-row-changed' : ''">
+                                <td><code>[[ r.key ]]</code></td>
+                                <td>[[ fmtParam(r.old) ]]</td>
+                                <td>[[ fmtParam(r.new) ]]</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </template>
+        </div>
+
+        <div class="diff-toolbar">
+            <div class="diff-toolbar-group">
+                <span class="diff-toolbar-sep">Filter</span>
+                <button class="filter-btn" :class="filterMode==='all'     ? 'active-all'     : ''"
+                    @click="toggleFilter('all')">
+                    <i class="fas fa-list" style="font-size:0.6rem;"></i> All
+                </button>
+                <button class="filter-btn" :class="filterMode==='add'     ? 'active-add'     : ''"
+                    @click="toggleFilter('add')">
+                    <i class="fas fa-plus" style="font-size:0.6rem;"></i> Additions
+                </button>
+                <button class="filter-btn" :class="filterMode==='del'     ? 'active-del'     : ''"
+                    @click="toggleFilter('del')">
+                    <i class="fas fa-minus" style="font-size:0.6rem;"></i> Deletions
+                </button>
+                <button class="filter-btn" :class="filterMode==='noempty' ? 'active-noempty' : ''"
+                    @click="toggleFilter('noempty')">
+                    <i class="fas fa-eye-slash" style="font-size:0.6rem;"></i> Hide Empty
+                </button>
+                <span class="diff-stats ms-2" v-if="stats.add + stats.del > 0">
+                    <span class="diff-stats-add">+[[ stats.add ]]</span>
+                    <span class="diff-stats-del">−[[ stats.del ]]</span>
+                    lines changed
+                </span>
+            </div>
+            <div class="diff-toolbar-group">
+                <span class="height-range-label">
+                    <i class="fas fa-arrows-up-down me-1" style="font-size:0.6rem;"></i>
+                    [[ panelHeight ]]px
+                </span>
+                <input type="range" class="form-range" min="300" max="1000" step="50" v-model="panelHeight"
+                    style="width:120px;">
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="diff-panel-wrapper">
+                    <div class="diff-panel-header">
+                        <span class="diff-panel-title">
+                            <i class="fas fa-file me-1" style="color:var(--text-3);"></i>
+                            Original · JSON
+                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="diff-badge-del">
+                                <i class="fas fa-minus" style="font-size:0.55rem;"></i> Deletions
+                            </span>
+                            <button class="btn btn-sm btn-outline-secondary" @click="copyText(old_result, $event)">
+                                <i class="fas fa-copy me-1"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="diff-loading-overlay" id="spinner-left">
+                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                        Rendering…
+                    </div>
+                    <div class="diff-panel-body d-none" id="left-panel" :style="{ height: panelHeight + 'px' }">
+                        <table class="diff-table">
+                            <tbody v-html="leftHtml"></tbody>
+                        </table>
+                    </div>
+                    <div class="diff-panel-footer">
+                        <span>[[ stats.leftLines ]] lines</span>
+                        <span>Original Output</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="diff-panel-wrapper">
+                    <div class="diff-panel-header">
+                        <span class="diff-panel-title">
+                            <i class="fas fa-file-circle-check me-1" style="color:var(--text-3);"></i>
+                            New · JSON
+                        </span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="diff-badge-add">
+                                <i class="fas fa-plus" style="font-size:0.55rem;"></i> Additions
+                            </span>
+                            <button class="btn btn-sm btn-outline-secondary" @click="copyText(new_result, $event)">
+                                <i class="fas fa-copy me-1"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="diff-loading-overlay" id="spinner-right">
+                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                        Rendering…
+                    </div>
+                    <div class="diff-panel-body d-none" id="right-panel" :style="{ height: panelHeight + 'px' }">
+                        <table class="diff-table">
+                            <tbody v-html="rightHtml"></tbody>
+                        </table>
+                    </div>
+                    <div class="diff-panel-footer">
+                        <span>[[ stats.rightLines ]] lines</span>
+                        <span>New Output</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-5">
+            <a href="{{ url_for('conversions.detail', id=conversion_obj.id) }}"
+                class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
+                <i class="fas fa-arrow-left me-2"></i> Back
+            </a>
+        </div>
+
+    </template>
+</div>
+{% endblock %}
+
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/diff@5.1.0/dist/diff.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+
+<script type="module">
+    const { createApp, ref, computed, nextTick } = Vue;
+    import { create_message } from '/static/js/toaster.js';
+
+    function applyHljsTheme() {
+        const isDark = document.documentElement.classList.contains('dark-mode');
+        document.getElementById('hljs-theme').href = isDark
+            ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
+            : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css';
+    }
+    applyHljsTheme();
+    document.getElementById('theme-toggle')?.addEventListener('click', () => setTimeout(applyHljsTheme, 50));
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const old_result = ref({{ old_result | tojson | safe }});
+            const new_result = ref({{ new_result | tojson | safe }});
+            const history_id = "{{ history_id }}";
+
+            const original_params = ref({{ conversion_obj.params | tojson | safe }});
+
+            const historyObj = ref({});
+            const leftHtml = ref('');
+            const rightHtml = ref('');
+            const is_loading = ref(true);
+            const panelHeight = ref(520);
+            const filterMode = ref('all');
+            const stats = ref({ add: 0, del: 0, leftLines: 0, rightLines: 0 });
+
+            async function fetchConversion() {
+                const params = new URLSearchParams({ history_id });
+                const res = await fetch(`/conversions/get_history_details?${params}`);
+                const data = await res.json();
+                if (data.success) historyObj.value = data.history;
+            }
+
+            function fmtParam(v) {
+                if (v === undefined) return '—';
+                if (v === null) return 'null';
+                if (typeof v === 'boolean') return v ? 'true' : 'false';
+                if (typeof v === 'object') return JSON.stringify(v);
+                return String(v);
+            }
+
+            // Compare the Original vs New param sets for the diff attribution block.
+            const paramsState = computed(() => {
+                const op = original_params.value;
+                const hp = historyObj.value && historyObj.value.params;
+                const o = op && Object.keys(op).length ? op : null;
+                const n = hp && Object.keys(hp).length ? hp : null;
+                if (!o && !n) return { recorded: false, rows: [], identical: false };
+
+                const keys = Array.from(new Set([
+                    ...Object.keys(o || {}), ...Object.keys(n || {})
+                ])).sort();
+                const rows = keys.map(k => {
+                    const ov = o ? o[k] : undefined;
+                    const nv = n ? n[k] : undefined;
+                    return { key: k, old: ov, new: nv,
+                             changed: JSON.stringify(ov) !== JSON.stringify(nv) };
+                });
+                const identical = !!o && !!n && rows.every(r => !r.changed);
+                return { recorded: true, hasOriginal: !!o, hasNew: !!n, identical, rows };
+            });
+
+            function prettyJSON(str) {
+                try { return JSON.stringify(JSON.parse(str), null, 2); }
+                catch { return String(str); }
+            }
+
+            /*
+             * ── span-aware split ────────────────────────────────────────
+             *
+             * hljs wraps tokens in <span class="hljs-xxx">…</span>.
+             * A token can span multiple lines (e.g. a multiline string).
+             * If we naively split on \n we get unclosed spans → broken HTML.
+             *
+             * Fix: after every \n we close all currently-open spans, emit
+             * the line break, then reopen them on the next line.
+             * This is O(n) in the highlighted HTML length — one pass only.
+             *
+             * Result: highlight() called ONCE per file instead of once per
+             * line → 100-500× faster for large JSON files.
+             */
+            function spanAwareSplit(highlightedHtml) {
+                const lines = [];
+                let current = '';
+                // track open spans so we can close/reopen across line boundaries
+                const openSpans = [];  // array of full opening tags e.g. '<span class="hljs-string">'
+
+                // simple tokeniser – we only care about <span…>, </span>, and \n
+                // everything else is just text we accumulate
+                const re = /(<span[^>]*>)|(<\/span>)|\n|[^<\n]+|<[^>]*>/g;
+                let m;
+
+                while ((m = re.exec(highlightedHtml)) !== null) {
+                    const tok = m[0];
+
+                    if (tok === '\n') {
+                        // close all open spans before the line break
+                        for (let i = openSpans.length - 1; i >= 0; i--) {
+                            current += '</span>';
+                        }
+                        lines.push(current);
+                        current = '';
+                        // reopen them on the new line
+                        for (const tag of openSpans) {
+                            current += tag;
+                        }
+                    } else if (m[1]) {
+                        // opening span
+                        openSpans.push(tok);
+                        current += tok;
+                    } else if (m[2]) {
+                        // closing span
+                        openSpans.pop();
+                        current += tok;
+                    } else {
+                        current += tok;
+                    }
+                }
+
+                if (current) lines.push(current);
+                return lines;
+            }
+
+            function buildDiffHtml(oldStr, newStr) {
+                const oldPretty = prettyJSON(oldStr);
+                const newPretty = prettyJSON(newStr);
+
+                // highlight ONCE per file — the expensive part
+                const oldHl = hljs.highlight(oldPretty, { language: 'json' }).value;
+                const newHl = hljs.highlight(newPretty, { language: 'json' }).value;
+
+                // span-safe split into per-line HTML strings
+                const oldLines = spanAwareSplit(oldHl);
+                const newLines = spanAwareSplit(newHl);
+
+                // line-level diff on the plain text (fast)
+                const parts = Diff.diffLines(oldPretty, newPretty);
+
+                let oi = 0, ni = 0, ln = 1, rn = 1;
+                let addCount = 0, delCount = 0;
+                const L = [], R = [];
+
+                const EMPTY_ROW =
+                    `<tr class="diff-empty">` +
+                    `<td class="diff-td-num">&nbsp;</td>` +
+                    `<td class="diff-td-marker">&nbsp;</td>` +
+                    `<td class="diff-td-code">&nbsp;</td>` +
+                    `</tr>`;
+
+                const row = (cls, num, marker, code) =>
+                    `<tr class="${cls}">` +
+                    `<td class="diff-td-num">${num}</td>` +
+                    `<td class="diff-td-marker">${marker}</td>` +
+                    `<td class="diff-td-code">${code || '&nbsp;'}</td>` +
+                    `</tr>`;
+
+                for (const part of parts) {
+                    const count = part.count ?? part.value.split('\n').filter((_, i, a) => i < a.length - 1 || part.value.endsWith('\n') ? true : i < a.length - 1).length;
+                    // safer count: split and trim trailing empty caused by trailing \n
+                    const lines = part.value.split('\n');
+                    const lineCount = part.value.endsWith('\n') ? lines.length - 1 : lines.length;
+
+                    if (part.removed) {
+                        delCount += lineCount;
+                        for (let i = 0; i < lineCount; i++) {
+                            L.push(row('diff-removed', ln++, '−', oldLines[oi++]));
+                            R.push(EMPTY_ROW);
+                        }
+                    } else if (part.added) {
+                        addCount += lineCount;
+                        for (let i = 0; i < lineCount; i++) {
+                            L.push(EMPTY_ROW);
+                            R.push(row('diff-added', rn++, '+', newLines[ni++]));
+                        }
+                    } else {
+                        for (let i = 0; i < lineCount; i++) {
+                            L.push(row('diff-normal', ln++, ' ', oldLines[oi++]));
+                            R.push(row('diff-normal', rn++, ' ', newLines[ni++]));
+                        }
+                    }
+                }
+
+                stats.value = {
+                    add: addCount,
+                    del: delCount,
+                    leftLines: ln - 1,
+                    rightLines: rn - 1
+                };
+
+                return { left: L.join(''), right: R.join('') };
+            }
+
+            function showSpinners() {
+                ['left', 'right'].forEach(s => {
+                    document.getElementById(`spinner-${s}`)?.classList.remove('d-none');
+                    document.getElementById(`${s}-panel`)?.classList.add('d-none');
+                });
+            }
+            function hideSpinners() {
+                ['left', 'right'].forEach(s => {
+                    document.getElementById(`spinner-${s}`)?.classList.add('d-none');
+                    document.getElementById(`${s}-panel`)?.classList.remove('d-none');
+                });
+            }
+
+            function runDiff() {
+                showSpinners();
+                // Use a Worker-like approach via setTimeout(0) to unblock the UI paint
+                // then chunk the work so the spinner is actually visible
+                setTimeout(() => {
+                    const { left, right } = buildDiffHtml(old_result.value, new_result.value);
+                    leftHtml.value = left;
+                    rightHtml.value = right;
+                    nextTick(() => {
+                        hideSpinners();
+                        setupSync();
+                    });
+                }, 30);
+            }
+
+            function setupSync() {
+                const lp = document.getElementById('left-panel');
+                const rp = document.getElementById('right-panel');
+                if (!lp || !rp) return;
+                let syncing = false;
+                lp.addEventListener('scroll', () => {
+                    if (syncing) return; syncing = true;
+                    rp.scrollTop = lp.scrollTop; rp.scrollLeft = lp.scrollLeft;
+                    syncing = false;
+                });
+                rp.addEventListener('scroll', () => {
+                    if (syncing) return; syncing = true;
+                    lp.scrollTop = rp.scrollTop; lp.scrollLeft = rp.scrollLeft;
+                    syncing = false;
+                });
+            }
+
+            function toggleFilter(mode) {
+                filterMode.value = filterMode.value === mode ? 'all' : mode;
+                applyFilter(filterMode.value);
+            }
+
+            function applyFilter(mode) {
+                const lp = document.getElementById('left-panel');
+                const rp = document.getElementById('right-panel');
+                if (!lp || !rp) return;
+                [lp, rp].forEach(p => p.querySelectorAll('tr').forEach(r => r.style.display = ''));
+                if (mode === 'add') {
+                    rp.querySelectorAll('tr:not(.diff-added)').forEach(r => r.style.display = 'none');
+                } else if (mode === 'del') {
+                    lp.querySelectorAll('tr:not(.diff-removed)').forEach(r => r.style.display = 'none');
+                } else if (mode === 'noempty') {
+                    [lp, rp].forEach(p => p.querySelectorAll('tr.diff-empty').forEach(r => r.style.display = 'none'));
+                }
+            }
+
+            async function historyAction(id, action) {
+                const res = await fetch(`/conversions/history/${id}/${action}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' },
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = `/conversions/refresh/${"{{conversion_obj.uuid}}"}`;
+                } else {
+                    create_message(data.message, data.toast_class);
+                }
+            }
+
+            const formatDateTime = ctiDate.formatDateTime;
+
+            function copyText(text, event) {
+                const btn = event.target.closest('button');
+                const orig = btn.innerHTML;
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+                });
+            }
+
+            async function loadAllData() {
+                try {
+                    await fetchConversion();
+                    runDiff();
+                } catch (e) {
+                    console.error(e);
+                } finally {
+                    is_loading.value = false;
+                }
+            }
+            loadAllData();
+
+            return {
+                old_result, new_result, leftHtml, rightHtml,
+                historyObj, panelHeight, filterMode, stats,
+                is_loading, historyAction, toggleFilter,
+                copyText, formatDateTime, paramsState, fmtParam
+            };
+        }
+    }).mount('#main-containers');
+</script>
+{% endblock %}

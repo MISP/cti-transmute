@@ -136,16 +136,16 @@
 
                 <!-- Header row -->
                 <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                  <a v-if="c.convert_active" :href="'/convert/detail/'+c.convert_id" class="my-comment-convert-link">
-                    <i class="fas fa-external-link-alt me-1"></i>[[ c.convert_name ]]
+                  <a v-if="c.conversion_active" :href="'/conversions/detail/'+c.conversion_id" class="my-comment-conversion-link">
+                    <i class="fas fa-external-link-alt me-1"></i>[[ c.conversion_name ]]
                   </a>
-                  <span v-else class="my-comment-convert-link" style="cursor:default; opacity:0.6;">[[ c.convert_name ]]</span>
-                  <span class="comment-date">[[ c.created_at ]]</span>
+                  <span v-else class="my-comment-conversion-link" style="cursor:default; opacity:0.6;">[[ c.conversion_name ]]</span>
+                  <span class="comment-date">[[ formatDateTime(c.created_at) ]]</span>
                   <span v-if="c.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
                   <span v-if="c.has_replies" class="has-reply-badge"><i class="fas fa-reply"></i> Has replies</span>
                   <div class="d-flex gap-1 ms-auto">
-                    <a v-if="c.is_reply && c.convert_active"
-                      :href="'/convert/detail/'+c.convert_id+'#comment-'+c.id"
+                    <a v-if="c.is_reply && c.conversion_active"
+                      :href="'/conversions/detail/'+c.conversion_id+'#comment-'+c.id"
                       class="btn btn-sm btn-outline-secondary py-0 px-2"
                       style="font-size:0.72rem; color:var(--text-3);"
                       title="View in context">
@@ -157,12 +157,12 @@
                   </div>
                 </div>
 
-                <!-- Deactivated convert warning -->
-                <div v-if="!c.convert_active" class="d-flex align-items-center gap-2 mb-1 px-2 py-1 rounded-2"
+                <!-- Deactivated conversion warning -->
+                <div v-if="!c.conversion_active" class="d-flex align-items-center gap-2 mb-1 px-2 py-1 rounded-2"
                   style="background:rgba(239,68,68,0.07); border:1px solid rgba(239,68,68,0.18); font-size:0.78rem; color:var(--danger);">
                   <i class="fas fa-triangle-exclamation"></i>
-                  This convert has been deactivated.
-                  <a :href="'/account/admin/deleted_converts?highlight='+c.convert_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
+                  This conversion has been deactivated.
+                  <a :href="'/account/admin/deleted_conversions?highlight='+c.conversion_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
                     View in Trash <i class="fas fa-arrow-right ms-1" style="font-size:0.7rem;"></i>
                   </a>
                 </div>
@@ -291,7 +291,7 @@
                        onmouseout="this.style.textDecoration='none'">
                       [[ u.name ]]
                     </a>
-                    <div style="font-size:.72rem; color:var(--text-3);">[[ u.public_count ]] public convert[[ u.public_count !== 1 ? 's' : '' ]]</div>
+                    <div style="font-size:.72rem; color:var(--text-3);">[[ u.public_count ]] public conversion[[ u.public_count !== 1 ? 's' : '' ]]</div>
                   </div>
                 </div>
                 <button class="follow-btn" :class="u.is_following ? 'following' : ''" @click="toggleFollowModal(u)">
@@ -349,7 +349,10 @@
 
       async function deleteMyComment(c) {
         if (!confirm('Delete this comment permanently?')) return
-        const res = await fetch(`/convert/delete_comment?comment_id=${c.id}`)
+        const res = await fetch(`/conversions/delete_comment?comment_id=${c.id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) my_comments.value = my_comments.value.filter(x => x.id !== c.id)
@@ -500,6 +503,7 @@
         followers_search, debounceFollowers, loadFollowers,
         followSearch, followResults, followSearchLoading, followPage, followTotalPage,
         debounceFollowSearch, runFollowSearch, toggleFollowModal,
+        formatDateTime: ctiDate.formatDateTime
       }
     }
   }).mount('#main-containers')

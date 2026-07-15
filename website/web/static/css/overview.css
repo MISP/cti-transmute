@@ -150,8 +150,8 @@
     opacity: 0.35;
 }
 
-/* ── Converts strip ──────────────────────────────────────────── */
-.ov-converts-strip {
+/* ── Conversions strip ───────────────────────────────────────── */
+.ov-conversions-strip {
     display: flex;
     gap: 1rem;
     overflow-x: auto;
@@ -159,9 +159,9 @@
     scroll-behavior: smooth;
     scrollbar-width: none;
 }
-.ov-converts-strip::-webkit-scrollbar { display: none; }
+.ov-conversions-strip::-webkit-scrollbar { display: none; }
 
-.ov-convert-card {
+.ov-conversion-card {
     flex-shrink: 0;
     width: 230px;
     background: var(--surface);
@@ -176,7 +176,7 @@
     color: var(--text);
 }
 
-.ov-convert-card:hover {
+.ov-conversion-card:hover {
     border-color: var(--accent);
     box-shadow: 0 0 0 1px var(--accent), var(--shadow-sm);
     color: var(--text);
@@ -184,7 +184,7 @@
     transform: translateY(-2px);
 }
 
-.ov-convert-name {
+.ov-conversion-name {
     font-size: 0.875rem;
     font-weight: 600;
     color: var(--text);
@@ -194,14 +194,14 @@
     text-overflow: ellipsis;
 }
 
-.ov-convert-meta {
+.ov-conversion-meta {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
 }
 
-.ov-convert-type {
+.ov-conversion-type {
     font-size: 0.67rem;
     font-weight: 700;
     padding: 2px 8px;
@@ -213,29 +213,29 @@
     border: 1px solid rgba(37,99,235,0.15);
 }
 
-.ov-convert-date {
+.ov-conversion-date {
     font-size: 0.72rem;
     color: var(--text-3);
     margin-left: auto;
 }
 
-.ov-convert-stats {
+.ov-conversion-stats {
     display: flex;
     gap: 0.75rem;
     font-size: 0.78rem;
     color: var(--text-2);
 }
 
-.ov-convert-stat {
+.ov-conversion-stat {
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.ov-convert-stat .like-icon { color: var(--accent); }
-.ov-convert-stat .dislike-icon { color: var(--danger); }
+.ov-conversion-stat .like-icon { color: var(--accent); }
+.ov-conversion-stat .dislike-icon { color: var(--danger); }
 
-.ov-convert-link {
+.ov-conversion-link {
     margin-top: auto;
     font-size: 0.75rem;
     font-weight: 600;
@@ -247,7 +247,7 @@
     opacity: 0.8;
     transition: opacity var(--t);
 }
-.ov-convert-link:hover { opacity: 1; text-decoration: none; }
+.ov-conversion-link:hover { opacity: 1; text-decoration: none; }
 
 /* ── Review section ──────────────────────────────────────────── */
 .ov-review-section {

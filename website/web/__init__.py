@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
-from flask import  Flask
+from flask import Flask, url_for
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from flask_session import Session
 
 load_dotenv()
-from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
-from flask_sqlalchemy import SQLAlchemy
-from flask_session import Session
-from werkzeug.middleware.proxy_fix import ProxyFix
-from flask_login import LoginManager
-from cti_transmute.transmute import Transmute
-
 
 application = Flask(__name__)
 application.wsgi_app = ProxyFix(application.wsgi_app)
@@ -22,6 +23,10 @@ application.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://cti_user:
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 application.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 application.config['SESSION_TYPE'] = 'filesystem'
+session_file_dir = os.environ.get("SESSION_FILE_DIR")
+if session_file_dir:
+    Path(session_file_dir).mkdir(parents=True, exist_ok=True)
+    application.config["SESSION_FILE_DIR"] = session_file_dir
 
 # Flask 3.x defaults MAX_FORM_MEMORY_SIZE to 500 KB which rejects large MISP JSON payloads.
 # Set both limits to 50 MB to accommodate large events.
@@ -39,7 +44,6 @@ migrate = Migrate()
 db.init_app(application)
 csrf.init_app(application)
 
-from website.db_class import db as db_module 
 migrate.init_app(application, db, directory='website/migrations', render_as_batch=True)
 
 
@@ -49,4 +53,17 @@ login_manager.init_app(application)
 application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
 
-transmute: Transmute = Transmute()
+
+@application.template_global()
+def asset_url(filename):
+    """Static URL cache-busted with the file's last-modified time.
+
+    The browser caches the asset but re-fetches it the moment the file changes
+    (the ``?v=`` stamp changes), so editing a JS/CSS file never needs a manual
+    cache clear. Use in templates: ``src="{{ asset_url('js/conversions/x.js') }}"``.
+    """
+    try:
+        version = int(os.path.getmtime(os.path.join(application.static_folder, filename)))
+    except OSError:
+        version = 0
+    return f"{url_for('static', filename=filename)}?v={version}"

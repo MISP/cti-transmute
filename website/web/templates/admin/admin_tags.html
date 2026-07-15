@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block head %}
 <style>
-.vendor-panel {
+.submodule-panel {
   padding: 10px 14px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
   font-size: 0.82rem;
 }
-.vendor-panel-label {
+.submodule-panel-label {
   font-size: 0.71rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -16,7 +16,7 @@
   color: var(--text-3);
   white-space: nowrap;
 }
-.vendor-chip {
+.submodule-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -27,17 +27,17 @@
   font-size: 0.78rem;
   color: var(--text-2);
 }
-.vendor-chip code {
+.submodule-chip code {
   font-size: 0.74rem;
   color: var(--accent);
   background: none;
   padding: 0;
 }
-.vendor-chip-date {
+.submodule-chip-date {
   color: var(--text-3);
   font-size: 0.72rem;
 }
-.vendor-progress {
+.submodule-progress {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -46,7 +46,7 @@
   border-top: 1px solid var(--border);
   margin-top: 8px;
 }
-.vendor-step {
+.submodule-step {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -58,10 +58,10 @@
   border: 1px solid var(--border);
   transition: border-color .15s, color .15s, background .15s;
 }
-.vendor-step.step-active { border-color: var(--accent); color: var(--text); }
-.vendor-step.step-done   { color: #059669; border-color: rgba(5,150,105,.3); background: rgba(5,150,105,.06); }
-.vendor-step .step-stat  { font-weight: 700; margin-left: 2px; }
-.vendor-result-row {
+.submodule-step.step-active { border-color: var(--accent); color: var(--text); }
+.submodule-step.step-done   { color: #059669; border-color: rgba(5,150,105,.3); background: rgba(5,150,105,.06); }
+.submodule-step .step-stat  { font-weight: 700; margin-left: 2px; }
+.submodule-result-row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -69,7 +69,7 @@
   font-size: 0.82rem;
   color: var(--text-2);
 }
-.vendor-git-output {
+.submodule-git-output {
   margin-top: 6px;
   font-family: var(--font-mono, monospace);
   font-size: 0.73rem;
@@ -95,22 +95,22 @@
 
   <div class="custom-card p-3">
 
-    <!-- ── GitHub vendor update ─────────────────────────────────── -->
-    <div class="vendor-panel mb-3">
+    <!-- ── GitHub submodule update ──────────────────────────────── -->
+    <div class="submodule-panel mb-3">
       <div class="d-flex align-items-center gap-2 flex-wrap">
-        <span class="vendor-panel-label"><i class="fab fa-github me-1"></i>MISP Data Sources</span>
-        <template v-if="vendorStatus">
-          <span class="vendor-chip">
+        <span class="submodule-panel-label"><i class="fab fa-github me-1"></i>MISP Data Sources</span>
+        <template v-if="submoduleStatus">
+          <span class="submodule-chip">
             <i class="fas fa-book-open"></i>
             <strong>misp-taxonomies</strong>
-            <code>[[ vendorStatus.taxonomies.sha ]]</code>
-            <span v-if="vendorStatus.taxonomies.date" class="vendor-chip-date">[[ vendorStatus.taxonomies.date ]]</span>
+            <code>[[ submoduleStatus.taxonomies.sha ]]</code>
+            <span v-if="submoduleStatus.taxonomies.date" class="submodule-chip-date">[[ submoduleStatus.taxonomies.date ]]</span>
           </span>
-          <span class="vendor-chip">
+          <span class="submodule-chip">
             <i class="fas fa-globe"></i>
             <strong>misp-galaxy</strong>
-            <code>[[ vendorStatus.galaxies.sha ]]</code>
-            <span v-if="vendorStatus.galaxies.date" class="vendor-chip-date">[[ vendorStatus.galaxies.date ]]</span>
+            <code>[[ submoduleStatus.galaxies.sha ]]</code>
+            <span v-if="submoduleStatus.galaxies.date" class="submodule-chip-date">[[ submoduleStatus.galaxies.date ]]</span>
           </span>
         </template>
         <span v-else style="font-size:0.8rem;color:var(--text-3);">
@@ -127,11 +127,11 @@
       </div>
 
       <!-- Job progress / result -->
-      <div v-if="pullJob" class="vendor-progress">
+      <div v-if="pullJob" class="submodule-progress">
 
         <!-- Running -->
         <template v-if="pullJob.status === 'running'">
-          <span class="vendor-step"
+          <span class="submodule-step"
                 :class="{ 'step-active': pullJob.phase === 'pulling',
                           'step-done':   pullJob.progress >= 1 }">
             <i class="fas fa-fw"
@@ -139,7 +139,7 @@
                  ? 'fa-check' : (pullJob.phase === 'pulling' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
             Pull
           </span>
-          <span class="vendor-step"
+          <span class="submodule-step"
                 :class="{ 'step-active': pullJob.phase === 'importing_taxonomies',
                           'step-done':   pullJob.progress >= 2 }">
             <i class="fas fa-fw"
@@ -148,7 +148,7 @@
             Taxonomies
             <span v-if="pullJob.progress >= 2" class="step-stat">+[[ pullJob.taxo_imported ]]</span>
           </span>
-          <span class="vendor-step"
+          <span class="submodule-step"
                 :class="{ 'step-active': pullJob.phase === 'importing_galaxies',
                           'step-done':   pullJob.phase === 'done' }">
             <i class="fas fa-fw"
@@ -161,7 +161,7 @@
         <!-- Done -->
         <template v-else-if="pullJob.status === 'done' && pullJob.phase !== 'failed'">
           <div class="w-100">
-            <div class="vendor-result-row">
+            <div class="submodule-result-row">
               <i class="fas fa-circle-check text-success"></i>
               <strong>Update complete</strong>
               <span class="ms-2">
@@ -176,19 +176,19 @@
                 <i class="fas fa-exclamation-triangle me-1"></i>[[ pullJob.errors.length ]] warning(s)
               </span>
             </div>
-            <div v-if="pullJob.pull_output" class="vendor-git-output">[[ pullJob.pull_output ]]</div>
+            <div v-if="pullJob.pull_output" class="submodule-git-output">[[ pullJob.pull_output ]]</div>
           </div>
         </template>
 
         <!-- Failed -->
         <template v-else-if="pullJob.phase === 'failed'">
           <div class="w-100">
-            <div class="vendor-result-row text-danger">
+            <div class="submodule-result-row text-danger">
               <i class="fas fa-circle-xmark"></i>
               <strong>Update failed:</strong>
               [[ pullJob.errors?.[0] || 'Unknown error' ]]
             </div>
-            <div v-if="pullJob.pull_output" class="vendor-git-output">[[ pullJob.pull_output ]]</div>
+            <div v-if="pullJob.pull_output" class="submodule-git-output">[[ pullJob.pull_output ]]</div>
           </div>
         </template>
 
@@ -468,7 +468,7 @@
             <div class="d-flex flex-column gap-1" style="padding-top:4px;">
               <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_active"> Active</label>
               <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;"><input type="checkbox" class="form-check-input" v-model="editForm.is_approved_by_admin"> Approved</label>
-              <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;" title="Allow users to apply this tag as an evaluation on a convert">
+              <label class="d-flex align-items-center gap-1" style="font-size:0.82rem;cursor:pointer;" title="Allow users to apply this tag as an evaluation on a conversion">
                 <input type="checkbox" class="form-check-input" v-model="editForm.is_evaluation_tag">
                 <i class="fas fa-chart-bar" style="font-size:0.72rem;color:var(--accent);"></i> Evaluation
               </label>
@@ -547,23 +547,23 @@ createApp({
     const collapsedGroups = ref(new Set())
     const createModal = ref(null)
 
-    /* ── Vendor / GitHub update ──────── */
-    const vendorStatus = ref(null)
+    /* ── Submodules / GitHub update ──── */
+    const submoduleStatus = ref(null)
     const pullJob      = ref(null)
     let   _pullPollTimer = null
 
-    async function loadVendorStatus() {
+    async function loadSubmoduleStatus() {
       try {
-        const r = await fetch('/tags/admin/vendor_status')
+        const r = await fetch('/tags/admin/submodule_status')
         const d = await r.json()
-        if (d.success) vendorStatus.value = d
+        if (d.success) submoduleStatus.value = d
       } catch {}
     }
 
     async function startPullAndImport() {
       if (!confirm(
         'Pull latest MISP taxonomies & galaxies from GitHub and import new tags?\n\n' +
-        '• Step 1 — git submodule update (vendor/misp-taxonomies + vendor/misp-galaxy)\n' +
+        '• Step 1 — git submodule update (submodules/misp-taxonomies + submodules/misp-galaxy)\n' +
         '• Step 2 — Import new taxonomy tags (existing skipped)\n' +
         '• Step 3 — Import new galaxy tags, ~55k entries (~1 min)\n\n' +
         'Existing tags are never modified or deleted.'
@@ -587,13 +587,13 @@ createApp({
       clearInterval(_pullPollTimer)
       _pullPollTimer = setInterval(async () => {
         try {
-          const r = await fetch(`/tags/admin/bulk_converts/job/${jid}`)
+          const r = await fetch(`/tags/admin/bulk_conversions/job/${jid}`)
           const d = await r.json()
           if (d.success) {
             pullJob.value = d.job
             if (d.job.status === 'done') {
               clearInterval(_pullPollTimer)
-              await loadVendorStatus()
+              await loadSubmoduleStatus()
               if (d.job.phase !== 'failed') resetPage()
             }
           }
@@ -846,7 +846,7 @@ createApp({
       if (urlSearch) search.value = urlSearch
       editModalInst = new bootstrap.Modal(document.getElementById('editTagModal'))
       load()
-      loadVendorStatus()
+      loadSubmoduleStatus()
       try {
         const r = await fetch('/tags/fa-icons')
         if (r.ok) { const d = await r.json(); faIcons.value = d.icons || [] }
@@ -862,7 +862,7 @@ createApp({
       hasPendingSelected, pendingSelectedCount,
       groupedTags, collapsedGroups,
       createModal,
-      vendorStatus, pullJob, startPullAndImport,
+      submoduleStatus, pullJob, startPullAndImport,
       editForm, editErrors, editSaving, editIconOpen,
       iconSearch, filteredIcons, faIcons,
       message_list,

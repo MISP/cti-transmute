@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/refresh.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container my-5" v-cloak>
+    <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="custom-card p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div style="min-width:0;">
+                <h3 class="mb-1 text-truncate" style="font-weight:700; letter-spacing:-0.02em;">
+                    <i class="fas fa-sync-alt me-2" style="color:var(--accent);"></i>
+                    Re-run Conversion
+                </h3>
+                <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                    <span class="author-badge">
+                        <i class="fas fa-tag" style="font-size:0.65rem;"></i>
+                        {{ conversion_obj.name }}
+                    </span>
+                    <span class="type-pill
+                        {% if conversion_obj.conversion_type == 'STIX_TO_MISP' %}type-stix{% else %}type-misp{% endif %}">
+                        {% if conversion_obj.conversion_type == 'STIX_TO_MISP' %}
+                        STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> MISP
+                        {% else %}
+                        MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> STIX
+                        {% endif %}
+                    </span>
+                    {% if filename %}
+                    <span class="author-badge">
+                        <i class="fas fa-file-code" style="font-size:0.65rem;"></i>
+                        {{ filename }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <a href="{{ url_for('conversions.detail', id=conversion_obj.id) }}" class="btn btn-outline-secondary btn-sm px-3">
+                <i class="fas fa-arrow-left me-1"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="custom-card p-4 mb-4">
+        <p class="refresh-options-heading">
+            <i class="fas fa-sliders me-2" style="color:var(--accent);"></i>
+            {% if conversion_obj.conversion_type == "MISP_TO_STIX" %}
+            MISP → STIX Options
+            {% elif conversion_obj.conversion_type == "STIX_TO_MISP" %}
+            STIX → MISP Options
+            {% else %}
+            Conversion Options
+            {% endif %}
+        </p>
+
+        <!-- Converter parameters — rendered from the Parameter schema (ADR-0006),
+             prefilled from the params the conversion ran with -->
+        <form id="refresh-form" novalidate>
+            <div id="param-surface" class="mb-3"></div>
+            <button type="submit" id="refresh-submit" class="btn btn-primary fw-semibold">
+                <i class="fas fa-sync-alt me-1"></i> Re-run Conversion
+            </button>
+        </form>
+    </div>
+
+    <div class="custom-card mb-4">
+        <div class="refresh-tabs-header">
+            <ul class="nav nav-underline px-3 pt-2" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#pane-pending" role="tab">
+                        <i class="fas fa-clock me-1"></i>
+                        Pending Changes
+                        <span v-if="latest_pending" class="badge bg-warning text-dark ms-1"
+                            style="font-size:0.65rem;">1</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#pane-archive" role="tab">
+                        <i class="fas fa-history me-1"></i>
+                        History Archive
+                        <span v-if="history_archive.length > 0" class="badge bg-primary ms-1"
+                            style="font-size:0.65rem;">[[ history_archive.length ]]</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="tab-content p-3">
+
+            <div class="tab-pane fade show active" id="pane-pending" role="tabpanel">
+                <div v-if="latest_pending" class="table-responsive">
+                    <table class="table refresh-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Comment</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="row-pending" @click="goToDiff(latest_pending.id)" style="cursor:pointer;">
+                                <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">
+                                    #[[ latest_pending.id ]]
+                                </td>
+                                <td><span class="badge bg-primary">v[[ latest_pending.version ]]</span></td>
+                                <td><span class="badge bg-warning text-dark">Pending</span></td>
+                                <td style="color:var(--text-2);">[[ formatDateTime(latest_pending.created_at) ]]</td>
+                                <td class="text-truncate" style="max-width:250px; color:var(--text-2);">
+                                    [[ latest_pending.comment || '—' ]]
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button class="btn btn-sm btn-outline-success fw-semibold"
+                                            @click.stop="historyAction(latest_pending.id, 'accept')">
+                                            <i class="fas fa-check me-1"></i> Accept
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger fw-semibold"
+                                            @click.stop="historyAction(latest_pending.id, 'reject')">
+                                            <i class="fas fa-xmark me-1"></i> Reject
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-else class="refresh-empty">
+                    <i class="fas fa-check-circle"></i>
+                    No pending changes for this conversion.
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="pane-archive" role="tabpanel">
+                <div v-if="history_archive.length > 0" class="table-responsive">
+                    <table class="table refresh-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Version</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Comment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="h in history_archive" :key="h.id" @click="goToDiff(h.id)"
+                                style="cursor:pointer;">
+                                <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">
+                                    #[[ h.id ]]
+                                </td>
+                                <td><span class="badge bg-primary">v[[ h.version ]]</span></td>
+                                <td>
+                                    <span class="badge" :class="{
+                                            'bg-success':          h.status === 'accepted',
+                                            'bg-danger':           h.status === 'rejected',
+                                            'bg-warning text-dark': h.status === 'pending'
+                                        }">
+                                        [[ h.status ]]
+                                    </span>
+                                </td>
+                                <td style="color:var(--text-2);">[[ formatDateTime(h.created_at) ]]</td>
+                                <td class="text-truncate" style="max-width:250px; color:var(--text-2);">
+                                    [[ h.comment || '—' ]]
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-else class="refresh-empty">
+                    <i class="fas fa-inbox"></i>
+                    No history available yet.
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="text-center mb-5">
+        <a href="{{ url_for('conversions.detail', id=conversion_obj.id) }}"
+            class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
+            <i class="fas fa-arrow-left me-2"></i> Back
+        </a>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    import ParamSurface from '{{ asset_url('js/conversions/paramSurface.js') }}';
+    import { create_message, message_list } from '/static/js/toaster.js';
+
+    const { createApp, ref, computed, onMounted } = Vue;
+
+    // The Converter this conversion ran through — its published Parameter
+    // schema draws the param controls, prefilled from the stored params.
+    const CONVERTER_URL = '/api/convert/{{ conversion_obj.source_format }}_to_{{ conversion_obj.target_format }}';
+    const INITIAL_PARAMS = {{ (conversion_obj.params or {}) | tojson }};
+    const csrf = () => document.getElementById('csrf_token')?.value || '';
+
+    let paramVm = null;
+
+    async function mountParamSurface() {
+        const mount = document.getElementById('param-surface');
+        try {
+            const res = await fetch('/api/convert/list');
+            const data = await res.json();
+            const entry = data.available?.[CONVERTER_URL];
+            if (!entry) throw new Error('Converter not found in registry');
+            paramVm = createApp(ParamSurface, {
+                schema: entry.params_schema,
+                initial: INITIAL_PARAMS
+            }).mount('#param-surface');
+        } catch (e) {
+            mount.innerHTML =
+                '<div class="text-danger small">Could not load parameters: ' + e.message + '</div>';
+        }
+    }
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const history_list = ref([]);
+
+            async function getHistory() {
+                const res = await fetch(`/conversions/get_new_conversion?id={{ conversion_obj.id }}`);
+                const data = await res.json();
+                history_list.value = (res.ok && data.conversion_history) ? data.conversion_history : [];
+            }
+
+            async function submitRefresh(e) {
+                e.preventDefault();
+                paramVm?.clearErrors();
+                const btn = document.getElementById('refresh-submit');
+                const orig = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Re-running…';
+                try {
+                    const res = await fetch(window.location.pathname, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                        body: JSON.stringify({ params: paramVm ? paramVm.collect() : {} }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (res.ok) {
+                        create_message(data.message, 'success');
+                        await getHistory();
+                    } else if (res.status === 400 && data.fields) {
+                        paramVm?.setErrors(data.fields);
+                        create_message(data.error || 'Please correct the highlighted parameters.', 'danger');
+                    } else {
+                        create_message(data.error || `Refresh failed (HTTP ${res.status}).`, 'danger');
+                    }
+                } catch (err) {
+                    create_message('Network error: ' + err.message, 'danger');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                }
+            }
+
+            onMounted(() => {
+                mountParamSurface();
+                document.getElementById('refresh-form')
+                    ?.addEventListener('submit', submitRefresh);
+            });
+
+            const latest_pending = computed(() => {
+                const pendings = history_list.value.filter(h => h.status === 'pending');
+                if (!pendings.length) return null;
+                return pendings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            });
+
+            const history_archive = computed(() =>
+                history_list.value
+                    .filter(h => h !== latest_pending.value)
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            );
+
+            async function historyAction(id, action) {
+                const res = await fetch(`/conversions/history/${id}/${action}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrf() }
+                });
+                const data = await res.json();
+                create_message(data.message, data.toast_class);
+                await getHistory();
+            }
+
+            function goToDiff(id) {
+                window.location.href = `/conversions/difference/${id}`;
+            }
+
+            const formatDateTime = ctiDate.formatDateTime;
+
+            getHistory();
+
+            return { latest_pending, history_archive, goToDiff, historyAction, formatDateTime, message_list };
+        }
+    }).mount('#main-containers');
+</script>
+{% endblock %}
