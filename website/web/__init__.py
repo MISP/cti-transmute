@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+from importlib.metadata import version as _dist_version
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -52,6 +53,12 @@ login_manager.init_app(application)
 
 application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
+
+
+# Single source of truth for the displayed version: the installed package
+# metadata, built from pyproject.toml's [project] version. Templates read it
+# as {{ app_version }} so the footer never drifts from the real version.
+application.jinja_env.globals["app_version"] = _dist_version("cti-transmute")
 
 
 @application.template_global()
