@@ -13,6 +13,7 @@ push, preview, and download.
 Fixture/helper prior art: ``test_misp_read_routes.py``.
 """
 
+import ipaddress
 import json
 import uuid as _uuid
 from datetime import datetime, timezone
@@ -22,6 +23,18 @@ import requests
 import responses
 
 MISP_URL = "https://misp.example.org"
+
+
+@pytest.fixture(autouse=True)
+def _public_dns(monkeypatch):
+    """Pin DNS so the URL guard sees ``misp.example.org`` as a public host
+    (the guard judges hosts by their resolved addresses, and example.org
+    subdomains do not actually resolve)."""
+    from website.web.conversions import conversions
+
+    monkeypatch.setattr(
+        conversions, "_resolved_ips",
+        lambda hostname: [ipaddress.ip_address("8.8.8.8")])
 
 
 @pytest.fixture
