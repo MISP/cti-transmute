@@ -1,6 +1,7 @@
 # website/web/conversions/conversions.py
 import ipaddress
 import json
+import socket
 from urllib.parse import urlparse
 
 from flask import (
@@ -44,8 +45,23 @@ from ..evaluate import evaluate_core as EvalModel
 from ..tags import tags_core as TagsModel
 
 
+def _resolved_ips(hostname: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    """Every address ``hostname`` resolves to."""
+    infos = socket.getaddrinfo(hostname, 443, proto=socket.IPPROTO_TCP)
+    return [ipaddress.ip_address(info[4][0]) for info in infos]
+
+
 def _validate_misp_url(misp_url: str) -> str | None:
-    """Return an error string if the URL is invalid/unsafe, None if OK."""
+    """Return an error string if the URL is invalid/unsafe, None if OK.
+
+    The host must be publicly routable: an IP-literal host is checked
+    directly, a domain name is checked against every address it resolves to
+    (the literal string proves nothing about where a request would land).
+    A DNS swap after this check can still probe internal hosts/ports through
+    the differing error shapes, but cannot expose a response body:
+    ``_misp_request`` requires a valid TLS certificate for the hostname and
+    refuses redirects.
+    """
     try:
         parsed = urlparse(misp_url)
     except Exception:
@@ -56,11 +72,14 @@ def _validate_misp_url(misp_url: str) -> str | None:
     if not hostname:
         return "Invalid MISP URL (missing host)"
     try:
-        ip = ipaddress.ip_address(hostname)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
-            return "Private/loopback/reserved IP addresses are not allowed"
+        ips = [ipaddress.ip_address(hostname)]
     except ValueError:
-        pass  # it's a domain name — OK
+        try:
+            ips = _resolved_ips(hostname)
+        except OSError:
+            return "Could not resolve the MISP URL host"
+    if not ips or not all(ip.is_global for ip in ips):
+        return "Private/loopback/reserved IP addresses are not allowed"
     return None
 
 
@@ -235,6 +254,7 @@ def misp_to_stix():
 
 
 @conversions_blueprint.route("/fetch_misp_event", methods=['POST'])
+@login_required
 def fetch_misp_event():
     """Fetch one or more MISP events via restSearch.
     Accepts event_ids (list) or event_id (string). Supports optional restSearch params.
@@ -312,6 +332,7 @@ def fetch_misp_event():
 
 
 @conversions_blueprint.route("/misp_search_events", methods=['POST'])
+@login_required
 def misp_search_events():
     """Search events on an external MISP instance using /events/index."""
     data = request.get_json(silent=True) or {}
