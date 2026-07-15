@@ -243,8 +243,8 @@ uv run manage db upgrade   <span class="comment"># apply pending migrations</spa
                 <div class="dc-info-card purple">
                     <div class="dc-info-title"><i class="fas fa-boxes-stacked"></i> Submodules</div>
                     <div class="dc-info-body">
-                        <code>vendor/pivotick</code>, <code>vendor/misp-taxonomies</code>,
-                        <code>vendor/misp-galaxy</code> — all git submodules.
+                        <code>submodules/pivotick</code>, <code>submodules/misp-taxonomies</code>,
+                        <code>submodules/misp-galaxy</code> — all git submodules.
                     </div>
                 </div>
             </div>
@@ -257,7 +257,7 @@ uv run manage db upgrade   <span class="comment"># apply pending migrations</spa
 config/
   generic.json           <span class="comment"># listen_ip, listen_port</span>
 cti_transmute/           <span class="comment"># Transmute class wrapper</span>
-vendor/                  <span class="comment"># git submodules</span>
+submodules/              <span class="comment"># git submodules</span>
 website/
   web/__init__.py        <span class="comment"># Flask factory, db/login/session/migrate</span>
   web/home.py            <span class="comment"># home_blueprint</span>
@@ -828,8 +828,8 @@ website/
                 <div class="dc-routes">
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/list</code><p class="dc-route-desc">Paginated all tags with approval workflow. Filter by source, active, approved, public.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/approve/&lt;id&gt;</code><p class="dc-route-desc">Toggle approval status of a tag.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_taxonomies</code><p class="dc-route-desc">Import all tags from <code>vendor/misp-taxonomies</code> submodule (~12 380 tags).</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
-                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_galaxies</code><p class="dc-route-desc">Import cluster names from <code>vendor/misp-galaxy</code> submodule.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_taxonomies</code><p class="dc-route-desc">Import all tags from <code>submodules/misp-taxonomies</code> submodule (~12 380 tags).</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
+                    <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/import_galaxies</code><p class="dc-route-desc">Import cluster names from <code>submodules/misp-galaxy</code> submodule.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-post">POST</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_conversions/scan</code><p class="dc-route-desc">Background job: scan all conversions and auto-assign matching tags from their JSON.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                     <div class="dc-route-row"><span class="dc-badge dc-badge-get">GET</span><div class="dc-route-main"><code class="dc-route-path">/tags/admin/bulk_conversions/job/&lt;id&gt;</code><p class="dc-route-desc">Poll the status of a background bulk-tag job.</p></div><div class="dc-route-auth"><span class="dc-auth admin"><i class="fas fa-shield"></i> Admin</span></div></div>
                 </div>

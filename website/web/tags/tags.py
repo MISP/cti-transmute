@@ -165,10 +165,10 @@ def admin_import_galaxies():
     }, 200
 
 
-@tags_blueprint.route("/admin/vendor_status", methods=["GET"])
+@tags_blueprint.route("/admin/submodule_status", methods=["GET"])
 @login_required
-def admin_vendor_status():
-    """Return commit SHA + date for each MISP vendor submodule."""
+def admin_submodule_status():
+    """Return commit SHA + date for each MISP dataset submodule."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
 
@@ -188,7 +188,7 @@ def admin_vendor_status():
 
     return {
         "success":    True,
-        "taxonomies": _git_info(TagsModel.VENDOR_PATH),
+        "taxonomies": _git_info(TagsModel.TAXONOMIES_PATH),
         "galaxies":   _git_info(TagsModel.GALAXY_PATH),
     }, 200
 
@@ -196,13 +196,13 @@ def admin_vendor_status():
 @tags_blueprint.route("/admin/pull_and_import", methods=["POST"])
 @login_required
 def admin_pull_and_import():
-    """Pull latest MISP vendor submodules then import new tags as a background job."""
+    """Pull latest MISP dataset submodules then import new tags as a background job."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
 
     jid = bulk_jobs.start_pull_and_import(current_app._get_current_object(), current_user.id)
     AccountModel.create_system_log(
-        "tags_vendor_pull_started",
+        "tags_submodule_pull_started",
         actor_id=current_user.id, actor_name=current_user.first_name,
         target_type="tag", details=f"job {jid}",
     )

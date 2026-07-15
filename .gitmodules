@@ -1,9 +1,9 @@
 [submodule "vendor/pivotick"]
-	path = vendor/pivotick
+	path = submodules/pivotick
 	url = https://github.com/Pivotick/Pivotick.git
 [submodule "vendor/misp-taxonomies"]
-	path = vendor/misp-taxonomies
+	path = submodules/misp-taxonomies
 	url = https://github.com/MISP/misp-taxonomies.git
 [submodule "vendor/misp-galaxy"]
-	path = vendor/misp-galaxy
+	path = submodules/misp-galaxy
 	url = https://github.com/MISP/misp-galaxy.git

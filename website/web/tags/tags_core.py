@@ -9,8 +9,8 @@ from sqlalchemy import case, func, or_
 from website.db_class.db import Conversion, ConversionTagAssociation, Tag
 from website.web import db
 
-VENDOR_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / "misp-taxonomies"
-GALAXY_PATH = Path(__file__).resolve().parent.parent.parent.parent / "vendor" / "misp-galaxy"
+TAXONOMIES_PATH = Path(__file__).resolve().parent.parent.parent.parent / "submodules" / "misp-taxonomies"
+GALAXY_PATH = Path(__file__).resolve().parent.parent.parent.parent / "submodules" / "misp-galaxy"
 
 
 def _galaxy_color(cluster_type: str) -> str:
@@ -194,12 +194,12 @@ def bulk_action(tag_ids, action):
         return 0, str(e)
 
 
-def import_taxonomies(admin_user_id, vendor_path=None):
+def import_taxonomies(admin_user_id, path=None):
     """
-    Walk vendor/misp-taxonomies and upsert tags into the DB.
+    Walk submodules/misp-taxonomies and upsert tags into the DB.
     Returns (imported_count, skipped_count, errors_list).
     """
-    path = Path(vendor_path) if vendor_path else VENDOR_PATH
+    path = Path(path) if path else TAXONOMIES_PATH
 
     if not path.exists():
         return 0, 0, [f"Taxonomy directory not found: {path}"]
@@ -293,13 +293,13 @@ def import_taxonomies(admin_user_id, vendor_path=None):
     return imported, skipped, errors
 
 
-def import_galaxies(admin_user_id, vendor_path=None, batch_size=500):
+def import_galaxies(admin_user_id, path=None, batch_size=500):
     """
-    Walk vendor/misp-galaxy/clusters and upsert galaxy tags into the DB.
+    Walk submodules/misp-galaxy/clusters and upsert galaxy tags into the DB.
     Tag name format: misp-galaxy:<cluster-type>="<entry-value>"
     Returns (imported_count, skipped_count, errors_list).
     """
-    path = Path(vendor_path) if vendor_path else GALAXY_PATH
+    path = Path(path) if path else GALAXY_PATH
     clusters_dir = path / "clusters"
     galaxies_dir = path / "galaxies"
 

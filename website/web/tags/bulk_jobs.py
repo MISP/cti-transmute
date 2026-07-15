@@ -92,7 +92,7 @@ def start_clear(app, conversion_ids: list, user_id: int) -> str:
 
 
 def start_pull_and_import(app, user_id: int) -> str:
-    """Pull latest MISP vendor submodules then import new taxonomy/galaxy tags."""
+    """Pull latest MISP dataset submodules then import new taxonomy/galaxy tags."""
     jid = create('pull_import', total=3)
     update(jid,
            phase='pulling',
@@ -194,19 +194,16 @@ def _remove_worker(app, jid: str, conversion_ids: list, tag_ids: list, user_id: 
 def _pull_import_worker(app, jid: str, user_id: int) -> None:
     with app.app_context():
         from website.web.tags.tags_core import (
-            VENDOR_PATH,
-            import_galaxies,
-            import_taxonomies,
-        )
+            TAXONOMIES_PATH, import_galaxies, import_taxonomies)
 
-        project_root = VENDOR_PATH.parent.parent  # vendor/misp-taxonomies/../../  = project root
+        project_root = TAXONOMIES_PATH.parent.parent  # submodules/misp-taxonomies/../../  = project root
 
         # ── Step 1: git submodule update --remote ──────────────────────
         update(jid, phase='pulling', progress=0)
         try:
             result = subprocess.run(
                 ['git', 'submodule', 'update', '--remote',
-                 'vendor/misp-taxonomies', 'vendor/misp-galaxy'],
+                 'submodules/misp-taxonomies', 'submodules/misp-galaxy'],
                 cwd=str(project_root),
                 capture_output=True,
                 text=True,
