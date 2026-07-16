@@ -40,7 +40,7 @@ manage         = "bin.manage:main"
 dev = [
     "pytest>=9.0.3",
     "responses>=0.26.2",
-    "ruff>=0.15.17"
+    "ruff>=0.15.17",
 ]
 
 [tool.ruff]
@@ -48,7 +48,7 @@ target-version = "py310"
 # vulnerability-lookup is a borrowed reference repo, not ours; submodules are
 # upstream checkouts a root-level --fix must never edit; migrations are
 # alembic-generated and follow their own conventions.
-extend-exclude = [submodules", "website/migrations"]
+extend-exclude = ["submodules", "website/migrations"]
 
 [tool.ruff.lint]
 # pyflakes (F: unused/duplicate/redefined imports and names) + the default
