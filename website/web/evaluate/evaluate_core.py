@@ -1,6 +1,8 @@
 import datetime
 from collections import Counter
 
+from weasyprint import HTML as WP_HTML, URLFetcher
+
 from website.db_class.db import Comment, Conversion, ConversionEvaluation, Tag
 from website.lib.misp import overall_level as _overall_level
 from website.lib.misp import parse_eval_tag as _parse_eval_tag
@@ -677,13 +679,25 @@ def render_evaluation_markdown(report: dict) -> str:
     return '\n'.join(lines)
 
 
+def _pdf_url_fetcher(url: str):
+    """Block filesystem and network access while WeasyPrint renders the report.
+
+    The evaluation PDF is built from untrusted CTI content (conversion name,
+    description, comment text), so no external resource may be loaded during the
+    render: a crafted ``file://`` or ``http(s)://`` reference in that content
+    would otherwise let a caller read local files or reach internal services.
+    Only self-contained ``data:`` URIs are allowed through; URLFetcher raises
+    ValueError for every other scheme.
+    """
+    return URLFetcher(allowed_protocols=('data',)).fetch(url)
+
+
 def render_evaluation_pdf(report: dict) -> bytes:
     """
     Render a report dict as a PDF byte string using WeasyPrint.
     Converts the Markdown to HTML first, then applies an embedded CSS stylesheet.
     """
     import markdown as md
-    from weasyprint import HTML as WP_HTML
 
     md_text  = render_evaluation_markdown(report)
     html_body = md.markdown(md_text, extensions=['tables', 'fenced_code'])
@@ -702,14 +716,15 @@ def render_evaluation_pdf(report: dict) -> bytes:
         for lvl, color in SCORE_COLORS.items()
     )
 
+    # Fonts use the system stack only, so the report renders with zero external
+    # fetches (why that matters: see _pdf_url_fetcher).
     css = f"""
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     @page {{
         margin: 2cm 2.2cm;
         @bottom-right {{ content: "Page " counter(page) " / " counter(pages); font-size: 9pt; color: #94a3b8; }}
         @bottom-left  {{ content: "CTI-Transmute — Evaluation Report"; font-size: 9pt; color: #94a3b8; }}
     }}
-    body   {{ font-family: 'Inter', Arial, sans-serif; font-size: 10.5pt; color: #1e293b; line-height: 1.65; }}
+    body   {{ font-family: 'DejaVu Sans', sans-serif; font-size: 10.5pt; color: #1e293b; line-height: 1.65; }}
     h1     {{ font-size: 20pt; color: #0f172a; border-bottom: 3px solid #2563eb; padding-bottom: .3em; margin-top: 0; }}
     h2     {{ font-size: 14pt; color: #1e3a5f; border-bottom: 1px solid #e2e8f0; padding-bottom: .2em; margin-top: 1.6em; }}
     h3     {{ font-size: 11pt; color: #334155; margin-top: 1.2em; margin-bottom: .3em; }}
@@ -737,7 +752,7 @@ def render_evaluation_pdf(report: dict) -> bytes:
 </body>
 </html>"""
 
-    return WP_HTML(string=full_html).write_pdf()
+    return WP_HTML(string=full_html, url_fetcher=_pdf_url_fetcher).write_pdf()
 
 
 def get_recent_to_evaluate(viewer_id=None, limit=8) -> list:
