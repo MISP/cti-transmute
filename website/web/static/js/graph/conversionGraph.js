@@ -1,3 +1,5 @@
+import { escapeGraphLabels, renderRawJson } from './graphSafety.js'
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  GRAPH CONFIG — edit this object to change graph behaviour & appearance.
 //  All options are documented inline. No need to touch the logic below.
@@ -405,6 +407,7 @@ async function _initViewer(containerId, jsonText, format) {
     let parsed
     try {
         parsed = format === 'misp' ? parseMisp(JSON.parse(jsonText)) : parseStix(JSON.parse(jsonText))
+        escapeGraphLabels(parsed)
     } catch {
         container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not parse JSON.</p>'
         return
@@ -508,7 +511,7 @@ async function _initViewer(containerId, jsonText, format) {
                             const raw = node.getData()?.raw ?? {}
                             const isDark = document.documentElement.classList.contains('dark-mode')
                             const win = window.open('', '_blank')
-                            win.document.write(`<html><body style="margin:0;background:${isDark ? '#0f0f10' : '#fff'};color:${isDark ? '#e0e0e0' : '#000'}"><pre style="font-family:monospace;font-size:13px;padding:1.5rem;white-space:pre-wrap;word-break:break-all">${JSON.stringify(raw, null, 2)}</pre></body></html>`)
+                            if (win) renderRawJson(win, raw, isDark)
                         },
                     }],
                 },
