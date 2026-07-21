@@ -240,6 +240,7 @@ def recent_to_evaluate():
 @evaluate_blueprint.route("/activity_timeline")
 def activity_timeline():
     days = request.args.get("days", 30, type=int)
+    days = max(1, min(days, 1095))  # Max 3 years (unauthenticated route)
     data = EvalModel.get_activity_timeline(days=days)
     return {"success": True, "timeline": data}, 200
 
