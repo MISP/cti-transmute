@@ -5,7 +5,7 @@ from importlib.metadata import version as _dist_version
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, url_for
+from flask import Flask, request, url_for
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -53,6 +53,64 @@ login_manager.init_app(application)
 
 application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
+
+
+# Cookie hardening. HttpOnly is already the Flask/flask-login default.
+def _cookie_secure_from_env() -> bool:
+    """Secure requires TLS end-to-end from the browser's point of view:
+    localhost is exempt in browsers, but a dev container reached by plain-HTTP
+    IP is not, so such setups opt out with SESSION_COOKIE_SECURE=false in .env.
+    """
+    return os.environ.get("SESSION_COOKIE_SECURE", "true").lower() not in ("0", "false", "no")
+
+
+_secure_cookies = _cookie_secure_from_env()
+application.config["SESSION_COOKIE_SECURE"] = _secure_cookies
+application.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+application.config["REMEMBER_COOKIE_SECURE"] = _secure_cookies
+application.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
+
+
+# Content-Security-Policy. The two 'unsafe-*' allowances are forced by the
+# no-build-step frontend: Vue's runtime compiler needs 'unsafe-eval' (in-DOM
+# templates compile via new Function), and the inline Jinja <script> blocks
+# plus on*= handlers in templates need 'unsafe-inline'. Everything else is
+# vendored under static/ except highlight.js/zxcvbn (cdnjs), echarts/chart.js/
+# diff (jsdelivr), the Inter/JetBrains Mono fonts (Google Fonts), and the demo
+# video thumbnail (img.youtube.com). Pivotick spawns its graph worker from a
+# blob: URL.
+_CSP = "; ".join((
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https://img.youtube.com",
+    "connect-src 'self'",
+    "worker-src 'self' blob:",
+    "frame-src 'none'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+))
+
+
+@application.after_request
+def _set_security_headers(response):
+    """Stamp every response with the security headers.
+
+    setdefault so a route can consciously override a header; HSTS only when
+    the request arrived over TLS (X-Forwarded-Proto via ProxyFix), so a
+    plain-HTTP dev instance never pins browsers to HTTPS.
+    """
+    response.headers.setdefault("Content-Security-Policy", _CSP)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), geolocation=(), microphone=()")
+    if request.is_secure:
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 # Single source of truth for the displayed version: the installed package
