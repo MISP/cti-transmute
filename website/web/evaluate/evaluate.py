@@ -257,7 +257,8 @@ def export_evaluation_markdown(conversion_id):
     if not access.can_see(current_user, conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
-    report = EvalModel.build_evaluation_report(conversion_id)
+    actor = current_user._get_current_object() if current_user.is_authenticated else None
+    report = EvalModel.build_evaluation_report(conversion_id, actor)
     if not report:
         return {"success": False, "message": "No evaluation data"}, 404
 
@@ -279,7 +280,8 @@ def export_evaluation_pdf(conversion_id):
     if not access.can_see(current_user, conversion):
         return {"success": False, "message": "Forbidden"}, 403
 
-    report = EvalModel.build_evaluation_report(conversion_id)
+    actor = current_user._get_current_object() if current_user.is_authenticated else None
+    report = EvalModel.build_evaluation_report(conversion_id, actor)
     if not report:
         return {"success": False, "message": "No evaluation data"}, 404
 

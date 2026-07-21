@@ -44,6 +44,17 @@ def can_see(user, conversion) -> bool:
     return bool(conversion.public) or is_owner_or_admin(user, conversion)
 
 
+def can_see_comment(user, comment, conversion) -> bool:
+    """Visibility of one Comment: on a private Conversion only its owner or an
+    admin sees any comment; a private comment on a public Conversion is visible
+    only to the Conversion's owner, the comment's author, or an admin."""
+    if not conversion.public:
+        return is_owner_or_admin(user, conversion)
+    if not comment.is_private:
+        return True
+    return is_owner_or_admin(user, conversion) or is_owner(user, comment)
+
+
 def assert_can_refresh(user, conversion) -> None:
     """Allow only the Conversion's owner or an admin to refresh it.
 

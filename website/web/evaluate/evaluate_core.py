@@ -4,6 +4,7 @@ from collections import Counter
 from weasyprint import HTML as WP_HTML, URLFetcher
 
 from website.db_class.db import Comment, Conversion, ConversionEvaluation, Tag
+from website.lib import access
 from website.lib.misp import overall_level as _overall_level
 from website.lib.misp import parse_eval_tag as _parse_eval_tag
 from website.web import db
@@ -449,9 +450,13 @@ DIMENSION_DESCRIPTIONS = {
 }
 
 
-def build_evaluation_report(conversion_id: int) -> dict | None:
+def build_evaluation_report(conversion_id: int, actor=None) -> dict | None:
     """
     Assemble all data needed to render an evaluation report (Markdown or PDF).
+
+    ``actor`` is the requesting Submitter (``User | None``); evaluation comments
+    are filtered to those the actor may see (``access.can_see_comment``), so a
+    private comment never leaks into an export for an outsider.
 
     Returns a structured dict or None if the conversion does not exist.
     Fields:
@@ -461,7 +466,7 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
       dimensions     – list of {key, label, description, level, score, votes, distribution}
       consensus_tags – list of {name, category, level, votes}
       all_tags       – sorted list of tag name strings
-      eval_comments  – list of {author, content, created_at}
+      eval_comments  – list of {author, content, created_at} the actor may see
     """
     conversion = Conversion.query.get(conversion_id)
     if not conversion:
@@ -508,6 +513,8 @@ def build_evaluation_report(conversion_id: int) -> dict | None:
     from website.db_class.db import User
     eval_comments = []
     for c in eval_comments_raw:
+        if not access.can_see_comment(actor, c, conversion):
+            continue
         u = User.query.get(c.user_id)
         eval_comments.append({
             'author':     u.first_name if u else 'Anonymous',

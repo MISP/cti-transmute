@@ -3,9 +3,10 @@
 Conversion and ConversionHistory rows — including their listing, access-scoped
 search, and Trash queries - live in ``website/repos/conversions.py``; Comment
 and CommentReaction writes live in ``website/repos/comments.py`` (this module
-keeps only the comment read/query helpers and the pure ``_can_see_comment``
-visibility rule). This module (imported as ``ConversionModel``) also keeps the
-report, favorite, and graph-config helpers used by the conversion views.
+keeps only the comment read/query helpers; the comment visibility rule is
+``website.lib.access.can_see_comment``). This module (imported as
+``ConversionModel``) also keeps the report, favorite, and graph-config helpers
+used by the conversion views.
 """
 import uuid
 from datetime import datetime, timezone
@@ -21,18 +22,6 @@ from website.web import db
 ###################################
 #   Comment read/query helpers    #
 ###################################
-
-def _can_see_comment(comment, conversion, user):
-    """Determine if the Submitter can see a specific comment."""
-    if not conversion.public:
-        # Private conversion: only its owner or an admin
-        return access.is_owner_or_admin(user, conversion)
-    if not comment.is_private:
-        return True
-    # Private comment on a public conversion: the conversion's owner, the
-    # comment's author, or an admin
-    return access.is_owner_or_admin(user, conversion) or access.is_owner(user, comment)
-
 
 def get_comments(conversion_id, user=None):
     """Return the top-level comments and replies the Submitter may see."""
@@ -55,7 +44,7 @@ def get_comments(conversion_id, user=None):
 
     result = []
     for c in top_level:
-        if not _can_see_comment(c, conversion, user):
+        if not access.can_see_comment(user, c, conversion):
             continue
         comment_data = c.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion.user_id)
         replies = (
@@ -68,7 +57,7 @@ def get_comments(conversion_id, user=None):
         comment_data["replies"] = [
             r.to_json(current_user_id=current_user_id, is_admin=is_admin, conversion_owner_id=conversion.user_id)
             for r in replies
-            if _can_see_comment(r, conversion, user)
+            if access.can_see_comment(user, r, conversion)
         ]
         result.append(comment_data)
     return result
