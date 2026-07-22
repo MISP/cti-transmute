@@ -57,7 +57,7 @@ def _login(client, user):
         sess["_fresh"] = True
 
 
-def _make_conversion(misp_event, owner_id, *, output="OLD-OUTPUT"):
+def _make_conversion(misp_event, owner_id, *, output="OLD-OUTPUT", public=True):
     from website.db_class.db import Conversion
     from website.web import db
 
@@ -65,7 +65,7 @@ def _make_conversion(misp_event, owner_id, *, output="OLD-OUTPUT"):
     conv = Conversion(
         user_id=owner_id, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps(misp_event), output_text=output, params=None,
-        created_at=now, updated_at=now, public=True, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
     )
     db.session.add(conv)
     db.session.commit()
@@ -267,6 +267,57 @@ def test_dead_success_line_is_removed_from_the_codebase():
         p for p in root.rglob("*.py") if needle in p.read_text(encoding="utf-8")
     ]
     assert offenders == []
+
+
+# --- get_history_details: visibility gating --------------------------------
+
+def test_stranger_cannot_read_a_private_conversions_history_details(web_client, misp_event):
+    owner = _make_user(email="owner@test.test")
+    stranger = _make_user(email="stranger@test.test")
+    conv = _make_conversion(misp_event, owner.id, public=False)
+    history = _make_history(conv)
+    _login(web_client, stranger)
+
+    resp = web_client.get(f"/conversions/get_history_details?history_id={history.id}")
+
+    assert resp.status_code == 403
+    assert resp.get_json().get("history") is None
+    assert b"NEW-OUTPUT" not in resp.data
+
+
+def test_history_details_stay_hidden_after_the_conversion_is_deleted(web_client, misp_event):
+    """Soft-deleting the conversion must not turn its history public: the guard
+    used to short-circuit on the missing conversion and return the entry's
+    input/output to any authenticated user."""
+    from website.web import db
+
+    owner = _make_user(email="owner@test.test")
+    stranger = _make_user(email="stranger@test.test")
+    conv = _make_conversion(misp_event, owner.id, public=False)
+    history = _make_history(conv)
+    conv.is_active = False
+    db.session.commit()
+    _login(web_client, stranger)
+
+    resp = web_client.get(f"/conversions/get_history_details?history_id={history.id}")
+
+    assert resp.status_code == 403
+    assert resp.get_json().get("history") is None
+    assert b"NEW-OUTPUT" not in resp.data
+
+
+def test_owner_reads_history_details_for_a_live_conversion(web_client, misp_event):
+    owner = _make_user(email="owner@test.test")
+    conv = _make_conversion(misp_event, owner.id, public=False)
+    history = _make_history(conv)
+    _login(web_client, owner)
+
+    resp = web_client.get(f"/conversions/get_history_details?history_id={history.id}")
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["success"] is True
+    assert body["history"]["new_output_text"] == "NEW-OUTPUT"
 
 
 # --- refresh poll: JSON contract ------------------------------------------
