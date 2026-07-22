@@ -428,7 +428,6 @@ def get_following():
             items.append({
                 "user_id": user.id,
                 "name": f"{user.first_name} {user.last_name}",
-                "email": user.email,
                 "since": f.created_at.strftime('%Y-%m-%d') if f.created_at else None
             })
     return {"success": True, "list": items, "total_page": pagination.pages}, 200
