@@ -1279,9 +1279,16 @@ def react():
     if not comment_id or emoji not in allowed_emojis:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
 
+    comment = comments_repo.get(comment_id)
+    if not comment or comment.is_deleted:
+        return {"success": False, "message": "Comment not found", "toast_class": "danger"}, 404
+    conversion = conv_repo.get(comment.conversion_id)
+    if not conversion or not access.can_see_comment(current_user, comment, conversion):
+        return {"success": False, "message": "Permission denied", "toast_class": "danger"}, 403
+
     try:
         added = comments_repo.toggle_reaction(comment_id, current_user.id, emoji)
-    except Exception:  # noqa: BLE001 - e.g. reacting to a deleted comment (FK)
+    except Exception:  # noqa: BLE001 - e.g. the comment hard-deleted mid-request (FK)
         db.session.rollback()
         return {"success": False, "message": "Failed to update reaction", "toast_class": "danger"}, 500
 
