@@ -311,23 +311,38 @@ function _buildModal() {
 
 // ── Saved tab ─────────────────────────────────────────────────────────────────
 
+// Saved-list error messages can carry server-provided text; callers fill this
+// div via textContent (or explicit elements), never markup.
+function _listErrorDiv() {
+  const div = document.createElement('div')
+  div.style.cssText = 'color:#ef4444;font-size:0.82rem;padding:0.5rem 0;'
+  return div
+}
+
 async function _loadSavedConfigs() {
   const container = document.getElementById('gcm-saved-list')
   container.innerHTML = '<div class="text-center py-3" style="color:var(--text-3);font-size:0.85rem;"><div class="spinner-border spinner-border-sm me-1"></div>Loading…</div>'
   try {
     const res = await fetch('/conversions/graph_config/list')
     if (!res.ok) {
-      const msg = res.status === 500
-        ? 'Server error — run <code>flask db upgrade</code> to create the table.'
-        : `HTTP ${res.status}`
-      container.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;padding:0.5rem 0;">${msg}</div>`
+      const errorDiv = _listErrorDiv()
+      if (res.status === 500) {
+        const code = document.createElement('code')
+        code.textContent = 'flask db upgrade'
+        errorDiv.append('Server error — run ', code, ' to create the table.')
+      } else {
+        errorDiv.textContent = `HTTP ${res.status}`
+      }
+      container.replaceChildren(errorDiv)
       return
     }
     const data = await res.json()
     if (!data.success) throw new Error(data.message)
     _renderSavedList(data.list)
   } catch (e) {
-    container.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;padding:0.5rem 0;">${e.message}</div>`
+    const errorDiv = _listErrorDiv()
+    errorDiv.textContent = e.message
+    container.replaceChildren(errorDiv)
   }
 }
 
