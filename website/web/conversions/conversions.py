@@ -1065,7 +1065,9 @@ def get_history_details():
         conversion_history = conv_repo.get_history(history_id)
         if conversion_history:
             conversion_obj = conv_repo.get(conversion_history.conversion_id)
-            if conversion_obj and not access.can_see(current_user, conversion_obj):
+            # A deleted conversion resolves to None; that must deny, not skip
+            # the visibility check, or the entry's input/output leaks.
+            if not conversion_obj or not access.can_see(current_user, conversion_obj):
                 return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
                 "success": True,
