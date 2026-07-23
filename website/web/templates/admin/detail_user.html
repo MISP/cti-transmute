@@ -255,9 +255,12 @@
             </div>
             <div class="du-modal-foot">
                 <button class="btn btn-secondary btn-sm" @click="showDeleteModal = false">Cancel</button>
-                <a v-if="user" :href="`/account/delete/${user.id}`" class="btn btn-danger btn-sm">
-                    <i class="fas fa-trash me-1"></i> Confirm delete
-                </a>
+                <form v-if="user" method="post" :action="`/account/delete/${user.id}`" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="fas fa-trash me-1"></i> Confirm delete
+                    </button>
+                </form>
             </div>
         </div>
     </div>

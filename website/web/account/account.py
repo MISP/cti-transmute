@@ -299,7 +299,7 @@ def get_user_conversions() -> redirect:
 
 
 
-@account_blueprint.route("/delete/<int:id>", methods=['GET', "POST"])
+@account_blueprint.route("/delete/<int:id>", methods=["POST"])
 @login_required
 def delete_user(id) -> redirect:
     """Delete the user"""
