@@ -1448,7 +1448,10 @@
             }
 
             async function toggleFollow() {
-                const res = await fetch(`/account/follow?user_id=${conversion.value.user_id}`)
+                const res = await fetch(`/account/follow?user_id=${conversion.value.user_id}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
                 const data = await res.json()
                 create_message(data.message, data.toast_class)
                 if (data.success) {

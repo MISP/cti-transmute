@@ -365,7 +365,10 @@
                             const related   = item.dataset.related
                             const relType   = item.dataset.type
                             if (item.classList.contains('unread')) {
-                                await fetch(`/account/mark_notification_read?notification_id=${item.dataset.id}`)
+                                await fetch(`/account/mark_notification_read?notification_id=${item.dataset.id}`, {
+                                    method: 'POST',
+                                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                                })
                                 const currentCount = parseInt(badge?.textContent || '0') || 0
                                 updateBadge(Math.max(0, currentCount - 1))
                             }
@@ -420,7 +423,10 @@
 
             markAll?.addEventListener('click', async (e) => {
                 e.stopPropagation()
-                await fetch('/account/mark_all_read')
+                await fetch('/account/mark_all_read', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
                 list.querySelectorAll('.notif-panel-item.unread').forEach(el => {
                     el.classList.remove('unread')
                     el.querySelector('.unread-dot')?.remove()
