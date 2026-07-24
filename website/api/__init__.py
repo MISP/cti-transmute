@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from importlib.metadata import version as _dist_version
+
 from flask import Blueprint, render_template
 from flask_restx import Api
 
@@ -13,7 +15,7 @@ def setup_api(application) -> Api:
     api = Api(
         api_blueprint,
         title='CTI Transmute API',
-        version='0.1.0',
+        version=_dist_version("cti-transmute"),
         description="<a href='https://github.com/misp/cti-transmute' "
         "rel='noreferrer' target='_blank'>CTI Transmute</a>",
         license="GNU Affero General Public License version 3",
