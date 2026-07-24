@@ -28,14 +28,14 @@ def setup_api(application) -> Api:
     @api.documentation
     def custom_ui() -> str:
         return render_template(
-            'swagger-ui.html',
-            title=api.title,
-            specs_url="/api/swagger.json"   # ← relatif, toujours correct
+            'swagger-ui.html', title=api.title, specs_url="/api/swagger.json"
         )
     
+    from .conversions import conversions_ns
     from .convert import convert_ns
 
     api.add_namespace(convert_ns, path='/convert')
+    api.add_namespace(conversions_ns, path='/conversions')
 
     return api
 
