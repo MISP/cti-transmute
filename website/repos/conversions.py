@@ -317,7 +317,7 @@ def list_for_user(
     if vis_filter == 'public':
         query = query.filter(Conversion.public)
     elif vis_filter == 'private':
-        query = query.filter(not Conversion.public)
+        query = query.filter(~Conversion.public)
 
     # Conversion only_mine to boolean
     only_mine_bool = str(only_mine).lower() in ['true', '1', 'yes', 'on']
