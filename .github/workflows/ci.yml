@@ -43,6 +43,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # WeasyPrint (evaluation PDF export) needs native libs to import and
+      # render; install them from the shared list so the PDF render tests run
+      # here instead of skipping.
+      - name: Install WeasyPrint system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            $(grep -vE '^[[:space:]]*(#|$)' bin/weasyprint-system-deps.txt)
       - name: Sync dependencies
         run: uv sync
       # Scope to tests/ - a bare `pytest` collects vulnerability-lookup and dies.
