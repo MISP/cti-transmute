@@ -1,4 +1,4 @@
-import { escapeGraphLabels, renderRawJson, textCell } from './graphSafety.js'
+import { escapeGraphLabels, renderRawJson, sanitizeConfigPatch, textCell } from './graphSafety.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GRAPH CONFIG — edit this object to change graph behaviour & appearance.
@@ -559,8 +559,11 @@ export function showGraphSide(side) {
     _renderSide(side)
 }
 
-/** Deep-merge a config patch into GRAPH_CONFIG. */
+/** Deep-merge a config patch into GRAPH_CONFIG.
+ *  The patch may come from a stored config (another user's input), so it is
+ *  schema-filtered first - see sanitizeConfigPatch in graphSafety.js. */
 export function applyConfig(patch) {
+    patch = sanitizeConfigPatch(patch)
     if (patch.maxNodes !== undefined) GRAPH_CONFIG.maxNodes = +patch.maxNodes || GRAPH_CONFIG.maxNodes
     if (patch.defaultSide !== undefined) GRAPH_CONFIG.defaultSide = patch.defaultSide
     if (patch.groupingThreshold !== undefined) GRAPH_CONFIG.groupingThreshold = +patch.groupingThreshold || GRAPH_CONFIG.groupingThreshold

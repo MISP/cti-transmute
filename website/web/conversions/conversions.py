@@ -1752,7 +1752,12 @@ def admin_get_comments():
 def graph_config_list():
     configs = ConversionModel.get_graph_configs(user_id=current_user.id, is_admin=current_user.is_admin())
     is_admin = current_user.is_admin()
-    return {"success": True, "list": [c.to_json(current_user_id=current_user.id, is_admin=is_admin) for c in configs]}, 200
+    items = []
+    for c in configs:
+        item = c.to_json(current_user_id=current_user.id, is_admin=is_admin)
+        item["config_json"] = ConversionModel.sanitize_stored_graph_config(item["config_json"])
+        items.append(item)
+    return {"success": True, "list": items}, 200
 
 
 @conversions_blueprint.route("/graph_config/save", methods=["POST"])
@@ -1764,10 +1769,13 @@ def graph_config_save():
     if not name:
         return {"success": False, "message": "Name required", "toast_class": "danger"}, 400
     try:
-        json.loads(config_json)
+        parsed = json.loads(config_json)
     except Exception:
         return {"success": False, "message": "Invalid JSON", "toast_class": "danger"}, 400
-    cfg, err = ConversionModel.save_graph_config(name, config_json, current_user.id)
+    clean, problems = ConversionModel.validate_graph_config(parsed)
+    if problems:
+        return {"success": False, "message": "Invalid config: " + "; ".join(problems[:5]), "toast_class": "danger"}, 400
+    cfg, err = ConversionModel.save_graph_config(name, json.dumps(clean), current_user.id)
     if err:
         return {"success": False, "message": err, "toast_class": "danger"}, 500
     AccountModel.create_system_log("graph_config_saved", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=cfg.id, target_name=cfg.name)

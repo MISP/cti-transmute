@@ -49,6 +49,70 @@ export function textCell(value) {
     return el
 }
 
+// A graph-config patch can come from a *stored* config - user input replayed
+// into other users' browsers (admins see every saved config) - and Pivotick
+// HTML-parses some style fields (svgIcon runs through template.innerHTML), so
+// applyConfig routes every patch through this schema filter. Style entries
+// accept exactly shape/color/size: svgIcon and iconClass (written to
+// className) are deliberately not accepted. The server enforces the same
+// schema on save and on list; this is the last line of defence for a hostile
+// row already in the database. Mirrors validate_graph_config in
+// website/web/conversions/conversions_core.py - keep the two in sync.
+
+const CONFIG_SHAPES = new Set(['circle', 'square', 'hexagon', 'triangle'])
+const CONFIG_LAYOUTS = new Set(['force', 'tree', 'radial', 'grid'])
+const CONFIG_UI_MODES = new Set(['full', 'minimal'])
+const CONFIG_SIDES = new Set(['input', 'output'])
+// Style-map keys and MISP attribute types are plain identifiers
+// ('threat-actor', 'ipv4-addr', 'filename|md5', '_default').
+const CONFIG_IDENT_RE = /^[A-Za-z0-9_.|-]{1,100}$/
+// Hex, a bare colour name, or an rgb()/hsl() function with a plain numeric
+// body - notably NOT url(...), which can beacon from an SVG fill.
+const CONFIG_COLOR_RE = /^(#[0-9A-Fa-f]{3,8}|[A-Za-z]{1,30}|(?:rgba?|hsla?)\([0-9,.%/\s]{1,50}\))$/
+
+function _configNum(value, lo, hi) {
+    return typeof value === 'number' && value >= lo && value <= hi
+}
+
+function _sanitizeStyleMap(styles) {
+    const out = {}
+    if (!styles || typeof styles !== 'object') return out
+    for (const [key, style] of Object.entries(styles)) {
+        if (!CONFIG_IDENT_RE.test(key) || !style || typeof style !== 'object') continue
+        const entry = {}
+        if (CONFIG_SHAPES.has(style.shape)) entry.shape = style.shape
+        if (typeof style.color === 'string' && CONFIG_COLOR_RE.test(style.color)) entry.color = style.color
+        if (_configNum(style.size, 6, 50)) entry.size = style.size
+        if (Object.keys(entry).length) out[key] = entry
+    }
+    return out
+}
+
+export function sanitizeConfigPatch(patch) {
+    const out = {}
+    if (!patch || typeof patch !== 'object') return out
+    if (_configNum(patch.maxNodes, 10, 50000)) out.maxNodes = patch.maxNodes
+    if (CONFIG_SIDES.has(patch.defaultSide)) out.defaultSide = patch.defaultSide
+    if (_configNum(patch.groupingThreshold, 2, 50)) out.groupingThreshold = patch.groupingThreshold
+    if (CONFIG_LAYOUTS.has(patch.layout?.type)) out.layout = { type: patch.layout.type }
+    const ui = {}
+    if (CONFIG_UI_MODES.has(patch.pivotickUI?.mode)) ui.mode = patch.pivotickUI.mode
+    const collapsed = patch.pivotickUI?.sidebar?.collapsed
+    if (collapsed === 'auto' || typeof collapsed === 'boolean') ui.sidebar = { collapsed }
+    if (Object.keys(ui).length) out.pivotickUI = ui
+    const stix = _sanitizeStyleMap(patch.stixStyles)
+    if (Object.keys(stix).length) out.stixStyles = stix
+    const misp = _sanitizeStyleMap(patch.mispStyles)
+    if (Object.keys(misp).length) out.mispStyles = misp
+    if (Array.isArray(patch.mispNetworkTypes)) {
+        out.mispNetworkTypes = patch.mispNetworkTypes.filter(t => typeof t === 'string' && CONFIG_IDENT_RE.test(t))
+    }
+    if (Array.isArray(patch.mispPayloadTypes)) {
+        out.mispPayloadTypes = patch.mispPayloadTypes.filter(t => typeof t === 'string' && CONFIG_IDENT_RE.test(t))
+    }
+    return out
+}
+
 // The "Open raw JSON" action opens a blank window and shows the node's raw
 // object. Build the popup with DOM APIs and set the JSON as textContent - no
 // markup is ever constructed from the data, so it cannot execute (the previous
