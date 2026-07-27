@@ -1,4 +1,4 @@
-import { escapeGraphLabels, renderRawJson } from './graphSafety.js'
+import { escapeGraphLabels, renderRawJson, textCell } from './graphSafety.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GRAPH CONFIG — edit this object to change graph behaviour & appearance.
@@ -292,7 +292,7 @@ function parseStix(json) {
     return { nodes, edges }
 }
 
-function _nodeProperties(node) {
+export function _nodeProperties(node) {
     const d = node.getData()
     const raw = d?.raw ?? {}
     const props = []
@@ -324,7 +324,12 @@ function _nodeProperties(node) {
             props.push({ name: algo, value: String(hash) })
     }
 
-    return props.filter(p => p.value !== undefined && p.value !== '')
+    // Wrap every cell so Pivotick never HTML-parses a converted value: `raw` and
+    // `childAttrs` are the untouched originals, and both the name and the value
+    // position reach the same sink (childAttrs keys and hash algo names included).
+    return props
+        .filter(p => p.value !== undefined && p.value !== '')
+        .map(p => ({ name: textCell(p.name), value: textCell(p.value) }))
 }
 
 function _buildTooltip(node) {
@@ -475,9 +480,9 @@ async function _initViewer(containerId, jsonText, format) {
             propertiesPanel: {
                 nodePropertiesMap: (node) => _nodeProperties(node),
                 edgePropertiesMap: (edge) => [
-                    { name: 'Relationship', value: edge.getData()?.label || '—' },
-                    { name: 'From', value: String(edge.from) },
-                    { name: 'To', value: String(edge.to) },
+                    { name: textCell('Relationship'), value: textCell(edge.getData()?.label || '—') },
+                    { name: textCell('From'), value: textCell(String(edge.from)) },
+                    { name: textCell('To'), value: textCell(String(edge.to)) }
                 ],
             },
             tooltip: {

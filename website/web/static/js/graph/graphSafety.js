@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //  Safety helpers for the conversion graph - the graph is built from converted
 //  CTI, so every value handed to the Pivotick library or opened in a popup is
-//  attacker-controlled. Both sinks below neutralise it before it can be parsed
-//  as HTML.
+//  attacker-controlled. Each helper below neutralises one sink before the value
+//  can be parsed as HTML.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { escapeHtml } from './searchHighlight.js'
@@ -18,10 +18,35 @@ export function escapeGraphLabels(parsed) {
         if (!d) continue
         if (d.label != null) d.label = escapeHtml(d.label)
         if (d.sublabel != null) d.sublabel = escapeHtml(d.sublabel)
+        if (d.type != null) d.type = safeType(d.type)
     }
     for (const edge of parsed?.edges ?? []) {
         if (edge.data?.label != null) edge.data.label = escapeHtml(edge.data.label)
     }
+}
+
+// A node's `type` is a style-map key, but for STIX it comes straight from the
+// input bundle, and the neighbours ego graph is built without our property map -
+// so Pivotick's default one lists every `data` entry, `type` included, through
+// the HTML-parsing sink described on textCell. Real STIX/MISP type names are
+// plain identifiers, so restricting the charset is a no-op for them; an unknown
+// type already falls back to the `_default` style.
+function safeType(type) {
+    return String(type).replace(/[^a-zA-Z0-9_.-]/g, '_')
+}
+
+// Pivotick resolves every properties-panel cell through `tryResolveHTMLElement`,
+// which runs `template.innerHTML` on any *string* it is given and returns the
+// parsed element - so a converted value like `<img src=x onerror=...>` executes
+// as soon as the tooltip is shown (on hover) or the sidebar is filled (on click).
+// An HTMLElement is returned untouched instead, so wrap every cell: the text is
+// set via textContent and never parsed. Escaping the string would not do - the
+// entities would survive into the span fallback and users would read `&lt;img&gt;`
+// in descriptions and STIX patterns.
+export function textCell(value) {
+    const el = document.createElement('span')
+    el.textContent = String(value)
+    return el
 }
 
 // The "Open raw JSON" action opens a blank window and shows the node's raw
