@@ -1,11 +1,12 @@
 """
-Small in-memory background job system for bulk convert-tag operations.
+Small in-memory background job system for bulk conversion-tag operations.
 Jobs are stored in a module-level dict (resets on server restart).
 Workers run in daemon threads and push their own Flask app context.
 """
-import datetime
+import subprocess
 import threading
 import uuid as _uuid
+from datetime import datetime, timezone
 
 _jobs: dict = {}
 _lock = threading.Lock()
@@ -25,7 +26,7 @@ def create(job_type: str, total: int) -> str:
             'added':      0,
             'skipped':    0,
             'errors':     [],
-            'created_at': datetime.datetime.utcnow().isoformat(timespec='seconds'),
+            'created_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         }
         _trim()
     return jid
@@ -58,40 +59,40 @@ def remove(jid: str) -> bool:
 
 # ── Worker launchers ──────────────────────────────────────────────
 
-def start_scan(app, convert_ids: list, user_id: int) -> str:
-    """Auto-scan each convert's input JSON and merge matching tags."""
-    jid = create('scan', len(convert_ids))
-    t = threading.Thread(target=_scan_worker, args=(app, jid, convert_ids, user_id), daemon=True)
+def start_scan(app, conversion_ids: list, user_id: int) -> str:
+    """Auto-scan each conversion's input JSON and merge matching tags."""
+    jid = create('scan', len(conversion_ids))
+    t = threading.Thread(target=_scan_worker, args=(app, jid, conversion_ids, user_id), daemon=True)
     t.start()
     return jid
 
 
-def start_assign(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
-    """Merge specific tags into every selected convert."""
-    jid = create('assign', len(convert_ids))
-    t = threading.Thread(target=_assign_worker, args=(app, jid, convert_ids, tag_ids, user_id), daemon=True)
+def start_assign(app, conversion_ids: list, tag_ids: list, user_id: int) -> str:
+    """Merge specific tags into every selected conversion."""
+    jid = create('assign', len(conversion_ids))
+    t = threading.Thread(target=_assign_worker, args=(app, jid, conversion_ids, tag_ids, user_id), daemon=True)
     t.start()
     return jid
 
 
-def start_remove(app, convert_ids: list, tag_ids: list, user_id: int) -> str:
-    """Remove specific tags from every selected convert."""
-    jid = create('remove', len(convert_ids))
-    t = threading.Thread(target=_remove_worker, args=(app, jid, convert_ids, tag_ids, user_id), daemon=True)
+def start_remove(app, conversion_ids: list, tag_ids: list, user_id: int) -> str:
+    """Remove specific tags from every selected conversion."""
+    jid = create('remove', len(conversion_ids))
+    t = threading.Thread(target=_remove_worker, args=(app, jid, conversion_ids, tag_ids, user_id), daemon=True)
     t.start()
     return jid
 
 
-def start_clear(app, convert_ids: list, user_id: int) -> str:
-    """Remove ALL tags from every selected convert."""
-    jid = create('clear', len(convert_ids))
-    t = threading.Thread(target=_clear_worker, args=(app, jid, convert_ids, user_id), daemon=True)
+def start_clear(app, conversion_ids: list, user_id: int) -> str:
+    """Remove ALL tags from every selected conversion."""
+    jid = create('clear', len(conversion_ids))
+    t = threading.Thread(target=_clear_worker, args=(app, jid, conversion_ids, user_id), daemon=True)
     t.start()
     return jid
 
 
 def start_pull_and_import(app, user_id: int) -> str:
-    """Pull latest MISP vendor submodules then import new taxonomy/galaxy tags."""
+    """Pull latest MISP dataset submodules then import new taxonomy/galaxy tags."""
     jid = create('pull_import', total=3)
     update(jid,
            phase='pulling',
@@ -113,18 +114,18 @@ def _trim() -> None:
             del _jobs[jid]
 
 
-def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
+def _scan_worker(app, jid: str, conversion_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.db_class.db import Convert
-        from website.web.tags.tags_core import find_tags_by_names, merge_convert_tags
+        from website.db_class.db import Conversion
+        from website.web.tags.tags_core import find_tags_by_names, merge_conversion_tags
         from website.web.utils import extract_tag_names_from_misp_json
 
         added_total = 0
         skipped = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
-                conv = Convert.query.get(cid)
+                conv = Conversion.query.get(cid)
                 if not conv:
                     skipped += 1
                     update(jid, progress=i + 1, skipped=skipped)
@@ -142,7 +143,7 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
                     continue
                 tags = find_tags_by_names(user_id, names)
                 if tags:
-                    n = merge_convert_tags(cid, [t.id for t in tags], user_id, source_type="json")
+                    n = merge_conversion_tags(cid, [t.id for t in tags], user_id, source_type="json")
                     added_total += n
                 else:
                     skipped += 1
@@ -151,61 +152,58 @@ def _scan_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
                     _jobs[jid]['errors'].append(f'#{ cid }: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=added_total, skipped=skipped)
 
-        update(jid, status='done', progress=len(convert_ids), added=added_total, skipped=skipped)
+        update(jid, status='done', progress=len(conversion_ids), added=added_total, skipped=skipped)
 
 
-def _assign_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int) -> None:
+def _assign_worker(app, jid: str, conversion_ids: list, tag_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.web.tags.tags_core import merge_convert_tags
+        from website.web.tags.tags_core import merge_conversion_tags
 
         added_total = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
-                n = merge_convert_tags(cid, tag_ids, user_id)
+                n = merge_conversion_tags(cid, tag_ids, user_id)
                 added_total += n
             except Exception as exc:
                 with _lock:
                     _jobs[jid]['errors'].append(f'#{ cid }: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=added_total)
 
-        update(jid, status='done', progress=len(convert_ids), added=added_total)
+        update(jid, status='done', progress=len(conversion_ids), added=added_total)
 
 
-def _remove_worker(app, jid: str, convert_ids: list, tag_ids: list, user_id: int) -> None:
+def _remove_worker(app, jid: str, conversion_ids: list, tag_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.web.tags.tags_core import remove_convert_tags
+        from website.web.tags.tags_core import remove_conversion_tags
 
         removed_total = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
-                n = remove_convert_tags(cid, tag_ids)
+                n = remove_conversion_tags(cid, tag_ids)
                 removed_total += n
             except Exception as exc:
                 with _lock:
                     _jobs[jid]['errors'].append(f'#{cid}: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=removed_total)
 
-        update(jid, status='done', progress=len(convert_ids), added=removed_total)
+        update(jid, status='done', progress=len(conversion_ids), added=removed_total)
 
 
 def _pull_import_worker(app, jid: str, user_id: int) -> None:
-    import subprocess
-
     with app.app_context():
         from website.web.tags.tags_core import (
-            VENDOR_PATH, import_taxonomies, import_galaxies,
-        )
+            TAXONOMIES_PATH, import_galaxies, import_taxonomies)
 
-        project_root = VENDOR_PATH.parent.parent  # vendor/misp-taxonomies/../../  = project root
+        project_root = TAXONOMIES_PATH.parent.parent  # submodules/misp-taxonomies/../../  = project root
 
         # ── Step 1: git submodule update --remote ──────────────────────
         update(jid, phase='pulling', progress=0)
         try:
             result = subprocess.run(
                 ['git', 'submodule', 'update', '--remote',
-                 'vendor/misp-taxonomies', 'vendor/misp-galaxy'],
+                 'submodules/misp-taxonomies', 'submodules/misp-galaxy'],
                 cwd=str(project_root),
                 capture_output=True,
                 text=True,
@@ -255,19 +253,19 @@ def _pull_import_worker(app, jid: str, user_id: int) -> None:
                galaxy_imported=g_imp, galaxy_skipped=g_skip)
 
 
-def _clear_worker(app, jid: str, convert_ids: list, user_id: int) -> None:
+def _clear_worker(app, jid: str, conversion_ids: list, user_id: int) -> None:
     with app.app_context():
-        from website.web.tags.tags_core import clear_convert_tags
+        from website.web.tags.tags_core import clear_conversion_tags
 
         removed_total = 0
 
-        for i, cid in enumerate(convert_ids):
+        for i, cid in enumerate(conversion_ids):
             try:
-                n = clear_convert_tags(cid)
+                n = clear_conversion_tags(cid)
                 removed_total += n
             except Exception as exc:
                 with _lock:
                     _jobs[jid]['errors'].append(f'#{cid}: {str(exc)[:100]}')
             update(jid, progress=i + 1, added=removed_total)
 
-        update(jid, status='done', progress=len(convert_ids), added=removed_total)
+        update(jid, status='done', progress=len(conversion_ids), added=removed_total)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+import gzip
 import os
+import shutil
 import subprocess
 import sys
-import gzip
-import shutil
 
 # Database configuration
 DB_USER = "cti_user"

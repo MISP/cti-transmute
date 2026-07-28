@@ -1,23 +1,17 @@
-import re
 import datetime
 from collections import Counter
+
+from website.db_class.db import Comment, Conversion, ConversionEvaluation, Tag
+from website.lib.misp import overall_level as _overall_level
+from website.lib.misp import parse_eval_tag as _parse_eval_tag
 from website.web import db
-from website.db_class.db import ConvertEvaluation, Comment, Convert, Tag
 
 VALUE_ORDER = ['very-low', 'low', 'moderate', 'high', 'very-high']
 
 
-def _parse_eval_tag(name: str):
-    """Parse 'ns:category="value"' → (ns, category, value) or (None, None, None)."""
-    m = re.match(r'^([\w-]+):([\w.-]+)="([\w.-]+)"$', name or '')
-    if m:
-        return m.group(1), m.group(2), m.group(3)
-    return None, None, None
-
-
 def get_tlp_tags() -> list[dict]:
     tags = (Tag.query
-            .filter(Tag.is_evaluation_tag == True, Tag.is_active == True)
+            .filter(Tag.is_evaluation_tag, Tag.is_active)
             .order_by(Tag.name)
             .all())
     result = []
@@ -35,8 +29,7 @@ def _build_cti_categories(rows, viewer_id=None) -> dict:
     for all active cti-evaluation:* tags.
     """
     tags = (Tag.query
-            .filter(Tag.is_evaluation_tag == True,
-                    Tag.is_active == True,
+            .filter(Tag.is_evaluation_tag, Tag.is_active,
                     Tag.name.like('cti-evaluation:%'))
             .all())
 
@@ -75,8 +68,8 @@ def _build_cti_categories(rows, viewer_id=None) -> dict:
     return cats
 
 
-def get_summary(convert_id: int, viewer_id: int | None = None) -> dict:
-    rows = ConvertEvaluation.query.filter_by(convert_id=convert_id).all()
+def get_summary(conversion_id: int, viewer_id: int | None = None) -> dict:
+    rows = ConversionEvaluation.query.filter_by(conversion_id=conversion_id).all()
 
     likes    = sum(1 for r in rows if r.eval_type == 'like')
     dislikes = sum(1 for r in rows if r.eval_type == 'dislike')
@@ -93,7 +86,7 @@ def get_summary(convert_id: int, viewer_id: int | None = None) -> dict:
                 viewer_dislike = True
 
     eval_comments = Comment.query.filter_by(
-        convert_id=convert_id, is_evaluation=True, is_deleted=False
+        conversion_id=conversion_id, is_evaluation=True, is_deleted=False
     ).count()
 
     cti_categories = _build_cti_categories(rows, viewer_id)
@@ -120,9 +113,9 @@ def get_summary(convert_id: int, viewer_id: int | None = None) -> dict:
     }
 
 
-def toggle_like(convert_id: int, user_id: int) -> dict:
-    existing_like    = ConvertEvaluation.query.filter_by(convert_id=convert_id, user_id=user_id, eval_type='like').first()
-    existing_dislike = ConvertEvaluation.query.filter_by(convert_id=convert_id, user_id=user_id, eval_type='dislike').first()
+def toggle_like(conversion_id: int, user_id: int) -> dict:
+    existing_like    = ConversionEvaluation.query.filter_by(conversion_id=conversion_id, user_id=user_id, eval_type='like').first()
+    existing_dislike = ConversionEvaluation.query.filter_by(conversion_id=conversion_id, user_id=user_id, eval_type='dislike').first()
 
     if existing_dislike:
         db.session.delete(existing_dislike)
@@ -132,17 +125,17 @@ def toggle_like(convert_id: int, user_id: int) -> dict:
         db.session.commit()
         return {'action': 'removed', 'type': 'like'}
 
-    db.session.add(ConvertEvaluation(
-        convert_id=convert_id, user_id=user_id, eval_type='like',
+    db.session.add(ConversionEvaluation(
+        conversion_id=conversion_id, user_id=user_id, eval_type='like',
         created_at=datetime.datetime.utcnow()
     ))
     db.session.commit()
     return {'action': 'added', 'type': 'like'}
 
 
-def toggle_dislike(convert_id: int, user_id: int) -> dict:
-    existing_like    = ConvertEvaluation.query.filter_by(convert_id=convert_id, user_id=user_id, eval_type='like').first()
-    existing_dislike = ConvertEvaluation.query.filter_by(convert_id=convert_id, user_id=user_id, eval_type='dislike').first()
+def toggle_dislike(conversion_id: int, user_id: int) -> dict:
+    existing_like    = ConversionEvaluation.query.filter_by(conversion_id=conversion_id, user_id=user_id, eval_type='like').first()
+    existing_dislike = ConversionEvaluation.query.filter_by(conversion_id=conversion_id, user_id=user_id, eval_type='dislike').first()
 
     if existing_like:
         db.session.delete(existing_like)
@@ -152,27 +145,25 @@ def toggle_dislike(convert_id: int, user_id: int) -> dict:
         db.session.commit()
         return {'action': 'removed', 'type': 'dislike'}
 
-    db.session.add(ConvertEvaluation(
-        convert_id=convert_id, user_id=user_id, eval_type='dislike',
+    db.session.add(ConversionEvaluation(
+        conversion_id=conversion_id, user_id=user_id, eval_type='dislike',
         created_at=datetime.datetime.utcnow()
     ))
     db.session.commit()
     return {'action': 'added', 'type': 'dislike'}
 
 
-def toggle_reaction(convert_id: int, user_id: int, reaction_key: str) -> dict:
+def toggle_reaction(conversion_id: int, user_id: int, reaction_key: str) -> dict:
     tag = Tag.query.filter(
-        Tag.name == reaction_key,
-        Tag.is_evaluation_tag == True,
-        Tag.is_active == True,
+        Tag.name == reaction_key, Tag.is_evaluation_tag, Tag.is_active
     ).first()
     if not tag:
         raise ValueError(f"Unknown reaction key: {reaction_key}")
 
     ns, cat, val = _parse_eval_tag(reaction_key)
 
-    existing = ConvertEvaluation.query.filter_by(
-        convert_id=convert_id, user_id=user_id,
+    existing = ConversionEvaluation.query.filter_by(
+        conversion_id=conversion_id, user_id=user_id,
         eval_type='reaction', reaction_key=reaction_key
     ).first()
 
@@ -183,16 +174,16 @@ def toggle_reaction(convert_id: int, user_id: int, reaction_key: str) -> dict:
 
     # For cti-evaluation: radio semantics — replace any prior pick in the same category
     if ns == 'cti-evaluation' and cat:
-        prior_rows = ConvertEvaluation.query.filter_by(
-            convert_id=convert_id, user_id=user_id, eval_type='reaction'
+        prior_rows = ConversionEvaluation.query.filter_by(
+            conversion_id=conversion_id, user_id=user_id, eval_type='reaction'
         ).all()
         for old in prior_rows:
             old_ns, old_cat, _ = _parse_eval_tag(old.reaction_key or '')
             if old_ns == 'cti-evaluation' and old_cat == cat:
                 db.session.delete(old)
 
-    db.session.add(ConvertEvaluation(
-        convert_id=convert_id, user_id=user_id,
+    db.session.add(ConversionEvaluation(
+        conversion_id=conversion_id, user_id=user_id,
         eval_type='reaction', reaction_key=reaction_key,
         created_at=datetime.datetime.utcnow()
     ))
@@ -201,17 +192,17 @@ def toggle_reaction(convert_id: int, user_id: int, reaction_key: str) -> dict:
 
 
 def get_admin_list(page: int = 1, per_page: int = 50,
-                   filter_type: str = None, filter_convert: str = None) -> dict:
-    q = (ConvertEvaluation.query
-         .join(ConvertEvaluation.user)
-         .join(ConvertEvaluation.convert))
+                   filter_type: str = None, filter_conversion: str = None) -> dict:
+    q = (ConversionEvaluation.query
+         .join(ConversionEvaluation.user)
+         .join(ConversionEvaluation.conversion))
 
     if filter_type:
-        q = q.filter(ConvertEvaluation.eval_type == filter_type)
-    if filter_convert:
-        q = q.filter(ConvertEvaluation.convert_id == int(filter_convert))
+        q = q.filter(ConversionEvaluation.eval_type == filter_type)
+    if filter_conversion:
+        q = q.filter(ConversionEvaluation.conversion_id == int(filter_conversion))
 
-    q = q.order_by(ConvertEvaluation.created_at.desc())
+    q = q.order_by(ConversionEvaluation.created_at.desc())
     paginated = q.paginate(page=page, per_page=per_page, error_out=False)
 
     return {
@@ -223,13 +214,13 @@ def get_admin_list(page: int = 1, per_page: int = 50,
     }
 
 
-def get_misp_push_tags(convert_id: int) -> list[str]:
+def get_misp_push_tags(conversion_id: int) -> list[str]:
     """
     Return evaluation tag names to inject into a MISP event on push.
-    Includes each cti-evaluation reaction_key voted on this convert,
+    Includes each cti-evaluation reaction_key voted on this conversion,
     plus a computed cti-evaluation:overall-score="<level>" tag when votes exist.
     """
-    rows = ConvertEvaluation.query.filter_by(convert_id=convert_id).all()
+    rows = ConversionEvaluation.query.filter_by(conversion_id=conversion_id).all()
 
     reaction_keys: set[str] = {
         row.reaction_key for row in rows
@@ -255,7 +246,7 @@ def get_misp_push_tags(convert_id: int) -> list[str]:
     return list(reaction_keys)
 
 
-def get_consensus_tags(convert_id: int, threshold: int = 3) -> list[dict]:
+def get_consensus_tags(conversion_id: int, threshold: int = 3) -> list[dict]:
     """
     Return evaluation tag objects that meet the vote threshold.
     For each category (overall-score, accuracy, quality…):
@@ -264,7 +255,7 @@ def get_consensus_tags(convert_id: int, threshold: int = 3) -> list[dict]:
       - on tie: pick the lowest level (VALUE_ORDER sorted lowest→highest)
     Returns full tag objects (color, icon, description from DB when found).
     """
-    rows = ConvertEvaluation.query.filter_by(convert_id=convert_id).all()
+    rows = ConversionEvaluation.query.filter_by(conversion_id=conversion_id).all()
 
     category_votes: dict[str, Counter] = {}
     for row in rows:
@@ -308,7 +299,7 @@ def get_consensus_tags(convert_id: int, threshold: int = 3) -> list[dict]:
 
 
 def delete_evaluation(eval_id: int) -> bool:
-    row = ConvertEvaluation.query.get(eval_id)
+    row = ConversionEvaluation.query.get(eval_id)
     if not row:
         return False
     db.session.delete(row)
@@ -317,16 +308,16 @@ def delete_evaluation(eval_id: int) -> bool:
 
 
 def get_global_stats() -> dict:
-    """Platform-wide evaluation stats. Only public, active converts."""
-    pub_ids = {c.id for c in Convert.query.filter_by(public=True, is_active=True).with_entities(Convert.id).all()}
-    rows = ConvertEvaluation.query.filter(ConvertEvaluation.convert_id.in_(pub_ids)).all()
+    """Platform-wide evaluation stats. Only public, active conversions."""
+    pub_ids = {c.id for c in Conversion.query.filter_by(public=True, is_active=True).with_entities(Conversion.id).all()}
+    rows = ConversionEvaluation.query.filter(ConversionEvaluation.conversion_id.in_(pub_ids)).all()
 
     total_likes     = sum(1 for r in rows if r.eval_type == 'like')
     total_dislikes  = sum(1 for r in rows if r.eval_type == 'dislike')
     total_reactions = sum(1 for r in rows if r.eval_type == 'reaction')
     like_total      = total_likes + total_dislikes
     like_ratio      = round(total_likes / like_total * 100) if like_total else None
-    converts_evaluated = len({r.convert_id for r in rows})
+    conversions_evaluated = len({r.conversion_id for r in rows})
 
     tag_counts = Counter(r.reaction_key for r in rows if r.eval_type == 'reaction' and r.reaction_key)
     top_tag_names = [n for n, _ in tag_counts.most_common(10)]
@@ -369,7 +360,7 @@ def get_global_stats() -> dict:
         "total_likes":        total_likes,
         "total_dislikes":     total_dislikes,
         "total_reactions":    total_reactions,
-        "converts_evaluated": converts_evaluated,
+        "conversions_evaluated": conversions_evaluated,
         "like_ratio":         like_ratio,
         "top_tags":           top_tags,
         "category_breakdown": category_breakdown,
@@ -406,13 +397,13 @@ def get_platform_reviews(page: int = 1, per_page: int = 10) -> dict:
 
 
 def get_activity_timeline(days: int = 30) -> list:
-    """Returns evaluation count per day for the last N days (public converts only)."""
+    """Returns evaluation count per day for the last N days (public conversions only)."""
     from collections import defaultdict
-    pub_ids = {c.id for c in Convert.query.filter_by(public=True, is_active=True).with_entities(Convert.id).all()}
+    pub_ids = {c.id for c in Conversion.query.filter_by(public=True, is_active=True).with_entities(Conversion.id).all()}
     since = datetime.datetime.utcnow() - datetime.timedelta(days=days)
-    rows = ConvertEvaluation.query.filter(
-        ConvertEvaluation.convert_id.in_(pub_ids),
-        ConvertEvaluation.created_at >= since
+    rows = ConversionEvaluation.query.filter(
+        ConversionEvaluation.conversion_id.in_(pub_ids),
+        ConversionEvaluation.created_at >= since
     ).all()
     daily = defaultdict(int)
     for r in rows:
@@ -456,13 +447,13 @@ DIMENSION_DESCRIPTIONS = {
 }
 
 
-def build_evaluation_report(convert_id: int) -> dict | None:
+def build_evaluation_report(conversion_id: int) -> dict | None:
     """
     Assemble all data needed to render an evaluation report (Markdown or PDF).
 
-    Returns a structured dict or None if the convert does not exist.
+    Returns a structured dict or None if the conversion does not exist.
     Fields:
-      convert        – basic convert metadata
+      conversion        – basic conversion metadata
       generated_at   – UTC timestamp string
       overall        – {level, score, total_votes, likes, dislikes, like_ratio}
       dimensions     – list of {key, label, description, level, score, votes, distribution}
@@ -470,21 +461,16 @@ def build_evaluation_report(convert_id: int) -> dict | None:
       all_tags       – sorted list of tag name strings
       eval_comments  – list of {author, content, created_at}
     """
-    convert = Convert.query.get(convert_id)
-    if not convert:
+    conversion = Conversion.query.get(conversion_id)
+    if not conversion:
         return None
 
-    summary        = get_summary(convert_id)
-    consensus_tags = get_consensus_tags(convert_id, threshold=2)
-    push_tags      = get_misp_push_tags(convert_id)
+    summary        = get_summary(conversion_id)
+    consensus_tags = get_consensus_tags(conversion_id, threshold=2)
+    push_tags      = get_misp_push_tags(conversion_id)
 
     # Overall level from push tags
-    overall_level = None
-    for t in push_tags:
-        _, cat, val = _parse_eval_tag(t)
-        if cat == 'overall-score':
-            overall_level = val
-            break
+    overall_level = _overall_level(push_tags)
 
     like_total  = summary['likes'] + summary['dislikes']
     like_ratio  = round(summary['likes'] / like_total * 100) if like_total else None
@@ -513,7 +499,7 @@ def build_evaluation_report(convert_id: int) -> dict | None:
     # Evaluation comments
     eval_comments_raw = (
         Comment.query
-        .filter_by(convert_id=convert_id, is_evaluation=True, is_deleted=False)
+        .filter_by(conversion_id=conversion_id, is_evaluation=True, is_deleted=False)
         .order_by(Comment.created_at.asc())
         .all()
     )
@@ -524,23 +510,23 @@ def build_evaluation_report(convert_id: int) -> dict | None:
         eval_comments.append({
             'author':     u.first_name if u else 'Anonymous',
             'content':    c.content,
-            'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '',
+            'created_at': c.created_at.strftime('%Y-%m-%d %H:%M UTC') if c.created_at else ''
         })
 
-    source_fmt = 'MISP'     if convert.conversion_type == 'MISP_TO_STIX' else 'STIX 2.1'
-    target_fmt = 'STIX 2.1' if convert.conversion_type == 'MISP_TO_STIX' else 'MISP'
+    source_fmt = 'MISP'     if conversion.conversion_type == 'MISP_TO_STIX' else 'STIX 2.1'
+    target_fmt = 'STIX 2.1' if conversion.conversion_type == 'MISP_TO_STIX' else 'MISP'
 
     return {
-        'convert': {
-            'id':          convert.id,
-            'name':        convert.name,
-            'uuid':        convert.uuid,
-            'description': convert.description or '',
-            'type':        convert.conversion_type,
+        'conversion': {
+            'id':          conversion.id,
+            'name':        conversion.name,
+            'uuid':        conversion.uuid,
+            'description': conversion.description or '',
+            'type':        conversion.conversion_type,
             'source_fmt':  source_fmt,
             'target_fmt':  target_fmt,
-            'created_at':  convert.created_at.strftime('%Y-%m-%d %H:%M') if convert.created_at else '',
-            'public':      convert.public,
+            'created_at':  conversion.created_at.strftime('%Y-%m-%d %H:%M UTC') if conversion.created_at else '',
+            'public':      conversion.public,
         },
         'generated_at': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
         'overall': {
@@ -562,7 +548,7 @@ def render_evaluation_markdown(report: dict) -> str:
     """
     Render a report dict (from build_evaluation_report) as a Markdown string.
     """
-    c   = report['convert']
+    c   = report['conversion']
     ov  = report['overall']
     now = report['generated_at']
 
@@ -572,22 +558,22 @@ def render_evaluation_markdown(report: dict) -> str:
 
     # ── Header ───────────────────────────────────────────────────
     lines += [
-        f'# CTI Evaluation Report',
-        f'',
+        '# CTI Evaluation Report',
+        '',
         f'## {c["name"]}',
-        f'',
-        f'| Field | Value |',
-        f'|---|---|',
+        '',
+        '| Field | Value |',
+        '|---|---|',
         f'| **Conversion type** | {c["source_fmt"]} → {c["target_fmt"]} |',
         f'| **Conversion date** | {c["created_at"]} |',
         f'| **Report generated** | {now} |',
         f'| **UUID** | `{c["uuid"]}` |',
         f'| **Visibility** | {"Public" if c["public"] else "Private"} |',
-        f'',
+        '',
     ]
 
     if c['description']:
-        lines += [f'> {c["description"]}', f'']
+        lines += [f'> {c["description"]}', '']
 
     lines += ['---', '']
 
@@ -598,10 +584,10 @@ def render_evaluation_markdown(report: dict) -> str:
 
     lines += [
         f'## Overall Score: {emoji} {level_str} ({score_str})',
-        f'',
+        '',
         f'Community assessment based on **{ov["total_votes"]} vote(s)** '
         f'from the CTI-Transmute platform.',
-        f'',
+        '',
         f'- 👍 **{ov["likes"]} like(s)**'
         + (f' · 👎 **{ov["dislikes"]} dislike(s)**' if ov['dislikes'] else ''),
     ]
@@ -755,13 +741,13 @@ def render_evaluation_pdf(report: dict) -> bytes:
 
 
 def get_recent_to_evaluate(viewer_id=None, limit=8) -> list:
-    """Recent public converts, with their evaluation summary."""
-    converts = (Convert.query
+    """Recent public conversions, with their evaluation summary."""
+    conversions = (Conversion.query
                 .filter_by(public=True, is_active=True)
-                .order_by(Convert.created_at.desc())
+                .order_by(Conversion.created_at.desc())
                 .limit(limit).all())
     result = []
-    for c in converts:
+    for c in conversions:
         summary = get_summary(c.id, viewer_id)
         result.append({
             "id":              c.id,

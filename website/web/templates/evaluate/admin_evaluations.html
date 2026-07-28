@@ -9,7 +9,7 @@
   <div class="list-header">
     <div class="home-hero-badge"><i class="fas fa-chart-bar"></i> Admin</div>
     <h1 class="list-title">All Evaluations</h1>
-    <p class="list-subtitle">Review all likes, dislikes and reactions across every convert.</p>
+    <p class="list-subtitle">Review all likes, dislikes and reactions across every conversion.</p>
   </div>
 
   <div class="custom-card p-3">
@@ -18,8 +18,8 @@
     <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
       <div class="search-bar-wrapper" style="max-width:220px;">
         <i class="fas fa-hashtag search-bar-icon"></i>
-        <input class="search-bar-input" type="number" v-model="filter_convert"
-               @input="debounceLoad" placeholder="Filter by convert ID…">
+        <input class="search-bar-input" type="number" v-model="filter_conversion"
+               @input="debounceLoad" placeholder="Filter by conversion ID…">
       </div>
       <select class="form-select form-select-sm" style="max-width:160px; background:var(--bg-2); color:var(--text); border-color:var(--border);"
               v-model="filter_type" @change="loadPage(1)">
@@ -49,7 +49,7 @@
           <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
             <th style="width:60px;">ID</th>
             <th>User</th>
-            <th>Convert</th>
+            <th>Conversion</th>
             <th>Type</th>
             <th>Reaction</th>
             <th>Date</th>
@@ -61,8 +61,8 @@
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ e.id ]]</td>
             <td style="font-weight:600;">[[ e.username ]]</td>
             <td>
-              <a :href="'/convert/detail/'+e.convert_id" style="color:var(--accent); font-size:0.82rem;">
-                #[[ e.convert_id ]]
+              <a :href="'/conversions/detail/'+e.conversion_id" style="color:var(--accent); font-size:0.82rem;">
+                #[[ e.conversion_id ]]
               </a>
             </td>
             <td>
@@ -78,7 +78,7 @@
               </span>
               <span v-else style="color:var(--text-3);">—</span>
             </td>
-            <td style="font-size:0.78rem; color:var(--text-3);">[[ e.created_at || '—' ]]</td>
+            <td style="font-size:0.78rem; color:var(--text-3);">[[ formatDateTime(e.created_at, '—') ]]</td>
             <td>
               <button class="btn btn-sm"
                 style="color:var(--danger); border-color:var(--danger); background:transparent; padding:2px 8px; font-size:0.75rem;"
@@ -125,21 +125,21 @@
   createApp({
     delimiters: ['[[', ']]'],
     setup() {
-      const items          = ref([])
-      const loading        = ref(true)
-      const page           = ref(1)
-      const pages          = ref(1)
-      const total          = ref(0)
-      const filter_type    = ref('')
-      const filter_convert = ref('')
-      let debounceTimer    = null
+      const items             = ref([])
+      const loading           = ref(true)
+      const page              = ref(1)
+      const pages             = ref(1)
+      const total             = ref(0)
+      const filter_type       = ref('')
+      const filter_conversion = ref('')
+      let debounceTimer       = null
 
       async function loadPage(p = 1) {
         loading.value = true
         page.value    = p
         const params  = new URLSearchParams({ page: p, per_page: 50 })
         if (filter_type.value)    params.set('type',       filter_type.value)
-        if (filter_convert.value) params.set('convert_id', filter_convert.value)
+        if (filter_conversion.value) params.set('conversion_id', filter_conversion.value)
 
         const res  = await fetch('/evaluate/admin/list?' + params)
         const data = await res.json()
@@ -182,8 +182,9 @@
 
       loadPage(1)
 
-      return { items, loading, page, pages, total, filter_type, filter_convert,
-               loadPage, debounceLoad, typeIcon, reactionIcon, deleteEval }
+      return { items, loading, page, pages, total, filter_type, filter_conversion,
+               loadPage, debounceLoad, typeIcon, reactionIcon, deleteEval,
+               formatDateTime: ctiDate.formatDateTime }
     }
   }).mount('#main-container')
 </script>

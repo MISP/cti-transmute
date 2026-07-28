@@ -1,12 +1,26 @@
-import datetime
-from website.web import db , login_manager
-from flask_login import UserMixin, AnonymousUserMixin
+from datetime import datetime, timezone
+
+from flask_login import AnonymousUserMixin, UserMixin
+from sqlalchemy import func
+from sqlalchemy.ext.hybrid import hybrid_property
 from werkzeug.security import check_password_hash, generate_password_hash
+
+from website.web import db, login_manager
+
 
 @login_manager.user_loader
 def load_user(user_id):
     """Loads the user from the session."""
     return User.query.get(int(user_id))
+
+def utc_iso(dt):
+    """Serialize a stored UTC wall-clock datetime as ISO-8601 with the Z marker.
+
+    The wire format must carry an explicit offset: an offset-less string is
+    parsed as viewer-local time by browsers, shifting every displayed date by
+    the viewer's UTC offset. None passes through for nullable columns.
+    """
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ') if dt else None
 
 class User(UserMixin, db.Model):
     """User model for authentication and authorization."""
@@ -69,17 +83,19 @@ class AnonymousUser(AnonymousUserMixin):
 # Register AnonymousUser as the default for anonymous visitors
 login_manager.anonymous_user = AnonymousUser
 
-class Convert(db.Model):
-    __tablename__ = "convert"
+class Conversion(db.Model):
+    __tablename__ = "conversion"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.Integer, nullable=True) # the user who made the convert
-    name = db.Column(db.String(100), unique=True, nullable=False)
-    conversion_type = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, nullable=True) # the user who made the conversion
+    name = db.Column(db.String(255), nullable=False)
+    source_format = db.Column(db.String(50), nullable=True)  # Converter source slug
+    target_format = db.Column(db.String(50), nullable=True)  # Converter target slug
     description = db.Column(db.Text)  # optional description
     uuid = db.Column(db.String(36), index=True)
     input_text = db.Column(db.Text, nullable=False)    # Original text
     output_text = db.Column(db.Text, nullable=True)    # Converted text
+    params = db.Column(db.JSON, nullable=True)  # the params the conversion ran with
     created_at = db.Column(db.DateTime, index=True)
     updated_at = db.Column(db.DateTime, index=True)
     public = db.Column(db.Boolean, default=True, index=True) #able to share with the community
@@ -87,8 +103,26 @@ class Convert(db.Model):
     is_active = db.Column(db.Boolean, default=True, index=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
 
+    @hybrid_property
+    def conversion_type(self):
+        """Derived direction discriminator, e.g. ``"MISP_TO_STIX"``.
+
+        No longer a stored free-form column — computed from the Converter's
+        source/target slugs so it can never drift from them.
+        """
+        if self.source_format is None or self.target_format is None:
+            return None
+        return f"{self.source_format}_to_{self.target_format}".upper()
+
+    @conversion_type.expression
+    def conversion_type(cls):
+        # Usable in SQL WHERE clauses: func.upper(source || '_to_' || target)
+        return func.upper(cls.source_format + "_to_" + cls.target_format)
+
     def get_user_name_by_id(self):
-        user = User.query.get(self.user_id)  
+        if self.user_id is None:
+            return None
+        user = db.session.get(User, self.user_id)
         return user.first_name if user else None
 
     def to_json(self):
@@ -100,9 +134,12 @@ class Convert(db.Model):
             "description": self.description,
             "input_text": self.input_text,
             "conversion_type": self.conversion_type,
+            "source_format": self.source_format,
+            "target_format": self.target_format,
+            "params": self.params,
             "output_text": self.output_text,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "public": self.public,
             "uuid": self.uuid,
             "author": self.get_user_name_by_id()
@@ -115,13 +152,13 @@ class Convert(db.Model):
             "name": self.name,
             "description": self.description,
             "conversion_type": self.conversion_type,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "public": self.public,
             "uuid": self.uuid,
             "author": self.get_user_name_by_id(),
             "is_active": self.is_active,
-            "deleted_at": self.deleted_at.strftime('%Y-%m-%d %H:%M') if self.deleted_at else None,
+            "deleted_at": utc_iso(self.deleted_at)
         }
     def to_share(self):
         return {
@@ -129,22 +166,22 @@ class Convert(db.Model):
             "name": self.name,
             "description": self.description,
             "conversion_type": self.conversion_type,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M'),
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M'),
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "public": self.public,
             "uuid": self.uuid,
             "author": self.get_user_name_by_id(),
             "input_text": self.input_text,
             "output_text": self.output_text,
-            "share_url": f"https://cti-transmute.org/convert/share/{self.uuid}",
-            "detail_url": f"https://cti-transmute.org/convert/detail/{self.id}"
+            "share_url": f"https://cti-transmute.org/conversions/share/{self.uuid}",
+            "detail_url": f"https://cti-transmute.org/conversions/detail/{self.id}"
         }
 
 class Comment(db.Model):
     __tablename__ = "comment"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey("convert.id", ondelete="CASCADE"), nullable=False)
+    conversion_id = db.Column(db.Integer, db.ForeignKey("conversion.id", ondelete="CASCADE"), nullable=False)
     user_id = db.Column(db.Integer, nullable=True)
     content = db.Column(db.Text, nullable=False)
     is_private = db.Column(db.Boolean, default=False, index=True)
@@ -153,7 +190,7 @@ class Comment(db.Model):
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     is_evaluation = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
 
-    convert = db.relationship("Convert", backref=db.backref("comments", lazy=True, cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("comments", lazy=True, cascade="all, delete-orphan"))
     replies = db.relationship(
         "Comment",
         backref=db.backref("parent", remote_side=[id]),
@@ -168,7 +205,7 @@ class Comment(db.Model):
             return user.first_name if user else "Deleted User"
         return "Anonymous"
 
-    def to_json(self, current_user_id=None, is_admin=False, convert_owner_id=None):
+    def to_json(self, current_user_id=None, is_admin=False, conversion_owner_id=None):
         reactions_grouped = {}
         for r in self.reactions:
             if r.emoji not in reactions_grouped:
@@ -179,17 +216,17 @@ class Comment(db.Model):
 
         return {
             "id": self.id,
-            "convert_id": self.convert_id,
+            "conversion_id": self.conversion_id,
             "user_id": self.user_id,
             "author": self.get_author_name(),
             "content": self.content if not self.is_deleted else "[deleted]",
             "is_private": self.is_private,
             "parent_id": self.parent_id,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at),
             "is_deleted": self.is_deleted,
             "reactions": reactions_grouped,
             "can_delete": bool(current_user_id and (
-                current_user_id == self.user_id or is_admin or current_user_id == convert_owner_id
+                current_user_id == self.user_id or is_admin or current_user_id == conversion_owner_id
             )),
             "can_toggle_private": bool(current_user_id and (
                 current_user_id == self.user_id or is_admin
@@ -218,11 +255,11 @@ class Notification(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
-    # Types: "comment_reply", "new_follow_convert", "report_submitted"
+    # Types: "comment_reply", "new_follow_conversion", "report_submitted"
     type = db.Column(db.String(50), nullable=False)
     is_read = db.Column(db.Boolean, default=False, index=True)
-    related_id = db.Column(db.Integer, nullable=True)    # comment_id or convert_id
-    related_type = db.Column(db.String(50), nullable=True)  # "comment" or "convert"
+    related_id = db.Column(db.Integer, nullable=True)    # comment_id or conversion_id
+    related_type = db.Column(db.String(50), nullable=True)  # "comment" or "conversion"
     actor_id = db.Column(db.Integer, nullable=True)       # who triggered it
     message = db.Column(db.Text)
     created_at = db.Column(db.DateTime, index=True)
@@ -246,7 +283,7 @@ class Notification(db.Model):
             "actor_id": self.actor_id,
             "actor_name": self.get_actor_name(),
             "message": self.message,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at)
         }
 
 
@@ -263,11 +300,11 @@ class UserFollow(db.Model):
     )
 
 
-class ConvertReport(db.Model):
-    __tablename__ = "convert_report"
+class ConversionReport(db.Model):
+    __tablename__ = "conversion_report"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey("convert.id", ondelete="CASCADE"), nullable=False)
+    conversion_id = db.Column(db.Integer, db.ForeignKey("conversion.id", ondelete="CASCADE"), nullable=False)
     user_id = db.Column(db.Integer, nullable=True)
     reason = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -276,23 +313,23 @@ class ConvertReport(db.Model):
     reviewed_at = db.Column(db.DateTime, nullable=True)
     reviewed_by = db.Column(db.Integer, nullable=True)
 
-    convert = db.relationship("Convert", backref=db.backref("reports", lazy=True, cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("reports", lazy=True, cascade="all, delete-orphan"))
 
     def to_json(self):
-        convert = Convert.query.get(self.convert_id)
+        conversion = Conversion.query.get(self.conversion_id)
         reviewer = User.query.get(self.reviewed_by) if self.reviewed_by else None
         reporter = User.query.get(self.user_id) if self.user_id else None
         return {
             "id": self.id,
-            "convert_id": self.convert_id,
-            "convert_name": convert.name if convert else None,
+            "conversion_id": self.conversion_id,
+            "conversion_name": conversion.name if conversion else None,
             "user_id": self.user_id,
             "reporter": f"{reporter.first_name} {reporter.last_name}" if reporter else "Anonymous",
             "reason": self.reason,
             "description": self.description,
             "status": self.status,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
-            "reviewed_at": self.reviewed_at.strftime('%Y-%m-%d %H:%M') if self.reviewed_at else None,
+            "created_at": utc_iso(self.created_at),
+            "reviewed_at": utc_iso(self.reviewed_at),
             "reviewed_by": reviewer.first_name if reviewer else None,
         }
 
@@ -302,11 +339,11 @@ class SystemLog(db.Model):
     __tablename__ = "system_log"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    # e.g. convert_created, convert_deleted, comment_deleted
+    # e.g. conversion_created, conversion_deleted, comment_deleted
     event_type = db.Column(db.String(60), nullable=False, index=True)
     actor_id = db.Column(db.Integer, nullable=True)
     actor_name = db.Column(db.String(120), nullable=True)
-    target_type = db.Column(db.String(50), nullable=True)   # convert | comment
+    target_type = db.Column(db.String(50), nullable=True)   # conversion | comment
     target_id = db.Column(db.Integer, nullable=True)
     target_name = db.Column(db.String(255), nullable=True)
     details = db.Column(db.Text, nullable=True)
@@ -322,19 +359,19 @@ class SystemLog(db.Model):
             "target_id": self.target_id,
             "target_name": self.target_name,
             "details": self.details,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at)
         }
 
 
-class ConvertHistory(db.Model):
-    __tablename__ = "convert_history"
+class ConversionHistory(db.Model):
+    __tablename__ = "conversion_history"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, nullable=True)
 
-    convert_id = db.Column(
+    conversion_id = db.Column(
         db.Integer,
-        db.ForeignKey("convert.id", ondelete="CASCADE"),
+        db.ForeignKey("conversion.id", ondelete="CASCADE"),
         nullable=False
     )
 
@@ -348,12 +385,14 @@ class ConvertHistory(db.Model):
     old_output_text = db.Column(db.Text, nullable=True)
     new_output_text = db.Column(db.Text, nullable=True)
 
+    params = db.Column(db.JSON, nullable=True)  # params this version ran with
+
     # Metadata
     created_at = db.Column(db.DateTime, index=True)
     comment = db.Column(db.Text, nullable=True)
 
     # Relationship
-    convert = db.relationship("Convert", backref=db.backref(
+    conversion = db.relationship("Conversion", backref=db.backref(
         "history",
         lazy=True,
         cascade="all, delete-orphan"
@@ -362,13 +401,14 @@ class ConvertHistory(db.Model):
     def to_json(self):
         return {
             "id": self.id,
-            "convert_id": self.convert_id,
+            "conversion_id": self.conversion_id,
             "version": self.version,
             "uuid": self.uuid,
             "input_text": self.input_text,
             "old_output_text": self.old_output_text,
             "new_output_text": self.new_output_text,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "params": self.params,
+            "created_at": utc_iso(self.created_at),
             "comment": self.comment,
             "status": self.status,
             "public": self.public
@@ -382,8 +422,8 @@ class Tag(db.Model):
     uuid = db.Column(db.String(36), unique=True, nullable=False, index=True)
     name = db.Column(db.Text, unique=True, nullable=False, index=True)
     description = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = db.Column(db.Boolean, default=False)
     # "public" | "private"
     visibility = db.Column(db.String(255), nullable=True)
@@ -408,8 +448,8 @@ class Tag(db.Model):
             "uuid": self.uuid,
             "name": self.name,
             "description": self.description,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
-            "updated_at": self.updated_at.strftime('%Y-%m-%d %H:%M') if self.updated_at else None,
+            "created_at": utc_iso(self.created_at),
+            "updated_at": utc_iso(self.updated_at),
             "is_active": self.is_active,
             "visibility": self.visibility,
             "color": self.color,
@@ -452,7 +492,7 @@ class GraphConfig(db.Model):
             "author":     self.creator.first_name if self.creator else "System",
             "is_default": self.is_default,
             "is_active":  self.is_active,
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at),
             "can_delete": (
                 is_admin or
                 (current_user_id and self.created_by == current_user_id and not self.is_default)
@@ -461,28 +501,28 @@ class GraphConfig(db.Model):
         }
 
 
-class ConvertTagAssociation(db.Model):
-    __tablename__ = 'convert_tag_association'
+class ConversionTagAssociation(db.Model):
+    __tablename__ = 'conversion_tag_association'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), unique=True, nullable=False, index=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey('convert.id', ondelete='CASCADE'), nullable=False, index=True)
+    conversion_id = db.Column(db.Integer, db.ForeignKey('conversion.id', ondelete='CASCADE'), nullable=False, index=True)
     tag_id = db.Column(db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
-    added_at = db.Column(db.DateTime, default=lambda: datetime.datetime.utcnow())
+    added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     # "user" = manually added via UI | "json" = extracted from MISP/STIX JSON by admin scan
     source_type = db.Column(db.String(10), nullable=False, default="user", server_default="user")
 
-    convert = db.relationship('Convert', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
-    tag = db.relationship('Tag', backref=db.backref('convert_associations', lazy='dynamic'))
-    user = db.relationship('User', backref=db.backref('convert_tag_associations', lazy='dynamic'))
+    conversion = db.relationship('Conversion', backref=db.backref('tag_associations', lazy='dynamic', cascade='all, delete-orphan'))
+    tag = db.relationship('Tag', backref=db.backref('conversion_associations', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('conversion_tag_associations', lazy='dynamic'))
 
     def to_json(self):
         tag = self.tag
         return {
             "id": self.id,
             "uuid": self.uuid,
-            "convert_id": self.convert_id,
+            "conversion_id": self.conversion_id,
             "tag_id": self.tag_id,
             "user_id": self.user_id,
             "tag_name": tag.name if tag else None,
@@ -490,32 +530,32 @@ class ConvertTagAssociation(db.Model):
             "tag_icon": tag.icon if tag else None,
             "tag_visibility": tag.visibility if tag else None,
             "tag_description": tag.description if tag else None,
-            "added_at": self.added_at.strftime('%Y-%m-%d %H:%M') if self.added_at else None,
-            "source_type": self.source_type,
+            "added_at": utc_iso(self.added_at),
+            "source_type": self.source_type
         }
 
 
-class ConvertFavorite(db.Model):
-    """Stores user favorites on converts."""
-    __tablename__ = "convert_favorite"
+class ConversionFavorite(db.Model):
+    """Stores user favorites on conversions."""
+    __tablename__ = "conversion_favorite"
 
     id         = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id    = db.Column(db.Integer, db.ForeignKey("user.id",    ondelete="CASCADE"), nullable=False, index=True)
-    convert_id = db.Column(db.Integer, db.ForeignKey("convert.id", ondelete="CASCADE"), nullable=False, index=True)
+    conversion_id = db.Column(db.Integer, db.ForeignKey("conversion.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = db.Column(db.DateTime)
 
-    __table_args__ = (db.UniqueConstraint("user_id", "convert_id", name="uq_favorite_user_convert"),)
+    __table_args__ = (db.UniqueConstraint("user_id", "conversion_id", name="uq_favorite_user_convert"),)
 
     user    = db.relationship("User",    backref=db.backref("favorites", lazy="dynamic"))
-    convert = db.relationship("Convert", backref=db.backref("favorited_by", lazy="dynamic", cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("favorited_by", lazy="dynamic", cascade="all, delete-orphan"))
 
 
-class ConvertEvaluation(db.Model):
-    """Stores like/dislike/reaction evaluations on converts."""
-    __tablename__ = "convert_evaluation"
+class ConversionEvaluation(db.Model):
+    """Stores like/dislike/reaction evaluations on conversions."""
+    __tablename__ = "conversion_evaluation"
 
     id           = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    convert_id   = db.Column(db.Integer, db.ForeignKey("convert.id",  ondelete="CASCADE"), nullable=False, index=True)
+    conversion_id   = db.Column(db.Integer, db.ForeignKey("conversion.id",  ondelete="CASCADE"), nullable=False, index=True)
     user_id      = db.Column(db.Integer, db.ForeignKey("user.id",     ondelete="CASCADE"), nullable=False, index=True)
     # 'like' | 'dislike' | 'reaction'
     eval_type    = db.Column(db.String(20),  nullable=False)
@@ -523,18 +563,18 @@ class ConvertEvaluation(db.Model):
     reaction_key = db.Column(db.String(50),  nullable=True)
     created_at   = db.Column(db.DateTime, index=True)
 
-    convert = db.relationship("Convert", backref=db.backref("evaluations", lazy="dynamic", cascade="all, delete-orphan"))
+    conversion = db.relationship("Conversion", backref=db.backref("evaluations", lazy="dynamic", cascade="all, delete-orphan"))
     user    = db.relationship("User",    backref=db.backref("evaluations", lazy="dynamic"))
 
     def to_json(self):
         return {
             "id":           self.id,
-            "convert_id":   self.convert_id,
+            "conversion_id":   self.conversion_id,
             "user_id":      self.user_id,
             "username":     self.user.first_name if self.user else "Unknown",
             "eval_type":    self.eval_type,
             "reaction_key": self.reaction_key,
-            "created_at":   self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at":   utc_iso(self.created_at)
         }
 
 
@@ -556,5 +596,5 @@ class PlatformReview(db.Model):
             "rating":     self.rating,
             "comment":    self.comment,
             "author":     self.user.first_name if self.user else "Anonymous",
-            "created_at": self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else None,
+            "created_at": utc_iso(self.created_at)
         }

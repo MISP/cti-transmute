@@ -258,7 +258,7 @@
 .home-carousel-btn--left  { left:  14px; }
 .home-carousel-btn--right { right: 14px; }
 
-/* ── Recent convert card ─────────────────────────────────────── */
+/* ── Recent conversion card ──────────────────────────────────── */
 .home-recent-card {
     flex-shrink: 0;
     width: calc(25% - 9px);

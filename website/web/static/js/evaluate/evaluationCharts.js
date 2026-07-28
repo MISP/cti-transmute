@@ -1,10 +1,10 @@
-// EvaluationCharts — approval donut + tag-reaction bar chart for a convert.
+// EvaluationCharts — approval donut + tag-reaction bar chart for a conversion.
 // Register with: app.component('evaluation-charts', EvaluationCharts)
 
 const EvaluationCharts = {
     delimiters: ['[[', ']]'],
     props: {
-        convertId: { type: Number, required: true },
+        conversionId: { type: Number, required: true },
     },
     template: `
 <div>
@@ -190,7 +190,7 @@ const EvaluationCharts = {
 
         async function fetchData() {
             try {
-                const res  = await fetch(`/evaluate/summary/${props.convertId}`)
+                const res  = await fetch(`/evaluate/summary/${props.conversionId}`)
                 const body = await res.json()
                 if (body.success) data.value = body
             } catch (e) {
@@ -204,7 +204,7 @@ const EvaluationCharts = {
 
         function onBsTabShown(e) {
             const href = e.target?.getAttribute('href') || ''
-            if (href === `#eval-pane-${props.convertId}`) {
+            if (href === `#eval-pane-${props.conversionId}`) {
                 _tabVisible = true
                 tryInit()
             }
@@ -212,7 +212,7 @@ const EvaluationCharts = {
 
         onMounted(() => {
             fetchData()
-            const pane = document.getElementById(`eval-pane-${props.convertId}`)
+            const pane = document.getElementById(`eval-pane-${props.conversionId}`)
             if (pane?.classList.contains('active')) {
                 _tabVisible = true
             }

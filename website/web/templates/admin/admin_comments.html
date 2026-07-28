@@ -8,7 +8,7 @@
   <div class="list-header">
     <div class="home-hero-badge"><i class="fas fa-comments"></i> Admin</div>
     <h1 class="list-title">All Comments</h1>
-    <p class="list-subtitle">Review all comments across all public and private converts.</p>
+    <p class="list-subtitle">Review all comments across all public and private conversions.</p>
   </div>
 
   <div class="custom-card p-3">
@@ -32,7 +32,7 @@
       <table class="table table-hover align-middle" style="font-size:0.875rem;">
         <thead>
           <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
-            <th>ID</th><th>Author</th><th>Convert</th><th>Content</th><th>Private</th><th>Date</th><th>Actions</th>
+            <th>ID</th><th>Author</th><th>Conversion</th><th>Content</th><th>Private</th><th>Date</th><th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -40,15 +40,15 @@
             <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ c.id ]]</td>
             <td style="font-weight:600;">[[ c.author ]]</td>
             <td style="font-size:0.8rem;">
-              <a v-if="c.convert_active" :href="'/convert/detail/'+c.convert_id" style="color:var(--accent);">
-                [[ c.convert_name ]]
+              <a v-if="c.conversion_active" :href="'/conversions/detail/'+c.conversion_id" style="color:var(--accent);">
+                [[ c.conversion_name ]]
               </a>
-              <span v-else style="color:var(--text-3);">[[ c.convert_name ]]</span>
-              <div v-if="!c.convert_active" class="d-flex align-items-center gap-1 mt-1"
+              <span v-else style="color:var(--text-3);">[[ c.conversion_name ]]</span>
+              <div v-if="!c.conversion_active" class="d-flex align-items-center gap-1 mt-1"
                 style="font-size:0.72rem; color:var(--danger);">
                 <i class="fas fa-triangle-exclamation"></i>
                 Deactivated —
-                <a :href="'/account/admin/deleted_converts?highlight='+c.convert_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
+                <a :href="'/account/admin/deleted_conversions?highlight='+c.conversion_id" style="color:var(--danger); font-weight:600; text-decoration:underline;">
                   View in Trash <i class="fas fa-arrow-right" style="font-size:0.65rem;"></i>
                 </a>
               </div>
@@ -88,11 +88,11 @@
                 [[ c.is_private ? 'Private' : 'Public' ]]
               </span>
             </td>
-            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ c.created_at ]]</td>
+            <td style="color:var(--text-3); font-size:0.78rem; white-space:nowrap;">[[ formatDateTime(c.created_at) ]]</td>
             <td>
               <div class="d-flex gap-1">
-                <a v-if="c.is_reply && c.convert_active"
-                  :href="'/convert/detail/'+c.convert_id+'#comment-'+c.id"
+                <a v-if="c.is_reply && c.conversion_active"
+                  :href="'/conversions/detail/'+c.conversion_id+'#comment-'+c.id"
                   class="btn btn-sm btn-outline-secondary py-0 px-2"
                   style="font-size:0.72rem; color:var(--text-3);"
                   title="View in context">
@@ -135,7 +135,7 @@
         try {
           const params = new URLSearchParams({ page: page.value })
           if (search.value) params.set('search', search.value)
-          const res = await fetch(`/convert/admin/get_all_comments?${params}`)
+          const res = await fetch(`/conversions/admin/get_all_comments?${params}`)
           if (res.ok) {
             const data = await res.json()
             comments.value = (data.list || []).map(c => ({ ...c, _expanded: false }))
@@ -152,14 +152,18 @@
 
       async function deleteComment(c) {
         if (!confirm(`Delete comment #${c.id}?`)) return
-        const res = await fetch(`/convert/delete_comment?comment_id=${c.id}`)
+        const res = await fetch(`/conversions/delete_comment?comment_id=${c.id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) comments.value = comments.value.filter(x => x.id !== c.id)
       }
 
       onMounted(load)
-      return { comments, loading, page, total_page, search, load, debounceSearch, deleteComment, message_list }
+      return { comments, loading, page, total_page, search, load, debounceSearch, deleteComment, message_list,
+               formatDateTime: ctiDate.formatDateTime }
     }
   }).mount('#main-containers')
 </script>

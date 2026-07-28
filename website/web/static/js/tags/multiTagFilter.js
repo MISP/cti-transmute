@@ -133,7 +133,7 @@ const MultiTagFilter = {
                 <i class="fa-solid fa-tags text-primary opacity-75 ms-1 me-1"></i>
                 <span v-if="selectedTagsObjects.length === 0" class="text-muted small fw-bold">[[ placeholder ]]</span>
                 <span v-for="tag in selectedTagsObjects" :key="tag.name" class="tag-split shadow-sm m-0">
-                    <span class="tag-left" v-html="mapIcon(tag.icon)"></span>
+                    <span class="tag-left"><i :class="mapIcon(tag.icon)"></i></span>
                     <span class="tag-right" :style="{ backgroundColor: tag.color || '#6c757d' }">
                         <span :style="{ color: getTextColor(tag.color || '#6c757d') }" class="me-2" style="font-size:0.75rem">
                             [[ tagLabel(tag.name) ]]
@@ -196,7 +196,7 @@ const MultiTagFilter = {
                              :class="{ 'border-primary bg-primary-subtle': isNameSelected(tag.name) }"
                              style="cursor:pointer">
                             <span class="tag-split shadow-sm">
-                                <span class="tag-left" v-html="mapIcon(tag.icon)"></span>
+                                <span class="tag-left"><i :class="mapIcon(tag.icon)"></i></span>
                                 <span class="tag-right" :style="{ backgroundColor: tag.color || '#6c757d' }">
                                     <span :style="{ color: getTextColor(tag.color || '#6c757d') }" class="small fw-bold">
                                         [[ tagLabel(tag.name) ]]
@@ -239,7 +239,7 @@ const MultiTagFilter = {
                                  :class="{ 'border-primary bg-primary-subtle': isNameSelected(tag.name) }"
                                  style="cursor:pointer">
                                 <span class="tag-split shadow-sm">
-                                    <span class="tag-left" v-html="mapIcon(tag.icon)"></span>
+                                    <span class="tag-left"><i :class="mapIcon(tag.icon)"></i></span>
                                     <span class="tag-right" :style="{ backgroundColor: tag.color || '#6c757d' }">
                                         <span :style="{ color: getTextColor(tag.color || '#6c757d') }">
                                             [[ tagLabel(tag.name) ]]

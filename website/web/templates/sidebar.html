@@ -16,28 +16,28 @@
             <a href="/list" class="top-nav-link {% if request.path == '/list' %}active{% endif %}">
                 <i class="fas fa-plug"></i> API Endpoints
             </a>
-            <a href="/convert/history"
-                class="top-nav-link {% if '/convert/history' in request.path %}active{% endif %}">
+            <a href="/conversions/history"
+                class="top-nav-link {% if '/conversions/history' in request.path %}active{% endif %}">
                 <i class="fas fa-book"></i> History
             </a>
 
             <!-- Convert dropdown -->
             <div class="top-nav-dropdown">
                 <button
-                    class="top-nav-link top-nav-dropdown-btn {% if '/convert/' in request.path and 'history' not in request.path %}active{% endif %}">
+                    class="top-nav-link top-nav-dropdown-btn {% if '/conversions/' in request.path and 'history' not in request.path %}active{% endif %}">
                     <i class="fas fa-exchange-alt"></i> Convert
                     <i class="fas fa-chevron-down top-nav-caret"></i>
                 </button>
                 <div class="top-nav-dropdown-menu">
-                    <a href="/convert/misp_to_stix"
-                        class="top-nav-dropdown-item {% if request.path == '/convert/misp_to_stix' %}active{% endif %}">
+                    <a href="/conversions/misp_to_stix"
+                        class="top-nav-dropdown-item {% if request.path == '/conversions/misp_to_stix' %}active{% endif %}">
                         <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin-right:5px;">
                         MISP <span class="convert-arrow">→</span>
                         <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin:0 3px;">
                         STIX
                     </a>
-                    <a href="/convert/stix_to_misp"
-                        class="top-nav-dropdown-item {% if request.path == '/convert/stix_to_misp' %}active{% endif %}">
+                    <a href="/conversions/stix_to_misp"
+                        class="top-nav-dropdown-item {% if request.path == '/conversions/stix_to_misp' %}active{% endif %}">
                         <img src="/static/image/logo_stix.svg" width="13" height="13" style="vertical-align:middle; margin-right:5px;">
                         STIX <span class="convert-arrow">→</span>
                         <img src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin:0 3px;">
@@ -70,8 +70,8 @@
                 <a href="/account/admin/reports" class="top-nav-link">
                     <i class="fas fa-flag"></i> Reports
                 </a>
-                <a href="/account/admin/deleted_converts" class="top-nav-link">
-                    <i class="fas fa-trash-alt"></i> Deleted Converts
+                <a href="/account/admin/deleted_conversions" class="top-nav-link">
+                    <i class="fas fa-trash-alt"></i> Deleted Conversions
                 </a>
                 <a href="/account/admin/logs" class="top-nav-link">
                     <i class="fas fa-stream"></i> Activity Logs
@@ -79,8 +79,8 @@
                 <a href="/tags/admin/" class="top-nav-link">
                     <i class="fas fa-tags"></i> Tag Management
                 </a>
-                <a href="/tags/admin/bulk_converts" class="top-nav-link">
-                    <i class="fas fa-layer-group"></i> Bulk Tag Converts
+                <a href="/tags/admin/bulk_conversions" class="top-nav-link">
+                    <i class="fas fa-layer-group"></i> Bulk Tag Conversions
                 </a>
                 <a href="/evaluate/admin/" class="top-nav-link">
                     <i class="fas fa-chart-bar"></i> Evaluations
@@ -165,8 +165,8 @@
                     <a href="/account/admin/reports" class="top-nav-dropdown-item">
                         <i class="fas fa-flag me-2"></i> Reports
                     </a>
-                    <a href="/account/admin/deleted_converts" class="top-nav-dropdown-item">
-                        <i class="fas fa-trash-alt me-2"></i> Deleted Converts
+                    <a href="/account/admin/deleted_conversions" class="top-nav-dropdown-item">
+                        <i class="fas fa-trash-alt me-2"></i> Deleted Conversions
                     </a>
                     <a href="/account/admin/logs" class="top-nav-dropdown-item">
                         <i class="fas fa-stream me-2"></i> Activity Logs
@@ -174,8 +174,8 @@
                     <a href="/tags/admin/" class="top-nav-dropdown-item">
                         <i class="fas fa-tags me-2"></i> Tag Management
                     </a>
-                    <a href="/tags/admin/bulk_converts" class="top-nav-dropdown-item">
-                        <i class="fas fa-layer-group me-2"></i> Bulk Tag Converts
+                    <a href="/tags/admin/bulk_conversions" class="top-nav-dropdown-item">
+                        <i class="fas fa-layer-group me-2"></i> Bulk Tag Conversions
                     </a>
                     <a href="/evaluate/admin/" class="top-nav-dropdown-item">
                         <i class="fas fa-chart-bar me-2"></i> Evaluations

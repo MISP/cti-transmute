@@ -1,0 +1,30 @@
+{
+  "Event": {
+    "uuid": "a6ef17d6-91cf-4b34-9b3e-1c2d3e4f5a6b",
+    "info": "TDD fixture event",
+    "date": "2024-01-01",
+    "timestamp": "1704067200",
+    "analysis": "0",
+    "threat_level_id": "3",
+    "distribution": "0",
+    "published": false,
+    "Org": {
+      "name": "TestOrg",
+      "uuid": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e"
+    },
+    "Orgc": {
+      "name": "TestOrg",
+      "uuid": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e"
+    },
+    "Attribute": [
+      {
+        "uuid": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+        "type": "domain",
+        "category": "Network activity",
+        "value": "evil.example.com",
+        "timestamp": "1704067200",
+        "to_ids": true
+      }
+    ]
+  }
+}

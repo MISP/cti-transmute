@@ -1,0 +1,1608 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='pivotick/pivotick.css') }}">
+<link id="hljs-theme" rel="stylesheet" href="">
+<script src="/static/pivotick/pivotick.iife.js"></script>
+<script>window.dispatchEvent(new Event('pivotick-ready'))</script>
+
+{% endblock %}
+
+{% block content %}
+<div class="container my-5" v-cloak>
+    <template v-if="is_loading">
+        <div class="d-flex justify-content-center align-items-center" style="min-height:400px;">
+            <div class="text-center">
+                <div class="spinner-border" role="status"
+                    style="width:3rem; height:3rem; color:var(--accent); border-width:3px;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 mb-0" style="color:var(--text-2); font-size:0.875rem;">Loading conversion...</p>
+            </div>
+        </div>
+    </template>
+
+    <template v-else>
+
+        <div class="custom-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-3 flex-wrap" style="min-width:0;">
+                    <div style="min-width:0;">
+                        <h3 class="mb-1 text-truncate" :title="conversion.name"
+                            style="font-weight:700; letter-spacing:-0.02em;">
+                            [[ conversion.name ]]
+                        </h3>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="type-pill"
+                                :class="conversion.conversion_type === 'STIX_TO_MISP' ? 'type-stix' : 'type-misp'">
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">
+                                    STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> MISP
+                                </template>
+                                <template v-else>
+                                    MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> STIX
+                                </template>
+                            </span>
+                            <span class="vis-badge" :class="conversion.public ? 'vis-public' : 'vis-private'">
+                                <i :class="conversion.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
+                                [[ conversion.public ? 'Public' : 'Private' ]]
+                            </span>
+                            <a v-if="conversion.user_id" :href="'/account/public/' + conversion.user_id"
+                               class="author-badge" style="text-decoration:none; color:inherit;">
+                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
+                                [[ conversion.author || 'Anonymous' ]]
+                            </a>
+                            <span v-else class="author-badge">
+                                <i class="fas fa-user" style="font-size:0.65rem;"></i>
+                                Anonymous
+                            </span>
+                            {% if current_user.is_authenticated %}
+                            <template v-if="conversion.user_id && conversion.user_id !== {{ current_user.id }}">
+                                <button class="follow-btn" :class="{following: is_following_author}" @click="toggleFollow()" style="font-size:0.68rem; padding:3px 10px;">
+                                    <i :class="is_following_author ? 'fas fa-user-check' : 'fas fa-user-plus'"></i>
+                                    [[ is_following_author ? 'Following' : 'Follow' ]]
+                                </button>
+                            </template>
+                            {% endif %}
+                            <span class="author-badge">
+                                <i class="fas fa-clock" style="font-size:0.65rem;"></i>
+                                [[ formatDateTime(conversion.created_at) ]]
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if current_user.is_authenticated %}
+                <template v-if="parseInt('{{current_user.id}}') == conversion.user_id || current_user_is_admin">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button class="btn btn-sm fw-semibold"
+                            :class="conversion.public ? 'btn-outline-success' : 'btn-outline-danger'"
+                            :title="conversion.public ? 'Set private' : 'Set public'" @click="togglePublic()">
+                            <i v-if="conversion.public" class="fas fa-lock-open me-1"></i>
+                            <i v-else class="fas fa-lock me-1"></i>
+                            [[ conversion.public ? 'Public' : 'Private' ]]
+                        </button>
+                        <template v-if="!conversion.public">
+                            <button class="btn btn-sm btn-outline-primary" title="Share" data-bs-toggle="modal"
+                                :data-bs-target="'#share_modal_' + {{ conversion.id }}">
+                                <i class="fas fa-share-nodes me-1"></i> Share
+                            </button>
+                        </template>
+                        <a href="{{ url_for('conversions.refresh', uuid=conversion.uuid) }}"
+                            class="btn btn-sm btn-action" title="Refresh">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh
+                        </a>
+                        <a :href="'/conversions/edit/'+conversion.id" class="btn btn-sm btn-outline-secondary" title="Edit">
+                            <i class="fas fa-edit me-1"></i> Edit
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal"
+                            :data-bs-target="'#delete_modal_'+conversion.id">
+                            <i class="fas fa-trash me-1"></i> Delete
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" title="Push to MISP"
+                            @click="$refs.mispModal.open()">
+                            <img src="/static/image/misp.svg" width="14" height="14"
+                                style="vertical-align:middle; margin-right:4px;"> MISP
+                        </button>
+
+                        
+
+                        <!-- Download dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-action dropdown-toggle"
+                                type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download me-1"></i> Download
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="min-width:230px; font-size:.83rem;">
+
+                                <!-- Raw conversion files -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-file-code me-1"></i> Conversion files
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/conversions/download/' + conversion.id + '/input'">
+                                        <img v-if="conversion.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                         <img v-else src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
+                                        [[ conversion.conversion_type === 'MISP_TO_STIX' ? 'MISP input' : 'STIX input' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/conversions/download/' + conversion.id + '/output'">
+                                        <img v-if="conversion.conversion_type === 'MISP_TO_STIX'"
+                                            src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">  
+                                        <img v-else src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        [[ conversion.conversion_type === 'MISP_TO_STIX' ? 'STIX output' : 'MISP output' ]]
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/conversions/download/' + conversion.id + '/misp-push'">
+                                        <img src="/static/image/misp.svg" width="13" height="13"
+                                            style="vertical-align:middle; margin-right:6px;">
+                                        MISP push payload
+                                        <span class="text-muted ms-1" style="font-size:.73rem;">+ eval object</span>
+                                    </a>
+                                </li>
+
+                                <li><hr class="dropdown-divider"></li>
+
+                                <!-- Evaluation report -->
+                                <li>
+                                    <h6 class="dropdown-header" style="font-size:.7rem;">
+                                        <i class="fas fa-chart-bar me-1"></i> Evaluation report
+                                    </h6>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + conversion.id + '/pdf'"
+                                       download>
+                                        <i class="fas fa-file-pdf me-2" style="color:#e05555; width:13px;"></i>
+                                        PDF report
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                       :href="'/evaluate/export/' + conversion.id + '/markdown'"
+                                       download>
+                                        <i class="fab fa-markdown me-2" style="color:var(--text-2); width:13px;"></i>
+                                        Markdown report
+                                    </a>
+                                </li>
+
+                            </ul>
+                        </div>
+                        <button class="btn btn-sm detail-favorite-btn"
+                            :class="is_favorite ? 'active' : ''"
+                            :title="is_favorite ? 'Remove from favorites' : 'Add to favorites'"
+                            @click="toggleFavorite()">
+                            <i :class="is_favorite ? 'fas fa-star' : 'far fa-star'"></i>
+                        </button>
+                    </div>
+                </template>
+                {% else %}
+                <span class="vis-badge" :class="conversion.public ? 'vis-public' : 'vis-private'">
+                    <i :class="conversion.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
+                    [[ conversion.public ? 'Public' : 'Private' ]]
+                </span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-8">
+                <div class="custom-card p-3 h-100">
+                    <p class="form-label mb-2">Description</p>
+                    <p class="mb-0" v-if="conversion.description" style="font-size:0.9rem; color:var(--text);">
+                        [[ conversion.description ]]
+                    </p>
+                    <p class="mb-0 fst-italic" v-else style="color:var(--text-3); font-size:0.875rem;">
+                        No description provided.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="custom-card p-3 h-100">
+                    <p class="form-label mb-2">Details</p>
+                    <div class="d-flex flex-column gap-2" style="font-size:0.82rem; color:var(--text-2);">
+                        <div>
+                            <i class="fas fa-key me-2" style="color:var(--text-3); width:14px;"></i>
+                            <span style="font-family:var(--font-mono); font-size:0.75rem;">[[ conversion.uuid ]]</span>
+                        </div>
+                        <div v-if="!conversion.public">
+                            <template v-if="parseInt('{{current_user.id}}') == conversion.user_id || current_user_is_admin">
+                                <i class="fas fa-eye me-2" style="color:var(--text-3); width:14px;"></i>
+                                <span style="font-family:var(--font-mono); font-size:0.75rem; max-width:200px;"
+                                    class="text-truncate d-inline-block" :title="share_key">
+                                    [[ share_key ]]
+                                </span>
+                                <button class="btn btn-link p-0 ms-1" @click="regenerateShareKey(conversion.id)"
+                                    title="Regenerate" style="font-size:0.75rem; color:var(--text-3);">
+                                    <i class="fas fa-arrows-rotate"></i>
+                                </button>
+                                <button class="btn btn-link p-0 ms-1" @click="copyText(share_key, $event)" title="Copy"
+                                    style="font-size:0.75rem; color:var(--text-3);">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <tag-input
+            :conversion-id="{{ conversion.id }}"
+            :can-edit="false"
+            class="mb-4">
+        </tag-input>
+
+        <div class="custom-card mb-4">
+            <div class="detail-tabs-header">
+                <ul class="nav nav-underline px-3 pt-2" :id="'tabs-'+conversion.id" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" :href="'#input-pane-'+conversion.id" role="tab">
+                            <i class="fas fa-file-import me-1"></i>
+                            <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
+                            <template v-else>MISP Input</template>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#output-pane-'+conversion.id" role="tab">
+                            <i class="fas fa-file-export me-1"></i>
+                            <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
+                            <template v-else>STIX Output</template>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#compare-pane-'+conversion.id" role="tab">
+                            <i class="fas fa-code-compare me-1"></i> History
+                            <span v-if="history_list && history_list.length > 0" class="badge bg-primary ms-1">
+                                [[ history_list.length ]]
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#graph-pane-'+conversion.id" role="tab"
+                            onclick="onGraphTabClick()">
+                            <i class="fas fa-diagram-project me-1"></i> Graph
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#sunburst-pane-'+conversion.id" role="tab">
+                            <i class="fas fa-circle-dot me-1"></i> Sunburst
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab"
+                            :href="'#table-pane-'+conversion.id" role="tab">
+                            <i class="fas fa-table me-1"></i> Table
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#comments-pane-'+conversion.id" role="tab" @click="loadComments()" data-tab="comments">
+                            <i class="fas fa-comments me-1"></i> Comments
+                            <span v-if="discuss_comments.length > 0" class="badge bg-secondary ms-1">[[ discuss_comments.length ]]</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" :href="'#eval-pane-'+conversion.id" role="tab" @click="loadComments()" data-tab="eval">
+                            <i class="fas fa-chart-bar me-1"></i> Evaluation
+                            <span v-if="eval_comments.length > 0" class="badge ms-1" style="background:var(--cs-eval); color:#fff;">[[ eval_comments.length ]]</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="tab-content p-3">
+
+                <div class="tab-pane fade show active" :id="'input-pane-'+conversion.id" role="tabpanel">
+                    <div class="code-panel-wrapper">
+                        <div class="code-panel-toolbar">
+                            <span class="code-panel-label">
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX</template>
+                                <template v-else>MISP</template>
+                                · JSON
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-input" onclick="toggleTree('input')">
+                                    <i class="fas fa-sitemap me-1"></i> Tree
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" @click="formatJson('input', $event)">
+                                    <i class="fas fa-align-left me-1"></i> Format
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="downloadText(conversion.name, getRawInput(), $event)">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="copyText(getRawInput(), $event)">
+                                    <i class="fas fa-copy me-1"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                        <div class="code-loading-overlay" id="spinner-input">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Rendering…
+                        </div>
+                        <pre class="code-panel-pre d-none"
+                            id="pre-input"><code class="language-json" id="input-code"></code></pre>
+                        <div class="jt-root d-none" id="tree-input"></div>
+                        <div class="code-panel-footer">
+                            <small style="color:var(--text-3);">Updated: [[ formatDateTime(conversion.updated_at) ]]</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" :id="'output-pane-'+conversion.id" role="tabpanel">
+                    <div class="code-panel-wrapper">
+                        <div class="code-panel-toolbar">
+                            <span class="code-panel-label">
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP</template>
+                                <template v-else>STIX</template>
+                                · JSON
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-output" onclick="toggleTree('output')">
+                                    <i class="fas fa-sitemap me-1"></i> Tree
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" @click="formatJson('output', $event)">
+                                    <i class="fas fa-align-left me-1"></i> Format
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="downloadText(conversion.name, getRawOutput(), $event)">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    @click="copyText(getRawOutput(), $event)">
+                                    <i class="fas fa-copy me-1"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                        <div class="code-loading-overlay" id="spinner-output">
+                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                            Rendering…
+                        </div>
+                        <pre class="code-panel-pre d-none"
+                            id="pre-output"><code class="language-json" id="output-code"></code></pre>
+                        <div class="jt-root d-none" id="tree-output"></div>
+                        <div class="code-panel-footer">
+                            <small style="color:var(--text-3);">Updated: [[ formatDateTime(conversion.updated_at) ]]</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" :id="'compare-pane-'+conversion.id" role="tabpanel">
+                    <div v-if="history_list && history_list.length > 0" class="table-responsive">
+                        <table class="table table-hover align-middle" style="font-size:0.875rem;">
+                            <thead>
+                                <tr style="color:var(--text-2); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em;">
+                                    <th>ID</th><th>Version</th><th>Status</th><th>Created</th><th>Comment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="h in history_list" :key="h.id" @click="goToDiff(h.id)" style="cursor:pointer;">
+                                    <td style="color:var(--text-3); font-family:var(--font-mono); font-size:0.78rem;">#[[ h.id ]]</td>
+                                    <td><span class="badge bg-primary">v[[ h.version ]]</span></td>
+                                    <td>
+                                        <span class="badge"
+                                            :class="{'bg-success': h.status==='accepted', 'bg-danger': h.status==='rejected', 'bg-warning text-dark': h.status==='pending'}">
+                                            [[ h.status ]]
+                                        </span>
+                                    </td>
+                                    <td style="color:var(--text-2);">[[ formatDateTime(h.created_at) ]]</td>
+                                    <td class="text-truncate" style="max-width:250px; color:var(--text-2);">[[ h.comment || '—' ]]</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-else class="text-center py-5">
+                        <i class="fas fa-code-compare fa-2x mb-3" style="color:var(--text-3);"></i>
+                        <p style="color:var(--text-2); font-weight:500;">No version history yet</p>
+                    </div>
+                </div>
+
+                <!-- Graph pane -->
+                <div class="tab-pane fade" :id="'graph-pane-'+conversion.id" role="tabpanel">
+                    <div class="graph-panel-wrapper">
+                        <div class="graph-panel-toolbar">
+                            <span class="code-panel-label">
+                                <i class="fas fa-diagram-project me-1"></i>
+                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">
+                                    STIX Input &nbsp;→&nbsp; MISP Output
+                                </template>
+                                <template v-else>
+                                    MISP Input &nbsp;→&nbsp; STIX Output
+                                </template>
+                            </span>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    id="graph-view-input" onclick="showGraphSide('input')">
+                                    <i class="fas fa-file-import me-1"></i>
+                                    <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
+                                    <template v-else>MISP Input</template>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    id="graph-view-output" onclick="showGraphSide('output')">
+                                    <i class="fas fa-file-export me-1"></i>
+                                    <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
+                                    <template v-else>STIX Output</template>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary"
+                                    onclick="openGraphConfigModal()" title="Configure graph display">
+                                    <i class="fas fa-sliders"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- graph-container starts with a spinner, replaced once Pivotick renders -->
+                        <div id="graph-container" style="width:100%;height:560px;">
+                            <div class="graph-spinner-overlay">
+                                <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
+                                <span>Click the Graph tab to load…</span>
+                            </div>
+                        </div>
+                        <div id="graph-container-output" style="width:100%;height:560px;display:none;">
+                            <div class="graph-spinner-overlay">
+                                <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
+                                <span>Loading graph…</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="graph-legend mt-3">
+                        <details>
+                            <summary><i class="fas fa-circle-info me-1"></i> How to read this graph</summary>
+                            <div class="graph-legend-body">
+                                <div class="graph-legend-section">
+                                    <h6>Navigation</h6>
+                                    <p>Drag nodes to reposition. Scroll to zoom. Drag background to pan. Click a node to open its details in the sidebar. Right-click for more actions.</p>
+                                </div>
+                                <div class="graph-legend-section">
+                                    <h6>MISP graph</h6>
+                                    <p>The <strong>Event</strong> is the root. It connects to <strong>Objects</strong> (groups like <em>file</em>, <em>domain-ip</em>) and standalone <strong>Attributes</strong>. When 3 or more attributes share the same type, they are collapsed under a <strong>type group node</strong> (hexagon) for readability. Object references (<em>contains</em>, <em>related-to</em>) are shown as labeled arrows.</p>
+                                    <div class="graph-legend-chips">
+                                        <span class="chip" style="--c:#2563eb">■ Event</span>
+                                        <span class="chip" style="--c:#7c3aed">⬡ Object</span>
+                                        <span class="chip" style="--c:#0ea5e9">⬡ Network group</span>
+                                        <span class="chip" style="--c:#0ea5e9">● Network attr (IP, domain, URL)</span>
+                                        <span class="chip" style="--c:#f97316">⬡ Payload group</span>
+                                        <span class="chip" style="--c:#f97316">● Payload attr (hash, file)</span>
+                                        <span class="chip" style="--c:#10b981">● External analysis</span>
+                                        <span class="chip" style="--c:#64748b">● Other</span>
+                                    </div>
+                                </div>
+                                <div class="graph-legend-section">
+                                    <h6>STIX graph</h6>
+                                    <p>The <strong>Report</strong> is the root. Relationships connect indicators, malware, threat-actors and attack-patterns. <code>observed-data</code> wrappers are hidden.</p>
+                                    <div class="graph-legend-chips">
+                                        <span class="chip" style="--c:#1d4ed8">■ Report</span>
+                                        <span class="chip" style="--c:#2563eb">■ Grouping</span>
+                                        <span class="chip" style="--c:#7c3aed">⬡ Indicator</span>
+                                        <span class="chip" style="--c:#ef4444">⬡ Malware</span>
+                                        <span class="chip" style="--c:#f97316">■ Threat Actor</span>
+                                        <span class="chip" style="--c:#eab308">▲ Attack Pattern</span>
+                                        <span class="chip" style="--c:#0ea5e9">● ipv4 / domain / file</span>
+                                        <span class="chip" style="--c:#dc2626">■ TLP marking</span>
+                                    </div>
+                                </div>
+                                <div class="graph-legend-section">
+                                    <h6>Input vs Output</h6>
+                                    <p>Switch between <strong>Input</strong> and <strong>Output</strong> to compare how the conversion reorganized the data.</p>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    <div class="mt-2 text-end" style="font-size:0.72rem; color:var(--text-3);">
+                        Graph powered by <a href="https://pivotick.github.io/Pivotick/" target="_blank" rel="noopener"
+                            style="color:var(--text-3); text-decoration:underline; text-underline-offset:2px;">Pivotick</a>
+                    </div>
+                </div>
+
+                <!-- Comments pane -->
+                <div class="tab-pane fade" :id="'comments-pane-'+conversion.id" role="tabpanel">
+                    <div class="comments-section">
+
+                        <!-- Visibility banner -->
+                        <div v-if="!conversion.public" class="visibility-info-banner private-banner">
+                            <i class="fas fa-lock mt-1"></i>
+                            <span>This conversion is <strong>private</strong>. Only you and admins can see the comments below, regardless of their individual visibility.</span>
+                        </div>
+
+                        <!-- Loading -->
+                        <div v-if="comments_loading" class="text-center py-5">
+                            <div class="spinner-border spinner-border-sm" style="color:var(--accent);"></div>
+                        </div>
+
+                        <template v-else>
+
+                            <!-- ══ DISCUSSION ══════════════════════════════════ -->
+                            <div class="cs-section">
+                                <div class="cs-section-header">
+                                    <span class="cs-section-icon cs-section-icon--discuss"><i class="fas fa-comments"></i></span>
+                                    <span class="cs-section-title">Discussion</span>
+                                    <span v-if="discuss_comments.length" class="cs-section-count">[[ discuss_comments.length ]]</span>
+                                </div>
+
+                                {% if current_user.is_authenticated %}
+                                <div class="comment-form-wrapper">
+                                    <textarea class="comment-textarea" v-model="new_discuss_text"
+                                        placeholder="Share your thoughts, ask a question…"
+                                        maxlength="2000" rows="2"></textarea>
+                                    <div class="comment-form-footer">
+                                        <label class="comment-privacy-toggle">
+                                            <input type="checkbox" v-model="new_discuss_private">
+                                            <i class="fas fa-lock" style="font-size:0.75rem;"></i> Private
+                                        </label>
+                                        <button class="btn btn-sm btn-primary" @click="postComment(false)" :disabled="!new_discuss_text.trim()">
+                                            <i class="fas fa-paper-plane me-1"></i> Post
+                                        </button>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="cs-login-hint">
+                                    <a href="/account/login">Log in</a> to join the discussion.
+                                </div>
+                                {% endif %}
+
+                                <div v-if="discuss_comments.length === 0" class="comments-empty" style="padding:1.25rem 0 0.5rem;">
+                                    <i class="fas fa-comments" style="font-size:1.3rem; opacity:0.28; display:block; margin-bottom:0.4rem;"></i>
+                                    <p style="font-size:0.82rem; margin:0;">No discussion yet. Start the conversation.</p>
+                                </div>
+                                <div v-else class="cs-comment-list">
+                                    <div v-for="comment in discuss_comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                            <span class="comment-author">[[ comment.author ]]</span>
+                                            <span class="comment-date">[[ formatDateTime(comment.created_at) ]]</span>
+                                            <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                        </div>
+                                        <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
+                                        <div class="comment-actions" v-if="!comment.is_deleted">
+                                            {% if current_user.is_authenticated %}
+                                            <button class="comment-action-btn" @click="toggleReplyForm(comment.id)"><i class="fas fa-reply"></i> Reply</button>
+                                            <button v-if="comment.can_edit" class="comment-action-btn" @click="startEdit(comment)"><i class="fas fa-pen"></i> Edit</button>
+                                            <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
+                                                <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
+                                            </button>
+                                            <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)"><i class="fas fa-trash"></i> Delete</button>
+                                            {% endif %}
+                                        </div>
+                                        {% if current_user.is_authenticated %}
+                                        <div v-if="edit_comment_id === comment.id" class="replies-section reply-form">
+                                            <textarea class="reply-textarea" v-model="edit_comment_text" maxlength="2000" rows="2"></textarea>
+                                            <div class="d-flex justify-content-end gap-2 mt-2">
+                                                <button class="btn btn-sm btn-secondary" @click="cancelEdit()">Cancel</button>
+                                                <button class="btn btn-sm btn-primary" @click="submitEdit(comment.id)" :disabled="!edit_comment_text.trim()"><i class="fas fa-check me-1"></i> Save</button>
+                                            </div>
+                                        </div>
+                                        <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
+                                            <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
+                                            <div class="d-flex justify-content-end gap-2 mt-2">
+                                                <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
+                                                <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()"><i class="fas fa-paper-plane me-1"></i> Reply</button>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
+                                            <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
+                                                <div class="comment-header">
+                                                    <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                                    <span class="comment-author">[[ reply.author ]]</span>
+                                                    <span class="comment-date">[[ formatDateTime(reply.created_at) ]]</span>
+                                                    <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                                </div>
+                                                <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
+                                                <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
+                                                    {% if current_user.is_authenticated %}
+                                                    <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
+                                                        <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                        [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
+                                                    </button>
+                                                    <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)"><i class="fas fa-trash"></i> Delete</button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </template>
+
+                    </div>
+                </div>
+
+                <!-- ── Sunburst tab ──────────────────────────────── -->
+                <div class="tab-pane fade" :id="'sunburst-pane-'+conversion.id" role="tabpanel">
+                    <conversion-sunburst :conversion-data="conversion"></conversion-sunburst>
+                </div>
+
+                <!-- ── Table tab ─────────────────────────────────── -->
+                <div class="tab-pane fade" :id="'table-pane-'+conversion.id" role="tabpanel">
+                    <conversion-table :conversion-data="conversion"></conversion-table>
+                </div>
+
+                <!-- ── Evaluation tab ────────────────────────────── -->
+                <div class="tab-pane fade" :id="'eval-pane-'+conversion.id" role="tabpanel">
+                    <evaluation-panel
+                        :conversion-id="{{ conversion.id }}"
+                        :is-auth="{{ 'true' if current_user.is_authenticated else 'false' }}"
+                        :is-owner="{{ 'true' if current_user.is_authenticated else 'false' }} && conversion.user_id === {{ current_user.id if current_user.is_authenticated else 0 }}"
+                        :is-public="conversion.public">
+                    </evaluation-panel>
+                    <evaluation-charts :conversion-id="{{ conversion.id }}"></evaluation-charts>
+
+                    <!-- ── Export evaluation report ─────────────────── -->
+                    <div class="d-flex align-items-center gap-2 mt-3 mb-1 px-1" style="flex-wrap:wrap;">
+                        <span style="font-size:.8rem; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:.04em;">
+                            <i class="fas fa-file-export me-1"></i> Export report
+                        </span>
+                        <a href="/evaluate/export/{{ conversion.id }}/markdown"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fab fa-markdown me-1"></i> Markdown
+                        </a>
+                        <a href="/evaluate/export/{{ conversion.id }}/pdf"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="font-size:.78rem;"
+                           download>
+                            <i class="fas fa-file-pdf me-1" style="color:#e05555;"></i> PDF
+                        </a>
+                    </div>
+
+                    <!-- ── Evaluation comments ───────────────────── -->
+                    <div class="cs-separator" style="margin:1.25rem 0;"></div>
+
+                    <div class="cs-section cs-section--eval">
+                        <div class="cs-section-header">
+                            <span class="cs-section-icon cs-section-icon--eval"><i class="fas fa-comment-alt"></i></span>
+                            <span class="cs-section-title">Evaluation Comments</span>
+                            <span v-if="eval_comments.length" class="cs-section-count cs-section-count--eval">[[ eval_comments.length ]]</span>
+                            <span class="cs-eval-hint">Qualitative feedback on this conversion</span>
+                        </div>
+
+                        {% if current_user.is_authenticated %}
+                        <div class="comment-form-wrapper comment-form-wrapper--eval">
+                            <textarea class="comment-textarea" v-model="new_eval_text"
+                                placeholder="Share your evaluation — quality, accuracy, completeness…"
+                                maxlength="2000" rows="2"></textarea>
+                            <div class="comment-form-footer">
+                                <label class="comment-privacy-toggle">
+                                    <input type="checkbox" v-model="new_eval_private">
+                                    <i class="fas fa-lock" style="font-size:0.75rem;"></i> Private
+                                </label>
+                                <span class="cs-eval-form-label">
+                                    <i class="fas fa-chart-bar"></i> Marked as evaluation
+                                </span>
+                                <button class="btn btn-sm cs-eval-post-btn" @click="postComment(true)" :disabled="!new_eval_text.trim()">
+                                    <i class="fas fa-paper-plane me-1"></i> Post Evaluation
+                                </button>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="cs-login-hint">
+                            <a href="/account/login">Log in</a> to post an evaluation.
+                        </div>
+                        {% endif %}
+
+                        <div v-if="comments_loading" class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm" style="color:var(--cs-eval);"></div>
+                        </div>
+                        <div v-else-if="eval_comments.length === 0" class="comments-empty" style="padding:1.25rem 0 0.5rem;">
+                            <i class="fas fa-comment-alt" style="font-size:1.3rem; opacity:0.28; display:block; margin-bottom:0.4rem;"></i>
+                            <p style="font-size:0.82rem; margin:0;">No evaluation comments yet.</p>
+                        </div>
+                        <div v-else class="cs-comment-list">
+                            <div v-for="comment in eval_comments" :key="comment.id" :id="'comment-'+comment.id" class="comment-card comment-card--eval">
+                                <div class="comment-header">
+                                    <div class="comment-avatar comment-avatar--eval">[[ (comment.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                    <span class="comment-author">[[ comment.author ]]</span>
+                                    <span class="comment-date">[[ formatDateTime(comment.created_at) ]]</span>
+                                    <span v-if="comment.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                </div>
+                                <div class="comment-content" :class="{'deleted-comment': comment.is_deleted}">[[ comment.content ]]</div>
+                                <div class="comment-actions" v-if="!comment.is_deleted">
+                                    {% if current_user.is_authenticated %}
+                                    <button class="comment-action-btn" @click="toggleReplyForm(comment.id)"><i class="fas fa-reply"></i> Reply</button>
+                                    <button v-if="comment.can_edit" class="comment-action-btn" @click="startEdit(comment)"><i class="fas fa-pen"></i> Edit</button>
+                                    <button v-if="comment.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(comment.id)">
+                                        <i :class="comment.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                        [[ comment.is_private ? 'Make Public' : 'Make Private' ]]
+                                    </button>
+                                    <button v-if="comment.can_delete" class="comment-action-btn danger" @click="deleteComment(comment.id)"><i class="fas fa-trash"></i> Delete</button>
+                                    {% endif %}
+                                </div>
+                                {% if current_user.is_authenticated %}
+                                <div v-if="edit_comment_id === comment.id" class="replies-section reply-form">
+                                    <textarea class="reply-textarea" v-model="edit_comment_text" maxlength="2000" rows="2"></textarea>
+                                    <div class="d-flex justify-content-end gap-2 mt-2">
+                                        <button class="btn btn-sm btn-secondary" @click="cancelEdit()">Cancel</button>
+                                        <button class="btn btn-sm btn-primary" @click="submitEdit(comment.id)" :disabled="!edit_comment_text.trim()"><i class="fas fa-check me-1"></i> Save</button>
+                                    </div>
+                                </div>
+                                <div v-if="reply_open_for === comment.id" class="replies-section reply-form">
+                                    <textarea class="reply-textarea" v-model="reply_texts[comment.id]" :placeholder="'Reply to ' + comment.author + '…'" maxlength="1000" rows="2"></textarea>
+                                    <div class="d-flex justify-content-end gap-2 mt-2">
+                                        <button class="btn btn-sm btn-secondary" @click="reply_open_for = null">Cancel</button>
+                                        <button class="btn btn-sm btn-primary" @click="postReply(comment.id)" :disabled="!reply_texts[comment.id]?.trim()"><i class="fas fa-paper-plane me-1"></i> Reply</button>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <div v-if="comment.replies && comment.replies.length > 0" class="replies-section">
+                                    <div v-for="reply in comment.replies" :key="reply.id" class="reply-card">
+                                        <div class="comment-header">
+                                            <div class="comment-avatar" style="width:22px;height:22px;font-size:0.6rem;">[[ (reply.author || 'A').charAt(0).toUpperCase() ]]</div>
+                                            <span class="comment-author">[[ reply.author ]]</span>
+                                            <span class="comment-date">[[ formatDateTime(reply.created_at) ]]</span>
+                                            <span v-if="reply.is_private" class="comment-private-badge"><i class="fas fa-lock"></i> Private</span>
+                                        </div>
+                                        <div class="comment-content" :class="{'deleted-comment': reply.is_deleted}" style="margin-left:1.5rem;">[[ reply.content ]]</div>
+                                        <div class="comment-actions" style="margin-left:1.5rem;" v-if="!reply.is_deleted">
+                                            {% if current_user.is_authenticated %}
+                                            <button v-if="reply.can_toggle_private" class="comment-action-btn" @click="toggleCommentPrivate(reply.id)">
+                                                <i :class="reply.is_private ? 'fas fa-lock-open' : 'fas fa-lock'"></i>
+                                                [[ reply.is_private ? 'Make Public' : 'Make Private' ]]
+                                            </button>
+                                            <button v-if="reply.can_delete" class="comment-action-btn danger" @click="deleteComment(reply.id)"><i class="fas fa-trash"></i> Delete</button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Report conversion button -->
+        {% if current_user.is_authenticated %}
+        <div class="text-end mb-2" style="font-size:0.78rem;">
+            <button class="comment-action-btn danger" data-bs-toggle="modal" data-bs-target="#report_modal">
+                <i class="fas fa-flag me-1"></i> Report this conversion
+            </button>
+        </div>
+        {% endif %}
+
+        <div class="text-center mb-5">
+            <a href="{{ url_for('conversions.history') }}"
+                class="btn btn-outline-secondary px-4 py-2 rounded-pill back-btn">
+                <i class="fas fa-arrow-left me-2"></i> Back to History
+            </a>
+        </div>
+
+    </template>
+
+    <div class="modal fade" :id="'delete_modal_'+conversion.id" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title"><i class="fas fa-trash text-danger me-2"></i>Delete conversion</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="color:var(--text-2); font-size:0.875rem;">
+                    Are you sure you want to delete
+                    <strong style="color:var(--text);">[[ conversion.name ]]</strong> ?
+                    This action cannot be undone.
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-danger" @click="deleteConversion()">
+                        <i class="fas fa-trash me-1"></i> Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" :id="'share_modal_' + {{ conversion.id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title">
+                        <i class="fas fa-share-nodes me-2" style="color:var(--accent);"></i>Share {{ conversion.name }}
+                    </h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Share link</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" readonly
+                            :value="`https://cti-transmute.org/conversions/share?uuid=${conversion?.uuid || ''}&share_key=${share_key}`">
+                        <button class="btn btn-primary" type="button"
+                            @click="copyText('https://cti-transmute.org/conversions/share?uuid='+conversion.uuid+'&share_key='+share_key, $event)">
+                            <i class="fas fa-copy me-1"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report conversion modal -->
+    {% if current_user.is_authenticated %}
+    <div class="modal fade" id="report_modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title"><i class="fas fa-flag text-danger me-2"></i>Report this conversion</h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size:0.85rem; color:var(--text-2); margin-bottom:0.75rem;">
+                        Select the reason for your report:
+                    </p>
+                    <div class="report-reason-grid">
+                        <button v-for="r in report_reasons" :key="r" class="report-reason-btn" :class="{selected: report_reason === r}" @click="report_reason = r">
+                            [[ r.charAt(0).toUpperCase() + r.slice(1) ]]
+                        </button>
+                    </div>
+                    <textarea class="comment-textarea" v-model="report_description" placeholder="Additional details (optional)…" rows="3" maxlength="500"></textarea>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-danger" @click="submitReport()" :disabled="!report_reason">
+                        <i class="fas fa-flag me-1"></i> Submit Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Visibility change warning modal -->
+    <div class="modal fade" id="visibility_warning_modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
+                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                    <h5 class="modal-title">
+                        <i class="fas fa-comment-dots me-2" style="color:var(--accent);"></i>Comments visibility
+                    </h5>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="font-size:0.875rem; color:var(--text-2);">
+                    <div v-if="pending_visibility_action === 'private'" class="visibility-info-banner private-banner mb-3">
+                        <i class="fas fa-lock mt-1"></i>
+                        <span>Making this conversion <strong>private</strong> will hide <strong>[[ pending_comment_count ]] comment(s)</strong> from the public. Only you and admins will be able to see them until you make the conversion public again.</span>
+                    </div>
+                    <div v-else class="visibility-info-banner public-banner mb-3">
+                        <i class="fas fa-globe mt-1"></i>
+                        <span>Making this conversion <strong>public</strong> will restore visibility for all comments. Public comments will be visible to everyone; private comments will remain visible only to their authors, you, and admins.</span>
+                    </div>
+                    <p class="mb-0">Do you want to proceed?</p>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm btn-primary" @click="confirmTogglePublic()">
+                        <i class="fas fa-check me-1"></i> Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="conversion_id" data-conversion-id="{{ conversion.id }}"></div>
+
+    <!-- MISP push modal (component mounted by Vue) -->
+    <push-conversion-to-misp
+        ref="mispModal"
+        :conversion-id="{{ conversion.id }}"
+        :conversion-data="conversion">
+    </push-conversion-to-misp>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp, ref, computed, onMounted, watch, nextTick } = Vue
+    import { create_message, message_list } from '/static/js/toaster.js';
+    import TagInput from '/static/js/tags/tagInput.js';
+    import { initConversionGraph, showGraphSide } from '/static/js/graph/conversionGraph.js';
+    import { openGraphConfigModal } from '/static/js/graph/graphConfigModal.js';
+    import EvaluationPanel from '/static/js/evaluationPanel.js';
+    import EvaluationCharts from '/static/js/evaluate/evaluationCharts.js';
+    import PushConversionToMISP from '/static/js/misp/pushConversionToMISP.js';
+    import ConversionSunburst from '/static/js/graph/conversionSunburst.js';
+    import ConversionTable from '/static/js/graph/conversionTable.js';
+    window.showGraphSide = showGraphSide;
+    window.openGraphConfigModal = openGraphConfigModal;
+
+    const conversion_id = document.getElementById('conversion_id').dataset.conversionId;
+    const IS_AUTH = "{{ 'true' if current_user.is_authenticated else 'false' }}";
+    const CURRENT_USER_ID = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
+    const IS_ADMIN = "{{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}";
+
+    const _LIGHT_THEMES = ['light', 'ocean']
+    function applyHljsTheme(theme) {
+        const t = theme || ['light','dark','dusk','forest'].find(
+            x => document.documentElement.classList.contains(x + '-mode')
+        ) || 'light'
+        const isDark = !_LIGHT_THEMES.includes(t)
+        document.getElementById('hljs-theme').href = isDark
+            ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
+            : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css'
+    }
+
+    applyHljsTheme()
+    document.documentElement.addEventListener('themechange', (e) => {
+        setTimeout(() => { applyHljsTheme(e.detail?.theme); highlightAll() }, 50)
+    })
+
+    // Raw text lives outside Vue to avoid reactivity overhead on large strings
+    let rawInput = '', rawOutput = ''
+
+    const HLJS_LIMIT = 200 * 1024   // 200 KB — skip highlighting above this
+
+    // ── JSON Tree viewer ──────────────────────────────────────────────────────
+    const treeState = {}
+
+    function jtEl(tag, cls, text) {
+        const e = document.createElement(tag)
+        if (cls) e.className = cls
+        if (text !== undefined) e.textContent = text
+        return e
+    }
+
+    function jtPrimitive(val) {
+        if (val === null)              return jtEl('span', 'jt-null',  'null')
+        if (typeof val === 'boolean')  return jtEl('span', 'jt-bool',  String(val))
+        if (typeof val === 'number')   return jtEl('span', 'jt-num',   String(val))
+        return jtEl('span', 'jt-str', JSON.stringify(val))
+    }
+
+    function jtBuildNode(val, key, isLast, depth) {
+        const isPrim = val === null || typeof val !== 'object'
+        const isArr  = !isPrim && Array.isArray(val)
+        const open   = isArr ? '[' : '{'
+        const close  = isArr ? ']' : '}'
+        const entries = isPrim ? null : (isArr ? val.map((v, i) => [null, v]) : Object.entries(val))
+
+        // Empty collection or primitive — render as a single row
+        if (isPrim || !entries.length) {
+            const row = document.createElement('div')
+            row.className = 'jt-row'
+            if (key !== null) {
+                row.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
+                row.appendChild(jtEl('span', 'jt-punct', ': '))
+            }
+            row.appendChild(isPrim ? jtPrimitive(val) : jtEl('span', 'jt-punct', open + close))
+            if (!isLast) row.appendChild(jtEl('span', 'jt-punct', ','))
+            return row
+        }
+
+        // Collapsible object / array
+        const n   = entries.length
+        const lbl = isArr ? `${n} item${n !== 1 ? 's' : ''}` : `${n} key${n !== 1 ? 's' : ''}`
+        const det = document.createElement('details')
+        if (depth < 2) det.open = true
+
+        const sum = document.createElement('summary')
+        sum.appendChild(jtEl('span', 'jt-toggle', '▶'))
+        if (key !== null) {
+            sum.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
+            sum.appendChild(jtEl('span', 'jt-punct', ': '))
+        }
+        sum.appendChild(jtEl('span', 'jt-punct', open))
+        sum.appendChild(jtEl('span', 'jt-preview', ` ${lbl} ${close}`))
+        det.appendChild(sum)
+
+        const body = document.createElement('div')
+        body.className = 'jt-body'
+        entries.forEach(([k, v], i) => body.appendChild(jtBuildNode(v, k, i === n - 1, depth + 1)))
+        det.appendChild(body)
+
+        const footer = jtEl('div', 'jt-footer')
+        footer.appendChild(jtEl('span', 'jt-punct', close))
+        if (!isLast) footer.appendChild(jtEl('span', 'jt-punct', ','))
+        det.appendChild(footer)
+        return det
+    }
+
+    function jtRender(jsonText, container) {
+        container.innerHTML = ''
+        if (jsonText.length > 800 * 1024) {
+            container.innerHTML = `<p style="padding:2rem;text-align:center;color:var(--text-3)"><i class="fas fa-info-circle me-2"></i>File too large for tree view (${Math.round(jsonText.length / 1024)} KB)</p>`
+            return
+        }
+        try {
+            const wrap = document.createElement('div')
+            wrap.appendChild(jtBuildNode(JSON.parse(jsonText), null, true, 0))
+            container.appendChild(wrap)
+        } catch {
+            container.innerHTML = '<p style="padding:1.5rem;color:var(--danger)"><i class="fas fa-xmark me-2"></i>Invalid JSON</p>'
+        }
+    }
+
+    function toggleTree(side) {
+        const pre     = document.getElementById(`pre-${side}`)
+        const treeDiv = document.getElementById(`tree-${side}`)
+        const btn     = document.getElementById(`tree-btn-${side}`)
+        if (!pre || !treeDiv || !btn) return
+        const active = !treeState[side]
+        treeState[side] = active
+        if (active) {
+            jtRender(side === 'input' ? rawInput : rawOutput, treeDiv)
+            pre.classList.add('d-none')
+            treeDiv.classList.remove('d-none')
+            btn.classList.replace('btn-outline-secondary', 'btn-primary')
+            btn.innerHTML = '<i class="fas fa-align-left me-1"></i> Raw'
+        } else {
+            treeDiv.classList.add('d-none')
+            pre.classList.remove('d-none')
+            btn.classList.replace('btn-primary', 'btn-outline-secondary')
+            btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Tree'
+        }
+    }
+    window.toggleTree = toggleTree
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    function highlightSide(side) {
+        const spinner = document.getElementById(`spinner-${side}`)
+        const pre     = document.getElementById(`pre-${side}`)
+        if (!pre) return
+        const block = pre.querySelector('code.language-json')
+        if (!block) return
+
+        const size = block.textContent.length
+
+        // Remove any previous size warning
+        pre.parentElement.querySelector('.hljs-size-notice')?.remove()
+
+        if (size > HLJS_LIMIT) {
+            // File too large — skip hljs, show plain text immediately
+            spinner?.classList.add('d-none')
+            spinner?.classList.remove('d-flex')
+            if (!treeState[side]) pre.classList.remove('d-none')
+            const notice = document.createElement('div')
+            notice.className = 'hljs-size-notice'
+            notice.innerHTML = '<i class="fas fa-info-circle me-1"></i>Syntax highlighting disabled for large files (' + Math.round(size / 1024) + ' KB)'
+            pre.parentElement.insertBefore(notice, pre)
+            if (treeState[side]) {
+                const td = document.getElementById(`tree-${side}`)
+                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
+            }
+            return
+        }
+
+        spinner?.classList.remove('d-none')
+        spinner?.classList.add('d-flex')
+        pre.classList.add('d-none')
+        setTimeout(() => {
+            block.removeAttribute('data-highlighted')
+            hljs.highlightElement(block)
+            spinner?.classList.add('d-none')
+            spinner?.classList.remove('d-flex')
+            if (!treeState[side]) pre.classList.remove('d-none')
+            if (treeState[side]) {
+                const td = document.getElementById(`tree-${side}`)
+                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
+            }
+        }, 50)
+    }
+
+    function highlightAll() {
+        highlightSide('input')
+        highlightSide('output')
+    }
+
+    document.addEventListener('shown.bs.tab', highlightAll)
+
+    const app = createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            const conversion = ref({})
+            const share_key = ref('')
+            const history_list = ref([])
+            const is_loading = ref(true)
+            const current_user_is_admin = ref()
+            const is_favorite = ref(false)
+
+            // Comments state
+            const comments = ref([])
+            const comments_total = ref(0)
+            const comments_loading = ref(false)
+            const comments_loaded = ref(false)
+            const new_discuss_text    = ref('')
+            const new_discuss_private = ref(false)
+            const new_eval_text       = ref('')
+            const new_eval_private    = ref(false)
+            const reply_open_for    = ref(null)
+            const reply_texts       = ref({})
+            const edit_comment_id   = ref(null)
+            const edit_comment_text = ref('')
+
+            const discuss_comments = computed(() => comments.value.filter(c => !c.is_evaluation))
+            const eval_comments    = computed(() => comments.value.filter(c =>  c.is_evaluation))
+            const is_following_author = ref(false)
+
+            // Report state
+            const report_reason = ref('')
+            const report_description = ref('')
+            const report_reasons = ['spam', 'inappropriate', 'inaccurate', 'other']
+
+            // Visibility warning state
+            const pending_visibility_action = ref(null)
+            const pending_comment_count = ref(0)
+
+
+            
+            async function getConversion() {
+                const res = await fetch(`/conversions/get_conversion?id=${conversion_id}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    const c = data.conversion
+
+                    // Keep text in c for the graph viewer, but also store in plain vars
+                    // so Vue template never binds to these large strings
+                    rawInput  = c.input_text  || ''
+                    rawOutput = c.output_text || ''
+
+                    conversion.value = c
+                    is_loading.value = false
+
+                    // Wait for Vue to render the v-else block before touching the DOM
+                    await nextTick()
+
+                    const elIn  = document.getElementById('input-code')
+                    const elOut = document.getElementById('output-code')
+                    if (elIn)  elIn.textContent = rawInput
+                    if (elOut) elOut.textContent = rawOutput
+
+                    // Pretty-print + highlight deferred so the page stays responsive
+                    setTimeout(() => {
+                        try { rawInput = JSON.stringify(JSON.parse(rawInput), null, 2); if (elIn) elIn.textContent = rawInput } catch {}
+                        try { rawOutput = JSON.stringify(JSON.parse(rawOutput), null, 2); if (elOut) elOut.textContent = rawOutput } catch {}
+                        highlightAll()
+                        initConversionGraph(c)
+                    }, 0)
+
+                } else {
+                    is_loading.value = false
+                }
+            }
+
+            async function fetchCurrentUser() {
+                try {
+                    const res = await fetch('/get_current_user')
+                    const data = await res.json()
+                    current_user_is_admin.value = data.user
+                } catch {}
+            }
+
+            async function fetchShareKey() {
+                const currentUserId = parseInt('{{current_user.id}}')
+                const isAdmin = current_user_is_admin?.value || false
+                const conversionUserId = conversion?.value?.user_id
+                if (!isAdmin && currentUserId !== conversionUserId) return
+                if (!conversion_id) return
+                try {
+                    const res = await fetch(`/conversions/get_share_key?id=${conversion_id}`)
+                    if (!res.ok) return
+                    const data = await res.json()
+                    share_key.value = data.share_key
+                } catch {}
+            }
+
+            async function regenerateShareKey(conversionId) {
+                try {
+                    const res = await fetch(`/conversions/regenerate_share_key?id=${conversionId}`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                    })
+                    const data = await res.json()
+                    if (res.ok) share_key.value = data.share_key
+                    create_message(data.message, data.toast_class)
+                } catch {
+                    create_message('Unable to regenerate the share key.', 'danger-subtle')
+                }
+            }
+
+            async function togglePublic() {
+                const count = comments.value.filter(c => !c.is_deleted).length
+                if (count > 0) {
+                    pending_comment_count.value = count
+                    pending_visibility_action.value = conversion.value.public ? 'private' : 'public'
+                    new bootstrap.Modal(document.getElementById('visibility_warning_modal')).show()
+                    return
+                }
+                await doTogglePublic()
+            }
+
+            async function confirmTogglePublic() {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('visibility_warning_modal'))
+                if (modal) modal.hide()
+                await doTogglePublic()
+            }
+
+            async function doTogglePublic() {
+                const res = await fetch(`/conversions/edit_public?id=${conversion_id}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
+                const data = await res.json()
+                if (res.ok) { conversion.value.public = data.conversion_public; getConversion() }
+                create_message(data.message, data.toast_class)
+            }
+
+            async function deleteConversion() {
+                const res = await fetch('/conversions/delete_item', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
+                    },
+                    body: JSON.stringify({ id: conversion_id })
+                })
+                const data = await res.json()
+                if (res.status === 200) {
+                    const el = document.getElementById('delete_modal_' + conversion_id)
+                    bootstrap.Modal.getInstance(el)?.hide()
+                    create_message(data.message, data.toast_class)
+                    setTimeout(() => { window.location.href = '/conversions/history' }, 1200)
+                } else if (res.status === 403) {
+                    window.location.href = '/account/login'
+                } else {
+                    create_message(data.message, data.toast_class)
+                }
+            }
+
+            async function getHistory() {
+                try {
+                    const res = await fetch(`/conversions/get_history?id=${conversion_id}`)
+                    const data = await res.json()
+                    history_list.value = res.ok ? data.conversion_history : []
+                } catch {
+                    history_list.value = []
+                }
+            }
+
+            function goToDiff(id) { window.location.href = `/conversions/difference/${id}` }
+
+            const formatDateTime = ctiDate.formatDateTime
+
+            const getRawInput  = () => rawInput
+            const getRawOutput = () => rawOutput
+
+            function copyText(text, event) {
+                const btn = event.target.closest('button')
+                const orig = btn.innerHTML
+                navigator.clipboard.writeText(text).then(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Copied!'
+                    setTimeout(() => { btn.innerHTML = orig }, 1500)
+                })
+            }
+
+            function downloadText(name, text, event) {
+                const a = Object.assign(document.createElement('a'), {
+                    href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })),
+                    download: name + '.json'
+                })
+                a.click()
+                URL.revokeObjectURL(a.href)
+                const btn = event.target.closest('button')
+                const orig = btn.innerHTML
+                btn.innerHTML = '<i class="fas fa-check"></i> Downloaded!'
+                setTimeout(() => { btn.innerHTML = orig }, 1500)
+            }
+
+            function formatJson(side, event) {
+                const btn = event.target.closest('button')
+                const orig = btn.innerHTML
+                const raw = side === 'input' ? rawInput : rawOutput
+                try {
+                    const pretty = JSON.stringify(JSON.parse(raw), null, 2)
+                    const el = document.getElementById(side === 'input' ? 'input-code' : 'output-code')
+                    if (side === 'input') rawInput = pretty
+                    else rawOutput = pretty
+                    if (el) el.textContent = pretty
+                    setTimeout(() => highlightSide(side), 80)
+                    btn.innerHTML = '<i class="fas fa-check"></i> Formatted!'
+                } catch (e) {
+                    btn.innerHTML = '<i class="fas fa-xmark"></i> Invalid JSON'
+                }
+                setTimeout(() => { btn.innerHTML = orig }, 1800)
+            }
+
+            // ── Comment functions ────────────────────────────
+
+            async function loadComments() {
+                if (comments_loaded.value) return
+                comments_loading.value = true
+                try {
+                    const res = await fetch(`/conversions/get_comments?conversion_id=${conversion_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        comments.value = data.comments || []
+                        comments_total.value = comments.value.length
+                        comments_loaded.value = true
+                    }
+                } catch {}
+                comments_loading.value = false
+            }
+
+            async function refreshComments() {
+                const res = await fetch(`/conversions/get_comments?conversion_id=${conversion_id}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    comments.value = data.comments || []
+                    comments_total.value = comments.value.length
+                }
+            }
+
+            async function postComment(isEval = false) {
+                const text    = isEval ? new_eval_text.value    : new_discuss_text.value
+                const isPriv  = isEval ? new_eval_private.value : new_discuss_private.value
+                const content = text.trim()
+                if (!content) return
+                const res = await fetch('/conversions/comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({
+                        conversion_id:    parseInt(conversion_id),
+                        content,
+                        is_private:    isPriv,
+                        is_evaluation: isEval,
+                    })
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (res.status === 201) {
+                    if (isEval) { new_eval_text.value = '';    new_eval_private.value = false }
+                    else        { new_discuss_text.value = ''; new_discuss_private.value = false }
+                    await refreshComments()
+                    window.__refreshNotifCount?.()
+                }
+            }
+
+            async function postReply(parent_id) {
+                const content = (reply_texts.value[parent_id] || '').trim()
+                if (!content) return
+                const res = await fetch('/conversions/comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({conversion_id: parseInt(conversion_id), content, parent_id})
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (res.status === 201) {
+                    reply_texts.value[parent_id] = ''
+                    reply_open_for.value = null
+                    await refreshComments()
+                }
+            }
+
+            async function deleteComment(comment_id) {
+                const res = await fetch(`/conversions/delete_comment?comment_id=${comment_id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) await refreshComments()
+            }
+
+            async function toggleCommentPrivate(comment_id) {
+                const res = await fetch(`/conversions/toggle_comment_private?comment_id=${comment_id}`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) await refreshComments()
+            }
+
+            function toggleReplyForm(comment_id) {
+                reply_open_for.value = reply_open_for.value === comment_id ? null : comment_id
+            }
+
+            function startEdit(comment) {
+                edit_comment_id.value   = comment.id
+                edit_comment_text.value = comment.content
+                reply_open_for.value    = null
+            }
+            function cancelEdit() {
+                edit_comment_id.value   = null
+                edit_comment_text.value = ''
+            }
+            async function submitEdit(comment_id) {
+                const content = edit_comment_text.value.trim()
+                if (!content) return
+                const res = await fetch('/conversions/edit_comment', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({ comment_id, content }),
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) { cancelEdit(); await refreshComments() }
+            }
+
+            // ── Follow functions ─────────────────────────────
+
+            async function checkFollowStatus() {
+                if (!IS_AUTH || !conversion.value.user_id || conversion.value.user_id === CURRENT_USER_ID) return
+                try {
+                    const res = await fetch(`/account/is_following?user_id=${conversion.value.user_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        is_following_author.value = data.following
+                    }
+                } catch {}
+            }
+
+            async function toggleFollow() {
+                const res = await fetch(`/account/follow?user_id=${conversion.value.user_id}`)
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) {
+                    is_following_author.value = data.following
+                    window.__refreshNotifCount?.()
+                }
+            }
+
+            // ── Report functions ─────────────────────────────
+
+            async function submitReport() {
+                const res = await fetch('/conversions/report', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token')?.value || ''},
+                    body: JSON.stringify({conversion_id: parseInt(conversion_id), reason: report_reason.value, description: report_description.value})
+                })
+                const data = await res.json()
+                create_message(data.message, data.toast_class)
+                if (data.success) {
+                    report_reason.value = ''
+                    report_description.value = ''
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('report_modal'))
+                    if (modal) modal.hide()
+                }
+            }
+
+            watch([conversion, current_user_is_admin], ([c]) => {
+                if (c && c.user_id !== undefined) {
+                    fetchShareKey()
+                    checkFollowStatus()
+                }
+            }, { immediate: true })
+
+            async function toggleFavorite() {
+                const res = await fetch('/conversions/favorite/toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
+                    },
+                    body: JSON.stringify({ conversion_id: parseInt(conversion_id) }),
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    is_favorite.value = data.is_favorite
+                    create_message(
+                        data.is_favorite ? 'Added to favorites' : 'Removed from favorites',
+                        data.is_favorite ? 'success-subtle' : 'secondary-subtle'
+                    )
+                }
+            }
+
+            async function loadFavoriteStatus() {
+                try {
+                    const res = await fetch(`/conversions/favorite/status/${conversion_id}`)
+                    if (res.ok) {
+                        const data = await res.json()
+                        is_favorite.value = data.is_favorite
+                    }
+                } catch {}
+            }
+
+            onMounted(() => {
+                fetchCurrentUser()
+                getConversion()
+                getHistory()
+                loadFavoriteStatus()
+                fetch(`/conversions/get_comments?conversion_id=${conversion_id}`)
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d.success) {
+                            comments.value = d.comments || []
+                            comments_total.value = comments.value.length
+                            comments_loaded.value = true
+                        }
+                        const hash     = window.location.hash
+                        const params   = new URLSearchParams(window.location.search)
+                        const openTab  = params.get('open_tab')
+                        if (hash && hash.startsWith('#comment-')) {
+                            const tabSel = openTab === 'eval' ? '[data-tab="eval"]' : '[data-tab="comments"]'
+                            const tabEl  = document.querySelector(tabSel)
+                            if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show()
+                            const tryScroll = (attempts = 0) => {
+                                const el = document.querySelector(hash)
+                                if (el) {
+                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                    el.classList.add('comment-highlight')
+                                    setTimeout(() => el.classList.remove('comment-highlight'), 2500)
+                                } else if (attempts < 10) {
+                                    setTimeout(() => tryScroll(attempts + 1), 150)
+                                }
+                            }
+                            setTimeout(tryScroll, 200)
+                        }
+                    }).catch(() => {})
+            })
+
+            return {
+                conversion, share_key, history_list, is_loading,
+                current_user_is_admin, copyText, downloadText,
+                is_favorite, toggleFavorite,
+                togglePublic, deleteConversion, regenerateShareKey,
+                goToDiff, formatDateTime, message_list, formatJson,
+                getRawInput, getRawOutput,
+                // Comments
+                comments, comments_total, comments_loading,
+                discuss_comments, eval_comments,
+                new_discuss_text, new_discuss_private,
+                new_eval_text, new_eval_private,
+                reply_open_for, reply_texts,
+                edit_comment_id, edit_comment_text,
+                loadComments, postComment, postReply, deleteComment,
+                toggleCommentPrivate, toggleReplyForm,
+                startEdit, cancelEdit, submitEdit,
+                // Follow
+                is_following_author, toggleFollow,
+                // Report
+                report_reason, report_description, report_reasons, submitReport,
+                // Visibility modal
+                pending_visibility_action, pending_comment_count, confirmTogglePublic,
+            }
+        }
+    })
+    app.component('tag-input', TagInput)
+    app.component('evaluation-panel', EvaluationPanel)
+    app.component('evaluation-charts', EvaluationCharts)
+    app.component('push-conversion-to-misp', PushConversionToMISP)
+    app.component('conversion-sunburst', ConversionSunburst)
+    app.component('conversion-table', ConversionTable)
+    app.mount('#main-containers')
+
+    // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)
+    const _evalTarget = '{{ conversion.id }}'
+    const _evalSession = sessionStorage.getItem('open_eval_tab')
+    const _evalHash = window.location.hash === '#eval-tab'
+    if (_evalSession === _evalTarget || _evalHash) {
+        if (_evalSession) sessionStorage.removeItem('open_eval_tab')
+        if (_evalHash) history.replaceState(null, '', window.location.pathname)
+        // :href is a Vue binding — wait for Vue to render before querying
+        const _activateEvalTab = () => {
+            const link = document.querySelector('[data-tab="eval"]')
+            if (link) { new bootstrap.Tab(link).show(); return true }
+            return false
+        }
+        if (!_activateEvalTab()) {
+            // Retry up to ~500 ms in case Vue is slow to mount
+            let _tries = 0
+            const _iv = setInterval(() => {
+                if (_activateEvalTab() || ++_tries > 10) clearInterval(_iv)
+            }, 50)
+        }
+    }
+
+</script>
+
+<!-- graph logic lives in /static/js/graph/conversionGraph.js -->
+{% endblock %}

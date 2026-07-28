@@ -5,7 +5,7 @@ Copies the pre-built Pivotick dist/ into website/web/static/pivotick/.
 
 The compiled files are committed directly to the repository, so this script
 is NOT needed for normal use. Run it only if you have manually rebuilt
-vendor/pivotick/dist/ from source (npm run build inside vendor/pivotick/).
+submodules/pivotick/dist/ from source (npm run build inside submodules/pivotick/).
 
     python bin/build_assets.py
 """
@@ -16,15 +16,15 @@ import sys
 from pathlib import Path
 
 ROOT            = Path(__file__).resolve().parent.parent
-PIVOTICK        = ROOT / "vendor" / "pivotick"
+PIVOTICK        = ROOT / "submodules" / "pivotick"
 PIVOTICK_DIST   = PIVOTICK / "dist"
 PIVOTICK_STATIC = ROOT / "website" / "web" / "static" / "pivotick"
 
 
 def main() -> None:
     if not PIVOTICK_DIST.exists():
-        print("ERROR: vendor/pivotick/dist not found.")
-        print("Run:  git submodule update --init  then  npm run build inside vendor/pivotick/")
+        print("ERROR: submodules/pivotick/dist not found.")
+        print("Run:  git submodule update --init  then  npm run build inside submodules/pivotick/")
         sys.exit(1)
 
     print("→ Copying dist/ → static/pivotick/…")

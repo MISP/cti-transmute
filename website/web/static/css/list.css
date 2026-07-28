@@ -519,57 +519,12 @@ html.dark-mode .api-try-btn {
     color: var(--text-3);
 }
 
-.at-params-grid {
-    display: grid;
-    grid-template-columns: minmax(150px, auto) 1fr;
-    gap: 6px 12px;
-    align-items: center;
-}
-
-.at-param-label {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.78rem;
-}
-
-.at-param-label code {
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text);
-    background: none;
-    padding: 0;
-}
-
-.at-param-type {
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
-    color: var(--text-3);
-}
-
-.at-input {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xs);
-    color: var(--text);
-    font-size: 0.8rem;
-    padding: 4px 8px;
-    width: 100%;
-    max-width: 280px;
-    font-family: var(--font-mono);
-    transition: border-color var(--t);
-}
-
-.at-input:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-
-.at-check-wrap {
-    display: flex;
-    align-items: center;
-    height: 28px;
+/* The tester's parameter controls are rendered by the mounted ParamSurface,
+   whose inline styles read these two theme hooks — map them onto this page's
+   palette so the controls keep the dark-surface look of the old inputs. */
+.at-panel .param-surface {
+    --color-navbar: var(--surface-2);
+    --color-text: var(--text);
 }
 
 .at-editor {

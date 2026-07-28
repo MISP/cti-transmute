@@ -60,14 +60,14 @@
             <!-- Description -->
             <p class="api-endpoint-desc">[[ feature.description ]]</p>
 
-            <!-- Parameters -->
-            <div v-if="feature.parameters && feature.parameters.length" class="api-params">
+            <!-- Parameters (from the Converter's published params_schema) -->
+            <div v-if="paramList(feature).length" class="api-params">
                 <span class="api-params-label"><i class="fas fa-sliders me-1"></i>Parameters</span>
                 <div class="api-params-list">
-                    <span v-for="p in feature.parameters" :key="p.name" class="api-param-tag">
-                        <span class="api-param-name">[[ p.name ]]</span>
+                    <span v-for="p in paramList(feature)" :key="p.key" class="api-param-tag">
+                        <span class="api-param-name">[[ p.key ]]</span>
                         <span class="api-param-sep">·</span>
-                        <span class="api-param-type">[[ p.type || 'any' ]]</span>
+                        <span class="api-param-type">[[ p.type ]]</span>
                     </span>
                 </div>
             </div>
@@ -81,31 +81,15 @@
                 </button>
             </div>
 
-            <!-- Tester panel -->
-            <div v-if="testers[path] && testers[path].open" class="at-panel">
+            <!-- Tester panel. v-show (not v-if) once created: the ParamSurface
+                 child app mounts into a div below, and a v-if toggle would
+                 destroy its DOM on close. -->
+            <div v-if="testers[path]" v-show="testers[path].open" class="at-panel">
 
-                <!-- Query params -->
-                <div v-if="queryParams(feature).length" class="at-block">
+                <!-- Query params: one schema-driven ParamSurface per endpoint -->
+                <div v-if="paramList(feature).length" class="at-block">
                     <div class="at-block-title"><i class="fas fa-sliders me-1"></i>Parameters</div>
-                    <div class="at-params-grid">
-                        <template v-for="p in queryParams(feature)" :key="p.name">
-                            <label class="at-param-label">
-                                <code>[[ p.name ]]</code>
-                                <span class="at-param-type">[[ p.type || 'str' ]]</span>
-                            </label>
-                            <select v-if="p.enum" v-model="testers[path].params[p.name]" class="at-input">
-                                <option v-for="opt in p.enum" :key="opt" :value="opt">[[ opt ]]</option>
-                            </select>
-                            <div v-else-if="p.type === 'boolean'" class="at-check-wrap">
-                                <input type="checkbox" class="form-check-input" v-model="testers[path].params[p.name]">
-                            </div>
-                            <input v-else-if="p.type === 'integer'" type="number"
-                                   class="at-input" v-model.number="testers[path].params[p.name]">
-                            <input v-else type="text" class="at-input"
-                                   v-model="testers[path].params[p.name]"
-                                   :placeholder="p.default !== undefined ? String(p.default) : ''">
-                        </template>
-                    </div>
+                    <div :id="mountId(path)"></div>
                 </div>
 
                 <!-- Request body -->
@@ -142,20 +126,20 @@
                 <div class="at-block">
                     <div class="at-block-title" style="display:flex;justify-content:space-between;align-items:center;">
                         <span><i class="fas fa-terminal me-1"></i>cURL</span>
-                        <button type="button" class="at-btn" @click="copyCurl(path, feature)">
+                        <button type="button" class="at-btn" @click="copyCurl(path)">
                             <i class="fas" :class="copiedCurl[path] ? 'fa-check' : 'fa-copy'"></i>
                             [[ copiedCurl[path] ? 'Copied!' : 'Copy' ]]
                         </button>
                     </div>
                     <div class="at-curl-block">
-                        <pre class="at-curl-pre">$ [[ buildCurl(path, feature) ]]</pre>
+                        <pre class="at-curl-pre">$ [[ buildCurl(path) ]]</pre>
                     </div>
                 </div>
 
                 <!-- Send -->
                 <div class="at-send-row">
                     <button type="button" class="btn btn-sm btn-primary"
-                        @click="sendRequest(path, feature)"
+                        @click="sendRequest(path)"
                         :disabled="testers[path].loading || !testers[path].body.trim()">
                         <span v-if="testers[path].loading"
                               class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -189,7 +173,13 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, reactive } = Vue
+    import ParamSurface, { scalarType } from '{{ asset_url('js/conversions/paramSurface.js') }}';
+
+    const { createApp, ref, reactive, nextTick } = Vue
+
+    // ParamSurface mount proxies, keyed by endpoint path. Deliberately a plain
+    // object (not reactive): these are live Vue app handles, not view state.
+    const paramVms = {}
 
     createApp({
         delimiters: ['[[', ']]'],
@@ -200,19 +190,49 @@
             const testers    = reactive({})
             const copiedCurl = reactive({})
             const copiedResp = reactive({})
+            // Bumped whenever any ParamSurface value changes, so the outer
+            // app re-renders what derives from collect() (the curl preview):
+            // the child apps' state is otherwise invisible to this one.
+            const paramsRev  = ref(0)
 
             const UI_MAP = {
-                '/api/convert/misp_to_stix': '/convert/misp_to_stix',
-                '/api/convert/stix_to_misp': '/convert/stix_to_misp',
+                '/api/convert/misp_to_stix': '/conversions/misp_to_stix',
+                '/api/convert/stix_to_misp': '/conversions/stix_to_misp',
             }
 
             async function fetchEndpoints() {
                 try {
-                    const res  = await fetch('/get_features')
+                    const res  = await fetch('/api/convert/list')
                     const data = await res.json()
-                    if (data.status === 'success') endpoints.value = data.features
+                    if (data.available) endpoints.value = data.available
                 } catch {}
                 loaded.value = true
+            }
+
+            /* ── Parameter schema helpers ─────────────────────────── */
+
+            function schemaProps(feature) {
+                return (feature.params_schema && feature.params_schema.properties) || {}
+            }
+
+            // Human type tag for the card's parameter chips, derived from the
+            // JSON-Schema property (oneOf/enum -> the type of their values).
+            function displayType(raw) {
+                let sample
+                if (Array.isArray(raw.oneOf) && raw.oneOf.length) sample = raw.oneOf[0].const
+                else if (Array.isArray(raw.enum) && raw.enum.length) sample = raw.enum[0]
+                else return scalarType(raw)
+                if (typeof sample === 'number') return Number.isInteger(sample) ? 'integer' : 'number'
+                return typeof sample
+            }
+
+            function paramList(feature) {
+                return Object.entries(schemaProps(feature))
+                    .map(([key, raw]) => ({ key, type: displayType(raw) }))
+            }
+
+            function mountId(path) {
+                return 'param-surface' + path.replaceAll('/', '-')
             }
 
             function copyPath(path) {
@@ -223,23 +243,26 @@
 
             /* ── Tester ───────────────────────────────────────────── */
 
-            function queryParams(feature) {
-                return (feature.parameters || []).filter(p => p.in === 'query')
-            }
-
             function toggleTester(path, feature) {
                 if (!testers[path]) {
-                    const params = {}
-                    for (const p of queryParams(feature)) {
-                        if (p.type === 'boolean') {
-                            params[p.name] = false
-                        } else if (p.type === 'integer') {
-                            params[p.name] = p.default !== undefined ? p.default : ''
-                        } else {
-                            params[p.name] = p.default !== undefined ? String(p.default) : ''
-                        }
+                    testers[path] = { open: true, body: '', bodyStatus: '', loading: false, response: null }
+                    if (paramList(feature).length) {
+                        // The mount div only exists after Vue renders the new
+                        // panel; ParamSurface is a child app mounted into it.
+                        nextTick(() => {
+                            const el = document.getElementById(mountId(path))
+                            paramVms[path] = createApp(
+                                ParamSurface,
+                                { schema: feature.params_schema, idPrefix: mountId(path) + '-' },
+                            ).mount(el)
+                            // Native input/change events bubble out of the
+                            // child app; use them to refresh the curl preview.
+                            const bump = () => { paramsRev.value++ }
+                            el.addEventListener('input', bump)
+                            el.addEventListener('change', bump)
+                            bump()
+                        })
                     }
-                    testers[path] = { open: true, body: '', bodyStatus: '', params, loading: false, response: null }
                 } else {
                     testers[path].open = !testers[path].open
                 }
@@ -280,36 +303,38 @@
                 if (t) { t.body = ''; t.bodyStatus = '' }
             }
 
-            function buildUrl(path, feature) {
-                const t = testers[path]
-                if (!t) return path
+            function buildUrl(path) {
+                paramsRev.value // reactive dep: re-run when any param changes
+                const vm = paramVms[path]
+                if (!vm) return path
                 const qs = new URLSearchParams()
-                for (const p of queryParams(feature)) {
-                    const val = t.params[p.name]
-                    if (p.type === 'boolean') {
-                        if (val === true) qs.set(p.name, 'true')
-                    } else if (val !== '' && val !== null && val !== undefined) {
-                        qs.set(p.name, String(val))
-                    }
+                for (const [key, val] of Object.entries(vm.collect())) {
+                    // Params travel in the query string, where the server
+                    // treats any *present* boolean key as true — so a false
+                    // switch is expressed by omitting the key. Omission
+                    // really means "use the default", which only equals
+                    // false while every published boolean defaults to false.
+                    if (val === false) continue
+                    qs.set(key, String(val))
                 }
                 const s = qs.toString()
                 return `${path}${s ? '?' + s : ''}`
             }
 
-            function buildCurl(path, feature) {
+            function buildCurl(path) {
                 const t = testers[path]
-                const url = buildUrl(path, feature)
+                const url = buildUrl(path)
                 const body = t?.body?.trim() || '{}'
                 const truncated = body.length > 200 ? body.slice(0, 197) + '...' : body
-                return `curl -X POST ${window.location.origin}${url} \\\n  -H "Content-Type: application/json" \\\n  -d '${truncated}'`
+                return `curl -X POST "${window.location.origin}${url}" \\\n  -H "Content-Type: application/json" \\\n  -d '${truncated}'`
             }
 
-            function copyCurl(path, feature) {
+            function copyCurl(path) {
                 const t = testers[path]
-                const url = buildUrl(path, feature)
+                const url = buildUrl(path)
                 const body = t?.body?.trim() || '{}'
                 navigator.clipboard.writeText(
-                    `curl -X POST ${window.location.origin}${url} \\\n  -H "Content-Type: application/json" \\\n  -d '${body}'`
+                    `curl -X POST "${window.location.origin}${url}" \\\n  -H "Content-Type: application/json" \\\n  -d '${body}'`
                 ).catch(() => {})
                 copiedCurl[path] = true
                 setTimeout(() => { copiedCurl[path] = false }, 1500)
@@ -324,7 +349,7 @@
                 }
             }
 
-            async function sendRequest(path, feature) {
+            async function sendRequest(path) {
                 const t = testers[path]
                 if (!t || !t.body.trim()) return
                 let parsed
@@ -333,8 +358,9 @@
 
                 t.loading = true
                 t.response = null
+                paramVms[path]?.clearErrors()
 
-                const url = buildUrl(path, feature)
+                const url = buildUrl(path)
                 const t0 = performance.now()
                 try {
                     const resp = await fetch(url, {
@@ -347,6 +373,14 @@
                     let data
                     try { data = JSON.stringify(JSON.parse(text), null, 2) }
                     catch { data = text }
+                    if (resp.status === 400) {
+                        // Param rejections arrive as {error, fields}; light the
+                        // offending controls like the conversion pages do.
+                        try {
+                            const fields = JSON.parse(text).fields
+                            if (fields) paramVms[path]?.setErrors(fields)
+                        } catch {}
+                    }
                     t.response = { ok: resp.ok, status: resp.status, statusText: resp.statusText, elapsed, data }
                 } catch (err) {
                     const elapsed = Math.round(performance.now() - t0)
@@ -361,7 +395,7 @@
                 endpoints, loaded, copied, UI_MAP,
                 copyPath,
                 testers, copiedCurl, copiedResp,
-                queryParams, toggleTester, onBodyInput,
+                paramList, mountId, toggleTester, onBodyInput,
                 bodyStatusText, bodyPlaceholder,
                 formatBody, clearBody, buildUrl, buildCurl,
                 copyCurl, copyResp, sendRequest,

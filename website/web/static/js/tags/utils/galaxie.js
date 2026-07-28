@@ -12,11 +12,14 @@ export function getTextColor(hex) {
 
 /**
  * mapIcon
- * Converts an icon name (FontAwesome solid) to an <i> HTML string.
+ * Converts an icon name (FontAwesome solid) to its <i> class string.
+ * Bind the result with :class - never render it as HTML, the icon is
+ * user-supplied. Anything that isn't a plausible slug (the same rule the
+ * server enforces in tags.py) falls back to the generic tag icon.
  */
 export function mapIcon(icon) {
-    const name = icon || 'tag';
-    return `<i class="fas fa-${name}"></i>`;
+    const name = /^[a-z0-9-]{1,40}$/.test(icon || '') ? icon : 'tag';
+    return `fas fa-${name}`;
 }
 
 /**

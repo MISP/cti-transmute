@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/convert_form.css') }}">
+{% endblock %}
+{% block content %}
+<div id="main-container" class="container my-5" v-cloak>
+
+    <div class="custom-card p-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div>
+                <h3 class="mb-1" style="font-weight:700; letter-spacing:-0.02em;">
+                    Convert STIX to MISP
+                </h3>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="type-pill type-stix">
+                        <img src="/static/image/logo_stix.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">STIX
+                        <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i>
+                        <img src="/static/image/misp.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">MISP
+                    </span>
+                    <span class="author-badge">
+                        <i class="fas fa-code me-1" style="font-size:0.6rem;"></i> JSON conversion
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="custom-card p-4 mb-4">
+        <form id="convert-form" novalidate>
+
+            <!-- STIX INPUT TABS -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label class="form-label cf-label">STIX Input <span class="text-danger">*</span></label>
+                    <div class="input-tab-container">
+                        <div class="input-tab-header">
+                            <button type="button" class="input-tab-btn active" data-tab="paste">
+                                <i class="fas fa-paste me-1"></i> Paste JSON
+                            </button>
+                            <button type="button" class="input-tab-btn" data-tab="file">
+                                <i class="fas fa-upload me-1"></i> Upload File
+                            </button>
+                        </div>
+                        <div class="input-tab-body">
+                            <!-- PASTE TAB -->
+                            <div class="input-tab-pane active" id="tab-paste">
+                                <div class="json-editor-wrapper">
+                                    <div class="json-editor-toolbar">
+                                        <span class="json-editor-label">
+                                            <i class="fas fa-code me-1"></i> JSON
+                                        </span>
+                                        <div class="json-editor-actions">
+                                            <button type="button" class="json-action-btn" id="btn-format">
+                                                <i class="fas fa-align-left me-1"></i> Format
+                                            </button>
+                                            <button type="button" class="json-action-btn" id="btn-clear">
+                                                <i class="fas fa-times me-1"></i> Clear
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <textarea class="json-editor" id="stix_content" name="stix_content"
+                                        placeholder='{&#10; "type": "bundle",&#10; "objects": [&#10; ...&#10; ]&#10;}'
+                                        rows="14" spellcheck="false"></textarea>
+                                    <div class="json-editor-footer">
+                                        <span id="json-status" class="json-status"></span>
+                                        <span id="json-chars" class="json-chars">0 chars</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- FILE TAB -->
+                            <div class="input-tab-pane" id="tab-file">
+                                <div class="file-drop-zone" id="drop-zone">
+                                    <input type="file" id="file" name="file" accept=".json" class="file-drop-input">
+                                    <div class="file-drop-content">
+                                        <i class="fas fa-cloud-upload-alt file-drop-icon"></i>
+                                        <p class="file-drop-text">Drag & drop your STIX JSON file here</p>
+                                        <p class="file-drop-subtext">or</p>
+                                        <label for="file" class="btn-browse">Browse file</label>
+                                        <p class="file-drop-hint">.json files only</p>
+                                    </div>
+                                    <div class="file-selected-info d-none" id="file-info">
+                                        <i class="fas fa-file-code file-selected-icon"></i>
+                                        <span id="file-name" class="file-selected-name"></span>
+                                        <button type="button" class="file-remove-btn" id="btn-remove-file">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Name + description (fixed submission envelope) -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label cf-label" for="conv-name">Name</label>
+                    <input type="text" class="form-control" id="conv-name" name="name"
+                        placeholder="Enter a name for the conversion">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label cf-label" for="conv-description">Description</label>
+                    <textarea class="form-control" id="conv-description" name="description"
+                        placeholder="Optional description..."></textarea>
+                </div>
+            </div>
+
+            <!-- Converter parameters — rendered from the Parameter schema -->
+            <div class="mb-3">
+                <label class="form-label cf-label d-block mb-2">Parameters</label>
+                <div id="param-surface"></div>
+            </div>
+
+            <!-- Public switch + tags -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="publicSwitch" name="public" checked>
+                        <label class="form-check-label" for="publicSwitch">Public</label>
+                    </div>
+                </div>
+            </div>
+
+            {% if current_user.is_authenticated %}
+            <div class="mb-4">
+                <input type="hidden" name="tag_ids" id="tag-ids-hidden-s2m">
+                <div id="tag-input-mount-s2m"></div>
+            </div>
+            {% endif %}
+
+            <button type="submit" id="convert-submit" name="convert" class="btn btn-primary fw-semibold">
+                <i class="fas fa-exchange-alt me-1"></i> Conversion
+            </button>
+        </form>
+    </div>
+
+    <!-- Error surface (populated by the fetch submit) -->
+    <div class="custom-card mb-4 cf-error-card d-none" id="convert-error">
+        <div class="cf-error-header">
+            <i class="fas fa-circle-xmark me-2"></i> Conversion Error
+        </div>
+        <div class="cf-error-body">
+            <pre class="cf-error-pre" id="convert-error-text"></pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block script %}
+<script type="module">
+    import ParamSurface from '{{ asset_url('js/conversions/paramSurface.js') }}';
+
+    const { createApp, onMounted } = Vue;
+    const CONVERTER_URL = '/api/convert/stix_to_misp';
+    const csrf = () => document.getElementById('csrf_token')?.value || '';
+
+    let paramVm = null;
+
+    /* ── Render the param controls from the Converter's Parameter schema ─── */
+    async function mountParamSurface() {
+        const mount = document.getElementById('param-surface');
+        try {
+            const res = await fetch('/api/convert/list');
+            const data = await res.json();
+            const entry = data.available?.[CONVERTER_URL];
+            if (!entry) throw new Error('Converter not found in registry');
+            paramVm = createApp(ParamSurface, { schema: entry.params_schema })
+                .mount('#param-surface');
+        } catch (e) {
+            mount.innerHTML =
+                '<div class="text-danger small">Could not load parameters: ' + e.message + '</div>';
+        }
+    }
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            onMounted(() => {
+                mountParamSurface();
+
+                const textarea = document.getElementById('stix_content');
+                const fileInput = document.getElementById('file');
+                const errorCard = document.getElementById('convert-error');
+                const errorText = document.getElementById('convert-error-text');
+
+                const showError = (msg) => {
+                    errorText.textContent = msg;
+                    errorCard.classList.remove('d-none');
+                    errorCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                };
+                const clearError = () => errorCard.classList.add('d-none');
+
+                /* ── Input tabs (Paste / File) ─────────────────────── */
+                const tabBtns = document.querySelectorAll('.input-tab-btn');
+                const tabPanes = document.querySelectorAll('.input-tab-pane');
+                tabBtns.forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        tabBtns.forEach((b) => b.classList.remove('active'));
+                        tabPanes.forEach((p) => p.classList.remove('active'));
+                        btn.classList.add('active');
+                        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+                    });
+                });
+                const activeTab = () =>
+                    document.querySelector('.input-tab-btn.active')?.dataset.tab || 'paste';
+
+                /* ── Live JSON validation ──────────────────────────── */
+                const jsonStatus = document.getElementById('json-status');
+                const jsonChars = document.getElementById('json-chars');
+                textarea?.addEventListener('input', () => {
+                    const val = textarea.value.trim();
+                    if (jsonChars) jsonChars.textContent = `${val.length} chars`;
+                    if (!val) { jsonStatus.textContent = ''; jsonStatus.className = 'json-status'; return; }
+                    try {
+                        JSON.parse(val);
+                        jsonStatus.textContent = '✓ Valid JSON';
+                        jsonStatus.className = 'json-status valid';
+                    } catch {
+                        jsonStatus.textContent = '✗ Invalid JSON';
+                        jsonStatus.className = 'json-status invalid';
+                    }
+                });
+                document.getElementById('btn-format')?.addEventListener('click', () => {
+                    try {
+                        textarea.value = JSON.stringify(JSON.parse(textarea.value), null, 2);
+                        textarea.dispatchEvent(new Event('input'));
+                    } catch {
+                        if (jsonStatus) {
+                            jsonStatus.textContent = '✗ Cannot format — invalid JSON';
+                            jsonStatus.className = 'json-status invalid';
+                        }
+                    }
+                });
+                document.getElementById('btn-clear')?.addEventListener('click', () => {
+                    textarea.value = '';
+                    textarea.dispatchEvent(new Event('input'));
+                });
+
+                /* ── File drop zone ────────────────────────────────── */
+                const dropZone = document.getElementById('drop-zone');
+                const fileInfo = document.getElementById('file-info');
+                const fileName = document.getElementById('file-name');
+                const fileDropContent = dropZone?.querySelector('.file-drop-content');
+                const showFile = (name) => {
+                    if (fileName) {
+                        fileName.textContent = name;
+                        fileName.title = name;
+                    }
+                    fileInfo?.classList.remove('d-none');
+                    fileDropContent?.classList.add('d-none');
+                };
+                const clearFile = () => {
+                    if (fileInput) fileInput.value = '';
+                    fileInfo?.classList.add('d-none');
+                    fileDropContent?.classList.remove('d-none');
+                };
+                fileInput?.addEventListener('change', () => {
+                    if (fileInput.files[0]) showFile(fileInput.files[0].name);
+                });
+                document.getElementById('btn-remove-file')?.addEventListener('click', clearFile);
+                dropZone?.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+                dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+                dropZone?.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                    const f = e.dataTransfer.files[0];
+                    if (f) {
+                        const dt = new DataTransfer(); dt.items.add(f);
+                        fileInput.files = dt.files;
+                        showFile(f.name);
+                    }
+                });
+
+                /* ── Gather the STIX payload from the active tab ───── */
+                async function readPayload() {
+                    if (activeTab() === 'file') {
+                        const f = fileInput?.files[0];
+                        return f ? await f.text() : null;
+                    }
+                    return (textarea?.value || '').trim() || null;
+                }
+
+                /* ── Submit: params via fetch/JSON ──────── */
+                const form = document.getElementById('convert-form');
+                const submitBtn = document.getElementById('convert-submit');
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    clearError();
+                    paramVm?.clearErrors();
+
+                    const payload = await readPayload();
+                    if (!payload) { showError('Please provide STIX content (paste or upload a file).'); return; }
+
+                    const tagHidden = document.getElementById('tag-ids-hidden-s2m');
+                    const body = {
+                        payload,
+                        params: paramVm ? paramVm.collect() : {},
+                        name: document.getElementById('conv-name').value.trim(),
+                        description: document.getElementById('conv-description').value.trim(),
+                        public: document.getElementById('publicSwitch').checked,
+                        tag_ids: (tagHidden?.value || '').split(',').filter(Boolean),
+                    };
+
+                    const orig = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Converting…';
+                    try {
+                        const res = await fetch(form.getAttribute('action') || window.location.pathname, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                            body: JSON.stringify(body),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (res.ok && data.url) { window.location.href = data.url; return; }
+                        if (res.status === 400 && data.fields) {
+                            paramVm?.setErrors(data.fields);
+                            showError(data.error || 'Please correct the highlighted parameters.');
+                        } else {
+                            showError(data.error || `Conversion failed (HTTP ${res.status}).`);
+                        }
+                    } catch (err) {
+                        showError('Network error: ' + err.message);
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = orig;
+                    }
+                });
+            });
+            return {};
+        }
+    }).mount('#main-container');
+</script>
+
+{% if current_user.is_authenticated %}
+<script type="module">
+    import TagInput from '/static/js/tags/tagInput.js';
+    const el = document.getElementById('tag-input-mount-s2m');
+    if (el) {
+        Vue.createApp(TagInput, {
+            hiddenInputId: 'tag-ids-hidden-s2m',
+            canEdit: true,
+        }).mount(el);
+    }
+</script>
+{% endif %}
+
+{% endblock %}

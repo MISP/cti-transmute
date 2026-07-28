@@ -9,7 +9,7 @@ const OverviewApp = {
             stats: null,
             stats_loading: true,
 
-            // Recent converts
+            // Recent conversions
             recent: [],
             recent_loading: true,
 
@@ -29,8 +29,8 @@ const OverviewApp = {
         kpi_evaluations() {
             return this.stats ? this.stats.total_evaluations : null
         },
-        kpi_converts() {
-            return this.stats ? this.stats.converts_evaluated : null
+        kpi_conversions() {
+            return this.stats ? this.stats.conversions_evaluated : null
         },
         kpi_like_ratio() {
             return this.stats ? this.stats.like_ratio : null
@@ -53,15 +53,11 @@ const OverviewApp = {
     },
 
     methods: {
-        formatDate(str) {
-            if (!str) return ''
-            const d = new Date(str.replace(' ', 'T'))
-            return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
-        },
+        formatDate: ctiDate.formatDate,
 
-        openConvert(id) {
+        openConversion(id) {
             sessionStorage.setItem('open_eval_tab', String(id))
-            window.location.href = '/convert/detail/' + id
+            window.location.href = '/conversions/detail/' + id
         },
 
         async fetchGlobalStats() {
@@ -112,7 +108,7 @@ const OverviewApp = {
         },
 
         conversionLabel(type) {
-            if (!type) return 'Convert'
+            if (!type) return 'Conversion'
             return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
         },
 

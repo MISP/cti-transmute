@@ -101,14 +101,24 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     z-index: 1;
+    max-width: 100%;
 }
 
 .file-selected-icon {
     font-size: 1.2rem;
     color: var(--accent);
+    flex-shrink: 0;
+}
+
+.file-selected-name {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .file-remove-btn {
+    flex-shrink: 0;
     background: none;
     border: none;
     color: var(--text-3);
