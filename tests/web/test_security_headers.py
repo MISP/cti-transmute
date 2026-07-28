@@ -14,6 +14,44 @@ wiring is pinned as config-matches-derivation, and the wire test forces the
 config so it passes on any checkout.
 """
 
+import re
+
+import pytest
+
+_NONCE_RE = re.compile(r"'nonce-([A-Za-z0-9_-]+)'")
+
+
+@pytest.fixture
+def full_web_client():
+    """Flask test client with every web blueprint mounted, mirroring
+    ``bin/start_website.py`` (base.html url_for's across features, so
+    rendering any page needs them all registered)."""
+    from website.web import application
+    from website.web.account.account import account_blueprint
+    from website.web.conversions.conversions import (
+        conversions_blueprint,
+        legacy_convert_blueprint
+    )
+    from website.web.evaluate.evaluate import evaluate_blueprint
+    from website.web.home import home_blueprint
+    from website.web.tags.tags import tags_blueprint
+
+    application.config["TESTING"] = True
+    # Other fixtures may have served a request already; clear Flask's
+    # setup-after-first-request guard so late registration stays legal.
+    application._got_first_request = False
+    for bp, prefix in [
+        (home_blueprint, "/"),
+        (conversions_blueprint, "/conversions"),
+        (legacy_convert_blueprint, "/convert"),
+        (account_blueprint, "/account"),
+        (tags_blueprint, "/tags"),
+        (evaluate_blueprint, "/evaluate")
+    ]:
+        if bp.name not in application.blueprints:
+            application.register_blueprint(bp, url_prefix=prefix)
+    return application.test_client()
+
 
 def test_every_response_carries_the_security_headers(client):
     resp = client.get("/definitely-not-a-route")
@@ -32,14 +70,17 @@ def test_csp_pins_the_load_bearing_directives(client):
         for d in (part.strip() for part in csp.split(";")) if d
     }
     assert directives["default-src"] == "'self'"
-    # Vue's runtime compiler (in-DOM templates, no build step) forces
-    # 'unsafe-eval'; the inline Jinja scripts and on*= handlers force
-    # 'unsafe-inline'. Pinning the full directive makes loosening it, or
-    # dropping the rest of the policy, a conscious act.
-    assert directives["script-src"] == (
-        "'self' 'unsafe-inline' 'unsafe-eval' "
-        "https://cdnjs.cloudflare.com https://cdn.jsdelivr.net"
+    # Inline scripts run only via the per-request nonce: 'unsafe-inline' in
+    # script-src would let injected markup (<img onerror=...>, <script>...)
+    # execute, reducing the CSP to no XSS mitigation at all. Vue's runtime
+    # compiler (in-DOM templates, no build step) still forces 'unsafe-eval'.
+    # Pinning the full directive makes loosening it a conscious act.
+    assert re.fullmatch(
+        r"'self' 'nonce-[A-Za-z0-9_-]+' 'unsafe-eval' "
+        r"https://cdnjs\.cloudflare\.com https://cdn\.jsdelivr\.net",
+        directives["script-src"]
     )
+    assert "'unsafe-inline'" not in directives["script-src"]
     assert directives["style-src"] == (
         "'self' 'unsafe-inline' https://cdnjs.cloudflare.com "
         "https://fonts.googleapis.com"
@@ -53,6 +94,27 @@ def test_csp_pins_the_load_bearing_directives(client):
     assert directives["object-src"] == "'none'"
     assert directives["base-uri"] == "'self'"
     assert directives["form-action"] == "'self'"
+
+
+def test_csp_nonce_is_fresh_per_request(client):
+    # A predictable or reused nonce lets an attacker who can inject markup
+    # guess the value and stamp their own <script> with it.
+    first = _NONCE_RE.search(client.get("/x").headers["Content-Security-Policy"])
+    second = _NONCE_RE.search(client.get("/x").headers["Content-Security-Policy"])
+    assert first and second
+    assert first.group(1) != second.group(1)
+
+
+def test_csp_nonce_in_the_header_matches_the_rendered_scripts(full_web_client):
+    # The header hook and the template render must agree on one per-request
+    # value, or the browser blocks every inline script on the page.
+    resp = full_web_client.get("/why")
+    assert resp.status_code == 200
+    header_nonce = _NONCE_RE.search(resp.headers["Content-Security-Policy"]).group(1)
+    body = resp.get_data(as_text=True)
+    assert f'nonce="{header_nonce}"' in body
+    # No inline script escaped the stamping (src= scripts don't need it).
+    assert not re.search(r"<script(?![^>]*\bsrc=)(?![^>]*\bnonce=)", body)
 
 
 def test_hsts_only_on_tls_terminated_requests(client):
