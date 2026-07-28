@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='pivotick/pivotick.css') }}">
 <link id="hljs-theme" rel="stylesheet" href="">
 <script src="/static/pivotick/pivotick.iife.js"></script>
-<script>window.dispatchEvent(new Event('pivotick-ready'))</script>
+<script nonce="{{ csp_nonce }}">window.dispatchEvent(new Event('pivotick-ready'))</script>
 
 {% endblock %}
 
@@ -273,7 +273,7 @@
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab"
                             :href="'#graph-pane-'+conversion.id" role="tab"
-                            onclick="onGraphTabClick()">
+                            id="graph-tab-link">
                             <i class="fas fa-diagram-project me-1"></i> Graph
                         </a>
                     </li>
@@ -315,7 +315,7 @@
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-input" onclick="toggleTree('input')">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-input">
                                     <i class="fas fa-sitemap me-1"></i> Tree
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary" @click="formatJson('input', $event)">
@@ -353,7 +353,7 @@
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-output" onclick="toggleTree('output')">
+                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-output">
                                     <i class="fas fa-sitemap me-1"></i> Tree
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary" @click="formatJson('output', $event)">
@@ -427,19 +427,19 @@
                             </span>
                             <div class="d-flex gap-2">
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    id="graph-view-input" onclick="showGraphSide('input')">
+                                    id="graph-view-input">
                                     <i class="fas fa-file-import me-1"></i>
                                     <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
                                     <template v-else>MISP Input</template>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    id="graph-view-output" onclick="showGraphSide('output')">
+                                    id="graph-view-output">
                                     <i class="fas fa-file-export me-1"></i>
                                     <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
                                     <template v-else>STIX Output</template>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
-                                    onclick="openGraphConfigModal()" title="Configure graph display">
+                                    id="graph-config-btn" title="Configure graph display">
                                     <i class="fas fa-sliders"></i>
                                 </button>
                             </div>
@@ -909,7 +909,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, computed, onMounted, watch, nextTick } = Vue
     import { create_message, message_list } from '/static/js/toaster.js';
     import TagInput from '/static/js/tags/tagInput.js';
@@ -920,8 +920,20 @@
     import PushConversionToMISP from '/static/js/misp/pushConversionToMISP.js';
     import ConversionSunburst from '/static/js/graph/conversionSunburst.js';
     import ConversionTable from '/static/js/graph/conversionTable.js';
-    window.showGraphSide = showGraphSide;
-    window.openGraphConfigModal = openGraphConfigModal;
+    // Delegated because Vue's in-DOM mount recreates these nodes, dropping any
+    // listener attached to them directly (and CSP forbids inline on*= handlers).
+    const GRAPH_TOOLBAR_ACTIONS = {
+        'graph-tab-link': () => window.onGraphTabClick?.(),
+        'tree-btn-input': () => toggleTree('input'),
+        'tree-btn-output': () => toggleTree('output'),
+        'graph-view-input': () => showGraphSide('input'),
+        'graph-view-output': () => showGraphSide('output'),
+        'graph-config-btn': () => openGraphConfigModal()
+    };
+    document.addEventListener('click', e => {
+        const hit = e.target.closest(Object.keys(GRAPH_TOOLBAR_ACTIONS).map(id => '#' + id).join(', '));
+        if (hit) GRAPH_TOOLBAR_ACTIONS[hit.id]();
+    });
 
     const conversion_id = document.getElementById('conversion_id').dataset.conversionId;
     const IS_AUTH = "{{ 'true' if current_user.is_authenticated else 'false' }}";
@@ -1049,8 +1061,6 @@
             btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Tree'
         }
     }
-    window.toggleTree = toggleTree
-
     // ─────────────────────────────────────────────────────────────────────────
 
     function highlightSide(side) {

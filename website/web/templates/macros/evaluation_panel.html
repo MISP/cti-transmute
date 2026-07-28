@@ -8,7 +8,7 @@
 
 {% macro evaluation_panel(conversion, current_user) %}
 {# Log de contrôle pour vérifier que Jinja reçoit bien les données #}
-<script>
+<script nonce="{{ csp_nonce }}">
     console.log("Jinja Debug - Tentative de rendu du panel pour conversion ID:", "{{ conversion.id if conversion else 'NULL' }}");
 </script>
 
@@ -27,7 +27,7 @@
 {% endmacro %}
 
 {% macro evaluation_js() %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
 import { mountEvaluationPanels } from '/static/js/evaluationPanel.js'
 
 function init() {

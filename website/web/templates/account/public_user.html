@@ -169,7 +169,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
   const { createApp, ref, computed, onMounted, nextTick } = Vue;
   import { create_message, message_list } from '/static/js/toaster.js';
   import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js';

@@ -113,7 +113,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
   const { createApp, ref } = Vue
 
   const REACTIONS_MAP = {

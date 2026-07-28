@@ -180,7 +180,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     import OverviewApp from '/static/js/evaluate/overview.js'
     const { createApp } = Vue
     createApp(OverviewApp).mount('#ov-app')

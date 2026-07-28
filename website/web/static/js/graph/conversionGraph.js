@@ -608,12 +608,11 @@ export function initConversionGraph(conversionData) {
     _conversionData = conversionData
     _renderedSides = { input: false, output: false }
 
+    // Called by the template's delegated toolbar handler on first tab open;
+    // window-scoped because it only exists once the conversion data is loaded.
     window.onGraphTabClick = function () {
         // Render only the default side on first tab open
         const side = GRAPH_CONFIG.defaultSide
         showGraphSide(side)
     }
-
-    // Expose globals for onclick= attributes in the template
-    window.showGraphSide = showGraphSide
 }

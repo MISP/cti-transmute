@@ -300,7 +300,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     import ParamSurface from '{{ asset_url('js/conversions/paramSurface.js') }}';
     import { buildEventRow, sensitivityTagBadge } from '{{ asset_url('js/misp/mispEventRows.js') }}';
 
@@ -926,7 +926,7 @@
 </script>
 
 {% if current_user.is_authenticated %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     import TagInput from '/static/js/tags/tagInput.js';
     const el = document.getElementById('tag-input-mount-m2s');
     if (el) {

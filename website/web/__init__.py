@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import os
+import secrets
 from importlib.metadata import version as _dist_version
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, request, url_for
+from flask import Flask, g, request, url_for
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -71,17 +72,19 @@ application.config["REMEMBER_COOKIE_SECURE"] = _secure_cookies
 application.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
 
 
-# Content-Security-Policy. The two 'unsafe-*' allowances are forced by the
-# no-build-step frontend: Vue's runtime compiler needs 'unsafe-eval' (in-DOM
-# templates compile via new Function), and the inline Jinja <script> blocks
-# plus on*= handlers in templates need 'unsafe-inline'. Everything else is
+# Content-Security-Policy. Inline <script> blocks run only when stamped with
+# the per-request nonce ({{ csp_nonce }} in templates), so injected markup
+# (<img onerror=...>, <script>...</script>) cannot execute: 'unsafe-inline' is
+# deliberately absent from script-src (style-src keeps it for inline style
+# attributes, which cannot run script). Vue's runtime compiler still needs
+# 'unsafe-eval' (in-DOM templates compile via new Function). Everything else is
 # vendored under static/ except highlight.js/zxcvbn (cdnjs), echarts/chart.js/
 # diff (jsdelivr), the Inter/JetBrains Mono fonts (Google Fonts), and the demo
 # video thumbnail (img.youtube.com). Pivotick spawns its graph worker from a
 # blob: URL.
-_CSP = "; ".join((
+_CSP_TEMPLATE = "; ".join((
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+    "script-src 'self' 'nonce-{nonce}' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
     "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https://img.youtube.com",
@@ -95,6 +98,22 @@ _CSP = "; ".join((
 ))
 
 
+def _csp_nonce() -> str:
+    """The request's script nonce, minted on first use.
+
+    Lazy so the header hook and every template render within one request agree
+    on the same value without a before_request ordering dependency.
+    """
+    if "csp_nonce" not in g:
+        g.csp_nonce = secrets.token_urlsafe(16)
+    return g.csp_nonce
+
+
+@application.context_processor
+def _inject_csp_nonce():
+    return {"csp_nonce": _csp_nonce()}
+
+
 @application.after_request
 def _set_security_headers(response):
     """Stamp every response with the security headers.
@@ -103,7 +122,7 @@ def _set_security_headers(response):
     the request arrived over TLS (X-Forwarded-Proto via ProxyFix), so a
     plain-HTTP dev instance never pins browsers to HTTPS.
     """
-    response.headers.setdefault("Content-Security-Policy", _CSP)
+    response.headers.setdefault("Content-Security-Policy", _CSP_TEMPLATE.format(nonce=_csp_nonce()))
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")

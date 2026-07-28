@@ -41,7 +41,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     import TagInput from '/static/js/tags/tagInput.js';
     const el = document.getElementById('tag-input-mount-edit');
     if (el) {

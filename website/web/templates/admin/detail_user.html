@@ -6,7 +6,7 @@
 
 {% block content %}
 {% if not current_user.is_admin() %}
-<script>window.location.href = "/access_denied";</script>
+<script nonce="{{ csp_nonce }}">window.location.href = "/access_denied";</script>
 {% else %}
 <div id="user_id" data-user-id="{{ user.id }}" style="display:none;"></div>
 
@@ -270,7 +270,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue
     import { display_prepared_toast, message_list } from '/static/js/toaster.js'
     import AppPagination from '/static/js/pagination.js'

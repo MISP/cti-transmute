@@ -288,7 +288,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, onMounted, onUnmounted } = Vue;
     import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js';
 
