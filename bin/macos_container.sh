@@ -111,6 +111,10 @@ WORKTREE="$(cd "$WORKTREE" && pwd)"
 [ -e "$WORKTREE/pyproject.toml" ] && [ -e "$WORKTREE/uv.lock" ] \
     || die "$WORKTREE is not a cti-transmute worktree"
 
+# WeasyPrint's native libs, from the shared source of truth (expanded into the
+# provisioning heredoc below alongside the container-bootstrap packages).
+RENDER_DEPS="$(grep -vE '^[[:space:]]*(#|$)' "$WORKTREE/bin/weasyprint-system-deps.txt" | tr '\n' ' ')"
+
 if ! container system status >/dev/null 2>&1; then
     info "starting Apple container system"
     container system start
@@ -155,11 +159,10 @@ export RUNTIME="/opt/cti"
 
 apt-get update
 apt-get install -y --no-install-recommends \\
-  build-essential ca-certificates curl fonts-dejavu-core git iproute2 \\
-  libcairo2 libffi-dev libgdk-pixbuf-2.0-0 libharfbuzz0b libjpeg-turbo8 \\
-  libopenjp2-7 libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 \\
+  build-essential ca-certificates curl git iproute2 \\
   libpq-dev pkg-config postgresql postgresql-client python3 python3-dev \\
-  python3-venv shared-mime-info
+  python3-venv \\
+  $RENDER_DEPS
 
 if ! command -v uv >/dev/null 2>&1; then
   curl -LsSf https://astral.sh/uv/install.sh \\
