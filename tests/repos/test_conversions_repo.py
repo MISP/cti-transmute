@@ -350,6 +350,24 @@ def test_list_for_user_only_mine_restricts_to_the_actor(app_db):
     assert names == {"a-pub", "a-priv"}
 
 
+def test_list_for_user_vis_filter_private_returns_only_private(app_db):
+    """``vis_filter='private'`` narrows to the non-public rows the actor may see.
+
+    Pins the SQL negation: a Python ``not Conversion.public`` folds to a constant
+    and silently matches nothing, so the private filter must use ``~``.
+    """
+    from website.repos import conversions as conv_repo
+
+    admin = _make_user(admin=True, email="admin@test.test")
+
+    _make_conv(user_id=admin.id, public=True,  name="a-pub")
+    _make_conv(user_id=admin.id, public=False, name="a-priv")
+
+    names = {c.name for c in
+             conv_repo.list_for_user(admin, 1, vis_filter="private").items}
+    assert names == {"a-priv"}
+
+
 def test_list_by_user_scopes_to_owner_and_public_filter(app_db):
     from website.repos import conversions as conv_repo
 

@@ -93,7 +93,7 @@ def add_user() -> redirect:
             'user_registered', actor_id=user.id, actor_name=user.first_name, target_type='user',
             target_id=user.id, target_name=f'{user.first_name} {user.last_name}', details=f'email: {user.email}'
         )
-        flash('You are now register. You can connect !', 'success')
+        flash('You are now registered. You can connect !', 'success')
         return redirect("/account/login")
     return render_template("account/register_user.html", form=form) 
 
