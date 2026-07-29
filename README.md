@@ -203,19 +203,61 @@ payload plus the saved Conversion's identifiers:
 
 The saved Conversion is owned by your account and gets the full catalogue
 treatment: it appears in your History, can be refreshed and diffed, shared via
-a Share link, and commented on. Fetch it back later:
+a Share link, and commented on. Read it back over the API (see
+[Reading saved conversions over the API](#reading-saved-conversions-over-the-api)):
 
 ```bash
-# The Conversion's page in the catalogue (the envelope's "url"):
-curl -L https://cti-transmute.org/conversions/42
-
-# The converted output as JSON:
-curl https://cti-transmute.org/conversions/download/42/output
+curl -H "X-API-KEY: <your-api-key>" https://cti-transmute.org/api/conversions/42
 ```
 
 Persisting also works **without** an API key — the Conversion is then saved
 anonymously (owned by nobody), matching what the web UI does for logged-out
 visitors.
+
+## Reading saved conversions over the API
+
+Saved Conversions are readable over the API with the same `X-API-KEY` header —
+or anonymously, in which case you see **public Conversions only**, exactly what a
+logged-out browser sees. A private Conversion you may not see returns **404**, so
+the API never confirms a private row's existence to others. All three routes are
+`GET`s.
+
+* *List the Conversions you can see* (paginated):
+
+```bash
+curl -H "X-API-KEY: <your-api-key>" https://cti-transmute.org/api/conversions
+```
+
+The response is a page envelope — each entry a Conversion summary with its tags:
+
+```json
+{
+  "data": [
+    { "id": 42, "name": "MISP_TO_STIX_...", "conversion_type": "MISP_TO_STIX", "public": true, "tags": [] }
+  ],
+  "page": 1,
+  "per_page": 10,
+  "total": 1,
+  "total_pages": 1
+}
+```
+
+Narrow the list with query params: `q` (search), `search_scope`
+(`all`/`name`/`description`/`content`), `tags` (comma-separated), `date_from` /
+`date_to` (`YYYY-MM-DD`), `sort` (`asc`/`desc`), `visibility` (`public`/`private`),
+`mine`, and `type`.
+
+* *Fetch one Conversion in full* (input, output, and the params it ran with):
+
+```bash
+curl -H "X-API-KEY: <your-api-key>" https://cti-transmute.org/api/conversions/42
+```
+
+* *Read a Conversion's accepted re-run history* (the diff timeline):
+
+```bash
+curl -H "X-API-KEY: <your-api-key>" https://cti-transmute.org/api/conversions/42/history
+```
 
 ## Funding 
 

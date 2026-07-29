@@ -586,6 +586,11 @@
     border-bottom: none;
 }
 
+/* Hover affordance for the profile links (CSP forbids inline on*= handlers) */
+.hover-underline:hover {
+    text-decoration: underline !important;
+}
+
 .following-avatar {
     width: 34px;
     height: 34px;

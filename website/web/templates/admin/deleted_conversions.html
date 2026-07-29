@@ -144,7 +144,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, computed, nextTick, onMounted } = Vue
     import { create_message, message_list } from '/static/js/toaster.js';
     import AppPagination from '/static/js/pagination.js'

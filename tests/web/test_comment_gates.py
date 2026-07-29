@@ -12,6 +12,7 @@ comment, who sees which comments — so the repoint stays behavior-preserving:
 - visibility: a private Conversion's comments are owner/admin-only; a private
   comment on a public Conversion is visible only to the Conversion owner, the
   comment author, or an admin
+- react: only on comments the Submitter can see (same visibility rule)
 
 Fixture/helper prior art: ``test_http_verb_flips.py``.
 """
@@ -244,6 +245,82 @@ def test_private_comment_on_public_conversion_is_visible_to_an_admin(web_client)
     admin = _make_user("admin_pcom@t.t", admin=True)
     _login(web_client, admin)
     assert _comment_contents(web_client, conv.id) == ["whisper"]
+
+
+# --- react: only comments the user can see ---------------------------------------
+
+def _react(client, comment_id, emoji="👍"):
+    return client.post("/conversions/react",
+                       json={"comment_id": comment_id, "emoji": emoji})
+
+
+def _reaction_count():
+    from website.db_class.db import CommentReaction
+
+    return CommentReaction.query.count()
+
+
+def test_stranger_cannot_react_to_a_private_comment(web_client):
+    owner = _make_user("owner_ract@t.t")
+    author = _make_user("author_ract@t.t")
+    conv = _make_conversion(owner.id, public=True)
+    comment = _make_comment(conv.id, author.id, is_private=True)
+    stranger = _make_user("stranger_ract@t.t")
+    _login(web_client, stranger)
+    resp = _react(web_client, comment.id)
+    assert resp.status_code == 403
+    assert _reaction_count() == 0
+
+
+def test_reacting_on_a_private_conversion_is_forbidden_for_strangers(web_client):
+    owner = _make_user("owner_rpriv@t.t")
+    conv = _make_conversion(owner.id, public=False)
+    comment = _make_comment(conv.id, owner.id)
+    stranger = _make_user("stranger_rpriv@t.t")
+    _login(web_client, stranger)
+    resp = _react(web_client, comment.id)
+    assert resp.status_code == 403
+    assert _reaction_count() == 0
+
+
+def test_reacting_to_a_soft_deleted_comment_is_404(web_client):
+    from website.web import db
+
+    owner = _make_user("owner_rdel@t.t")
+    conv = _make_conversion(owner.id, public=True)
+    comment = _make_comment(conv.id, owner.id)
+    comment.is_deleted = True
+    db.session.commit()
+    _login(web_client, owner)
+    resp = _react(web_client, comment.id)
+    assert resp.status_code == 404
+    assert _reaction_count() == 0
+
+
+def test_reacting_on_a_soft_deleted_conversion_is_forbidden(web_client):
+    from website.web import db
+
+    owner = _make_user("owner_rconv@t.t")
+    conv = _make_conversion(owner.id, public=True)
+    comment = _make_comment(conv.id, owner.id)
+    conv.is_active = False
+    db.session.commit()
+    _login(web_client, owner)
+    resp = _react(web_client, comment.id)
+    assert resp.status_code == 403
+    assert _reaction_count() == 0
+
+
+def test_a_visible_comment_can_be_reacted_to(web_client):
+    owner = _make_user("owner_rok@t.t")
+    reactor = _make_user("reactor_rok@t.t")
+    conv = _make_conversion(owner.id, public=True)
+    comment = _make_comment(conv.id, owner.id)
+    _login(web_client, reactor)
+    resp = _react(web_client, comment.id)
+    assert resp.status_code == 200
+    assert resp.get_json()["added"] is True
+    assert _reaction_count() == 1
 
 
 # --- /comment: the thin adapter maps the use-case's typed exceptions to HTTP ------

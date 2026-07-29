@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
-{% import 'macros/form_macros.html' as f %}
+{# with context so the macros see csp_nonce (a context processor); a plain
+   import would render its <script> with an empty nonce and get CSP-blocked #}
+{% import 'macros/form_macros.html' as f with context %}
 
 {% block content %}
 <div class="container my-5">
@@ -40,7 +42,7 @@
                         style="color:red">*</span>
                     <div class="input-group">
                         {{ form.password(class_="form-control pe-5", id="password") }}
-                        <span class="input-group-text" style="cursor:pointer;" onclick="togglePassword()">
+                        <span class="input-group-text" style="cursor:pointer;" id="togglePasswordBtn">
                             <i class="fa fa-eye" id="togglePasswordIcon"></i>
                         </span>
                     </div>
@@ -49,8 +51,12 @@
                     {% endif %}
                 </div>
 
-                <script>
-                    function togglePassword() {
+                <script nonce="{{ csp_nonce }}">
+                    // Delegated: this form is inside #main-container, which the
+                    // base layout's default Vue app re-renders after parse, so a
+                    // listener attached to the span itself would be dropped.
+                    document.addEventListener("click", (e) => {
+                        if (!e.target.closest("#togglePasswordBtn")) return;
                         const passwordInput = document.getElementById("password");
                         const icon = document.getElementById("togglePasswordIcon");
 
@@ -60,7 +66,7 @@
                         // Change icon
                         icon.classList.toggle("fa-eye");
                         icon.classList.toggle("fa-eye-slash");
-                    }
+                    });
                 </script>
                 <div class=" text-center" style="margin-top: 10px;">
                     {{form.submit(class='btn btn-primary')}}

@@ -6,7 +6,7 @@
 
 {% block content %}
 {% if not current_user.is_admin() %}
-<script>window.location.href = "/access_denied";</script>
+<script nonce="{{ csp_nonce }}">window.location.href = "/access_denied";</script>
 {% else %}
 <div id="user_id" data-user-id="{{ user.id }}" style="display:none;"></div>
 
@@ -255,9 +255,12 @@
             </div>
             <div class="du-modal-foot">
                 <button class="btn btn-secondary btn-sm" @click="showDeleteModal = false">Cancel</button>
-                <a v-if="user" :href="`/account/delete/${user.id}`" class="btn btn-danger btn-sm">
-                    <i class="fas fa-trash me-1"></i> Confirm delete
-                </a>
+                <form v-if="user" method="post" :action="`/account/delete/${user.id}`" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="fas fa-trash me-1"></i> Confirm delete
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -267,7 +270,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue
     import { display_prepared_toast, message_list } from '/static/js/toaster.js'
     import AppPagination from '/static/js/pagination.js'

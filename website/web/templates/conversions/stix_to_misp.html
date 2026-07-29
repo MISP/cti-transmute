@@ -147,7 +147,7 @@
 </div>
 {% endblock %}
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     import ParamSurface from '{{ asset_url('js/conversions/paramSurface.js') }}';
 
     const { createApp, onMounted } = Vue;
@@ -332,7 +332,7 @@
 </script>
 
 {% if current_user.is_authenticated %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     import TagInput from '/static/js/tags/tagInput.js';
     const el = document.getElementById('tag-input-mount-s2m');
     if (el) {

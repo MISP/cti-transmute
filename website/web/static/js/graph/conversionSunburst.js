@@ -4,7 +4,8 @@
 //  Features: sunburst + treemap, input/output side, dark/light theme,
 //            click-slice → JsonViewer panel (highlight, tree, format, download, copy).
 // ─────────────────────────────────────────────────────────────────────────────
-import JsonViewer from '/static/js/graph/jsonViewer.js'
+import JsonViewer from './jsonViewer.js'
+import { escapeHtml } from './searchHighlight.js'
 
 const PALETTE = [
     '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444',
@@ -149,6 +150,21 @@ function detectFormat(text) {
     return 'unknown'
 }
 
+// ── Tooltip formatters ────────────────────────────────────────────────────────
+// ECharts parses a function formatter's return value as HTML, and the slice
+// names come straight from the converted bundle (STIX type, relationship_type,
+// pattern prefix; MISP category/type) - attacker-controlled. Only the
+// interpolated values need escaping; the surrounding markup is ours. The
+// canvas-drawn label formatters inside the option objects render as text and
+// need none of this.
+export function sunburstTooltipFormatter(p) {
+    return `<strong>${escapeHtml(p.name)}</strong>${p.data?.value ? '<br>' + escapeHtml(p.data.value) + ' item(s)' : ''}`
+}
+
+export function treemapTooltipFormatter(p) {
+    return `<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.value)} item(s)`
+}
+
 // ── Vue component ─────────────────────────────────────────────────────────────
 const ConversionSunburst = {
     delimiters: ['[[', ']]'],
@@ -277,7 +293,7 @@ const ConversionSunburst = {
                 backgroundColor: 'transparent',
                 tooltip: {
                     trigger: 'item',
-                    formatter: p => `<strong>${p.name}</strong>${p.data?.value ? '<br>' + p.data.value + ' item(s)' : ''}`,
+                    formatter: sunburstTooltipFormatter
                 },
                 series: [{
                     type: 'sunburst',
@@ -305,7 +321,7 @@ const ConversionSunburst = {
             }))
             return {
                 backgroundColor: 'transparent',
-                tooltip: { formatter: p => `<strong>${p.name}</strong><br>${p.value} item(s)` },
+                tooltip: { formatter: treemapTooltipFormatter },
                 series: [{
                     type: 'treemap',
                     data: flatData,

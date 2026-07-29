@@ -63,7 +63,7 @@
 </div>
 {% endblock %}
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
   const { createApp, ref, onMounted } = Vue
   import { create_message, message_list } from '/static/js/toaster.js';
   import AppPagination from '/static/js/pagination.js'
@@ -108,7 +108,10 @@
       }
 
       async function markAllRead() {
-        const res = await fetch('/account/mark_all_read')
+        const res = await fetch('/account/mark_all_read', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         notifications.value.forEach(n => n.is_read = true)
@@ -118,7 +121,10 @@
 
       async function clickNotif(n) {
         if (!n.is_read) {
-          await fetch(`/account/mark_notification_read?notification_id=${n.id}`)
+          await fetch(`/account/mark_notification_read?notification_id=${n.id}`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+          })
           n.is_read = true
           unread_count.value = Math.max(0, unread_count.value - 1)
           window.__refreshNotifCount?.()
@@ -129,7 +135,10 @@
       }
 
       async function deleteNotif(n) {
-        const res = await fetch(`/account/delete_notification?notification_id=${n.id}`)
+        const res = await fetch(`/account/delete_notification?notification_id=${n.id}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         create_message(data.message, data.toast_class)
         if (data.success) {

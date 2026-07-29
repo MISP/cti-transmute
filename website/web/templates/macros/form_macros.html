@@ -93,7 +93,7 @@
         </div>
     </div>
     {% if field.allow_custom %}
-        <script>
+        <script nonce="{{ csp_nonce }}">
             $(document).ready(function() {
                 $('div#{{field.name}}').dropdown({
                   allowAdditions: true

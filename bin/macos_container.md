@@ -150,6 +150,8 @@ All commands in the next sections run inside that container shell.
 Install system packages:
 
 ```bash
+# The WeasyPrint (PDF export) libs below mirror bin/weasyprint-system-deps.txt
+# (the source of truth the scripts and CI read) — keep the two in sync.
 apt-get update
 apt-get install -y --no-install-recommends \
   build-essential ca-certificates curl fonts-dejavu-core git iproute2 \
@@ -367,6 +369,11 @@ service postgresql start
 cd /workspace/cti-transmute
 uv run manage db
 ```
+
+This separate step is rarely needed: `uv run manage start` applies pending
+migrations itself before launching the app, and handles databases
+bootstrapped with `db.create_all()` (no `alembic_version` table) by stamping
+the schema revision the models embody before upgrading.
 
 ## Database Operations
 

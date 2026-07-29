@@ -1065,7 +1065,9 @@ def get_history_details():
         conversion_history = conv_repo.get_history(history_id)
         if conversion_history:
             conversion_obj = conv_repo.get(conversion_history.conversion_id)
-            if conversion_obj and not access.can_see(current_user, conversion_obj):
+            # A deleted conversion resolves to None; that must deny, not skip
+            # the visibility check, or the entry's input/output leaks.
+            if not conversion_obj or not access.can_see(current_user, conversion_obj):
                 return {"success": False, "message": "Forbidden", "toast_class": "danger"}, 403
             return {
                 "success": True,
@@ -1277,9 +1279,16 @@ def react():
     if not comment_id or emoji not in allowed_emojis:
         return {"success": False, "message": "Invalid request", "toast_class": "danger"}, 400
 
+    comment = comments_repo.get(comment_id)
+    if not comment or comment.is_deleted:
+        return {"success": False, "message": "Comment not found", "toast_class": "danger"}, 404
+    conversion = conv_repo.get(comment.conversion_id)
+    if not conversion or not access.can_see_comment(current_user, comment, conversion):
+        return {"success": False, "message": "Permission denied", "toast_class": "danger"}, 403
+
     try:
         added = comments_repo.toggle_reaction(comment_id, current_user.id, emoji)
-    except Exception:  # noqa: BLE001 - e.g. reacting to a deleted comment (FK)
+    except Exception:  # noqa: BLE001 - e.g. the comment hard-deleted mid-request (FK)
         db.session.rollback()
         return {"success": False, "message": "Failed to update reaction", "toast_class": "danger"}, 500
 
@@ -1743,7 +1752,12 @@ def admin_get_comments():
 def graph_config_list():
     configs = ConversionModel.get_graph_configs(user_id=current_user.id, is_admin=current_user.is_admin())
     is_admin = current_user.is_admin()
-    return {"success": True, "list": [c.to_json(current_user_id=current_user.id, is_admin=is_admin) for c in configs]}, 200
+    items = []
+    for c in configs:
+        item = c.to_json(current_user_id=current_user.id, is_admin=is_admin)
+        item["config_json"] = ConversionModel.sanitize_stored_graph_config(item["config_json"])
+        items.append(item)
+    return {"success": True, "list": items}, 200
 
 
 @conversions_blueprint.route("/graph_config/save", methods=["POST"])
@@ -1755,10 +1769,13 @@ def graph_config_save():
     if not name:
         return {"success": False, "message": "Name required", "toast_class": "danger"}, 400
     try:
-        json.loads(config_json)
+        parsed = json.loads(config_json)
     except Exception:
         return {"success": False, "message": "Invalid JSON", "toast_class": "danger"}, 400
-    cfg, err = ConversionModel.save_graph_config(name, config_json, current_user.id)
+    clean, problems = ConversionModel.validate_graph_config(parsed)
+    if problems:
+        return {"success": False, "message": "Invalid config: " + "; ".join(problems[:5]), "toast_class": "danger"}, 400
+    cfg, err = ConversionModel.save_graph_config(name, json.dumps(clean), current_user.id)
     if err:
         return {"success": False, "message": err, "toast_class": "danger"}, 500
     AccountModel.create_system_log("graph_config_saved", actor_id=current_user.id, actor_name=current_user.first_name, target_type="graph_config", target_id=cfg.id, target_name=cfg.name)

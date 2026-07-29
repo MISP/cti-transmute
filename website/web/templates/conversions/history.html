@@ -432,7 +432,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
 import EvaluationPanel from '/static/js/evaluationPanel.js'
     const { createApp, ref, computed, watch } = Vue
     import { display_toast, create_message, message_list } from '/static/js/toaster.js'

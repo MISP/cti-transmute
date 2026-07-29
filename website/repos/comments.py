@@ -3,8 +3,8 @@
 This is the single place that writes ``Comment`` and ``CommentReaction`` rows.
 The ``add_comment`` use-case in ``website/lib/conversions.py`` and the thin
 comment ops in ``website/web/conversions/`` route their writes through here;
-``conversions_core`` keeps only the read/query helpers and the pure
-``_can_see_comment`` visibility rule.
+``conversions_core`` keeps only the read/query helpers; the comment visibility
+rule is ``website.lib.access.can_see_comment``.
 
 Transaction seam: every write takes ``commit: bool = True``. The thin web ops
 keep the default (each call is its own transaction). ``add_comment`` passes

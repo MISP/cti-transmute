@@ -197,10 +197,8 @@
               <div class="d-flex align-items-center gap-2">
                 <div class="following-avatar">[[ (f.name || 'A').charAt(0).toUpperCase() ]]</div>
                 <div>
-                  <a :href="'/account/public/' + f.user_id"
-                     style="font-weight:600; font-size:0.875rem; color:var(--accent); text-decoration:none;"
-                     onmouseover="this.style.textDecoration='underline'"
-                     onmouseout="this.style.textDecoration='none'">
+                  <a :href="'/account/public/' + f.user_id" class="hover-underline"
+                     style="font-weight:600; font-size:0.875rem; color:var(--accent); text-decoration:none;">
                     [[ f.name ]]
                   </a>
                   <div style="font-size:0.72rem; color:var(--text-3);">Following since [[ f.since ]]</div>
@@ -236,10 +234,8 @@
               <div class="d-flex align-items-center gap-2">
                 <div class="following-avatar">[[ (f.name || 'A').charAt(0).toUpperCase() ]]</div>
                 <div>
-                  <a :href="'/account/public/' + f.user_id"
-                     style="font-weight:600; font-size:0.875rem; color:var(--accent); text-decoration:none;"
-                     onmouseover="this.style.textDecoration='underline'"
-                     onmouseout="this.style.textDecoration='none'">
+                  <a :href="'/account/public/' + f.user_id" class="hover-underline"
+                     style="font-weight:600; font-size:0.875rem; color:var(--accent); text-decoration:none;">
                     [[ f.name ]]
                   </a>
                   <div style="font-size:0.72rem; color:var(--text-3);">Follower since [[ f.since ]]</div>
@@ -285,10 +281,8 @@
                 <div class="d-flex align-items-center gap-2" style="min-width:0;">
                   <div class="following-avatar">[[ (u.name || 'A').charAt(0).toUpperCase() ]]</div>
                   <div style="min-width:0;">
-                    <a :href="'/account/public/' + u.user_id" target="_blank"
-                       style="font-weight:600; font-size:.875rem; color:var(--accent); text-decoration:none;"
-                       onmouseover="this.style.textDecoration='underline'"
-                       onmouseout="this.style.textDecoration='none'">
+                    <a :href="'/account/public/' + u.user_id" target="_blank" class="hover-underline"
+                       style="font-weight:600; font-size:.875rem; color:var(--accent); text-decoration:none;">
                       [[ u.name ]]
                     </a>
                     <div style="font-size:.72rem; color:var(--text-3);">[[ u.public_count ]] public conversion[[ u.public_count !== 1 ? 's' : '' ]]</div>
@@ -313,7 +307,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
   const { createApp, ref, onMounted } = Vue
   import { create_message, message_list } from '/static/js/toaster.js';
   import AppPagination from '/static/js/pagination.js'
@@ -407,7 +401,10 @@
       }
 
       async function unfollow(user_id) {
-        const res  = await fetch(`/account/follow?user_id=${user_id}`)
+        const res  = await fetch(`/account/follow?user_id=${user_id}`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         await create_message(data.message, data.toast_class)
         if (data.success) following_list.value = following_list.value.filter(f => f.user_id !== user_id)
@@ -471,7 +468,10 @@
       }
 
       async function toggleFollowModal(u) {
-        const res  = await fetch(`/account/follow?user_id=${u.user_id}`)
+        const res  = await fetch(`/account/follow?user_id=${u.user_id}`, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+        })
         const data = await res.json()
         await create_message(data.message, data.toast_class)
         if (data.success) {

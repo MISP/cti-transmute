@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
-{% import 'macros/form_macros.html' as f %}
+{# with context so the macros see csp_nonce (a context processor); a plain
+   import would render its <script> with an empty nonce and get CSP-blocked #}
+{% import 'macros/form_macros.html' as f with context %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/account_edit.css') }}">
 {% endblock %}
@@ -80,7 +82,7 @@
                 </p>
                 <div class="edit-password-row">
                     {{ form.password(class_="form-control edit-input", id="passwordInput") }}
-                    <button type="button" class="edit-eye-btn" onclick="togglePassword()" title="Show / hide password">
+                    <button type="button" class="edit-eye-btn" id="togglePasswordBtn" title="Show / hide password">
                         <i class="fas fa-eye" id="togglePasswordIcon"></i>
                     </button>
                 </div>
@@ -106,14 +108,14 @@
 {% endblock %}
 
 {% block script %}
-<script>
-    function togglePassword() {
+<script nonce="{{ csp_nonce }}">
+    document.getElementById('togglePasswordBtn').addEventListener('click', () => {
         const input = document.getElementById('passwordInput')
         const icon = document.getElementById('togglePasswordIcon')
         const show = input.type === 'password'
         input.type = show ? 'text' : 'password'
         icon.classList.toggle('fa-eye', !show)
         icon.classList.toggle('fa-eye-slash', show)
-    }
+    })
 </script>
 {% endblock %}

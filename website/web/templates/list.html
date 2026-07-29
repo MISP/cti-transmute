@@ -172,7 +172,7 @@
 {% endblock %}
 
 {% block script %}
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     import ParamSurface, { scalarType } from '{{ asset_url('js/conversions/paramSurface.js') }}';
 
     const { createApp, ref, reactive, nextTick } = Vue

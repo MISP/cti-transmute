@@ -299,7 +299,7 @@
 {% endblock %}
 
 {% block script %}
-<script>
+<script nonce="{{ csp_nonce }}">
     // Scroll-reveal animation
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('revealed'); });

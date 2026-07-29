@@ -252,7 +252,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
 
-<script type="module">
+<script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, computed, nextTick } = Vue;
     import { create_message } from '/static/js/toaster.js';
 

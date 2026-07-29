@@ -1,3 +1,5 @@
+import { escapeGraphLabels, renderRawJson, sanitizeConfigPatch, textCell } from './graphSafety.js'
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  GRAPH CONFIG — edit this object to change graph behaviour & appearance.
 //  All options are documented inline. No need to touch the logic below.
@@ -290,7 +292,7 @@ function parseStix(json) {
     return { nodes, edges }
 }
 
-function _nodeProperties(node) {
+export function _nodeProperties(node) {
     const d = node.getData()
     const raw = d?.raw ?? {}
     const props = []
@@ -322,7 +324,12 @@ function _nodeProperties(node) {
             props.push({ name: algo, value: String(hash) })
     }
 
-    return props.filter(p => p.value !== undefined && p.value !== '')
+    // Wrap every cell so Pivotick never HTML-parses a converted value: `raw` and
+    // `childAttrs` are the untouched originals, and both the name and the value
+    // position reach the same sink (childAttrs keys and hash algo names included).
+    return props
+        .filter(p => p.value !== undefined && p.value !== '')
+        .map(p => ({ name: textCell(p.name), value: textCell(p.value) }))
 }
 
 function _buildTooltip(node) {
@@ -405,6 +412,7 @@ async function _initViewer(containerId, jsonText, format) {
     let parsed
     try {
         parsed = format === 'misp' ? parseMisp(JSON.parse(jsonText)) : parseStix(JSON.parse(jsonText))
+        escapeGraphLabels(parsed)
     } catch {
         container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not parse JSON.</p>'
         return
@@ -472,9 +480,9 @@ async function _initViewer(containerId, jsonText, format) {
             propertiesPanel: {
                 nodePropertiesMap: (node) => _nodeProperties(node),
                 edgePropertiesMap: (edge) => [
-                    { name: 'Relationship', value: edge.getData()?.label || '—' },
-                    { name: 'From', value: String(edge.from) },
-                    { name: 'To', value: String(edge.to) },
+                    { name: textCell('Relationship'), value: textCell(edge.getData()?.label || '—') },
+                    { name: textCell('From'), value: textCell(String(edge.from)) },
+                    { name: textCell('To'), value: textCell(String(edge.to)) }
                 ],
             },
             tooltip: {
@@ -508,7 +516,7 @@ async function _initViewer(containerId, jsonText, format) {
                             const raw = node.getData()?.raw ?? {}
                             const isDark = document.documentElement.classList.contains('dark-mode')
                             const win = window.open('', '_blank')
-                            win.document.write(`<html><body style="margin:0;background:${isDark ? '#0f0f10' : '#fff'};color:${isDark ? '#e0e0e0' : '#000'}"><pre style="font-family:monospace;font-size:13px;padding:1.5rem;white-space:pre-wrap;word-break:break-all">${JSON.stringify(raw, null, 2)}</pre></body></html>`)
+                            if (win) renderRawJson(win, raw, isDark)
                         },
                     }],
                 },
@@ -551,8 +559,11 @@ export function showGraphSide(side) {
     _renderSide(side)
 }
 
-/** Deep-merge a config patch into GRAPH_CONFIG. */
+/** Deep-merge a config patch into GRAPH_CONFIG.
+ *  The patch may come from a stored config (another user's input), so it is
+ *  schema-filtered first - see sanitizeConfigPatch in graphSafety.js. */
 export function applyConfig(patch) {
+    patch = sanitizeConfigPatch(patch)
     if (patch.maxNodes !== undefined) GRAPH_CONFIG.maxNodes = +patch.maxNodes || GRAPH_CONFIG.maxNodes
     if (patch.defaultSide !== undefined) GRAPH_CONFIG.defaultSide = patch.defaultSide
     if (patch.groupingThreshold !== undefined) GRAPH_CONFIG.groupingThreshold = +patch.groupingThreshold || GRAPH_CONFIG.groupingThreshold
@@ -597,12 +608,11 @@ export function initConversionGraph(conversionData) {
     _conversionData = conversionData
     _renderedSides = { input: false, output: false }
 
+    // Called by the template's delegated toolbar handler on first tab open;
+    // window-scoped because it only exists once the conversion data is loaded.
     window.onGraphTabClick = function () {
         // Render only the default side on first tab open
         const side = GRAPH_CONFIG.defaultSide
         showGraphSide(side)
     }
-
-    // Expose globals for onclick= attributes in the template
-    window.showGraphSide = showGraphSide
 }

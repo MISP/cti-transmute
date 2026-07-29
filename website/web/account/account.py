@@ -299,7 +299,7 @@ def get_user_conversions() -> redirect:
 
 
 
-@account_blueprint.route("/delete/<int:id>", methods=['GET', "POST"])
+@account_blueprint.route("/delete/<int:id>", methods=["POST"])
 @login_required
 def delete_user(id) -> redirect:
     """Delete the user"""
@@ -339,7 +339,7 @@ def delete_user(id) -> redirect:
 #   Follow / Unfollow     #
 ###########################
 
-@account_blueprint.route("/follow", methods=['GET'])
+@account_blueprint.route("/follow", methods=['POST'])
 @login_required
 def follow_user():
     """Follow or unfollow a user."""
@@ -428,7 +428,6 @@ def get_following():
             items.append({
                 "user_id": user.id,
                 "name": f"{user.first_name} {user.last_name}",
-                "email": user.email,
                 "since": f.created_at.strftime('%Y-%m-%d') if f.created_at else None
             })
     return {"success": True, "list": items, "total_page": pagination.pages}, 200
@@ -459,7 +458,7 @@ def get_notifications():
     }, 200
 
 
-@account_blueprint.route("/delete_notification", methods=['GET'])
+@account_blueprint.route("/delete_notification", methods=['DELETE'])
 @login_required
 def delete_notification():
     notification_id = request.args.get('notification_id', type=int)
@@ -471,7 +470,7 @@ def delete_notification():
     return {"success": False, "message": "Not found or forbidden", "toast_class": "danger"}, 403
 
 
-@account_blueprint.route("/mark_notification_read", methods=['GET'])
+@account_blueprint.route("/mark_notification_read", methods=['POST'])
 @login_required
 def mark_notification_read():
     notification_id = request.args.get('notification_id', type=int)
@@ -481,7 +480,7 @@ def mark_notification_read():
     return {"success": success}, 200
 
 
-@account_blueprint.route("/mark_all_read", methods=['GET'])
+@account_blueprint.route("/mark_all_read", methods=['POST'])
 @login_required
 def mark_all_read():
     AccountModel.mark_all_read(current_user.id)
