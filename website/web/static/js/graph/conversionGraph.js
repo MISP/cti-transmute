@@ -371,6 +371,31 @@ function _buildTooltip(node) {
     return wrap.children.length ? wrap : null
 }
 
+// Pivotick 1.4.0 workaround: all Pivotick instances on a page share one
+// body-level tooltip element, and rebuilding the sidebar's ego graph (click
+// node A, then node B) destroys it. Our instance then keeps pointing at the
+// detached element and hover tooltips never show again. Watch body for the
+// removal and re-attach our element; after the first rebuild the sidebar
+// creates its own copy and leaves ours alone. Drop this once the tooltip
+// element is per-instance upstream.
+function _guardTooltip(graph) {
+    let attempts = 0
+    const poll = setInterval(() => {
+        const el = graph?.UIManager?.tooltip?.tooltip
+        if (!el) {
+            if (++attempts > 20) clearInterval(poll)
+            return
+        }
+        clearInterval(poll)
+        new MutationObserver(() => {
+            if (!el.isConnected) {
+                el.classList.remove('shown')
+                document.body.appendChild(el)
+            }
+        }).observe(document.body, { childList: true })
+    }, 250)
+}
+
 function _showSpinner(containerId, message) {
     const el = document.getElementById(containerId)
     if (!el) return
@@ -448,7 +473,7 @@ async function _initViewer(containerId, jsonText, format) {
     container.innerHTML = ''
     const styleMap = format === 'misp' ? mispStyles : stixStyles
 
-    new window.Pivotick(container, parsed, {
+    const graph = new window.Pivotick(container, parsed, {
         isDirected: true,
         layout,
         simulation: {
@@ -523,6 +548,7 @@ async function _initViewer(containerId, jsonText, format) {
             },
         },
     })
+    _guardTooltip(graph)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

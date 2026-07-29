@@ -1,7 +1,8 @@
-import { C as o, E as r, N as s, G as t } from "./index-B_yZs6xd.js";
+import { C as e, E as s, N as t, G as p, U as r } from "./index-BUisnj9C.js";
 export {
-  o as ColorPaletteMapper,
-  r as Edge,
-  s as Node,
-  t as Pivotick
+  e as ColorPaletteMapper,
+  s as Edge,
+  t as Node,
+  p as Pivotick,
+  r as UIComponent
 };
