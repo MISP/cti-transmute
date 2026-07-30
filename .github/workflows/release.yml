@@ -14,9 +14,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # gh is preinstalled on the runner; the built-in token cuts the release
-      # with notes generated from the commits/PRs since the previous tag.
-      - name: Create GitHub Release
+      # gh is preinstalled on the runner; the built-in token stages the release
+      # as a draft, with notes generated from the PRs since the previous tag as
+      # a starting point. Most work here lands on main through branch merges
+      # rather than PRs, so those notes are a stub - edit the draft with the
+      # real notes and publish it by hand.
+      - name: Draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" --generate-notes --verify-tag
+        run: gh release create "${{ github.ref_name }}" --draft --generate-notes --verify-tag
