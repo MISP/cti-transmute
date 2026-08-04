@@ -42,7 +42,10 @@ re-checking `#param-surface` and friends.
 ## What counts as a sink
 
 Every Jinja expression inside a mounted region is reported unless it matches a
-known-safe shape or is an allowlisted sink. Three things take a region, or part
+known-safe shape. There are no per-sink exemptions: the lint shipped with the
+seven sinks this class was found through allowlisted against the ticket that
+would convert each, and all seven are converted, so a sink found from here on
+fails the lint rather than earning a row. Three things take a region, or part
 of one, out of scope, and each was measured against the vendored
 `vue.global.js` (3.2.47) rather than assumed;
 `test_vue_template_positions_js.py` pins them.
@@ -102,7 +105,6 @@ VENDORED_JS = ("vue.global.js", "pivotick.umd.js")
 MountRoot = namedtuple("MountRoot", "template root_id kind mounted_by")
 Absent = namedtuple("Absent", "template root_id reason")
 Unmounted = namedtuple("Unmounted", "template reason")
-KnownSink = namedtuple("KnownSink", "template expressions removed_by note")
 
 # Every region a rendered page mounts a Vue app on. `template` is the page
 # whose render performs the mount; for `main-containers` the element itself is
@@ -195,24 +197,6 @@ UNMOUNTED_PAGES = (
         "sample, not a real mount; the script block it does override mounts nothing"
     ),
     Unmounted("why.html", "overrides the script block; mounts nothing")
-)
-
-# The sinks this class was found through, allowlisted until the ticket named
-# against each converts it. An entry that no longer matches anything fails the
-# lint, so the list empties itself rather than rotting.
-KNOWN_SINKS = (
-    KnownSink(
-        "conversions/detail.html", ("conversion.name",), "ticket 4",
-        "the share-modal title; the sink the security review reported"
-    ),
-    KnownSink(
-        "conversions/refresh.html", ("conversion_obj.name", "filename"), "ticket 4",
-        "the Conversion name and the uploaded filename on the refresh page"
-    ),
-    KnownSink(
-        "conversions/compare_version/difference.html", ("conversion_obj.name",), "ticket 4",
-        "the Conversion name in the version-comparison header"
-    )
 )
 
 # Expression shapes that carry no user data, so they are safe wherever they
@@ -415,14 +399,8 @@ def cleared_by(expression):
     return None
 
 
-def scan(name, source, allowlist=None):
-    """Report every expression written unprotected into one of `name`'s regions.
-
-    `allowlist` defaults to the recorded sinks; pass an empty set to see the
-    tree as it will look once every remaining sink has been converted.
-    """
-    if allowlist is None:
-        allowlist = allowlisted_sinks()
+def scan(name, source):
+    """Report every expression written unprotected into one of `name`'s regions."""
     findings = []
     for root_id, span, root_start in mounted_regions(name, source):
         reachable = [(name, source, span, root_start)]
@@ -434,20 +412,14 @@ def scan(name, source, allowlist=None):
             for expression in expressions_in(body, region, start):
                 if cleared_by(expression) is not None:
                     continue
-                if (origin, expression.text) in allowlist:
-                    continue
                 findings.append(Finding(origin, expression.line, root_id, expression.text))
     return sorted(findings)
 
 
-def allowlisted_sinks():
-    return {(sink.template, text) for sink in KNOWN_SINKS for text in sink.expressions}
-
-
-def scan_tree(allowlist=None):
+def scan_tree():
     findings = []
     for name, source in sorted(_sources().items()):
-        findings += scan(name, source, allowlist)
+        findings += scan(name, source)
     return findings
 
 

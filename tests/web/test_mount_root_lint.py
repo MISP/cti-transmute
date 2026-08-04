@@ -5,13 +5,13 @@ markup. `test_delimiter_neutralisation.py` covers the global protection that
 makes forgetting survivable; this covers the structural half, which is the only
 way to assert "no *future* template does this".
 
-The check is allowlist-driven in both directions. Expression shapes that carry
-no user data pass wherever they land; the sinks the class was found through that
-are still unconverted pass because they are named in `mount_roots.KNOWN_SINKS`,
-each against the ticket that converts it; anything else inside a mounted region
-fails and is named. Both allowlists are pinned as exhaustive, so the sinks list
-empties as those conversions land rather than rotting, and an unfamiliar
-construct is a failing test rather than a hole.
+The check is allowlist-driven, and the allowlist is of expression *shapes*, not
+of sites: something that carries no user data passes wherever it lands, and
+anything else inside a mounted region fails and is named. The seven sinks this
+class was found through each had a temporary row of their own until the ticket
+that converted it deleted the row; all seven are converted, so there are no
+per-site exemptions left and an unfamiliar construct is a failing test rather
+than a hole.
 
 `mount_roots.py` is the inventory itself and carries the derivation rules.
 """
@@ -83,19 +83,20 @@ def test_no_unprotected_user_value_in_a_mounted_region():
     )
 
 
-def test_the_allowlist_has_no_stale_entries():
-    """A conversion has to delete its own row, so the allowlist empties."""
-    unprotected = {(f.template, f.expression) for f in roots.scan_tree(allowlist=set())}
-    stale = sorted(roots.allowlisted_sinks() - unprotected)
-    assert not stale, f"allowlisted sinks that no longer exist, remove them: {stale}"
-
-
 def test_a_planted_sink_is_reported():
-    """A lint with no failing case is not known to work."""
+    """A lint with no failing case is not known to work.
+
+    Planted on the detail page's conversion-id element, which sits in the
+    mounted region and outside every marker on the page. The Conversion name
+    that used to anchor this is inside the share modal's `v-pre` now, and a
+    plant there would pass for the wrong reason.
+    """
     name = "conversions/detail.html"
     source = (roots.TEMPLATES / name).read_text()
     planted = source.replace(
-        "{{ conversion.name }}", "{{ conversion.name }}{{ conversion.description }}", 1
+        'data-conversion-id="{{ conversion.id }}"></div>',
+        'data-conversion-id="{{ conversion.id }}">{{ conversion.description }}</div>',
+        1
     )
     assert planted != source
     findings = roots.scan(name, planted)
