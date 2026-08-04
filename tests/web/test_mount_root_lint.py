@@ -131,6 +131,27 @@ def test_the_protection_markers_clear_a_region():
     assert roots.scan("planted.html", mounted_page(skipped)) == []
 
 
+def test_a_marker_on_the_mounted_element_itself_is_not_a_defence():
+    """The marker has to sit inside the region, not on the mounted element.
+
+    A page whose content root and mount root are one element - the register
+    page - makes that the natural mistake.
+    """
+    page = (
+        '{% extends "base.html" %}\n'
+        "{% block content %}\n"
+        '<div v-pre id="own-root"><span>{{ user.name }}</span></div>\n'
+        "{% endblock %}\n"
+        "{% block script %}\n"
+        '<script type="module" nonce="{{ csp_nonce }}">\n'
+        "    Vue.createApp(App).mount('#own-root')\n"
+        "</script>\n"
+        "{% endblock %}\n"
+    )
+    findings = roots.scan("planted.html", page)
+    assert [f.expression for f in findings] == ["user.name"]
+
+
 def test_a_user_value_in_an_attribute_is_reported():
     """Vue interpolates text nodes only, but the lint does not lean on that.
 

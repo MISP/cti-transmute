@@ -60,6 +60,16 @@ Scope runs the other way too: an `{% include %}` inside a mounted region is
 followed, because a partial renders there without a single expression of its
 own showing at the call site.
 
+A `v-pre` has to sit *inside* the region rather than on the mounted element
+itself. `mount()` assigns `container.innerHTML` as the template, so the
+container's own attributes never reach the compiler and a marker there protects
+nothing - read off `mount()` in the vendored bundle, not from the compiler
+probe, which only sees templates it is handed. The lint reports through such a
+marker instead of honouring it, because a page whose content root and mount
+root are one element - the register page - makes that the natural mistake. If a
+later Vue did compile the container's attributes, the strict direction is still
+the safe one.
+
 Position within the region is deliberately *not* a defence. Vue interpolates
 text nodes and leaves plain attributes alone, but the lint checks both the
 same way: every expression currently sitting in an attribute is a known-safe
@@ -340,26 +350,37 @@ def mount_root_ids(name, source):
 
 
 def mounted_regions(name, source):
-    """`(root_id, span)` for each mounted region whose element this file holds."""
+    """`(root_id, span, root_start)` for each region whose element this file holds.
+
+    `root_start` is where the mounted element's own tag begins, or None when the
+    element lives in the layout and the span is the page's content block. A
+    `v-pre` there is inert - see the module docstring.
+    """
     source = _scannable(source)
     regions = []
     for root_id in sorted(mount_root_ids(name, source)):
         opening = _declaration(source, root_id)
         if opening is not None:
-            regions.append((root_id, _element_span(source, opening)))
+            regions.append((root_id, _element_span(source, opening), opening.start()))
         elif root_id == LAYOUT_REGION_ID and name != LAYOUT:
             # The page's content block renders inside the layout's <main>.
             content = _CONTENT_BLOCK.search(source)
             if content is not None:
-                regions.append((root_id, content.span(1)))
+                regions.append((root_id, content.span(1), None))
     return regions
 
 
-def expressions_in(source, span):
-    """The Jinja expressions Vue would compile inside `span`."""
+def expressions_in(source, span, root_start=None):
+    """The Jinja expressions Vue would compile inside `span`.
+
+    A `v-pre` at `root_start` - the mounted element itself - does not count.
+    """
     source = _scannable(source)
     skipped = [match.span(2) for match in _RAW_TEXT.finditer(source)]
-    skipped += [_element_span(source, match) for match in _V_PRE.finditer(source)]
+    skipped += [
+        _element_span(source, match) for match in _V_PRE.finditer(source)
+        if match.start() != root_start
+    ]
     low, high = span
     found = []
     for match in _EXPRESSION.finditer(source, low, high):
@@ -403,14 +424,14 @@ def scan(name, source, allowlist=None):
     if allowlist is None:
         allowlist = allowlisted_sinks()
     findings = []
-    for root_id, span in mounted_regions(name, source):
-        reachable = [(name, source, span)]
+    for root_id, span, root_start in mounted_regions(name, source):
+        reachable = [(name, source, span, root_start)]
         for included in included_in(source, span):
             body = _sources().get(included)
             if body is not None:
-                reachable.append((included, body, (0, len(body))))
-        for origin, body, region in reachable:
-            for expression in expressions_in(body, region):
+                reachable.append((included, body, (0, len(body)), None))
+        for origin, body, region, start in reachable:
+            for expression in expressions_in(body, region, start):
                 if cleared_by(expression) is not None:
                     continue
                 if (origin, expression.text) in allowlist:
