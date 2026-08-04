@@ -225,6 +225,18 @@ def test_the_home_page_carries_no_live_payload(web_client):
     assert_inert(body, PAYLOAD)
 
 
+def test_a_flashed_message_shows_the_payload_as_text(web_client):
+    # The flash region is the layout's, so it renders inside the mounted region
+    # of every page that mounts one - `/list` is one, and needs no fixture.
+    # Flashes live in the session, so seeding one there reaches the region
+    # without going through a route that happens to flash.
+    with web_client.session_transaction() as session:
+        session["_flashes"] = [("danger", PAYLOAD)]
+    body = _body_of(web_client.get("/list"))
+    assert_inert(body, PAYLOAD)
+    assert_displayed_neutralised(body, PAYLOAD)
+
+
 def test_the_public_profile_page_shows_the_display_name_as_text(web_client):
     user = _make_user("poisoned@t.t", first_name=PAYLOAD, last_name=PAYLOAD)
     body = _body_of(web_client.get(f"/account/public/{user.id}"))
