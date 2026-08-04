@@ -811,7 +811,11 @@
     <div class="modal fade" :id="'share_modal_' + {{ conversion.id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content" style="background:var(--surface); border:1px solid var(--border);">
-                <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                {# v-pre: the Conversion name renders inside the mounted <main>,
+                   so Vue must not compile it. Nothing in the header is Vue's -
+                   the close button is Bootstrap's, dismissed through a
+                   delegated data-bs-dismiss. #}
+                <div v-pre class="modal-header" style="border-bottom:1px solid var(--border);">
                     <h5 class="modal-title">
                         <i class="fas fa-share-nodes me-2" style="color:var(--accent);"></i>Share {{ conversion.name }}
                     </h5>

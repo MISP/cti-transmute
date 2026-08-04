@@ -8,7 +8,10 @@
 <div class="container my-5" v-cloak>
     <input type="hidden" id="csrf_token" value="{{ csrf_token() }}">
 
-    <div class="custom-card p-4 mb-4">
+    {# v-pre: the Conversion name, and the filename the re-run is labelled with
+       - itself built from the name - render inside the mounted <main>, so Vue
+       must not compile them. The whole card is static; Back is a plain link. #}
+    <div v-pre class="custom-card p-4 mb-4">
         <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
             <div style="min-width:0;">
                 <h3 class="mb-1 text-truncate" style="font-weight:700; letter-spacing:-0.02em;">
