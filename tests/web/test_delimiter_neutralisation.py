@@ -63,6 +63,17 @@ def assert_displayed_neutralised(body: str, payload: str) -> None:
     assert str(escape(neutralise_delimiters(payload))) in body
 
 
+def assert_initials_are_not_a_delimiter(body: str) -> None:
+    """The avatar is two expressions, one per name, both the same user's.
+
+    The public profile and the account page render the same hero, so both are
+    read the same way. The regex needs `class` to stay the hero avatar's last
+    attribute.
+    """
+    initials = re.search(r'profile-hero-avatar">([^<]*)<', body).group(1)
+    assert "[[" not in initials
+
+
 # --- The neutralisation function ------------------------------------------
 
 @pytest.mark.parametrize("delimiter", VUE_DELIMITERS)
@@ -242,10 +253,55 @@ def test_the_public_profile_page_shows_the_display_name_as_text(web_client):
     body = _body_of(web_client.get(f"/account/public/{user.id}"))
     assert_inert(body, PAYLOAD)
     assert_displayed_neutralised(body, PAYLOAD)
-    # The avatar is two separate expressions, one per name, and both names are
-    # the same attacker's: their initials must not meet as a live delimiter.
-    initials = re.search(r'profile-hero-avatar">([^<]*)<', body).group(1)
-    assert "[[" not in initials
+    assert_initials_are_not_a_delimiter(body)
+
+
+def test_the_account_page_shows_the_viewer_s_own_name_as_text(web_client):
+    # Own data only, so self-inflicted - except that this is the one page where
+    # a user value and the API key share a mounted region, so anything
+    # evaluating here reads the key out of the DOM beside it.
+    from website.web import db
+
+    user = _make_user("own@t.t", first_name=PAYLOAD, last_name=PAYLOAD)
+    user.api_key = "own-api-key-distinct-from-the-email"
+    db.session.commit()
+    _login(web_client, user)
+    body = _body_of(web_client.get("/account/profil"))
+    assert_inert(body, PAYLOAD)
+    assert_displayed_neutralised(body, PAYLOAD)
+    assert_initials_are_not_a_delimiter(body)
+    # The key still has to be in the served HTML: it is what `copyApiKey()`
+    # reads back out of the marked region, through `innerText`.
+    assert user.api_key in body
+
+
+def test_a_register_page_validation_error_is_shown_as_text(web_client):
+    """The one sink that was live rather than merely unconverted.
+
+    Its echo went through ``|safe``, which the central neutralisation passes
+    over by design. Driven through ``render_template`` rather than the route
+    because no shipped validator quotes what was typed, so the payload has to
+    be put where one would put it; ``web_client`` is still required, for the
+    blueprints the layout ``url_for``s across and for the DB the email
+    validator queries.
+    """
+    from flask import render_template
+
+    from website.web import application
+    from website.web.account.account_form import AddNewUserForm
+
+    invalid = {"first_name": "f", "last_name": "l", "email": "no", "password": "short"}
+    with application.test_request_context("/account/register", method="POST", data=invalid):
+        form = AddNewUserForm(meta={"csrf": False})
+        assert not form.validate()
+        form.first_name.errors = [PAYLOAD]
+        body = render_template("account/register_user.html", form=form)
+    # Dropping the `|safe` changed how all four echoes render, so the errors
+    # themselves have to still reach the page.
+    assert "Please enter a valid email address." in body
+    assert "Password must be at least 8 characters" in body
+    assert_inert(body, PAYLOAD)
+    assert_displayed_neutralised(body, PAYLOAD)
 
 
 def test_the_refresh_page_shows_the_conversion_name_as_text(web_client):
