@@ -15,6 +15,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from flask_session import Session
 
+from website.web.templating import neutralise_delimiters_in_output
+
 load_dotenv()
 
 application = Flask(__name__)
@@ -136,6 +138,14 @@ def _set_security_headers(response):
 # metadata, built from pyproject.toml's [project] version. Templates read it
 # as {{ app_version }} so the footer never drifts from the real version.
 application.jinja_env.globals["app_version"] = _dist_version("cti-transmute")
+
+# Server-rendered user data must never reach Vue as template markup: Vue
+# compiles the DOM it mounts over, so a value carrying its delimiters runs as
+# an expression through the 'unsafe-eval' the CSP above cannot drop. Hooked
+# onto the environment rather than applied per template, so a page written the
+# ordinary way is safe without its author knowing this exists. Permanent
+# defence in depth - it covers the templates nobody audited.
+application.jinja_env.finalize = neutralise_delimiters_in_output
 
 
 @application.template_global()
