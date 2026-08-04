@@ -7,7 +7,10 @@
 <div v-cloak>
 
   <!-- Profile hero -->
-  <div class="profile-hero">
+  {# v-pre: the signed-in user's own name and email render inside the mounted
+     <main>, so Vue must not compile them. Nothing in the hero is interactive -
+     the Edit Profile button is a plain link. #}
+  <div v-pre class="profile-hero">
     <div class="profile-hero-avatar">{{ user.first_name[0] | upper }}{{ user.last_name[0] | upper }}</div>
     <div class="profile-hero-info">
       <h1 class="profile-hero-name">{{ user.first_name }} {{ user.last_name }}</h1>
@@ -27,7 +30,8 @@
     <!-- Left: account info + API key -->
     <div class="d-flex flex-column gap-3">
 
-      <div class="custom-card p-0 overflow-hidden">
+      {# v-pre: the same three stored values again, read-only here too. #}
+      <div v-pre class="custom-card p-0 overflow-hidden">
         <div class="profile-section-header"><i class="fas fa-id-card me-2"></i>Account Info</div>
         <div class="profile-field">
           <span class="profile-field-label"><i class="fas fa-user"></i> First Name</span>
@@ -47,7 +51,9 @@
         <div class="profile-section-header"><i class="fas fa-key me-2"></i>API Key</div>
         <div style="padding:1rem;">
           <div class="profile-apikey-row">
-            <code class="profile-apikey" id="apiKey">{{ user.api_key }}</code>
+            {# v-pre on the <code> and not on the row: the copy button beside
+               it is Vue's and has to stay compiled. #}
+            <code v-pre class="profile-apikey" id="apiKey">{{ user.api_key }}</code>
             <button class="profile-copy-btn" id="copyBtn" @click="copyApiKey()" title="Copy API Key">
               <i class="fas fa-copy"></i>
               <span id="copyLabel">Copy</span>

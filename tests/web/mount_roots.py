@@ -19,12 +19,17 @@ under-reports it:
    with no mount call of its own - `account/register_user.html` is exactly
    that, and its own inline comment says so.
 
-Two traps that cost time when this was first enumerated:
+Three traps that cost time when this was first enumerated:
 
 - **Not every mount call is a mount.** `docs/index.html` contains
   `app.mount('#main-containers')` inside a `<pre>` documentation sample. Code
   samples are blanked before mount calls are read.
 - **Not every mounted page has a mount call.** See source 2 above.
+- **Not every page that declares the id is mounted.** `conversions/edit.html`
+  declares `#main-container` but overrides `{% block script %}` with a
+  TagInput-only script, so the layout's default mount never runs and the
+  validation error it echoes is not a sink. The echoed-error sink is the
+  register page, which the two-source rule turned up instead.
 
 ## Whole-page roots and per-widget roots
 
@@ -197,33 +202,6 @@ KNOWN_SINKS = (
     KnownSink(
         "conversions/compare_version/difference.html", ("conversion_obj.name",), "ticket 4",
         "the Conversion name in the version-comparison header"
-    ),
-    KnownSink(
-        "account/account_index.html",
-        (
-            "user.first_name[0] | upper",
-            "user.last_name[0] | upper",
-            "user.first_name",
-            "user.last_name",
-            "user.email",
-            "user.api_key"
-        ),
-        "ticket 5",
-        "own data only, but it shares the mounted region with the API key"
-    ),
-    KnownSink(
-        "account/register_user.html",
-        (
-            "form.first_name.errors[0] | safe",
-            "form.last_name.errors[0] | safe",
-            "form.email.errors[0] | safe",
-            "form.password.errors[0] | safe"
-        ),
-        "ticket 5",
-        "echoed validation errors, piped through |safe so the central "
-        "neutralisation passes over them; this is the page the spec's sink "
-        "table attributed to conversions/edit.html, which turns out not to be "
-        "mounted at all"
     )
 )
 
