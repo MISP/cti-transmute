@@ -58,7 +58,9 @@
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <div class="flash-container">
+        {# v-pre: the flash text and its category render inside the mounted
+           <main>, so Vue must not compile them. Nothing here is interactive. #}
+        <div v-pre class="flash-container">
             {% for category, message in messages %}
             <div class="alert alert-dismissible fade show flash-toast flash-{{ category }}" role="alert">
                 <div class="d-flex align-items-center p-3">

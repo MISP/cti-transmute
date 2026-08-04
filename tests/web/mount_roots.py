@@ -43,9 +43,10 @@ of one, out of scope, and each was measured against the vendored
 `test_vue_template_positions_js.py` pins them.
 
 - `<script>` and `<style>` content is not interpolated: Vue drops side-effect
-  tags. That is why the JSON data islands tickets 3-5 move to are inert.
-- A `v-pre` subtree is not interpolated - the skip marker, the other pattern
-  those tickets move to.
+  tags. That is why a JSON data island a converted page delivers its state
+  through is inert.
+- A `v-pre` subtree is not interpolated - the skip marker, the other of the two
+  patterns a conversion moves a region to.
 - Anything outside the mounted element. For most pages the mounted region is
   the layout's `<main>`, which holds the flash region and the page's content
   block but not its head or script blocks.
@@ -181,26 +182,10 @@ UNMOUNTED_PAGES = (
     Unmounted("why.html", "overrides the script block; mounts nothing")
 )
 
-# The seven sinks this class was found through, allowlisted until the ticket
-# named against each converts it. An entry that no longer matches anything
-# fails the lint, so the list empties itself rather than rotting.
+# The sinks this class was found through, allowlisted until the ticket named
+# against each converts it. An entry that no longer matches anything fails the
+# lint, so the list empties itself rather than rotting.
 KNOWN_SINKS = (
-    KnownSink(
-        "base.html", ("message", "category"), "ticket 3",
-        "flash text and its category in the layout's <main>, so on every page "
-        "that mounts it"
-    ),
-    KnownSink(
-        "account/public_user.html",
-        (
-            "profile_user.first_name[0] | upper",
-            "profile_user.last_name[0] | upper",
-            "profile_user.first_name",
-            "profile_user.last_name"
-        ),
-        "ticket 3",
-        "any visitor can read another user's profile without logging in"
-    ),
     KnownSink(
         "conversions/detail.html", ("conversion.name",), "ticket 4",
         "the share-modal title; the sink the security review reported"
@@ -435,7 +420,7 @@ def scan(name, source, allowlist=None):
     """Report every expression written unprotected into one of `name`'s regions.
 
     `allowlist` defaults to the recorded sinks; pass an empty set to see the
-    tree as it will look once tickets 3, 4 and 5 have landed.
+    tree as it will look once every remaining sink has been converted.
     """
     if allowlist is None:
         allowlist = allowlisted_sinks()

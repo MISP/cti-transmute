@@ -6,12 +6,12 @@ makes forgetting survivable; this covers the structural half, which is the only
 way to assert "no *future* template does this".
 
 The check is allowlist-driven in both directions. Expression shapes that carry
-no user data pass wherever they land; the seven sinks the class was found
-through pass because they are named in `mount_roots.KNOWN_SINKS`, each against
-the ticket that converts it; anything else inside a mounted region fails and is
-named. Both allowlists are pinned as exhaustive, so the sinks list empties as
-those tickets land rather than rotting, and an unfamiliar construct is a failing
-test rather than a hole.
+no user data pass wherever they land; the sinks the class was found through that
+are still unconverted pass because they are named in `mount_roots.KNOWN_SINKS`,
+each against the ticket that converts it; anything else inside a mounted region
+fails and is named. Both allowlists are pinned as exhaustive, so the sinks list
+empties as those conversions land rather than rotting, and an unfamiliar
+construct is a failing test rather than a hole.
 
 `mount_roots.py` is the inventory itself and carries the derivation rules.
 """
@@ -84,7 +84,7 @@ def test_no_unprotected_user_value_in_a_mounted_region():
 
 
 def test_the_allowlist_has_no_stale_entries():
-    """Tickets 3, 4 and 5 empty the allowlist as they convert their sinks."""
+    """A conversion has to delete its own row, so the allowlist empties."""
     unprotected = {(f.template, f.expression) for f in roots.scan_tree(allowlist=set())}
     stale = sorted(roots.allowlisted_sinks() - unprotected)
     assert not stale, f"allowlisted sinks that no longer exist, remove them: {stale}"
@@ -124,7 +124,7 @@ def test_a_wtforms_error_string_is_not_a_field_render():
 
 
 def test_the_protection_markers_clear_a_region():
-    """The two patterns tickets 3 to 5 convert the sinks to."""
+    """The two patterns a sink is converted to."""
     island = '<script type="application/json">{{ user.name | tojson }}</script>'
     assert roots.scan("planted.html", mounted_page(island)) == []
     skipped = "<div v-pre><span>{{ user.name }}</span></div>"
