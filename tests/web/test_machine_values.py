@@ -22,7 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 VENDORED_JS = re.compile(
     r"static/(pivotick/|js/(jquery|vue\.global|select2|zxcvbn|popper|"
-    r"pivotick|SimulationWorker|jquery-ui))"
+    r"jquery-ui))"
 )
 
 _EVENT_STEMS = (
