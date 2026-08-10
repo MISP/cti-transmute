@@ -5,32 +5,33 @@
 //  can be parsed as HTML.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { escapeHtml } from './searchHighlight.js'
-
-// Pivotick renders node/edge labels through innerHTML and does not escape them,
-// so a converted value like `</pre><img src=x onerror=...>` in a label executes
-// on hover. Escape the display labels (never the `raw` object, which the tooltip
-// and properties panel read as text) before the parsed graph reaches Pivotick.
-// Benign labels carry no HTML specials, so this is a no-op for real data.
-export function escapeGraphLabels(parsed) {
+// Node and edge labels reach Pivotick unmodified, and deliberately so.
+// Pivotick >= 1.5.0 inserts everything it renders from the data as text - node
+// and edge labels through d3's `.text()`/`textContent`, and its
+// `tryResolveHTMLElement` resolves a string to a text span rather than parsing
+// it - so a converted value like `</pre><img src=x onerror=...>` in a label
+// displays as those characters instead of executing. See
+// `submodules/pivotick/docs/security.md`; the version floor that guarantee
+// depends on is pinned by tests/web/graph_xss_check.mjs.
+//
+// Escaping here on top of that would double-escape, which is why it was
+// removed: ordinary CTI carries `&` and `"` - a MISP event info, a URL
+// attribute's query string - and pre-escaping sent those to the viewer as
+// `&amp;` and `&quot;`. The `raw` object was never escaped either, since the
+// tooltip and properties panel read it as text through textCell.
+export function sanitizeGraphData(parsed) {
     for (const node of parsed?.nodes ?? []) {
         const d = node.data
         if (!d) continue
-        if (d.label != null) d.label = escapeHtml(d.label)
-        if (d.sublabel != null) d.sublabel = escapeHtml(d.sublabel)
         if (d.type != null) d.type = safeType(d.type)
-    }
-    for (const edge of parsed?.edges ?? []) {
-        if (edge.data?.label != null) edge.data.label = escapeHtml(edge.data.label)
     }
 }
 
 // A node's `type` is a style-map key, but for STIX it comes straight from the
-// input bundle, and the neighbours ego graph is built without our property map -
-// so Pivotick's default one lists every `data` entry, `type` included, through
-// the HTML-parsing sink described on textCell. Real STIX/MISP type names are
-// plain identifiers, so restricting the charset is a no-op for them; an unknown
-// type already falls back to the `_default` style.
+// input bundle. Restricting the charset keeps it usable as a key: real
+// STIX/MISP type names are plain identifiers, so this is a no-op for them, and
+// an unknown type already falls back to the `_default` style. Unlike the label
+// escaping above, this never reaches a viewer as display text on its own.
 function safeType(type) {
     return String(type).replace(/[^a-zA-Z0-9_.-]/g, '_')
 }

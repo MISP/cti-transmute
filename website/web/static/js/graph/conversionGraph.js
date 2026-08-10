@@ -1,4 +1,4 @@
-import { escapeGraphLabels, renderRawJson, sanitizeConfigPatch, textCell } from './graphSafety.js'
+import { renderRawJson, sanitizeConfigPatch, sanitizeGraphData, textCell } from './graphSafety.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GRAPH CONFIG — edit this object to change graph behaviour & appearance.
@@ -437,7 +437,7 @@ async function _initViewer(containerId, jsonText, format) {
     let parsed
     try {
         parsed = format === 'misp' ? parseMisp(JSON.parse(jsonText)) : parseStix(JSON.parse(jsonText))
-        escapeGraphLabels(parsed)
+        sanitizeGraphData(parsed)
     } catch {
         container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not parse JSON.</p>'
         return

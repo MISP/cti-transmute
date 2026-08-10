@@ -97,7 +97,7 @@ LAYOUT_REGION_ID = "main-containers"
 LAYOUT_DEFAULT_MOUNT_ID = "main-container"
 
 # Vendored third-party bundles: their delimiter literals are not ours to pin.
-VENDORED_JS = ("vue.global.js", "pivotick.umd.js")
+VENDORED_JS = ("vue.global.js",)
 
 
 # ── Inventory ────────────────────────────────────────────────────────────────

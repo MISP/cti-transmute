@@ -1,20 +1,24 @@
 /* Client-side checks that attacker-controlled converted content cannot execute
  * in the conversion graph. Three sinks:
  *   1. "Open raw JSON" popup - must be built via DOM textContent, never markup.
- *   2. Pivotick node/edge labels - must be HTML-escaped before the library
- *      renders them through innerHTML.
- *   3. Properties-panel cells - Pivotick runs template.innerHTML on any cell it
- *      is handed as a string, so every cell must be an element whose text was
- *      set via textContent. Fires on hover (tooltip) and click (sidebar).
+ *   2. Pivotick node/edge labels - handed over verbatim, because Pivotick
+ *      >= 1.5.0 inserts them as text. Pre-escaping them (which is what we did
+ *      against 1.4.0, whose renderer used innerHTML) double-escapes ordinary
+ *      CTI, so the check here is that labels are passed through untouched and
+ *      that the library version the guarantee rests on is the one vendored.
+ *   3. Properties-panel cells - a cell handed over as a string resolves to a
+ *      text span in >= 1.5.0, but every cell is still wrapped as an element
+ *      whose text was set via textContent, so the value cannot be parsed even
+ *      if that resolution changes. Fires on hover (tooltip) and click (sidebar).
  * Run by the pytest wrapper (test_graph_xss_js.py): node graph_xss_check.mjs
  * Prints one line per check; exits non-zero on any failure. */
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const graphJs = join(repoRoot, 'website/web/static/js/graph');
-const { escapeGraphLabels, renderRawJson, textCell } = await import(join(graphJs, 'graphSafety.js'));
+const { renderRawJson, sanitizeGraphData, textCell } = await import(join(graphJs, 'graphSafety.js'));
 const { _nodeProperties } = await import(join(graphJs, 'conversionGraph.js'));
 
 const assert = (cond, msg) => {
@@ -54,7 +58,7 @@ assert(innerHTMLWrites.length === 0,
        'renderRawJson never assigns innerHTML on any element');
 assert(body.children.includes(pre), 'the <pre> is appended to the popup body');
 
-// ── Sink 2: label escaping before Pivotick ──────────────────────────────────
+// ── Sink 2: labels reach Pivotick verbatim, and it renders them as text ─────
 const parsed = {
     nodes: [{ id: 'n1', data: {
         label: '<img src=x onerror=alert(1)>',
@@ -63,21 +67,41 @@ const parsed = {
     } }],
     edges: [{ from: 'n1', to: 'n2', data: { label: '<b onmouseover=alert(3)>' } }],
 };
-escapeGraphLabels(parsed);
+sanitizeGraphData(parsed);
 
-assert(!parsed.nodes[0].data.label.includes('<img'),
-       'node label is escaped before Pivotick renders it via innerHTML');
-assert(parsed.nodes[0].data.label.includes('&lt;img'), 'node label is HTML-escaped');
-assert(!parsed.nodes[0].data.sublabel.includes('<svg'), 'node sublabel is escaped');
-assert(!parsed.edges[0].data.label.includes('<b'), 'edge label is escaped');
+assert(parsed.nodes[0].data.label === '<img src=x onerror=alert(1)>',
+       'a hostile node label is passed through verbatim (Pivotick inserts it as text)');
+assert(!parsed.nodes[0].data.label.includes('&lt;'),
+       'the node label is not HTML-escaped, so it cannot reach the viewer double-escaped');
+assert(parsed.nodes[0].data.sublabel === '<svg onload=alert(2)>', 'the node sublabel is untouched');
+assert(parsed.edges[0].data.label === '<b onmouseover=alert(3)>', 'the edge label is untouched');
 assert(parsed.nodes[0].data.raw.value === '<img src=x onerror=alert(1)>',
        'the raw object is left untouched (tooltip/properties read it as text)');
 
-// Benign labels are unchanged - no double-escaping artifacts for real data
-const benign = { nodes: [{ id: 'a', data: { label: 'malware.exe', sublabel: 'filename' } }], edges: [] };
-escapeGraphLabels(benign);
-assert(benign.nodes[0].data.label === 'malware.exe',
-       'a benign label passes through unchanged');
+// The regression that pre-escaping caused: ordinary CTI carries & and ", so an
+// event info or a URL attribute must not arrive as entities.
+const benign = {
+    nodes: [{ id: 'a', data: { label: 'Phishing "ACME" & co', sublabel: 'filename' } }],
+    edges: [{ from: 'a', to: 'b', data: { label: 'http://x/?a=1&b=2' } }],
+};
+sanitizeGraphData(benign);
+assert(benign.nodes[0].data.label === 'Phishing "ACME" & co',
+       'an event info keeps its ampersand and quotes, not &amp;/&quot;');
+assert(benign.edges[0].data.label === 'http://x/?a=1&b=2',
+       'a URL label keeps its query-string ampersand');
+
+// Label safety is Pivotick's guarantee from 1.5.0 on ("a string always renders
+// as text", docs/security.md), so pin the vendored version that promise came
+// with. Skipped where the submodule is not checked out (CI clones without it).
+const pivotickPkg = join(repoRoot, 'submodules/pivotick/package.json');
+if (existsSync(pivotickPkg)) {
+    const { version } = JSON.parse(readFileSync(pivotickPkg, 'utf8'));
+    const [major, minor] = version.split('.').map(Number);
+    assert(major > 1 || (major === 1 && minor >= 5),
+           `vendored Pivotick is >= 1.5.0, which renders labels as text (found ${version})`);
+} else {
+    console.log('skip: Pivotick submodule not checked out, version floor not verified');
+}
 
 // ── Sink 3: properties-panel cells ──────────────────────────────────────────
 // Pivotick's own resolver runs `template.innerHTML` on a string cell and returns
@@ -98,8 +122,9 @@ assert(cell.tagName === 'span', 'a property cell is a real element, not a string
 assert(cell.textContent === '<img src=x onerror=alert(1)>',
        'the cell carries the payload as text, verbatim and unescaped for display');
 
-// A node `type` is a style key, but for STIX it comes from the input bundle and
-// the neighbours ego graph passes it to the sink as a bare string.
+// A node `type` is a style key, but for STIX it comes from the input bundle, so
+// the charset is restricted to keep it usable as one (the ego graph passes it
+// straight through as a bare string).
 const typed = {
     nodes: [
         { id: 'a', data: { label: 'x', type: 'grouping<img src=x onerror=alert(1)>' } },
@@ -107,7 +132,7 @@ const typed = {
     ],
     edges: []
 };
-escapeGraphLabels(typed);
+sanitizeGraphData(typed);
 assert(!/[<>"']/.test(typed.nodes[0].data.type),
        'a hostile node type keeps no HTML specials for the ego-graph property map');
 assert(typed.nodes[1].data.type === 'ipv4-addr',
@@ -143,10 +168,10 @@ assert(!/document\.write/.test(src),
        'conversionGraph.js no longer calls document.write');
 assert(/renderRawJson\(/.test(src),
        'conversionGraph.js opens the raw-JSON popup via renderRawJson');
-assert(/escapeGraphLabels\(/.test(src),
-       'conversionGraph.js escapes labels via escapeGraphLabels before rendering');
-assert(src.indexOf('escapeGraphLabels(') < src.indexOf('new window.Pivotick('),
-       'labels are escaped before the parsed graph is handed to Pivotick');
+assert(/sanitizeGraphData\(/.test(src),
+       'conversionGraph.js routes the parsed graph through sanitizeGraphData');
+assert(src.indexOf('sanitizeGraphData(') < src.indexOf('new window.Pivotick('),
+       'the parsed graph is sanitized before it is handed to Pivotick');
 
 // The inline edgePropertiesMap cannot be imported, so assert on its source that
 // no cell is left as a bare string (Fix: stop relying on label escaping).

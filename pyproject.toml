@@ -28,7 +28,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "sqlalchemy>=2.0.43",
     "weasyprint>=68.1",
-    "werkzeug>=3.1.3",
+    "werkzeug>=3.1.3"
 ]
 
 [project.scripts]
@@ -40,14 +40,13 @@ manage         = "bin.manage:main"
 dev = [
     "pytest>=9.0.3",
     "responses>=0.26.2",
-    "ruff>=0.15.17",
+    "ruff>=0.15.17"
 ]
 
 [tool.ruff]
 target-version = "py310"
-# vulnerability-lookup is a borrowed reference repo, not ours; submodules are
-# upstream checkouts a root-level --fix must never edit; migrations are
-# alembic-generated and follow their own conventions.
+# submodules are upstream checkouts a root-level --fix must never edit;
+# migrations are alembic-generated and follow their own conventions.
 extend-exclude = ["submodules", "website/migrations"]
 
 [tool.ruff.lint]

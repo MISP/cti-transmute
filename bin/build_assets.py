@@ -10,7 +10,6 @@ submodules/pivotick/dist/ from source (npm run build inside submodules/pivotick/
     python bin/build_assets.py
 """
 
-import re
 import shutil
 import sys
 from pathlib import Path
@@ -19,6 +18,14 @@ ROOT            = Path(__file__).resolve().parent.parent
 PIVOTICK        = ROOT / "submodules" / "pivotick"
 PIVOTICK_DIST   = PIVOTICK / "dist"
 PIVOTICK_STATIC = ROOT / "website" / "web" / "static" / "pivotick"
+
+# The page loads the IIFE build (`pivotick.iife.js` + `pivotick.css`, see
+# templates/conversions/detail.html), so the ES build is dropped rather than
+# served: `pivotick.es.js` is only an entry point re-exporting a hashed
+# `index-*.js` chunk for bundler consumers, and shipping it meant either
+# committing ~680 KB nothing loads or leaving the entry pointing at a file
+# absent from the repository (which is what it did until 1.5.0).
+ES_BUILD_GLOBS = ("pivotick.es.js", "index-*.js", "SimulationWorker-*.js")
 
 
 def main() -> None:
@@ -32,17 +39,11 @@ def main() -> None:
         shutil.rmtree(PIVOTICK_STATIC)
     shutil.copytree(PIVOTICK_DIST, PIVOTICK_STATIC)
 
-    print("→ Patching worker path in index-*.js…")
-    for f in PIVOTICK_STATIC.glob("index-*.js"):
-        text = f.read_text(encoding="utf-8")
-        patched = re.sub(
-            r'"/assets/(SimulationWorker-[^"]+\.js)"',
-            r'"/static/pivotick/assets/\1"',
-            text
-        )
-        if patched != text:
-            f.write_text(patched, encoding="utf-8")
-            print(f"  Patched {f.name}")
+    print("→ Dropping the ES build (the page loads the IIFE)…")
+    for pattern in ES_BUILD_GLOBS:
+        for f in sorted(PIVOTICK_STATIC.glob(pattern)):
+            f.unlink()
+            print(f"  Removed {f.name}")
 
     print("\n✓ Done. Remember to commit the updated static/pivotick/ files.")
 

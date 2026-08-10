@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # Directories/files whose content we don't own.
 VENDORED_JS = re.compile(
     r"static/(pivotick/|js/(jquery|vue\.global|select2|zxcvbn|popper|"
-    r"pivotick|SimulationWorker|jquery-ui))"
+    r"jquery-ui))"
 )
 
 RETIRED_NOUN_PATTERNS = [
