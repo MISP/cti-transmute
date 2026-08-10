@@ -219,6 +219,22 @@ const ParamSurface = {
     `,
 };
 
+/*
+ * Report a failed schema load in the surface's own mount point.
+ *
+ * Lives here rather than in each host page because all three of them mount the
+ * surface the same way and so fail the same way. The message is whatever the
+ * fetch threw, so it goes in as text: a notice built by string concatenation
+ * would parse it as markup.
+ */
+function renderParamError(container, message) {
+    const notice = document.createElement('div');
+    notice.className = 'text-danger small';
+    notice.textContent = 'Could not load parameters: ' + message;
+    container.replaceChildren(notice);
+}
+
 export default ParamSurface;
+export { renderParamError };
 // Exposed for headless unit checks of the schema -> widget derivation.
 export { fieldFor, scalarType, humanize };

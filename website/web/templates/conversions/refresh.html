@@ -194,7 +194,7 @@
 
 {% block script %}
 <script type="module" nonce="{{ csp_nonce }}">
-    import ParamSurface from '{{ asset_url('js/conversions/paramSurface.js') }}';
+    import ParamSurface, { renderParamError } from '{{ asset_url('js/conversions/paramSurface.js') }}';
     import { create_message, message_list } from '/static/js/toaster.js';
 
     const { createApp, ref, computed, onMounted } = Vue;
@@ -219,8 +219,7 @@
                 initial: INITIAL_PARAMS
             }).mount('#param-surface');
         } catch (e) {
-            mount.innerHTML =
-                '<div class="text-danger small">Could not load parameters: ' + e.message + '</div>';
+            renderParamError(mount, e.message);
         }
     }
 
