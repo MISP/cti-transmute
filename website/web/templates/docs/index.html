@@ -642,6 +642,7 @@ website/
                     <table class="dc-param-tbl">
                         <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
                         <tbody>
+                            <tr><td><span class="dc-param-name">classification</span></td><td><span class="dc-param-type">auto | internal | external</span></td><td>auto</td><td>Which STIX 2 parser handles the bundle: internal (a MISP export) or external (another tool). auto detects it from a document label the producer controls</td></tr>
                             <tr><td><span class="dc-param-name">distribution</span></td><td><span class="dc-param-type">int 0–4</span></td><td>0</td><td>MISP distribution level (0=org, 1=community, 2=connected, 3=all, 4=sharing group)</td></tr>
                             <tr><td><span class="dc-param-name">sharing_group_id</span></td><td><span class="dc-param-type">int</span></td><td>—</td><td>Required when distribution=4</td></tr>
                             <tr><td><span class="dc-param-name">galaxies_as_tags</span></td><td><span class="dc-param-type">flag</span></td><td>off</td><td>Convert STIX galaxies to MISP tags instead of galaxy clusters</td></tr>
