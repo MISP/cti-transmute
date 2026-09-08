@@ -274,6 +274,10 @@ def test_endpoint_verdict_matches_published_schema(client, stix_bundle):
         {"distribution": 2},    # valid
         {"distribution": 99},   # out of range
         {"sharing_group": 5},   # unknown key -> additionalProperties: false
+        {"classification": "auto"},
+        {"classification": "internal"},
+        {"classification": "external"},
+        {"classification": "misp"}   # not one of the published values
     ]
     for sample in samples:
         schema_ok = validator.is_valid(sample)
