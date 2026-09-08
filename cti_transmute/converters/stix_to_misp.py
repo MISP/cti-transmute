@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from misp_stix_converter.tools import (
     get_stix2_parser,
@@ -24,10 +24,31 @@ _DISTRIBUTION_ONEOF = [
     {"const": 4, "title": "4 – Sharing group"},
 ]
 
+# Which of misp-stix's two STIX 2 parsers handles the bundle. The library
+# detects a MISP export from a ``misp:tool`` label on a report or grouping,
+# a string any producer can write; ``auto`` keeps that detection, the other
+# two values make the choice the caller's.
+_CLASSIFICATION_ONEOF = [
+    {"const": "auto", "title": "Auto – detect from the document content"},
+    {"const": "internal", "title": "Internal – the bundle is a MISP export"},
+    {"const": "external", "title": "External – the bundle comes from another tool"}
+]
+
 
 class StixToMispParams(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # First because it decides which parser the fields below reach; full
+    # width so the paired distribution / sharing-group rows stay side by side.
+    classification: Literal["auto", "internal", "external"] = Field(
+        default="auto", title="Classification",
+        description=(
+            "Whether the bundle is a MISP export (internal) or comes from "
+            "another tool (external). Auto detects it from the document "
+            "content, which the producer controls."
+        ),
+        json_schema_extra={"oneOf": _CLASSIFICATION_ONEOF, "fullWidth": True}
+    )
     distribution: int = Field(
         default=0, ge=0, le=4, title="Distribution Level",
         description="Distribution level for the imported MISP content.",
@@ -45,6 +66,10 @@ class StixToMispParams(BaseModel):
             "placeholder": "Only if distribution = 4",
         },
     )
+    # The three cluster / organisation fields only reach the External parser,
+    # so they are inert under classification == "internal". No enabledWhen
+    # hint ties them to it: the hint grammar is a single {field, equals}, and
+    # equals: "external" would also grey them out under the auto default.
     cluster_distribution: int = Field(
         default=0, ge=0, le=4, title="Cluster Distribution Level",
         description=(
@@ -122,8 +147,17 @@ class StixToMisp(Converter):
             ) from exc
 
         try:
+            # Detection runs only when the caller left the choice open. An
+            # explicit classification is honoured as given; comparing it with
+            # what detection would have found waits until the Converter has a
+            # warnings channel to report the disagreement on.
+            from_misp = (
+                is_stix2_from_misp(bundle.objects)
+                if params.classification == "auto"
+                else params.classification == "internal"
+            )
             parser_cls, arguments = get_stix2_parser(
-                is_stix2_from_misp(bundle.objects),
+                from_misp,
                 params.distribution,
                 params.sharing_group_id,
                 params.title,
