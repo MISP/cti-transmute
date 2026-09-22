@@ -96,6 +96,8 @@ class Conversion(db.Model):
     input_text = db.Column(db.Text, nullable=False)    # Original text
     output_text = db.Column(db.Text, nullable=True)    # Converted text
     params = db.Column(db.JSON, nullable=True)  # the params the conversion ran with
+    # what the conversion reported about its own output; NULL = not recorded
+    diagnostics = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, index=True)
     updated_at = db.Column(db.DateTime, index=True)
     public = db.Column(db.Boolean, default=True, index=True) #able to share with the community
@@ -137,6 +139,7 @@ class Conversion(db.Model):
             "source_format": self.source_format,
             "target_format": self.target_format,
             "params": self.params,
+            "diagnostics": self.diagnostics,
             "output_text": self.output_text,
             "created_at": utc_iso(self.created_at),
             "updated_at": utc_iso(self.updated_at),
@@ -386,6 +389,8 @@ class ConversionHistory(db.Model):
     new_output_text = db.Column(db.Text, nullable=True)
 
     params = db.Column(db.JSON, nullable=True)  # params this version ran with
+    # Diagnostics this version's output came with; NULL = not recorded
+    diagnostics = db.Column(db.JSON, nullable=True)
 
     # Metadata
     created_at = db.Column(db.DateTime, index=True)
@@ -408,6 +413,7 @@ class ConversionHistory(db.Model):
             "old_output_text": self.old_output_text,
             "new_output_text": self.new_output_text,
             "params": self.params,
+            "diagnostics": self.diagnostics,
             "created_at": utc_iso(self.created_at),
             "comment": self.comment,
             "status": self.status,

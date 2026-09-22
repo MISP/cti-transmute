@@ -29,7 +29,8 @@ from website.web.utils import generate_api_key
 def create(
     *, user_id: int | None, name: str, source_format: str | None,
     target_format: str | None, input_text: str, output_text: str,
-    params: dict | None, description: str | None = None, public: bool = True,
+    params: dict | None, diagnostics: dict | None = None,
+    description: str | None = None, public: bool = True,
     created_at: datetime | None = None, updated_at: datetime | None = None,
     commit: bool = True) -> Conversion:
     """Build and persist a ``Conversion`` row, minting its uuid and share key.
@@ -47,6 +48,7 @@ def create(
         input_text=input_text,
         output_text=output_text,
         params=params,
+        diagnostics=diagnostics,
         description=description,
         created_at=now,
         updated_at=updated_at or now,
@@ -63,7 +65,8 @@ def create(
 
 def create_history(
     *, conversion: Conversion, new_output_text: str, params: dict | None,
-    status: str = "pending", created_at: datetime | None = None,
+    diagnostics: dict | None = None, status: str = "pending",
+    created_at: datetime | None = None,
     commit: bool = True) -> ConversionHistory:
     """Persist a ``ConversionHistory`` row for ``conversion``'s next version.
 
@@ -82,6 +85,7 @@ def create_history(
         old_output_text=conversion.output_text,
         new_output_text=new_output_text,
         params=params,
+        diagnostics=diagnostics,
         created_at=created_at or datetime.now(timezone.utc)
     )
     db.session.add(history)
