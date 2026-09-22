@@ -64,8 +64,9 @@ def submit_conversion(
         source_format=source,
         target_format=target,
         input_text=_to_text(payload),
-        output_text=_to_text(result),
+        output_text=_to_text(result.document),
         params=params.model_dump(mode="json", exclude_none=True),
+        diagnostics=result.diagnostics,
         description=description,
         created_at=now,
         updated_at=now,
@@ -347,8 +348,9 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
     # the commit so the audit entry is atomic with it.
     history = conv_repo.create_history(
         conversion=conversion,
-        new_output_text=_to_text(result),
+        new_output_text=_to_text(result.document),
         params=params.model_dump(mode="json", exclude_none=True),
+        diagnostics=result.diagnostics,
         created_at=now,
         commit=False
     )
@@ -364,12 +366,13 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
 
 
 def accept_history(user, history: ConversionHistory) -> ConversionHistory:
-    """Accept a pending refresh: adopt its output and params onto the Conversion.
+    """Accept a pending refresh: adopt its output, params and Diagnostics.
 
     Owner-or-admin only (``assert_can_moderate``). Marks the history row
-    ``accepted`` and copies its ``new_output_text`` and ``params`` onto the
-    parent Conversion (``Conversion.params`` stays "the params the conversion
-    ran with"), atomically with the audit log.
+    ``accepted`` and copies its ``new_output_text``, ``params`` and
+    ``diagnostics`` onto the parent Conversion as one unit — the three describe
+    the same run, so the Conversion never mixes an output with the Diagnostics
+    of a different one — atomically with the audit log.
     """
     conversion = history.conversion
     assert_can_moderate(user, conversion)
@@ -378,6 +381,7 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
     conv_repo.set_history_status(history, "accepted", commit=False)
     conversion.output_text = history.new_output_text
     conversion.params = history.params
+    conversion.diagnostics = history.diagnostics
     conversion.updated_at = now
     _record_activity(
         "conversion_history_accepted", user, "conversion_history", history.id,

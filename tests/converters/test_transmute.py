@@ -31,14 +31,14 @@ def test_lookup_unknown_pair_raises_unknown_converter():
 def test_convert_misp_to_stix_with_default_params(misp_event):
     result = transmute.convert("misp", "stix", misp_event)
 
-    assert isinstance(result, dict)
-    assert result["type"] == "bundle"
+    assert isinstance(result.document, dict)
+    assert result.document["type"] == "bundle"
 
 
 def test_convert_accepts_params_as_a_plain_dict(misp_event):
     result = transmute.convert("misp", "stix", misp_event, {"version": "2.0"})
 
-    assert result.get("spec_version") == "2.0"
+    assert result.document.get("spec_version") == "2.0"
 
 
 def test_convert_accepts_a_prebuilt_params_model(stix_bundle):
@@ -46,7 +46,7 @@ def test_convert_accepts_a_prebuilt_params_model(stix_bundle):
         "stix", "misp", stix_bundle, StixToMispParams(distribution=3)
     )
 
-    assert result["distribution"] == "3"
+    assert result.document["distribution"] == "3"
 
 
 def test_convert_unknown_pair_raises_unknown_converter(misp_event):

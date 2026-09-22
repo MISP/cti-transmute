@@ -8,7 +8,7 @@ from misp_stix_converter.tools import (
 )
 from pydantic import BaseModel, ConfigDict, Field
 
-from cti_transmute.converter import Converter
+from cti_transmute.converter import ConversionResult, Converter
 from cti_transmute.exceptions import ConverterFailed, InvalidPayload
 
 # The MISP distribution levels, labelled once here on the Converter so
@@ -137,7 +137,7 @@ class StixToMisp(Converter):
     description = "Convert a STIX data collection to MISP format."
     params_class = StixToMispParams
 
-    def process(self, payload: Any, params: BaseModel) -> dict | list:
+    def process(self, payload: Any, params: BaseModel) -> ConversionResult:
         invalid_objects: dict = {}
         try:
             bundle = load_stix2_content(payload, invalid_objects)
@@ -147,14 +147,14 @@ class StixToMisp(Converter):
             ) from exc
 
         try:
-            # Detection runs only when the caller left the choice open. An
-            # explicit classification is honoured as given; comparing it with
-            # what detection would have found waits until the Converter has a
-            # warnings channel to report the disagreement on.
+            # Detection runs on every input, explicit classification included:
+            # the parser reports the disagreement between what the document
+            # says it is and what the caller asked for, which it can only do
+            # if detection ran.
+            detected = is_stix2_from_misp(bundle.objects)
+            overridden = params.classification != "auto"
             from_misp = (
-                is_stix2_from_misp(bundle.objects)
-                if params.classification == "auto"
-                else params.classification == "internal"
+                params.classification == "internal" if overridden else detected
             )
             parser_cls, arguments = get_stix2_parser(
                 from_misp,
@@ -171,12 +171,20 @@ class StixToMisp(Converter):
             )
             stix_parser = parser_cls()
             stix_parser.load_stix_bundle(bundle, invalid_objects=invalid_objects)
+            # Between loading and parsing, so the Warning lands under the
+            # loaded bundle's identifier rather than the parser's default one.
+            stix_parser.record_classification(detected, overridden=overridden)
             stix_parser.parse_stix_bundle(**arguments)
+            diagnostics = stix_parser.diagnostics()
         except Exception as exc:  # noqa: BLE001
             raise ConverterFailed(
                 f"misp-stix-converter failed: {exc}"
             ) from exc
 
+        return ConversionResult(self._document(stix_parser, params), diagnostics)
+
+    @staticmethod
+    def _document(stix_parser: Any, params: BaseModel) -> dict | list:
         if params.single_event:
             return json.loads(stix_parser.misp_event.to_json())
         if isinstance(stix_parser.misp_events, list):

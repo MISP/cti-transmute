@@ -31,6 +31,23 @@ def stix_bundle() -> dict:
 
 
 @pytest.fixture
+def duplicated_id_bundle(stix_bundle) -> dict:
+    """The fixture bundle carrying the same indicator id twice.
+
+    Loading keys objects by id, so the second occurrence shadows the first and
+    the content that was sent is not the content that gets parsed. The
+    converter reports that, which makes this the cheapest real Diagnostic to
+    drive end to end.
+    """
+    duplicate = json.loads(json.dumps(
+        next(obj for obj in stix_bundle["objects"] if obj["type"] == "indicator")
+    ))
+    duplicate["description"] = "Second occurrence, same id as the first."
+    stix_bundle["objects"].append(duplicate)
+    return stix_bundle
+
+
+@pytest.fixture
 def client():
     """Flask test client with the API blueprint mounted.
 

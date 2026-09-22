@@ -17,7 +17,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from .converter import Converter
+from .converter import ConversionResult, Converter
 from .exceptions import InvalidParameters, UnknownConverter
 
 
@@ -48,9 +48,11 @@ class Transmute:
         target_format: str,
         payload: Any,
         params: BaseModel | dict | None = None,
-    ) -> dict | list:
+    ) -> ConversionResult:
         """Run the ``source_format`` -> ``target_format`` conversion on ``payload``.
 
+        Returns the ``ConversionResult`` the Converter produced — the document
+        and the Diagnostics it came with.
         Raises ``UnknownConverter`` for an unsupported pair, ``InvalidParameters``
         for a params dict that fails the Converter's schema, and propagates the
         Converter's own ``InvalidPayload`` / ``ConverterFailed``.

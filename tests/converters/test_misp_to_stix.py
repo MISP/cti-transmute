@@ -10,16 +10,16 @@ from cti_transmute.exceptions import InvalidPayload
 def test_misp_event_converts_to_stix_bundle(misp_event):
     result = MispToStix().process(misp_event, MispToStixParams())
 
-    assert isinstance(result, dict)
-    assert result["type"] == "bundle"
+    assert isinstance(result.document, dict)
+    assert result.document["type"] == "bundle"
 
 
 def test_version_2_0_produces_a_stix_2_0_bundle(misp_event):
     result = MispToStix().process(misp_event, MispToStixParams(version="2.0"))
 
     # A STIX 2.0 bundle carries spec_version at the bundle level; 2.1 does not.
-    assert result["type"] == "bundle"
-    assert result.get("spec_version") == "2.0"
+    assert result.document["type"] == "bundle"
+    assert result.document.get("spec_version") == "2.0"
 
 
 def test_converter_declares_json_output_format():
@@ -39,7 +39,7 @@ def test_bare_event_without_wrapper_converts(misp_event):
 
     result = MispToStix().process(bare, MispToStixParams())
 
-    assert result["type"] == "bundle"
+    assert result.document["type"] == "bundle"
 
 
 def test_restsearch_response_collection_converts(misp_event):
@@ -48,7 +48,7 @@ def test_restsearch_response_collection_converts(misp_event):
 
     result = MispToStix().process(payload, MispToStixParams())
 
-    assert result["type"] == "bundle"
+    assert result.document["type"] == "bundle"
 
 
 def test_top_level_event_list_converts(misp_event):
@@ -58,7 +58,7 @@ def test_top_level_event_list_converts(misp_event):
 
     result = MispToStix().process(payload, MispToStixParams())
 
-    assert result["type"] == "bundle"
+    assert result.document["type"] == "bundle"
 
 
 def test_empty_object_raises_invalid_payload():

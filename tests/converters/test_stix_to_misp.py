@@ -15,8 +15,8 @@ from cti_transmute.exceptions import InvalidPayload
 def test_stix_bundle_converts_to_misp_event(stix_bundle):
     result = StixToMisp().process(stix_bundle, StixToMispParams())
 
-    assert isinstance(result, dict)
-    assert result["info"] == "TDD fixture event"
+    assert isinstance(result.document, dict)
+    assert result.document["info"] == "TDD fixture event"
 
 
 def test_non_stix_input_raises_invalid_payload():
@@ -29,7 +29,7 @@ def test_distribution_param_flows_into_the_misp_event(stix_bundle):
         stix_bundle, StixToMispParams(distribution=3)
     )
 
-    assert result["distribution"] == "3"
+    assert result.document["distribution"] == "3"
 
 
 def test_converter_declares_json_output_format():
@@ -122,14 +122,37 @@ def test_omitting_classification_is_a_no_op(stix_bundle, unlabelled_bundle):
     # The default must reproduce what detection alone produced: a labelled
     # bundle converts as if "internal" were asked for, an unlabelled one as
     # if "external" were.
+    # The documents, not the whole results: asking explicitly silences the
+    # "selected from the content itself" Warning that `auto` earns, which is
+    # the point of recording it.
     assert StixToMisp().process(
         copy.deepcopy(stix_bundle), StixToMispParams()
-    ) == StixToMisp().process(
+    ).document == StixToMisp().process(
         copy.deepcopy(stix_bundle), StixToMispParams(classification="internal")
-    )
+    ).document
     assert StixToMisp().process(
         copy.deepcopy(unlabelled_bundle), StixToMispParams()
-    ) == StixToMisp().process(
+    ).document == StixToMisp().process(
         copy.deepcopy(unlabelled_bundle),
         StixToMispParams(classification="external")
+    ).document
+
+
+# --- diagnostics: what a successful conversion reports about its output ------
+
+def test_shadowed_duplicate_id_is_reported_under_the_bundle(duplicated_id_bundle):
+    """A conversion that silently dropped content is the case Diagnostics
+    exist for: the second indicator wins, the first is shadowed, and the
+    document alone cannot say so."""
+    duplicated_id = next(
+        obj["id"] for obj in duplicated_id_bundle["objects"]
+        if obj["type"] == "indicator"
     )
+
+    result = StixToMisp().process(duplicated_id_bundle, StixToMispParams())
+
+    warnings = result.diagnostics["warnings"][duplicated_id_bundle["id"]]
+    assert any(duplicated_id in message for message in warnings)
+    assert result.diagnostics["counts"]["warnings"] >= 1
+    # The document is still there — a Diagnostic is not a failure.
+    assert result.document["info"] == "TDD fixture event"

@@ -5,7 +5,7 @@ from typing import Any, Literal
 from misp_stix_converter import InvalidMISPInputError, MISPtoSTIX20Parser, MISPtoSTIX21Parser
 from pydantic import BaseModel, ConfigDict, Field
 
-from cti_transmute.converter import Converter
+from cti_transmute.converter import ConversionResult, Converter
 from cti_transmute.exceptions import ConverterFailed, InvalidPayload
 
 
@@ -37,7 +37,7 @@ class MispToStix(Converter):
     description = "Convert a MISP data collection to STIX format."
     params_class = MispToStixParams
 
-    def process(self, payload: Any, params: BaseModel) -> dict:
+    def process(self, payload: Any, params: BaseModel) -> ConversionResult:
         content = _coerce_to_str(payload)
         try:
             json.loads(content)  # JSON-validity gate; MISP-validity is misp-stix's call
@@ -50,6 +50,7 @@ class MispToStix(Converter):
         parser = parser_cls()
         try:
             parser.parse_json_content(content)
+            diagnostics = parser.diagnostics()
         except InvalidMISPInputError as exc:
             # misp-stix is the authority on what counts as MISP input: it raises
             # this only when the payload matches no supported MISP shape (see
@@ -59,4 +60,4 @@ class MispToStix(Converter):
         except Exception as exc:  # noqa: BLE001
             raise ConverterFailed(f"misp-stix-converter failed: {exc}") from exc
 
-        return json.loads(parser.bundle.serialize())
+        return ConversionResult(json.loads(parser.bundle.serialize()), diagnostics)
