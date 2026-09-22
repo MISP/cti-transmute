@@ -370,7 +370,8 @@ def test_refresh_commit_failure_writes_nothing(app_db, misp_event, monkeypatch):
     assert SystemLog.query.filter_by(event_type="conversion_refreshed").count() == 0
 
 
-def _make_history(conv, *, new_output="NEW-OUTPUT", status="pending", params=None):
+def _make_history(conv, *, new_output="NEW-OUTPUT", status="pending", params=None,
+                  diagnostics=None):
     from website.db_class.db import ConversionHistory
     from website.web import db
 
@@ -379,7 +380,8 @@ def _make_history(conv, *, new_output="NEW-OUTPUT", status="pending", params=Non
         user_id=conv.user_id, conversion_id=conv.id, version=2,
         uuid=str(_uuid.uuid4()), status=status, public=conv.public,
         input_text=conv.input_text, old_output_text=conv.output_text,
-        new_output_text=new_output, params=params, created_at=now,
+        new_output_text=new_output, params=params, diagnostics=diagnostics,
+        created_at=now
     )
     db.session.add(history)
     db.session.commit()
@@ -416,6 +418,25 @@ def test_owner_accept_adopts_params_alongside_output(app_db, misp_event):
     accept_history(owner, history)
 
     assert conv.params == {"version": "2.1"}  # accept = adopt output AND params
+
+
+def test_owner_accept_adopts_diagnostics_alongside_output(app_db, misp_event):
+    """Output, params and Diagnostics describe one run and are adopted as one
+    unit - otherwise the Conversion ends up claiming the new output came with
+    the previous run's Diagnostics."""
+    from website.lib.conversions import accept_history
+
+    owner = _make_user(email="owner@test.test")
+    conv = _make_conversion(misp_event, owner_id=owner.id, output="OLD-OUTPUT")
+    conv.diagnostics = {"warnings": {}, "errors": {},
+                        "counts": {"warnings": 0, "errors": 0}}
+    fresh = {"warnings": {"misp event": ["sanitised tag value"]}, "errors": {},
+             "counts": {"warnings": 1, "errors": 0}}
+    history = _make_history(conv, new_output="NEW-OUTPUT", diagnostics=fresh)
+
+    accept_history(owner, history)
+
+    assert conv.diagnostics == fresh
 
 
 def test_owner_reject_leaves_params_untouched(app_db, misp_event):

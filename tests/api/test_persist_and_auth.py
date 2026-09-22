@@ -69,6 +69,24 @@ def test_anonymous_persist_returns_envelope_and_writes_row_with_null_user(api_db
     assert row.user_id is None
 
 
+def test_persist_envelope_and_row_carry_the_same_diagnostics(
+    api_db_client, duplicated_id_bundle
+):
+    """The envelope's `diagnostics` is what was stored, not a second reading of
+    the conversion: the catalogue row and the response must agree about whether
+    the saved document is a faithful rendering of its input."""
+    resp = api_db_client.post(
+        "/api/convert/stix_to_misp?persist=true", json=duplicated_id_bundle
+    )
+
+    assert resp.status_code == 200
+    from website.db_class.db import Conversion
+
+    row = Conversion.query.first()
+    assert resp.get_json()["diagnostics"] == row.diagnostics
+    assert row.diagnostics["warnings"][duplicated_id_bundle["id"]]
+
+
 def test_authenticated_persist_records_owner(api_db_client, misp_event):
     user = _make_user("valid-key-123")
 

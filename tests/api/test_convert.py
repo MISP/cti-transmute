@@ -176,11 +176,13 @@ def test_build_params_coerces_present_bool_flag_to_true():
     # Query-string convention: a key is present or absent, never None.
     # A present bool flag arrives with no parseable value (web UI sends "") and
     # is coerced to True; an absent flag falls back to the model default; an int
-    # arrives as a string and Pydantic coerces it; the `persist` transport flag
-    # is dropped, not treated as a param.
+    # arrives as a string and Pydantic coerces it; the `persist` and
+    # `diagnostics` transport flags are dropped, not treated as params — were
+    # they not, the model's extra="forbid" would reject the whole request.
     params = MispStixConverter._build_params(
         StixToMispParams,
-        {"galaxies_as_tags": "", "distribution": "3", "persist": "true"},
+        {"galaxies_as_tags": "", "distribution": "3", "persist": "true",
+         "diagnostics": "true"}
     )
 
     assert params.galaxies_as_tags is True   # present -> True
@@ -211,6 +213,62 @@ def test_unknown_param_name_is_rejected_naming_the_key(client, stix_bundle):
 
     assert resp.status_code == 400
     assert "sharing_group" in resp.get_json()["fields"]
+
+
+# --- Diagnostics: headers always, body only when asked for ------------------
+
+def test_default_body_stays_the_bare_document_when_diagnostics_exist(
+    client, duplicated_id_bundle
+):
+    """The stateless body *is* the converted document, and a conversion that
+    reported something must not change that — every existing client parses the
+    document straight out of the body."""
+    resp = client.post("/api/convert/stix_to_misp", json=duplicated_id_bundle)
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["info"] == "TDD fixture event"
+    assert "conversion" not in body and "diagnostics" not in body
+
+
+def test_count_headers_carry_the_totals_on_a_reporting_conversion(
+    client, duplicated_id_bundle
+):
+    resp = client.post("/api/convert/stix_to_misp", json=duplicated_id_bundle)
+
+    assert int(resp.headers["X-Transmute-Warnings"]) >= 1
+    assert resp.headers["X-Transmute-Errors"].isdigit()
+
+
+def test_clean_conversion_sends_neither_count_header(client, misp_event):
+    """Both headers or neither: a client that sees one can read the other
+    without special-casing an absent header."""
+    resp = client.post("/api/convert/misp_to_stix", json=misp_event)
+
+    assert resp.status_code == 200
+    assert "X-Transmute-Warnings" not in resp.headers
+    assert "X-Transmute-Errors" not in resp.headers
+
+
+def test_diagnostics_flag_wraps_the_document_in_an_envelope(
+    client, duplicated_id_bundle
+):
+    """The opt-in envelope carries the messages themselves, keyed by the
+    identifier they concern — the counts in the headers only say how many."""
+    duplicated_id = next(
+        obj["id"] for obj in duplicated_id_bundle["objects"]
+        if obj["type"] == "indicator"
+    )
+
+    resp = client.post(
+        "/api/convert/stix_to_misp?diagnostics=true", json=duplicated_id_bundle
+    )
+
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["conversion"]["info"] == "TDD fixture event"
+    warnings = body["diagnostics"]["warnings"][duplicated_id_bundle["id"]]
+    assert any(duplicated_id in message for message in warnings)
 
 
 def test_persist_flag_is_not_treated_as_a_param(api_db_client, stix_bundle):
