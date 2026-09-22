@@ -2,6 +2,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/difference.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/diagnostics.css') }}">
 <link id="hljs-theme" rel="stylesheet" href="">
 <style>
     .params-table td, .params-table th { padding: .3rem .5rem; vertical-align: top; }
@@ -139,6 +140,15 @@
             </template>
         </div>
 
+        <!-- The new version's own Diagnostics, not a diff of them: the page
+             compares outputs, and a Diagnostic explains the output beside it
+             rather than being one more thing that moved. -->
+        <diagnostics-panel
+            :diagnostics="historyObj.diagnostics"
+            title="Diagnostics of this version"
+            missing-text="Diagnostics not recorded — this re-run predates Diagnostics tracking.">
+        </diagnostics-panel>
+
         <div class="diff-toolbar">
             <div class="diff-toolbar-group">
                 <span class="diff-toolbar-sep">Filter</span>
@@ -259,6 +269,7 @@
 <script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, computed, nextTick } = Vue;
     import { create_message } from '/static/js/toaster.js';
+    import DiagnosticsPanel from '/static/js/diagnosticsPanel.js';
 
     function applyHljsTheme() {
         const isDark = document.documentElement.classList.contains('dark-mode');
@@ -269,7 +280,7 @@
     applyHljsTheme();
     document.getElementById('theme-toggle')?.addEventListener('click', () => setTimeout(applyHljsTheme, 50));
 
-    createApp({
+    const app = createApp({
         delimiters: ['[[', ']]'],
         setup() {
             const old_result = ref({{ old_result | tojson | safe }});
@@ -559,6 +570,8 @@
                 copyText, formatDateTime, paramsState, fmtParam
             };
         }
-    }).mount('#main-containers');
+    });
+    app.component('diagnostics-panel', DiagnosticsPanel);
+    app.mount('#main-containers');
 </script>
 {% endblock %}

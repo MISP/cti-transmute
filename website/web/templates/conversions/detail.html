@@ -2,6 +2,7 @@
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/diagnostics.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='pivotick/pivotick.css') }}">
 <link id="hljs-theme" rel="stylesheet" href="">
 <script src="/static/pivotick/pivotick.iife.js"></script>
@@ -238,6 +239,13 @@
                 </div>
             </div>
         </div>
+
+        <!-- What the conversion reported about its own output. Collapsed: a
+             clean conversion has nothing to say, and most are clean. -->
+        <diagnostics-panel
+            :diagnostics="conversion.diagnostics"
+            :collapsible="true">
+        </diagnostics-panel>
 
         <tag-input
             :conversion-id="{{ conversion.id }}"
@@ -924,6 +932,7 @@
     import PushConversionToMISP from '/static/js/misp/pushConversionToMISP.js';
     import ConversionSunburst from '/static/js/graph/conversionSunburst.js';
     import ConversionTable from '/static/js/graph/conversionTable.js';
+    import DiagnosticsPanel from '/static/js/diagnosticsPanel.js';
     // Delegated because Vue's in-DOM mount recreates these nodes, dropping any
     // listener attached to them directly (and CSP forbids inline on*= handlers).
     const GRAPH_TOOLBAR_ACTIONS = {
@@ -1595,6 +1604,7 @@
     app.component('push-conversion-to-misp', PushConversionToMISP)
     app.component('conversion-sunburst', ConversionSunburst)
     app.component('conversion-table', ConversionTable)
+    app.component('diagnostics-panel', DiagnosticsPanel)
     app.mount('#main-containers')
 
     // Auto-activate evaluation tab (sessionStorage from overview or #eval-tab hash)

@@ -26,6 +26,7 @@ from website.lib.conversions import add_comment as add_comment_use_case
 from website.lib.conversions import bulk_action as bulk_action_use_case
 from website.lib.conversions import push_to_misp as push_to_misp_use_case
 from website.lib.conversions import report_conversion as report_conversion_use_case
+from website.lib.diagnostics import reported_counts
 from website.lib.exceptions import PermissionDenied, PersistenceFailed, ValidationFailed
 from website.lib.misp import (
     MispAuthFailed, MispError, MispHttpError, MispUnreachable,
@@ -103,6 +104,23 @@ def _conversion_error_message(exc) -> str:
     if isinstance(exc, PersistenceFailed):
         return "The conversion succeeded but could not be saved. Please try again."
     return f"Conversion failed: {exc}"
+
+
+def _diagnostics_note(diagnostics) -> str:
+    """" with N warnings, M errors" when the conversion reported something.
+
+    Empty for a clean conversion, so the message it is appended to reads as it
+    always did; a Conversion that altered its input says so in the same breath
+    as the success it is announcing.
+    """
+    reported = reported_counts(diagnostics)
+    if reported is None:
+        return ""
+    warnings, errors = reported
+    return (
+        f" with {warnings} warning{'' if warnings == 1 else 's'}, "
+        f"{errors} error{'' if errors == 1 else 's'}"
+    )
 
 
 def _status_for_conversion_error(exc: ConversionError) -> int:
@@ -210,7 +228,11 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
         if tag_ids:
             TagsModel.save_conversion_tags(conversion.id, tag_ids, current_user.id)
 
-    flash(f"Converted to {target.upper()} successfully!", "success")
+    flash(
+        f"Converted to {target.upper()} successfully"
+        f"{_diagnostics_note(conversion.diagnostics)}!",
+        "success"
+    )
     return jsonify({
         "url": url_for("conversions.detail", id=conversion.id),
         "id": conversion.id,
@@ -886,13 +908,17 @@ def refresh(uuid):
             _status_for_conversion_error(exc)
         )
 
+    # Output-only comparison: a re-run that produced the same document is
+    # "identical" even if it reported Diagnostics this time, so the flag keeps
+    # answering the one question the diff page asks of it.
     identical = (
         (conversion_obj.output_text or "").strip()
         == (history.new_output_text or "").strip()
     )
     message = (
-        "Conversion re-executed successfully! No changes detected." if identical
-        else "Conversion re-executed successfully! Changes detected."
+        "Conversion re-executed successfully"
+        f"{_diagnostics_note(history.diagnostics)}! "
+        f"{'No changes detected.' if identical else 'Changes detected.'}"
     )
     return jsonify({
         "message": message,

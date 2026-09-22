@@ -1,0 +1,42 @@
+/* The Diagnostics panel, shared by the Conversion detail page and the
+   version-difference page - both render the same blob the same way. */
+.diag-toggle {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    text-align: left;
+}
+.diag-toggle > .fas { font-size: .7rem; color: var(--text-3); }
+.diag-badge {
+    padding: .1rem .5rem;
+    border-radius: var(--radius-sm);
+    background: rgba(245, 158, 11, .16);
+    color: var(--text-2);
+    font-size: .7rem;
+    font-weight: 600;
+}
+.diag-missing { color: var(--text-3); font-style: italic; font-size: .875rem; }
+.diag-group-title {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.diag-group-title.diag-warnings { color: #b45309; }
+.diag-group-title.diag-errors   { color: #b91c1c; }
+.diag-identifier {
+    font-size: .75rem;
+    color: var(--text-2);
+    word-break: break-all;
+}
+.diag-messages {
+    margin: .25rem 0 0;
+    padding-left: 1.25rem;
+    font-size: .82rem;
+    color: var(--text-2);
+}
