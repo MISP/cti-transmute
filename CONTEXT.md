@@ -27,6 +27,20 @@ to the target tool, not to cti-transmute. One schema per Converter is the single
 source the API validation, the web form, and the MISP view all render from.
 _Avoid_: form definition, reqparse model, param spec.
 
+## Diagnostics
+
+What a **Converter** reports about a conversion that **succeeded** with an
+altered or partial result. Two buckets, named as the underlying library names
+them: **warnings** (the output was altered - a sanitised tag value, a shadowed
+duplicate id, an object converted under an unknown template) and **errors**
+(one data structure, an attribute or an object, could not be converted as
+sent). Diagnostics ride on produced output and never mean the conversion
+failed; a failure is a conversion error, not a Diagnostic. A **Conversion**
+keeps the Diagnostics its output came with, so the catalogue says when a stored
+document is not a faithful rendering of its input.
+_Avoid_: report (that is an abuse report, or the STIX object), notices,
+traceback (misp-stix's CLI word for the same thing), parser warnings (in prose).
+
 ## Conversion
 
 The **persisted record** of a single submission: who submitted it, with
@@ -81,11 +95,11 @@ differently, but the use-case downstream treats all three uniformly.
 
 A re-run of an existing Conversion with potentially different parameters,
 producing a side-by-side old/new output that the owner can **accept** or
-**reject**. Accepting adopts the re-run onto the Conversion — its output
-and the parameters that produced it, as one unit; rejecting leaves the
-Conversion untouched. A ConversionHistory belongs to one Conversion.
-Refreshing a Conversion does not create a new Conversion; it appends a
-ConversionHistory entry.
+**reject**. Accepting adopts the re-run onto the Conversion — its output,
+the parameters that produced it, and the Diagnostics it came with, as one
+unit; rejecting leaves the Conversion untouched. A ConversionHistory belongs
+to one Conversion. Refreshing a Conversion does not create a new Conversion;
+it appends a ConversionHistory entry.
 
 ## Activity log
 

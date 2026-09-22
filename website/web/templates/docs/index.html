@@ -34,6 +34,7 @@
                 <a class="dc-toc-link" href="#api-m2s">MISP → STIX</a>
                 <a class="dc-toc-link" href="#api-s2m">STIX → MISP</a>
                 <a class="dc-toc-link" href="#api-persist">Persistence</a>
+                <a class="dc-toc-link" href="#api-diagnostics">Diagnostics</a>
             </div>
         </div>
         <div class="dc-toc-section">
@@ -693,11 +694,63 @@ website/
                     </div>
                     <pre><code class="language-json">{
     "conversion": { "type": "bundle", "id": "bundle--...", "objects": [ "..." ] },
+    "diagnostics": { "warnings": { }, "errors": { }, "counts": { "warnings": 0, "errors": 0 } },
     "id": 42,
     "uuid": "5bf21cfe-487e-431d-9514-773a9365cde1",
     "url": "/conversions/42"
 }</code></pre>
                 </div>
+            </div>
+
+            <!-- Diagnostics -->
+            <div class="dc-subsection" id="api-diagnostics">
+                <div class="dc-subsection-title">What the conversion reported — <code>?diagnostics=true</code></div>
+                <p class="dc-lead">
+                    A conversion can succeed and still alter what it was given — a sanitised tag value,
+                    a duplicated STIX id whose last occurrence wins, an object converted under an unknown
+                    template. The converter reports those as <strong>Diagnostics</strong>:
+                    <code>warnings</code> (the output was altered) and <code>errors</code> (one attribute
+                    or object could not be converted as sent). Neither means the conversion failed — a
+                    conversion that produced output is a <strong>200</strong>.
+                </p>
+                <p class="dc-lead">
+                    Both convert routes return the totals in headers, and only when there is something
+                    to report — both together, or neither:
+                </p>
+                <div class="dc-code-block">
+                    <div class="dc-code-head">
+                        <span class="dc-code-label"><i class="fas fa-arrow-down"></i> Response headers</span>
+                    </div>
+                    <pre><code>X-Transmute-Warnings: 3
+X-Transmute-Errors: 0</code></pre>
+                </div>
+                <p class="dc-lead">
+                    Add <code>?diagnostics=true</code> for the messages themselves. The body then wraps
+                    the document instead of being it; without the flag it is unchanged.
+                </p>
+                <div class="dc-code-block">
+                    <div class="dc-code-head">
+                        <span class="dc-code-label"><i class="fas fa-arrow-down"></i> Response (?diagnostics=true)</span>
+                        <button class="dc-code-copy"><i class="fas fa-copy"></i> Copy</button>
+                    </div>
+                    <pre><code class="language-json">{
+    "conversion": { "Event": { "info": "...", "...": "..." } },
+    "diagnostics": {
+        "warnings": { "bundle--...": [ "Duplicate STIX object id: indicator--..." ] },
+        "errors": { },
+        "counts": { "warnings": 1, "errors": 0 }
+    }
+}</code></pre>
+                </div>
+                <p class="dc-lead">
+                    Messages are grouped by the identifier they concern and come through verbatim. Long
+                    error lists are capped with a trailing "… and N more" entry; the header counts are
+                    taken before the cap, so they stay honest. A persisted Conversion keeps its
+                    Diagnostics — in the persist envelope, in
+                    <code>GET /api/conversions/&lt;id&gt;</code> and its <code>/history</code>, and on the
+                    Conversion's detail page. Rows saved before Diagnostics existed read <code>null</code>
+                    — "not recorded", not "clean".
+                </p>
             </div>
         </section>
 

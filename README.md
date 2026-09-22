@@ -145,6 +145,59 @@ instead returns the envelope described in
 [API authentication and persistence](#api-authentication-and-persistence) —
 the converted document plus the identifiers of the saved Conversion.
 
+## Diagnostics
+
+A conversion can succeed and still alter what it was given: a tag value
+sanitised, a duplicated STIX id whose last occurrence wins, an object converted
+under an unknown template, an attribute that could not be mapped as sent. The
+converter reports those as **Diagnostics** — two buckets, `warnings` (the
+output was altered) and `errors` (one attribute or object could not be
+converted as sent). Neither means the conversion failed: a conversion that
+produced output is a **200**, and a real failure is still the 4xx/5xx described
+above.
+
+Both convert routes return the totals in headers, and only when there is
+something to say:
+
+```
+X-Transmute-Warnings: 3
+X-Transmute-Errors: 0
+```
+
+Both headers are sent together, or neither. To get the messages themselves, add
+**`?diagnostics=true`** — the body then wraps the document instead of being it:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d "@/path/to/stix_bundle.json" \
+"https://cti-transmute.org/api/convert/stix_to_misp?diagnostics=true"
+```
+
+```json
+{
+  "conversion": { "Event": { "info": "...", "...": "..." } },
+  "diagnostics": {
+    "warnings": {
+      "bundle--a6ef17d6-91cf-4b34-9b3e-1c2d3e4f5a6b": [
+        "Duplicate STIX object id: indicator--... - only the last occurrence is parsed"
+      ]
+    },
+    "errors": {},
+    "counts": { "warnings": 1, "errors": 0 }
+  }
+}
+```
+
+The messages are the converter's own, grouped by the identifier they concern
+(the bundle or the MISP event), and come through verbatim. Long error lists are
+capped with a trailing "… and N more" entry, but the header counts are taken
+before the cap, so they stay honest. Without the flag the body is unchanged —
+byte for byte what it has always been.
+
+A persisted Conversion keeps the Diagnostics its output came with: they are in
+the `?persist=true` envelope, in `GET /api/conversions/<id>` and its
+`/history`, and on the Conversion's detail page. Rows saved before Diagnostics
+existed read `null` — "not recorded", not "clean".
+
 ## API authentication and persistence
 
 The same conversion endpoint supports three flows, from throwaway one-liner to
@@ -194,6 +247,11 @@ payload plus the saved Conversion's identifiers:
     "type": "bundle",
     "id": "bundle--a6ef17d6-91cf-4b34-9b3e-1c2d3e4f5a6b",
     "objects": [ "..." ]
+  },
+  "diagnostics": {
+    "warnings": { "bundle--...": [ "..." ] },
+    "errors": {},
+    "counts": { "warnings": 2, "errors": 0 }
   },
   "id": 42,
   "uuid": "5bf21cfe-487e-431d-9514-773a9365cde1",
@@ -247,13 +305,15 @@ Narrow the list with query params: `q` (search), `search_scope`
 `date_to` (`YYYY-MM-DD`), `sort` (`asc`/`desc`), `visibility` (`public`/`private`),
 `mine`, and `type`.
 
-* *Fetch one Conversion in full* (input, output, and the params it ran with):
+* *Fetch one Conversion in full* (input, output, the params it ran with, and
+  its `diagnostics`):
 
 ```bash
 curl -H "X-API-KEY: <your-api-key>" https://cti-transmute.org/api/conversions/42
 ```
 
-* *Read a Conversion's accepted re-run history* (the diff timeline):
+* *Read a Conversion's accepted re-run history* (the diff timeline; each entry
+  carries the `diagnostics` its own output came with):
 
 ```bash
 curl -H "X-API-KEY: <your-api-key>" https://cti-transmute.org/api/conversions/42/history
