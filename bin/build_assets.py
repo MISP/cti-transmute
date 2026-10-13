@@ -21,11 +21,16 @@ PIVOTICK_STATIC = ROOT / "website" / "web" / "static" / "pivotick"
 
 # The page loads the IIFE build (`pivotick.iife.js` + `pivotick.css`, see
 # templates/conversions/detail.html), so the ES build is dropped rather than
-# served: `pivotick.es.js` is only an entry point re-exporting a hashed
-# `index-*.js` chunk for bundler consumers, and shipping it meant either
-# committing ~680 KB nothing loads or leaving the entry pointing at a file
-# absent from the repository (which is what it did until 1.5.0).
-ES_BUILD_GLOBS = ("pivotick.es.js", "index-*.js", "SimulationWorker-*.js")
+# served: `pivotick.es.js` is only an entry point re-exporting the `chunks/`
+# bundles for bundler consumers, and shipping it meant either committing a
+# megabyte nothing loads or leaving the entry pointing at a file absent from
+# the repository (which is what it did until 1.5.0).
+ES_BUILD_GLOBS = ("pivotick.es.js",)
+
+# `chunks/` holds what the ES entry re-exports; `types/` is the `.d.ts` bundle
+# the package ships for TypeScript consumers. Neither is reachable from a
+# <script> tag, and together they are ~2 MB of the build.
+DROPPED_DIRS = ("chunks", "types")
 
 
 def main() -> None:
@@ -39,11 +44,16 @@ def main() -> None:
         shutil.rmtree(PIVOTICK_STATIC)
     shutil.copytree(PIVOTICK_DIST, PIVOTICK_STATIC)
 
-    print("→ Dropping the ES build (the page loads the IIFE)…")
+    print("→ Dropping the ES build and the type declarations (the page loads the IIFE)…")
     for pattern in ES_BUILD_GLOBS:
         for f in sorted(PIVOTICK_STATIC.glob(pattern)):
             f.unlink()
             print(f"  Removed {f.name}")
+    for name in DROPPED_DIRS:
+        directory = PIVOTICK_STATIC / name
+        if directory.is_dir():
+            shutil.rmtree(directory)
+            print(f"  Removed {name}/")
 
     print("\n✓ Done. Remember to commit the updated static/pivotick/ files.")
 
