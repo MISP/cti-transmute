@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
+import ipaddress
 import os
 import secrets
 from importlib.metadata import version as _dist_version
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
-from flask import Flask, g, request, url_for
+from flask import Flask, g, jsonify, request, url_for
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from flask_session import Session
@@ -72,6 +74,74 @@ application.config["SESSION_COOKIE_SECURE"] = _secure_cookies
 application.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 application.config["REMEMBER_COOKIE_SECURE"] = _secure_cookies
 application.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
+
+
+# What a failed CSRF check tells the reader. An instance served over plain
+# HTTP at an IP or hostname keeps the Secure flag set above, the browser then
+# refuses to store the cookie, no session forms, and every POST fails this
+# check - so for that deployment the stock "reload" advice is a loop with no
+# way out, and the cause has to be named instead.
+_DROPPED_SECURE_COOKIE_MESSAGE = (
+    "No session cookie was received. This site marks its session cookie "
+    "Secure, and browsers only keep Secure cookies over HTTPS. Serve the site "
+    "over HTTPS, or set SESSION_COOKIE_SECURE=false if it is only reachable "
+    "on a trusted network."
+)
+
+
+def _is_loopback_host() -> bool:
+    """Whether the browser would treat this origin as trustworthy anyway.
+
+    Browsers exempt loopback from the HTTPS requirement, so a ``Secure`` cookie
+    survives there over plain HTTP. The set mirrors the secure-context rule:
+    ``localhost`` and any ``.localhost`` name, ``127.0.0.0/8``, and ``::1``.
+    """
+    host = urlsplit(request.host_url).hostname or ""
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _session_cookie_was_dropped() -> bool:
+    """Whether the browser refused to keep the session cookie.
+
+    True only when all of these hold: the cookie is stamped ``Secure``, the
+    origin is not one the browser treats as secure, and nothing came back.
+    A TLS-terminating proxy sets ``X-Forwarded-Proto``, which `ProxyFix`
+    applies, so an ordinary HTTPS install never reaches this.
+    """
+    return (
+        application.config["SESSION_COOKIE_SECURE"]
+        and not request.is_secure
+        and not _is_loopback_host()
+        and application.config["SESSION_COOKIE_NAME"] not in request.cookies
+    )
+
+
+def _csrf_failure_message(exc: CSRFError) -> str:
+    """Why the CSRF check failed, in terms the reader can act on."""
+    if _session_cookie_was_dropped():
+        return _DROPPED_SECURE_COOKIE_MESSAGE
+    return f"{exc.description} Reload the page and try again."
+
+
+@application.errorhandler(CSRFError)
+def _handle_csrf_error(exc: CSRFError):
+    """Answer a fetch/JSON caller's CSRF failure with the `{error}` envelope.
+
+    Flask-WTF's default is an HTML page. The pages that submit by fetch read
+    the body as JSON and fall back to a bare "HTTP 400" when that parse fails,
+    which hides both the cause and the remedy. Classic form posts - the login
+    page among them - keep the HTML page, carrying the same explanation.
+    """
+    message = _csrf_failure_message(exc)
+    if request.is_json:
+        return jsonify({"error": message}), 400
+    exc.description = message
+    return exc.get_response()
 
 
 # Content-Security-Policy. Inline <script> blocks run only when stamped with
