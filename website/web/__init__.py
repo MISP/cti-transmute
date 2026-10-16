@@ -64,7 +64,6 @@ migrate.init_app(application, db, directory='website/migrations', render_as_batc
 login_manager.login_view = "account.login"
 login_manager.init_app(application)
 
-application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
 
 
