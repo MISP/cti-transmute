@@ -29,10 +29,18 @@ application.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://cti_user:
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 application.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 application.config['SESSION_TYPE'] = 'filesystem'
-session_file_dir = os.environ.get("SESSION_FILE_DIR")
-if session_file_dir:
-    Path(session_file_dir).mkdir(parents=True, exist_ok=True)
-    application.config["SESSION_FILE_DIR"] = session_file_dir
+
+# Where the session files live. flask-session's own fallback is
+# <cwd>/flask_session, so the store moves with however the process happened to
+# be launched: a service unit that sets its own WorkingDirectory reads an empty
+# directory and silently signs out every logged-in user, with nothing anywhere
+# to explain it. The default is therefore the checkout - the same directory
+# whatever the working directory is - with SESSION_FILE_DIR as the operator
+# override for an install that keeps state outside the code.
+_default_session_file_dir = Path(__file__).resolve().parents[2] / "flask_session"
+_session_file_dir = Path(os.environ.get("SESSION_FILE_DIR") or _default_session_file_dir)
+_session_file_dir.mkdir(parents=True, exist_ok=True)
+application.config["SESSION_FILE_DIR"] = str(_session_file_dir)
 
 # Flask 3.x defaults MAX_FORM_MEMORY_SIZE to 500 KB which rejects large MISP JSON payloads.
 # Set both limits to 50 MB to accommodate large events.
