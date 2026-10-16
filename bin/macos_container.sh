@@ -245,15 +245,15 @@ cat >/usr/local/bin/cti-transmute-run <<'RUN'
 set -e
 source /root/cti-transmute.env
 cd "$TRANSMUTE_HOME"
-exec uv run start_website
+exec uv run dev_server
 RUN
 chmod +x /usr/local/bin/cti-transmute-run
 
-if command -v pgrep >/dev/null 2>&1 && pgrep -f 'start_website' >/dev/null 2>&1; then
+if command -v pgrep >/dev/null 2>&1 && pgrep -f 'dev_server' >/dev/null 2>&1; then
   echo "[start] cti-transmute already running"
 else
-  setsid nohup /usr/local/bin/cti-transmute-run >/opt/cti/start_website.log 2>&1 </dev/null &
-  echo "[start] cti-transmute launched (logs: /opt/cti/start_website.log)"
+  setsid nohup /usr/local/bin/cti-transmute-run >/opt/cti/dev_server.log 2>&1 </dev/null &
+  echo "[start] cti-transmute launched (logs: /opt/cti/dev_server.log)"
 fi
 START
 
@@ -280,10 +280,10 @@ URL:
   http://127.0.0.1:$HOST_PORT
 
 Logs (inside the container):
-  container exec $NAME tail -f /opt/cti/start_website.log
+  container exec $NAME tail -f /opt/cti/dev_server.log
 
 Stop the server:
-  container exec $NAME pkill -f start_website
+  container exec $NAME pkill -f dev_server
 
 Open a shell:
   container exec -it $NAME bash
@@ -296,7 +296,7 @@ EOF
 
 [macos-container] Provisioned and launched, but the server did not answer on
 127.0.0.1:$HOST_PORT yet. It may still be starting — check the logs:
-  container exec $NAME tail -f /opt/cti/start_website.log
+  container exec $NAME tail -f /opt/cti/dev_server.log
 
 URL (once up):
   http://127.0.0.1:$HOST_PORT
