@@ -59,25 +59,64 @@ uv run manage start
 > ```
 > Then re-run `uv run manage init`.
 
+### Serving over plain HTTP
+
+Session cookies are stamped `Secure` by default, and browsers only keep a
+`Secure` cookie over HTTPS. `localhost` and `127.0.0.1` are exempt, so a local
+install needs nothing extra. An instance reached over plain HTTP at an IP or
+hostname is not exempt: the browser silently discards the cookie, no session
+ever forms, and logging in or converting anything fails. Add the opt-out to
+your `.env`:
+
+```bash
+SESSION_COOKIE_SECURE=false
+```
+
+Only do this when the instance is reachable solely from a network you trust -
+without `Secure`, the session cookie travels in clear text and anyone on the
+path can reuse it. Prefer HTTPS.
+
+Behind a TLS-terminating nginx or Apache, keep the default, and make sure the
+proxy forwards the original scheme — nginx does not do this on its own. The
+sample in [Reverse proxy](#reverse-proxy) does.
+
+Without that header the application sees plain HTTP, and sets a `Secure`
+cookie the browser will keep (the connection to it *is* HTTPS) while reporting
+the mismatch on any failed form submission.
+
+### Setting a secret key
+
+`SECRET_KEY` signs the session cookie. Unset, it falls back to a value
+published in this repository, which lets anyone forge a session for your
+instance. Set it in `.env` before exposing the service:
+
+```bash
+SECRET_KEY=$(openssl rand -hex 32)
+```
+
 ### Managing the service
 
 CTI-Transmute ships with a `manage` script that covers all day-to-day operations:
 
 ```bash
 uv run manage init     # First-time setup (submodules + deps + DB + migrations)
-uv run manage start    # Start the website
+uv run manage start    # Run the website in the foreground (development)
 uv run manage update   # Pull latest code + sync deps + run DB migrations
 uv run manage backup   # Backup the PostgreSQL database
-uv run manage deploy   # Full production deployment: backup → update → start
+uv run manage deploy   # backup → update → restart the systemd service
 uv run manage db       # Run flask db upgrade (or: db migrate, db downgrade…)
 uv run manage help     # Show all commands
 ```
 
-**Daily use** — just start the app:
+**Daily development** — run the app in your terminal:
 
 ```bash
 uv run manage start
 ```
+
+This is a **development command**: the server dies with your shell, and nothing
+starts it again. A production instance is owned by systemd instead — see
+[Running in production](#running-in-production).
 
 **After pulling new code** (migrations run automatically):
 
@@ -86,11 +125,132 @@ uv run manage update
 uv run manage start
 ```
 
-**Production deployment** (backup first, then update and restart):
+## Running in production
+
+`start_website` serves the application through **gunicorn** with a single
+threaded worker (`config/generic.json`'s `website_threads`, default 8). One
+worker is a constraint rather than a default to tune: bulk tag jobs keep their
+state in the worker's memory, and a second worker process cannot see them.
+
+### The listen address is not a firewall
+
+The service binds **`0.0.0.0`** by default (`website_listen_ip` in
+`config/generic.json`), so a fresh install is reachable on port 6868 from
+anywhere that can route to the host. **Do not expose that port directly.** It
+speaks plain HTTP, terminates no TLS and rate-limits nothing; put it behind the
+reverse proxy and let only the proxy reach it. Nothing in the code can enforce
+this — it is the operator's firewall:
 
 ```bash
-uv run manage deploy
+# Example: only the proxy host may reach the application port
+sudo ufw allow from <proxy-ip> to any port 6868 proto tcp
+sudo ufw deny 6868/tcp
 ```
+
+When the proxy runs on the same host, the simpler answer is to bind loopback —
+set `"website_listen_ip": "127.0.0.1"` in `config/generic.json` and restart.
+
+### The systemd unit
+
+No unit ships with the repository: the user, the paths and the
+`WorkingDirectory` differ on every install. Write
+`/etc/systemd/system/cti-transmute.service` with the values of yours —
+`/opt/cti-transmute` and the `cti-transmute` user below are placeholders:
+
+```ini
+[Unit]
+Description=CTI-Transmute
+Wants=network-online.target
+After=network-online.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=cti-transmute
+Group=cti-transmute
+WorkingDirectory=/opt/cti-transmute
+Environment=TRANSMUTE_HOME=/opt/cti-transmute
+Environment=PYTHONUNBUFFERED=1
+# gunicorn 25.1+ puts its control socket in $XDG_RUNTIME_DIR, falling back to
+# $HOME/.gunicorn. Harmless to omit - the socket is optional and its failure is
+# only logged - but a service account with no writable home logs it at every
+# start.
+RuntimeDirectory=cti-transmute
+Environment=XDG_RUNTIME_DIR=/run/cti-transmute
+ExecStart=/opt/cti-transmute/.venv/bin/start_website
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- `ExecStart` is the console script inside the virtualenv `uv sync` created, by
+  its absolute path — systemd hands the unit the system `PATH`, which has no
+  virtualenv on it.
+- `Requires=postgresql.service` belongs there only while the database is on the
+  same host. With PostgreSQL elsewhere, drop that line and the
+  `postgresql.service` in `After=`, or the unit refuses to start.
+- `TRANSMUTE_HOME` is read before the application loads your `.env`, so the unit
+  has to carry it. `SECRET_KEY` and the rest stay in the `.env` in the checkout.
+- `Restart=always` is the point of the exercise — a worker that dies is
+  replaced, and the service comes back after a reboot.
+- gunicorn logs every request to standard output, which journald collects.
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now cti-transmute.service   # start, and start on boot
+sudo systemctl status cti-transmute.service
+sudo systemctl restart cti-transmute.service
+sudo journalctl -u cti-transmute.service -f         # live log
+```
+
+### Reverse proxy
+
+A TLS-terminating nginx in front of the service:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name cti-transmute.example.org;
+
+    # ssl_certificate / ssl_certificate_key …
+
+    # Large MISP events: the application accepts 50 MB, nginx defaults to 1 MB
+    # and would reject them with a 413 before the request ever arrives.
+    client_max_body_size 50m;
+
+    location / {
+        proxy_pass http://127.0.0.1:6868;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        # Without this the application believes it is serving plain HTTP, and
+        # sends no HSTS header on any response.
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Conversions run inside the request; matches gunicorn's --timeout.
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+### Deploying an update
+
+```bash
+uv run manage deploy     # backup → git pull + uv sync + migrations → restart
+```
+
+Run it as the user who owns the checkout, **not** under `sudo` — `git pull` and
+`uv sync` as root leave root-owned files behind. The restart is the one step
+that needs privilege, so it is run as `sudo systemctl restart
+cti-transmute.service` and will ask for your password; deploying as root skips
+the `sudo`.
+
+On a host with no such unit — a container, a Docker image — the new code is put
+in place and the restart command you still have to run is printed, rather than
+a second server being started against the port the first one holds.
 
 ## Query Examples
 
