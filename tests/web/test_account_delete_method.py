@@ -19,7 +19,7 @@ import pytest
 @pytest.fixture
 def web_client(app_db):
     """Account blueprint mounted on the SQLite-backed app, mirroring
-    ``bin/start_website.py`` (url_prefix ``/account``)."""
+    ``website/app.py`` (url_prefix ``/account``)."""
     from website.web import application
     from website.web.account.account import account_blueprint
 

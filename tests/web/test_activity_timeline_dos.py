@@ -32,7 +32,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def eval_client(app_db):
     """Evaluate blueprint mounted on the SQLite-backed app, mirroring
-    ``bin/start_website.py`` (``url_prefix="/evaluate"``)."""
+    ``website/app.py`` (``url_prefix="/evaluate"``)."""
     from website.web import application
 
     application.config["TESTING"] = True

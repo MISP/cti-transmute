@@ -17,7 +17,7 @@ import pytest
 def web_client(app_db):
     """DB-backed Flask test client with the conversions + account blueprints.
 
-    Mirrors ``bin/start_website.py`` (account is needed so ``@login_required``
+    Mirrors ``website/app.py`` (account is needed so ``@login_required``
     can build the ``account.login`` redirect). CSRF is disabled so the POST
     moderation routes can be driven without a token.
     """

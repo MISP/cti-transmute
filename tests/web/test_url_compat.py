@@ -16,7 +16,7 @@ import pytest
 @pytest.fixture
 def web_client():
     """Flask test client with the conversions web blueprint + the legacy
-    ``/convert`` redirect shim mounted, mirroring ``bin/start_website.py``.
+    ``/convert`` redirect shim mounted, mirroring ``website/app.py``.
     """
     from website.web import application
     from website.web.conversions.conversions import (

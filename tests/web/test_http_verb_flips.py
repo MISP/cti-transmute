@@ -24,7 +24,7 @@ import pytest
 @pytest.fixture
 def web_client(app_db):
     """Conversions blueprint mounted on the SQLite-backed app, mirroring
-    ``bin/start_website.py``. ``app_db`` supplies the schema + live app context."""
+    ``website/app.py``. ``app_db`` supplies the schema + live app context."""
     from website.web import application
     from website.web.conversions.conversions import conversions_blueprint
 

@@ -13,7 +13,7 @@ import pytest
 @pytest.fixture
 def full_web_client():
     """Flask test client with every web blueprint + the API mounted,
-    mirroring ``bin/start_website.py`` (base.html url_for's across features,
+    mirroring ``website/app.py`` (base.html url_for's across features,
     so rendering any page needs them all registered)."""
     from website.api import api_blueprint
     from website.web import application
