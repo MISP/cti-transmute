@@ -7,10 +7,10 @@ Usage:
 
 Commands:
     init      First-time setup on a new machine (submodules + deps + DB)
-    start     Start the website (applies pending DB migrations first)
+    start     Run the website in the foreground (development)
     update    Pull latest code + sync deps + run DB migrations
     backup    Backup the PostgreSQL database
-    deploy    Full deployment: backup + update + start
+    deploy    Full deployment: backup + update + restart the service
     db        Run Flask-Migrate commands (upgrade by default)
     help      Show this help message
 """
@@ -18,6 +18,7 @@ Commands:
 import datetime
 import os
 import secrets
+import shutil
 import string
 import subprocess
 import sys
@@ -25,6 +26,13 @@ from pathlib import Path
 
 ROOT    = Path(__file__).resolve().parent.parent
 VENV_UV = ["uv", "run"]
+
+# The unit documented in README.md, and the one both dev-container
+# provisioners generate.
+SERVICE_NAME = "cti-transmute.service"
+# Present only where systemd is PID 1: a container image can ship systemctl
+# without ever running systemd.
+SYSTEMD_MARKER = Path("/run/systemd/system")
 
 # ── Database config ───────────────────────────────────────────────────────────
 DB_USER     = "cti_user"
@@ -98,8 +106,10 @@ def cmd_help() -> None:
               {D}  init submodules → sync deps → create DB → run migrations{R}
               {D}→ Run once right after cloning the repo{R}
 
-  {G}start{R}     {D}Start the website (applies pending DB migrations first){R}
-              {D}→ Use this every time you want to run the app{R}
+  {G}start{R}     {D}Run the website in the foreground (applies pending DB migrations first){R}
+              {D}→ Development command: it dies with your shell and nothing{R}
+              {D}  restarts it. In production the systemd unit owns the service{R}
+              {D}  — see the deployment section of README.md{R}
 
   {G}update{R}    {D}Pull latest code from git + sync deps + run DB migrations{R}
               {D}→ Use this after someone pushed new code{R}
@@ -108,8 +118,9 @@ def cmd_help() -> None:
               {D}→ Use this before any risky operation{R}
 
   {G}deploy{R}    {D}Full deployment in one command:{R}
-              {D}  backup → update → start{R}
+              {D}  backup → update → systemctl restart {SERVICE_NAME}{R}
               {D}→ Use this on your production server{R}
+              {D}→ Without systemd it prints the restart command instead{R}
 
   {G}db{R}        {D}Run Flask-Migrate commands (defaults to 'upgrade'){R}
               {D}→ uv run manage db          # same as flask db upgrade{R}
@@ -133,7 +144,7 @@ def cmd_help() -> None:
   {G}uv run manage init{R}
   {G}uv run manage start{R}
 
-  {D}# Daily use — just start the app{R}
+  {D}# Daily development — run the app in this terminal{R}
   {G}uv run manage start{R}
 
   {D}# After a git push from your dev machine{R}
@@ -271,7 +282,8 @@ def cmd_init() -> None:
 
 
 def cmd_start() -> None:
-    header("Starting CTI-Transmute")
+    header("Starting CTI-Transmute (foreground — development)")
+    info("Nothing restarts this process; production runs it under systemd.")
     info("Making sure the database is on the latest migration…")
     _run_db_upgrade()
     try:
@@ -339,10 +351,64 @@ def cmd_update() -> None:
     _run_db_upgrade()
 
 
+def _service_is_supervised() -> bool:
+    """Whether systemd runs here and knows the unit.
+
+    Both halves matter: a Docker image can carry systemctl without systemd as
+    PID 1, and a host running systemd may never have been given the unit.
+    """
+    if not shutil.which("systemctl") or not SYSTEMD_MARKER.is_dir():
+        return False
+    probe = subprocess.run(
+        ["systemctl", "cat", SERVICE_NAME],
+        capture_output=True, text=True
+    )
+    return probe.returncode == 0
+
+
+def _restart_command() -> list[str]:
+    """The restart, elevated unless this process is already root.
+
+    A deploy runs as whoever owns the checkout - under root, git pull and
+    uv sync leave root-owned files behind - so the restart is the one step
+    that needs elevating, and polkit refuses it unelevated.
+    """
+    command = ["systemctl", "restart", SERVICE_NAME]
+    if os.geteuid() == 0 or not shutil.which("sudo"):
+        return command
+    return ["sudo", *command]
+
+
+def _restart_service() -> None:
+    """Hand the new code to the supervisor, or say that nobody took it.
+
+    Never silently skipped: a deploy that leaves the old code serving without a
+    word is worse than one that names what it did not do.
+    """
+    header("Restarting the service")
+    command = _restart_command()
+    printable = " ".join(command if command[0] == "sudo" else ["sudo", *command])
+
+    if not _service_is_supervised():
+        info(f"No systemd unit named {SERVICE_NAME} on this host.")
+        info("The new code is in place but nothing was restarted — restart")
+        info("the service yourself (see the deployment section of README.md):")
+        print(f"\n    {printable}\n")
+        return
+
+    result = run(command, check=False)
+    if result.returncode != 0:
+        error("Restart failed — the old code is still serving.")
+        info("Run it yourself, as root:")
+        print(f"\n    {printable}\n")
+        sys.exit(result.returncode)
+    ok(f"{SERVICE_NAME} restarted")
+
+
 def cmd_deploy() -> None:
     cmd_backup()
     cmd_update()
-    cmd_start()
+    _restart_service()
 
 
 def cmd_create_admin() -> None:
