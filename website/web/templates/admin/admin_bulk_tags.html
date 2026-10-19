@@ -281,14 +281,14 @@
             <div class="d-flex justify-content-between align-items-center mb-1">
               <span>
                 <span class="badge me-1"
-                      :style="{ background: job.type==='scan' ? 'var(--accent)' : job.type==='remove'||job.type==='clear' ? 'var(--danger)' : 'var(--success)', color:'#fff', fontSize:'0.68rem' }">
+                      :style="{ background: job.type==='scan' ? 'var(--accent)' : removalColor(job), color:'#fff', fontSize:'0.68rem' }">
                   [[ job.type ]]
                 </span>
                 <span style="font-family:monospace;font-size:0.72rem;color:var(--text-3);">#[[ job.id ]]</span>
               </span>
               <div class="d-flex align-items-center gap-2">
-                <span :style="{ color: job.status==='done' ? 'var(--success)' : job.status==='error' ? 'var(--danger)' : 'var(--accent)' }">
-                  <i :class="job.status==='done' ? 'fas fa-check-circle' : job.status==='error' ? 'fas fa-circle-xmark' : 'fas fa-spinner fa-spin'" class="me-1"></i>
+                <span :style="{ color: statusMeta(job).color }">
+                  <i :class="statusMeta(job).icon" class="me-1"></i>
                   [[ job.status ]]
                 </span>
                 <button type="button" @click="deleteJob(job.id)"
@@ -299,20 +299,23 @@
                 </button>
               </div>
             </div>
-            <!-- Progress bar -->
+            <!-- Progress bar: an interrupted job holds at the progress it reached -->
             <div style="background:var(--border);border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px;">
               <div :style="{ width: job.total > 0 ? (job.progress/job.total*100)+'%' : '0%',
-                             background: job.status==='done' ? (job.type==='remove'||job.type==='clear' ? 'var(--danger)' : 'var(--success)') : 'var(--accent)',
+                             background: progressColor(job),
                              height:'100%', transition:'width 0.3s' }"></div>
             </div>
             <div style="color:var(--text-3);">
               [[ job.progress ]]/[[ job.total ]]
-              <span v-if="job.added > 0" class="ms-1"
-                    :style="{ color: job.type==='remove'||job.type==='clear' ? 'var(--danger)' : 'var(--success)' }">
-                [[ job.type==='remove'||job.type==='clear' ? '-' : '+' ]][[ job.added ]]
+              <span v-if="job.affected > 0" class="ms-1"
+                    :style="{ color: removalColor(job) }">
+                [[ isRemoval(job) ? '-' : '+' ]][[ job.affected ]]
               </span>
               <span v-if="job.skipped > 0" class="ms-1">· [[ job.skipped ]] skipped</span>
-              <span v-if="job.errors && job.errors.length > 0" class="ms-1" style="color:var(--danger);">[[ job.errors.length ]] err</span>
+              <span v-if="job.error_count > 0" class="ms-1" style="color:var(--danger);">[[ job.error_count ]] err</span>
+            </div>
+            <div v-if="job.status === 'interrupted'" class="mt-1" style="color:var(--warning);">
+              Stopped before it finished. Re-running the same selection is safe.
             </div>
           </div>
         </div>
@@ -325,6 +328,22 @@
 
 <script type="module" nonce="{{ csp_nonce }}">
 const { createApp } = Vue;
+
+/* ── Job row metadata ──────────────────── */
+// The three states a job reads as. `interrupted` is derived server-side from a
+// stale heartbeat: the worker stopped reporting, usually because the service
+// restarted under it. It is not a failure - the four operations are
+// idempotent, so re-running the selection is safe.
+const STATUS_META = {
+    running:     { color: 'var(--accent)',  icon: 'fas fa-spinner fa-spin' },
+    done:        { color: 'var(--success)', icon: 'fas fa-check-circle' },
+    interrupted: { color: 'var(--warning)', icon: 'fas fa-circle-pause' }
+};
+
+// Polls that may miss the job before the panel calls the run over. loadJobs()
+// swallows fetch errors, so one miss can be a failed request rather than a
+// job that is gone.
+const MAX_MISSED_POLLS = 3;
 
 createApp({
     delimiters: ['[[', ']]'],
@@ -397,6 +416,25 @@ createApp({
     },
     methods: {
         formatDateTime: ctiDate.formatDateTime,
+
+        statusMeta(job) {
+            return STATUS_META[job.status] || STATUS_META.running;
+        },
+        // The job counts one number, `affected`; what it means is the job
+        // type's business, and the sign and the colour are ours.
+        isRemoval(job) {
+            return job.type === 'remove' || job.type === 'clear';
+        },
+        removalColor(job) {
+            return this.isRemoval(job) ? 'var(--danger)' : 'var(--success)';
+        },
+        // A finished bar takes the colour of what the job did; an unfinished
+        // one the colour of the state it stopped in.
+        progressColor(job) {
+            if (job.status === 'done') return this.removalColor(job);
+            return this.statusMeta(job).color;
+        },
+
         async loadConversions() {
             this.loading = true;
             try {
@@ -551,15 +589,23 @@ createApp({
         _startPolling(jid) {
             this.jobRunning = true;
             clearTimeout(this._pollTimer);
+            let missed = 0;
             const poll = async () => {
                 await this.loadJobs();
                 const job = this.jobs.find(j => j.id === jid);
-                if (job && job.status === 'done') {
-                    this.jobRunning = false;
-                    await this.loadConversions();
-                } else {
+                // Only `running` is worth another round: `done` and
+                // `interrupted` are both terminal. A job the list does not
+                // carry is either gone for good (dismissed, or trimmed) or a
+                // poll that failed, so give it a few tries before calling a
+                // run that may still be going finished.
+                if (job ? job.status === 'running' : ++missed <= MAX_MISSED_POLLS) {
                     this._pollTimer = setTimeout(poll, 1500);
+                    return;
                 }
+                // Interrupted work lands too, so the tag counts are stale
+                // either way.
+                this.jobRunning = false;
+                await this.loadConversions();
             };
             poll();
         },
