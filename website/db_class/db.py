@@ -584,6 +584,52 @@ class ConversionEvaluation(db.Model):
         }
 
 
+class BulkTagJob(db.Model):
+    """A bulk conversion-tag operation: its progress, counts and errors.
+
+    Durable across restarts, which the worker thread running it is not — a job
+    whose process died keeps its row at the last recorded progress. The
+    ``running`` / ``interrupted`` distinction is drawn from ``heartbeat_at`` at
+    read time in ``website/repos/bulk_tag_jobs.py``; the column itself only
+    ever says ``running`` or ``done``.
+    """
+    __tablename__ = "bulk_tag_job"
+
+    id           = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # the public id: it appears in URLs and audit entries, so it is a minted
+    # token rather than the sequential row counter
+    token        = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    job_type     = db.Column(db.String(20), nullable=False)   # scan|assign|remove|clear
+    status       = db.Column(db.String(20), nullable=False)   # running|done
+    total        = db.Column(db.Integer, nullable=False, default=0)
+    progress     = db.Column(db.Integer, nullable=False, default=0)
+    # tag associations added (scan, assign) or removed (remove, clear)
+    affected     = db.Column(db.Integer, nullable=False, default=0)
+    skipped      = db.Column(db.Integer, nullable=False, default=0)
+    errors       = db.Column(db.JSON, nullable=True)          # list[str], capped
+    # every error counts here, including the ones past the cap
+    error_count  = db.Column(db.Integer, nullable=False, default=0)
+    user_id      = db.Column(db.Integer, nullable=True)
+    created_at   = db.Column(db.DateTime, index=True, nullable=False)
+    heartbeat_at = db.Column(db.DateTime, nullable=False)
+
+    def to_json(self):
+        return {
+            "id":          self.token,
+            "type":        self.job_type,
+            "status":      self.status,
+            "total":       self.total,
+            "progress":    self.progress,
+            "affected":    self.affected,
+            # alias kept while the admin panel still reads "added"
+            "added":       self.affected,
+            "skipped":     self.skipped,
+            "errors":      self.errors or [],
+            "error_count": self.error_count,
+            "created_at":  utc_iso(self.created_at)
+        }
+
+
 class PlatformReview(db.Model):
     """Stores user ratings and comments about the CTI-Transmute platform itself."""
     __tablename__ = "platform_review"
