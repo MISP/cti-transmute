@@ -531,6 +531,8 @@ def admin_bulk_assign():
 @tags_blueprint.route("/admin/bulk_conversions/job/<job_id>", methods=["GET"])
 @login_required
 def admin_bulk_job_status(job_id):
+    """One job in full. This is where the per-item error messages live - the
+    list route omits them, so the panel asks here when an admin opens them."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
     job = jobs_repo.get(job_id)

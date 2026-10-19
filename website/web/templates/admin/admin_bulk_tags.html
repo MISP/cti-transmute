@@ -312,7 +312,34 @@
                 [[ isRemoval(job) ? '-' : '+' ]][[ job.affected ]]
               </span>
               <span v-if="job.skipped > 0" class="ms-1">· [[ job.skipped ]] skipped</span>
-              <span v-if="job.error_count > 0" class="ms-1" style="color:var(--danger);">[[ job.error_count ]] err</span>
+              <button v-if="job.error_count > 0" type="button" class="ms-1"
+                      @click="toggleErrors(job.id)"
+                      :title="errorsOpen(job.id) ? 'Hide the error messages' : 'Show the error messages'"
+                      style="background:none;border:none;padding:0;color:var(--danger);cursor:pointer;font-size:inherit;text-decoration:underline;">
+                [[ job.error_count ]] err
+                <i :class="errorsOpen(job.id) ? 'fas fa-caret-up' : 'fas fa-caret-down'"></i>
+              </button>
+            </div>
+            <!-- Error messages: fetched per job from the detail route, and
+                 interpolated as text - they carry exception output. -->
+            <div v-if="errorsOpen(job.id)" class="mt-1 p-2"
+                 style="background:var(--surface-2);border-radius:var(--radius-sm);">
+              <div v-if="jobErrors[job.id].loading" style="color:var(--text-3);">
+                <i class="fas fa-spinner fa-spin me-1"></i>Loading…
+              </div>
+              <div v-else-if="jobErrors[job.id].failed" style="color:var(--warning);">
+                Could not load the messages. The job may have been dismissed.
+              </div>
+              <template v-else>
+                <div v-for="(message, i) in jobErrors[job.id].messages" :key="i"
+                     style="font-family:monospace;font-size:0.72rem;color:var(--danger);word-break:break-word;">
+                  [[ message ]]
+                </div>
+                <div v-if="job.error_count > jobErrors[job.id].messages.length"
+                     class="mt-1" style="color:var(--text-3);font-style:italic;">
+                  Showing the first [[ jobErrors[job.id].messages.length ]] of [[ job.error_count ]].
+                </div>
+              </template>
             </div>
             <div v-if="job.status === 'interrupted'" class="mt-1" style="color:var(--warning);">
               Stopped before it finished. Re-running the same selection is safe.
@@ -375,6 +402,11 @@ createApp({
             _rmTagDebounce:   null,
 
             jobs:        [],
+            // The open error panels: job id -> { loading } | { messages } |
+            // { failed }. An entry is what "open" means. Kept apart from
+            // `jobs`, which every poll replaces wholesale: an open panel has
+            // to survive those.
+            jobErrors:   {},
             jobRunning:  false,
             _pollTimer:  null,
             _debounce:   null,
@@ -584,6 +616,34 @@ createApp({
         async deleteJob(jid) {
             await fetch(`/tags/admin/bulk_conversions/job/${jid}`, { method: 'DELETE' });
             this.jobs = this.jobs.filter(j => j.id !== jid);
+            delete this.jobErrors[jid];
+        },
+
+        errorsOpen(jid) {
+            return jid in this.jobErrors;
+        },
+
+        // The list payload carries no messages, so opening a job fetches them
+        // from the single-job route. Closing drops them: a job that gained
+        // errors since re-reads them on the next open. A read that did not
+        // land says so - a count with nothing under it would read as a job
+        // that failed quietly.
+        async toggleErrors(jid) {
+            if (this.errorsOpen(jid)) {
+                delete this.jobErrors[jid];
+                return;
+            }
+            this.jobErrors[jid] = { loading: true };
+            let messages = null;
+            try {
+                const r = await fetch(`/tags/admin/bulk_conversions/job/${jid}`);
+                const d = await r.json();
+                if (d.success) messages = d.job.errors || [];
+            } catch (e) {
+                console.error(e);
+            }
+            if (!this.errorsOpen(jid)) return;          // closed while in flight
+            this.jobErrors[jid] = messages ? { messages } : { failed: true };
         },
 
         _startPolling(jid) {

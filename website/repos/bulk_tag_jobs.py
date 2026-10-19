@@ -129,13 +129,21 @@ def remove(token: str, *, commit: bool = True) -> bool:
 # --- reads --------------------------------------------------------------------
 
 def get(token: str) -> dict | None:
-    """One job as the admin panel consumes it, interrupted verdict applied."""
+    """One job in full — the only read that carries the stored error messages.
+
+    The capped list travels here, once, when something asks for a single job;
+    the polled list below leaves it behind.
+    """
     job = _row(token)
-    return _payload(job, _now()) if job else None
+    return _payload(job, _now(), include_errors=True) if job else None
 
 
 def list_recent(limit: int = HISTORY_LIMIT) -> list[dict]:
-    """The newest jobs, newest first, each with its interrupted verdict."""
+    """The newest jobs, newest first, each with its interrupted verdict.
+
+    No error messages: this is the polled read, and ``error_count`` already
+    says how much went wrong. ``get()`` is where the messages themselves live.
+    """
     jobs = _newest_first().limit(limit).all()
     now = _now()
     return [_payload(job, now) for job in jobs]
@@ -158,14 +166,21 @@ def _apply(job: BulkTagJob, fields: dict) -> None:
         setattr(job, name, value)
 
 
-def _payload(job: BulkTagJob, now: datetime) -> dict:
+def _payload(job: BulkTagJob, now: datetime, *,
+             include_errors: bool = False) -> dict:
     """``job.to_json()`` with the interrupted verdict overlaid.
 
     The verdict is derived on every read and never written back: a GET that
     mutates is a surprise, and nothing queries on the stored status, so leaving
     it at ``running`` forever costs nothing.
+
+    ``include_errors`` is off by default: the messages are a single-job read,
+    and a failure storm would otherwise put 50 of them per job into the polled
+    list.
     """
     payload = job.to_json()
+    if not include_errors:
+        payload.pop("errors", None)
     if _is_interrupted(job, now):
         payload["status"] = "interrupted"
     return payload
