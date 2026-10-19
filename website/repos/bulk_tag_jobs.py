@@ -126,6 +126,28 @@ def remove(token: str, *, commit: bool = True) -> bool:
     return True
 
 
+def remove_finished(*, commit: bool = True) -> int:
+    """Dismiss every job that is no longer live. Returns how many went.
+
+    Terminal means what a reader sees, not what the column says: a job stalled
+    long enough to read as interrupted is finished as far as the panel is
+    concerned, so a status-only delete would leave exactly the rows an admin
+    most wants cleared. A live job is spared here - the only place anything is
+    spared, since ``remove`` takes whatever token it is given and the panel is
+    what keeps a running row's own dismiss button disabled.
+
+    Row-by-row rather than a bulk delete: the verdict is Python, and the table
+    is bounded to HISTORY_LIMIT.
+    """
+    now = _now()
+    doomed = [job for job in _newest_first().all() if not _is_live(job, now)]
+    for job in doomed:
+        db.session.delete(job)
+    if commit:
+        db.session.commit()
+    return len(doomed)
+
+
 # --- reads --------------------------------------------------------------------
 
 def get(token: str) -> dict | None:
@@ -184,6 +206,11 @@ def _payload(job: BulkTagJob, now: datetime, *,
     if _is_interrupted(job, now):
         payload["status"] = "interrupted"
     return payload
+
+
+def _is_live(job: BulkTagJob, now: datetime) -> bool:
+    """A job a worker is still reporting on - the state a bulk dismiss skips."""
+    return job.status == "running" and not _is_interrupted(job, now)
 
 
 def _is_interrupted(job: BulkTagJob, now: datetime) -> bool:

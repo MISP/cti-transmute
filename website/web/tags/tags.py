@@ -561,6 +561,22 @@ def admin_bulk_job_delete(job_id):
     return {"success": False, "message": "Job not found"}, 404
 
 
+@tags_blueprint.route("/admin/bulk_conversions/jobs", methods=["DELETE"])
+@login_required
+@csrf.exempt
+def admin_bulk_jobs_clear_finished():
+    """Dismiss every job that is no longer live, in one call.
+
+    The history survives restarts now, so clearing it one row at a time is
+    thirty clicks. A running job is spared, which is the only thing spared:
+    age is not a factor, so a job that finished seconds ago goes with the rest.
+    """
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    jobs_repo.remove_finished()
+    return {"success": True}, 200
+
+
 @tags_blueprint.route("/admin/bulk_conversions/remove_tags", methods=["POST"])
 @login_required
 @csrf.exempt
