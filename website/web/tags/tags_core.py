@@ -513,7 +513,8 @@ def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
 def merge_conversion_tags(conversion_id: int, tag_ids: list, user_id: int, source_type: str = "user") -> int:
     """Add tags to a conversion without removing existing ones. Returns count of newly added tags.
     source_type: 'user' (default) for manually added tags, 'json' for admin-scan-detected tags.
-    Deduplication is scoped to the same source_type."""
+    Deduplication is scoped to the same source_type.
+    A failed write raises; the caller owns the rollback."""
     existing = {
         a.tag_id
         for a in ConversionTagAssociation.query.filter_by(
@@ -539,40 +540,32 @@ def merge_conversion_tags(conversion_id: int, tag_ids: list, user_id: int, sourc
             source_type=source_type,
         ))
         count += 1
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        count = 0
+    db.session.commit()
     return count
 
 
 def remove_conversion_tags(conversion_id: int, tag_ids: list) -> int:
-    """Remove specific tags from a conversion. Returns count removed."""
+    """Remove specific tags from a conversion. Returns count removed.
+    A failed write raises; the caller owns the rollback. 0 means there was
+    nothing to remove, and only that."""
     q = ConversionTagAssociation.query.filter(
         ConversionTagAssociation.conversion_id == conversion_id,
         ConversionTagAssociation.tag_id.in_(tag_ids),
     )
     count = q.count()
     q.delete(synchronize_session=False)
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        count = 0
+    db.session.commit()
     return count
 
 
 def clear_conversion_tags(conversion_id: int) -> int:
-    """Remove ALL tags from a conversion. Returns count removed."""
+    """Remove ALL tags from a conversion. Returns count removed.
+    A failed write raises; the caller owns the rollback. 0 means there was
+    nothing to remove, and only that."""
     q = ConversionTagAssociation.query.filter_by(conversion_id=conversion_id)
     count = q.count()
     q.delete(synchronize_session=False)
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        count = 0
+    db.session.commit()
     return count
 
 
