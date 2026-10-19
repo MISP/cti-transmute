@@ -29,6 +29,7 @@ const TagInput = {
             loadingCurrent:  true,
             searching:     false,
             saving:        false,
+            saveFailed:    false,
             tagsCollapsed: false,
 
             _debounceTimer: null,
@@ -199,14 +200,20 @@ const TagInput = {
         async _saveRemote() {
             if (!this.conversionId) return;
             this.saving = true;
+            this.saveFailed = false;
             try {
-                await fetch(`/tags/save_for_conversion/${this.conversionId}`, {
+                const res = await fetch(`/tags/save_for_conversion/${this.conversionId}`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({ tag_ids: this.selectedTags.map(t => t.id) }),
                 });
+                // What is on screen is what the user picked, not what the
+                // server kept: saying nothing here leaves them reading the
+                // selection as saved.
+                if (!res.ok) this.saveFailed = true;
             } catch (e) {
                 console.error('TagInput: save error', e);
+                this.saveFailed = true;
             } finally {
                 this.saving = false;
             }
@@ -312,6 +319,9 @@ const TagInput = {
                    title="Tags manually added by users. Stored separately from the JSON — these do not modify the original content."></i>
                 <span v-if="saving" style="font-size:0.75rem; color:var(--text-3); margin-left:0.5rem;">
                     <i class="fas fa-spinner fa-spin me-1"></i>Saving…
+                </span>
+                <span v-else-if="saveFailed" style="font-size:0.75rem; color:var(--danger, #dc3545); margin-left:0.5rem;">
+                    <i class="fas fa-triangle-exclamation me-1"></i>Not saved - reload to see the stored tags
                 </span>
             </div>
 

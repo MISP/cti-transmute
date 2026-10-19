@@ -607,7 +607,8 @@ def get_all_tags_usage():
 
 def save_conversion_tags(conversion_id, tag_ids, user_id):
     """Replace user-added tag associations for a conversion (idempotent).
-    JSON-sourced tags (source_type='json') are never touched by this function."""
+    JSON-sourced tags (source_type='json') are never touched by this function.
+    A failed write raises; the caller owns the rollback and the report."""
     ConversionTagAssociation.query.filter_by(
         conversion_id=conversion_id, source_type="user"
     ).delete(synchronize_session=False)
@@ -630,7 +631,4 @@ def save_conversion_tags(conversion_id, tag_ids, user_id):
             added_at=now,
             source_type="user",
         ))
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+    db.session.commit()

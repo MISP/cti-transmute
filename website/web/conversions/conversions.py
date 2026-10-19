@@ -5,7 +5,7 @@ import socket
 from urllib.parse import urlparse
 
 from flask import (
-    Blueprint, abort, flash, jsonify, redirect, render_template,
+    Blueprint, abort, current_app, flash, jsonify, redirect, render_template,
     request, url_for)
 from flask_login import current_user, login_required
 from pydantic import ValidationError
@@ -223,16 +223,35 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
             _status_for_conversion_error(exc),
         )
 
+    tags_saved = True
     if not current_user.is_anonymous():
         tag_ids = _manual_tag_ids(body.get("tag_ids"))
         if tag_ids:
-            TagsModel.save_conversion_tags(conversion.id, tag_ids, current_user.id)
+            try:
+                TagsModel.save_conversion_tags(
+                    conversion.id, tag_ids, current_user.id)
+            except Exception:
+                # The conversion itself is saved and is what the user came for;
+                # only the tags are missing, and the flash has to say so rather
+                # than claim a success the catalogue entry does not carry.
+                db.session.rollback()
+                current_app.logger.exception(
+                    "saving tags for conversion %s failed", conversion.id)
+                tags_saved = False
 
-    flash(
-        f"Converted to {target.upper()} successfully"
-        f"{_diagnostics_note(conversion.diagnostics)}!",
-        "success"
-    )
+    if tags_saved:
+        flash(
+            f"Converted to {target.upper()} successfully"
+            f"{_diagnostics_note(conversion.diagnostics)}!",
+            "success"
+        )
+    else:
+        flash(
+            f"Converted to {target.upper()}"
+            f"{_diagnostics_note(conversion.diagnostics)}, but the tags could "
+            "not be saved - add them again from the conversion page.",
+            "warning"
+        )
     return jsonify({
         "url": url_for("conversions.detail", id=conversion.id),
         "id": conversion.id,

@@ -413,7 +413,16 @@ def save_for_conversion(conversion_id):
         return {"success": False, "message": "Forbidden"}, 403
     data = request.get_json(silent=True) or {}
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
-    TagsModel.save_conversion_tags(conversion_id, tag_ids, current_user.id)
+    try:
+        TagsModel.save_conversion_tags(conversion_id, tag_ids, current_user.id)
+    except Exception:
+        # The write rolled back, so the conversion still carries the tags it
+        # had. Saying "saved" here would leave the user reading stale tags as
+        # the ones they just chose.
+        db.session.rollback()
+        current_app.logger.exception(
+            "saving tags for conversion %s failed", conversion_id)
+        return {"success": False, "message": "Tags could not be saved"}, 500
     return {"success": True, "message": "Tags saved"}, 200
 
 
