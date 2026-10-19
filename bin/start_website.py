@@ -29,12 +29,13 @@ def gunicorn_command() -> list[str]:
         # manager starting the console script by its absolute path hands it the
         # system PATH, which has no virtualenv on it.
         sys.executable, '-m', 'gunicorn',
-        # One worker is a constraint, not a default to tune away. Bulk tag jobs
-        # (website/web/tags/bulk_jobs.py) keep their state in a module-level
-        # dict and run in threads started from routes; a second worker process
-        # cannot see those jobs, and a poll request landing there reads to the
-        # user as the job having vanished. Moving that state to the database is
-        # what unblocks raising this.
+        # One worker because nobody has measured a need for more, not because
+        # more would break. Bulk tag jobs keep their state in the database now
+        # (website/repos/bulk_tag_jobs.py), and what is left in process memory
+        # is read-only data loaded from disk, identical in every process, so
+        # raising this is a capacity decision. What it buys is GIL parallelism
+        # for CPU-bound STIX parsing; what it costs is N times the Postgres
+        # connection budget, one SQLAlchemy pool per process.
         '-w', '1',
         # gthread, not sync: application.run() served requests concurrently
         # (threaded=True) and a sync worker serves exactly one at a time.
