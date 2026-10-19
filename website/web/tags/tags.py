@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 
 from website.db_class.db import Conversion, Tag, utc_iso
 from website.lib import access
+from website.repos import bulk_tag_jobs as jobs_repo
 from website.web import csrf, db
 from website.web.tags import bulk_jobs
 from website.web.utils import extract_tag_names_from_misp_json
@@ -532,7 +533,7 @@ def admin_bulk_assign():
 def admin_bulk_job_status(job_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    job = bulk_jobs.get(job_id)
+    job = jobs_repo.get(job_id)
     if not job:
         return {"success": False, "message": "Job not found"}, 404
     return {"success": True, "job": job}, 200
@@ -543,7 +544,7 @@ def admin_bulk_job_status(job_id):
 def admin_bulk_jobs_list():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    return {"success": True, "jobs": bulk_jobs.list_recent()}, 200
+    return {"success": True, "jobs": jobs_repo.list_recent()}, 200
 
 
 @tags_blueprint.route("/admin/bulk_conversions/job/<job_id>", methods=["DELETE"])
@@ -552,7 +553,7 @@ def admin_bulk_jobs_list():
 def admin_bulk_job_delete(job_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    removed = bulk_jobs.remove(job_id)
+    removed = jobs_repo.remove(job_id)
     if removed:
         return {"success": True}, 200
     return {"success": False, "message": "Job not found"}, 404
