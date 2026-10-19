@@ -203,22 +203,6 @@ def admin_submodule_status():
     }, 200
 
 
-@tags_blueprint.route("/admin/pull_and_import", methods=["POST"])
-@login_required
-def admin_pull_and_import():
-    """Pull latest MISP dataset submodules then import new tags as a background job."""
-    if not current_user.is_admin():
-        return {"success": False, "message": "Forbidden"}, 403
-
-    jid = bulk_jobs.start_pull_and_import(current_app._get_current_object(), current_user.id)
-    AccountModel.create_system_log(
-        "tags_submodule_pull_started",
-        actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="tag", details=f"job {jid}",
-    )
-    return {"success": True, "job_id": jid}, 200
-
-
 @tags_blueprint.route("/admin/import_taxonomies", methods=["POST"])
 @login_required
 def admin_import_taxonomies():
