@@ -212,14 +212,47 @@ def _db_state() -> str:
     return "unstamped" if has_schema else "fresh"
 
 
+_DRIFT_PROBE = (
+    "from alembic.autogenerate import compare_metadata; "
+    "from alembic.migration import MigrationContext; "
+    "from website.web import application, db; "
+    "import website.db_class.db; "
+    "ctx = application.app_context(); ctx.push(); "
+    "conn = db.engine.connect(); "
+    "diff = compare_metadata(MigrationContext.configure(conn), db.metadata); "
+    "conn.close(); "
+    "print('no-drift' if not diff else 'drift')"
+)
+
+
+def unstamped_target(schema_matches_models: bool) -> str:
+    """Which revision to stamp an unstamped database at.
+
+    An unstamped database was built by ``db.create_all()``, so it embodies the
+    models of whatever checkout bootstrapped it - and that is not necessarily
+    ``CREATE_ALL_SCHEMA_REV``. When the schema still matches today's models
+    there is nothing for the migrations to do, and stamping anything older
+    would replay revisions against tables that already exist: the newest one
+    creates ``bulk_tag_job``, so the upgrade would die on a table it finds in
+    place. Only a schema that has drifted behind the models needs the old
+    stamp-then-upgrade path.
+    """
+    return "head" if schema_matches_models else CREATE_ALL_SCHEMA_REV
+
+
+def _schema_matches_models() -> bool:
+    """True when the live schema already embodies every model."""
+    return run_capture([*VENV_UV, "python", "-c", _DRIFT_PROBE]).endswith("no-drift")
+
+
 def _run_db_upgrade() -> None:
     """Bring the database to the latest migration, whatever its bootstrap.
 
     - fresh (no tables): build the schema from the models and stamp head —
       the early migration chain is not replayable on an empty database;
     - unstamped (tables from a db.create_all() bootstrap, no alembic_version):
-      stamp the revision the models already embody, then upgrade so the
-      migrations that follow it (data migrations) run;
+      stamp what the schema actually embodies, then upgrade so any migrations
+      that follow it run;
     - versioned: plain upgrade.
     """
     state = _db_state()
@@ -231,9 +264,15 @@ def _run_db_upgrade() -> None:
              "ctx = application.app_context(); ctx.push(); db.create_all()"])
         _flask_db("stamp", "head")
     elif state == "unstamped":
-        info(f"Schema present but unversioned — stamping {CREATE_ALL_SCHEMA_REV} first…")
-        _flask_db("stamp", CREATE_ALL_SCHEMA_REV)
-        _flask_db("upgrade")
+        target = unstamped_target(_schema_matches_models())
+        if target == "head":
+            info("Schema present but unversioned, and already matching the "
+                 "models — stamping head…")
+            _flask_db("stamp", "head")
+        else:
+            info(f"Schema present but unversioned — stamping {target} first…")
+            _flask_db("stamp", target)
+            _flask_db("upgrade")
     else:
         _flask_db("upgrade")
     ok("Database schema up to date")
