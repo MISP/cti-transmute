@@ -59,6 +59,26 @@ def _tag(user_id, name="bulk-tag"):
     return tag
 
 
+def _record_job_writes(monkeypatch):
+    """Every job-row write the worker issues, in order, by repo function name.
+
+    The write bound is about all of them, not one kind, so this wraps the repo
+    rather than a single call.
+    """
+    from website.repos import bulk_tag_jobs as jobs_repo
+
+    writes = []
+    for name in ("touch", "finish", "append_errors"):
+        original = getattr(jobs_repo, name)
+
+        def recorded(*, _name=name, _original=original, **fields):
+            writes.append(_name)
+            return _original(**fields)
+
+        monkeypatch.setattr(jobs_repo, name, recorded)
+    return writes
+
+
 def _conversions(user_id, count, *, tag_id=None, misp=None):
     """``count`` MISP→STIX conversions, carrying ``tag_id`` when given.
 
@@ -210,17 +230,11 @@ def test_a_long_run_does_not_write_the_job_row_per_item(
 
     The panel polls every 1.5 seconds, so per-item granularity was never
     visible to anybody. The run still reports, and still lands on 900.
-
-    This is the bound on progress writes. Errors are deliberately outside it -
-    they are written as they happen, and the repo caps the stored list.
     """
     from website.repos import bulk_tag_jobs as jobs_repo
     from website.web import application
 
-    written = []
-    touch = jobs_repo.touch
-    monkeypatch.setattr(jobs_repo, "touch", lambda **fields: (
-        written.append(fields["progress"]), touch(**fields))[1])
+    writes = _record_job_writes(monkeypatch)
 
     user = _user()
     tag = _tag(user.id)
@@ -230,7 +244,39 @@ def test_a_long_run_does_not_write_the_job_row_per_item(
         application, missing_ids, [tag.id], user.id)
 
     assert jobs_repo.get(token)["progress"] == 900
-    assert 0 < len(written) < 60
+    assert 0 < len(writes) < 60
+
+
+def test_a_run_that_fails_every_item_stays_inside_that_bound(
+        app_db, inline_jobs, monkeypatch):
+    """A failure used to be its own write, so 900 failures were 900 writes.
+
+    The first one still goes straight out - it is what makes the panel show
+    something the moment a run starts going wrong - and the rest ride the next
+    progress write, which is throttled.
+    """
+    from website.repos import bulk_tag_jobs as jobs_repo
+    from website.web import application
+    from website.web.tags import tags_core
+
+    def refuse(*args, **kwargs):
+        raise RuntimeError("tag write refused")
+
+    monkeypatch.setattr(tags_core, "merge_conversion_tags", refuse)
+    writes = _record_job_writes(monkeypatch)
+
+    user = _user()
+    tag = _tag(user.id)
+
+    token = inline_jobs.start_assign(
+        application, list(range(1, 901)), [tag.id], user.id)
+
+    assert writes[0] == "append_errors"     # the first failure does not wait
+    assert writes.count("append_errors") == 1   # the rest ride the progress
+    assert len(writes) < 60
+    payload = jobs_repo.get(token)
+    assert payload["error_count"] == 900
+    assert len(payload["errors"]) == jobs_repo.ERROR_CAP
 
 
 def test_assign_reports_the_associations_it_added(app_db, inline_jobs):

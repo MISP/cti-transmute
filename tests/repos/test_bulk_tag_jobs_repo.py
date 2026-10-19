@@ -142,8 +142,10 @@ def test_errors_past_the_cap_are_counted_but_not_stored(app_db):
     from website.repos import bulk_tag_jobs as jobs_repo
 
     job = jobs_repo.create(job_type="scan", total=60, user_id=1)
-    for i in range(60):
-        jobs_repo.append_error(token=job.token, message=f"#{i}: boom")
+    jobs_repo.append_errors(token=job.token, messages=["#0: boom"])
+    # the second batch straddles the cap: part of it is stored, all of it counts
+    jobs_repo.touch(token=job.token,
+                    errors=[f"#{i}: boom" for i in range(1, 60)])
 
     payload = jobs_repo.get(job.token)
     assert len(payload["errors"]) == jobs_repo.ERROR_CAP
@@ -162,8 +164,8 @@ def test_the_messages_ride_on_the_single_job_read_not_the_polled_list(app_db):
     from website.repos import bulk_tag_jobs as jobs_repo
 
     noisy = jobs_repo.create(job_type="assign", total=50, user_id=1)
-    for i in range(50):
-        jobs_repo.append_error(token=noisy.token, message=f"#{i}: boom")
+    jobs_repo.append_errors(
+        token=noisy.token, messages=[f"#{i}: boom" for i in range(50)])
     quiet = jobs_repo.create(job_type="assign", total=50, user_id=1)
 
     by_token = {row["id"]: row for row in jobs_repo.list_recent()}
