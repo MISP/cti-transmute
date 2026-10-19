@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 global.window = {};
 eval(readFileSync(join(repoRoot, 'website/web/static/js/datetime.js'), 'utf8'));
-const { parse, formatDate, formatDateTime, timeAgo } = window.ctiDate;
+const { parse, formatDate, formatDateTime, timeAgo, timeAgoOrDate } = window.ctiDate;
 
 const assert = (cond, msg) => {
     if (!cond) { console.error('FAIL: ' + msg); process.exitCode = 1; }
@@ -39,3 +39,18 @@ assert(formatDateTime(null, '—') === '—', 'formatDateTime custom fallback');
 assert(formatDateTime('garbage') === 'garbage', 'unparseable passes through');
 assert(timeAgo('garbage') === '', 'timeAgo on garbage renders empty');
 assert(formatDate('2026-07-13T09:05:00Z').includes('2026'), 'formatDate renders the year');
+
+/* The hybrid the bulk-tag jobs card reads with: relative while the row is
+ * fresh, a calendar date once it is not. Run against a fixed clock - the
+ * helper reads the time once, through Date.now(), so stubbing it pins the
+ * day boundary and the year rule exactly rather than approximately. */
+const realNow = Date.now;
+Date.now = () => Date.UTC(2026, 9, 19, 12, 0, 0);
+assert(timeAgoOrDate('2026-10-18T13:00:00Z') === '23h ago', 'under a day stays relative');
+const pastDay = timeAgoOrDate('2026-10-18T11:00:00Z');
+assert(!pastDay.includes('ago') && pastDay.includes('18'),
+       'past a day it is the calendar day, 25 hours included');
+assert(!/\d{4}/.test(pastDay), 'the current year is left off');
+assert(timeAgoOrDate('2024-09-23T10:00:00Z').includes('2024'), 'another year is spelled out');
+assert(timeAgoOrDate('garbage') === 'garbage', 'unparseable passes through');
+Date.now = realNow;

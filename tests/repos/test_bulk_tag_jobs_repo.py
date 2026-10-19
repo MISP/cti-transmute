@@ -169,3 +169,25 @@ def test_remove_deletes_the_job_once(app_db):
     assert jobs_repo.remove(job.token) is True
     assert jobs_repo.remove(job.token) is False
     assert jobs_repo.get(job.token) is None
+
+
+def test_remove_finished_dismisses_the_terminal_jobs_and_spares_the_live_one(app_db):
+    """Terminal means what the panel renders, which includes interrupted.
+
+    The stalled job still says ``running`` in its column - only its heartbeat
+    age says otherwise - so a status-only delete would leave it behind.
+    """
+    from website.repos import bulk_tag_jobs as jobs_repo
+
+    done = jobs_repo.create(job_type="scan", total=1, user_id=1)
+    jobs_repo.finish(token=done.token, progress=1)
+    stalled = jobs_repo.create(job_type="remove", total=500, user_id=1)
+    jobs_repo.touch(token=stalled.token, progress=213)
+    _stall(stalled.token)
+    live = jobs_repo.create(job_type="assign", total=9, user_id=1)
+
+    assert jobs_repo.remove_finished() == 2
+    assert jobs_repo.get(done.token) is None
+    assert jobs_repo.get(stalled.token) is None
+    assert jobs_repo.get(live.token)["status"] == "running"
+    assert jobs_repo.remove_finished() == 0
