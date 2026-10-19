@@ -600,7 +600,8 @@ class BulkTagJob(db.Model):
     # token rather than the sequential row counter
     token        = db.Column(db.String(32), unique=True, nullable=False, index=True)
     job_type     = db.Column(db.String(20), nullable=False)   # scan|assign|remove|clear
-    status       = db.Column(db.String(20), nullable=False)   # running|done
+    # running|done; a third value, interrupted, is derived at read time
+    status       = db.Column(db.String(20), nullable=False)
     total        = db.Column(db.Integer, nullable=False, default=0)
     progress     = db.Column(db.Integer, nullable=False, default=0)
     # tag associations added (scan, assign) or removed (remove, clear)
@@ -621,8 +622,6 @@ class BulkTagJob(db.Model):
             "total":       self.total,
             "progress":    self.progress,
             "affected":    self.affected,
-            # alias kept while the admin panel still reads "added"
-            "added":       self.affected,
             "skipped":     self.skipped,
             "errors":      self.errors or [],
             "error_count": self.error_count,

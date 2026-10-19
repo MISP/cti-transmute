@@ -28,7 +28,6 @@ def test_create_mints_a_token_and_reads_back_as_a_running_job(app_db):
     assert payload["total"] == 9
     assert payload["progress"] == 0
     assert payload["affected"] == 0
-    assert payload["added"] == 0           # legacy alias the admin panel reads
     assert payload["skipped"] == 0
     assert payload["errors"] == []
     assert payload["error_count"] == 0
@@ -94,7 +93,6 @@ def test_a_finished_job_with_an_old_heartbeat_still_reads_done(app_db):
     payload = jobs_repo.get(job.token)
     assert payload["status"] == "done"
     assert payload["affected"] == 7
-    assert payload["added"] == 7
 
 
 def test_writing_an_unknown_field_is_refused(app_db):
