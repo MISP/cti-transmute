@@ -66,50 +66,54 @@ def create(*, job_type: str, total: int, user_id: int | None,
     return job
 
 
-def touch(*, token: str, commit: bool = True, **fields) -> BulkTagJob | None:
+def touch(*, token: str, errors: list[str] | None = None,
+          commit: bool = True, **fields) -> BulkTagJob | None:
     """Record progress and refresh the heartbeat. ``None`` if the job is gone.
 
     The heartbeat rides along with every progress write: that is what keeps a
-    live job from reading as interrupted.
+    live job from reading as interrupted. So do the failures a worker has
+    collected since its last write - one row write carries both, which is what
+    keeps a run that fails every item from writing the row per item.
     """
     job = _row(token)
     if job is None:
         return None
-    _apply(job, fields)
-    job.heartbeat_at = _now()
+    _record(job, fields, errors)
     if commit:
         db.session.commit()
     return job
 
 
-def finish(*, token: str, commit: bool = True, **fields) -> BulkTagJob | None:
-    """Mark a job done, with its final counts. ``None`` if the job is gone."""
+def finish(*, token: str, errors: list[str] | None = None,
+           commit: bool = True, **fields) -> BulkTagJob | None:
+    """Mark a job done, with its final counts. ``None`` if the job is gone.
+
+    Takes the last failures the same way ``touch`` does: a run whose final
+    items failed has nothing after this write to carry them.
+    """
     job = _row(token)
     if job is None:
         return None
-    _apply(job, fields)
+    _record(job, fields, errors)
     job.status = "done"
-    job.heartbeat_at = _now()
     db.session.flush()
     if commit:
         db.session.commit()
     return job
 
 
-def append_error(*, token: str, message: str,
-                 commit: bool = True) -> BulkTagJob | None:
-    """Record one per-item failure. ``None`` if the job is gone.
+def append_errors(*, token: str, messages: list[str],
+                  commit: bool = True) -> BulkTagJob | None:
+    """Record failures on their own, outside a progress write.
 
-    ``error_count`` always increments; the stored list stops at ``ERROR_CAP``.
+    ``None`` if the job is gone. This is the write a worker pays so its first
+    failure reaches the panel without waiting for a flush; everything after it
+    travels on ``touch``.
     """
     job = _row(token)
     if job is None:
         return None
-    errors = list(job.errors or [])
-    if len(errors) < ERROR_CAP:
-        errors.append(message)
-        job.errors = errors          # JSON columns are not mutation-tracked
-    job.error_count += 1
+    _store_errors(job, messages)
     if commit:
         db.session.commit()
     return job
@@ -196,6 +200,26 @@ def _apply(job: BulkTagJob, fields: dict) -> None:
         if name not in _WRITABLE_FIELDS:
             raise ValueError(f"not a writable bulk tag job field: {name}")
         setattr(job, name, value)
+
+
+def _record(job: BulkTagJob, fields: dict,
+            messages: list[str] | None) -> None:
+    """What a progress write carries: the counters, the failures, the clock."""
+    _apply(job, fields)
+    _store_errors(job, messages)
+    job.heartbeat_at = _now()
+
+
+def _store_errors(job: BulkTagJob, messages: list[str] | None) -> None:
+    """Count a batch of failures; store what still fits under ``ERROR_CAP``."""
+    if not messages:
+        return
+    errors = list(job.errors or [])
+    room = ERROR_CAP - len(errors)
+    if room > 0:
+        errors.extend(messages[:room])
+        job.errors = errors          # JSON columns are not mutation-tracked
+    job.error_count += len(messages)
 
 
 def _payload(job: BulkTagJob, now: datetime, *,

@@ -93,8 +93,8 @@ class _Progress:
     once that conversion is behind it, and ``finish()`` at the end. The
     counters ride along with every write, as does the heartbeat that keeps the
     job from reading as interrupted. Writes while the job runs are throttled,
-    so what reaches the row is the counts as of the last one; the terminal
-    write and every error go through unthrottled.
+    so what reaches the row is the counts as of the last one; two go through
+    unthrottled, the terminal write and the first error.
 
     Each write is its own short transaction - one held open across a whole job
     would pin a pool connection and block vacuum on the tables being written.
@@ -106,6 +106,8 @@ class _Progress:
         self._affected = 0
         self._skipped = 0
         self._unwritten = 0
+        self._pending_errors = []
+        self._reported_an_error = False
         self._last_write = time.monotonic()
 
     def record(self, affected: int | None) -> None:
@@ -135,17 +137,28 @@ class _Progress:
         commits this session, so a half-finished tag write would otherwise ride
         along with it - or fail it, and strand the job at ``running``.
 
-        This write is not throttled. Failures are what an admin opens the panel
-        for, the repo caps the stored list at 50, and batching them would mean
-        holding a count that a crash then loses.
+        The first failure is written as it happens: it is what makes the panel
+        show something the moment a run starts going wrong. The rest ride the
+        next progress write, so a run that fails every item costs the same
+        bounded number of writes as one that fails none. A crash loses the
+        failures since the last write - the same window the counters already
+        lose, and the failure the admin needs to see is already out.
         """
         db.session.rollback()
-        jobs_repo.append_error(
-            token=self.token, message=f"#{conversion_id}: {str(exc)[:100]}")
+        self._pending_errors.append(f"#{conversion_id}: {str(exc)[:100]}")
+        if not self._reported_an_error:
+            jobs_repo.append_errors(
+                token=self.token, messages=self._pending_errors)
+            self._pending_errors = []
+            self._reported_an_error = True
 
     def _write(self, write) -> None:
         write(token=self.token, progress=self._handled,
-              affected=self._affected, skipped=self._skipped)
+              affected=self._affected, skipped=self._skipped,
+              errors=self._pending_errors)
+        # cleared only once the write is back: a write that raised has not
+        # carried these anywhere, and the next one should still try
+        self._pending_errors = []
         self._unwritten = 0
         self._last_write = time.monotonic()
 
