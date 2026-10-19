@@ -174,7 +174,17 @@ def list_recent(limit: int = HISTORY_LIMIT) -> list[dict]:
 # --- internals ----------------------------------------------------------------
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    """The clock these rows keep: UTC, carried naive.
+
+    ``created_at`` and ``heartbeat_at`` are ``timestamp without time zone``,
+    so an aware datetime would reach Postgres as a ``timestamptz`` literal and
+    be converted through the server's session clock before the offset is
+    dropped: on an install whose Postgres is not on UTC the column would hold
+    local wall time, and the staleness arithmetic below would be off by that
+    offset. Stripping here is what lets the stored value and this clock be
+    compared at all.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _row(token: str) -> BulkTagJob | None:
@@ -217,10 +227,7 @@ def _is_interrupted(job: BulkTagJob, now: datetime) -> bool:
     """A job still claiming to run whose worker stopped reporting."""
     if job.status != "running":
         return False
-    heartbeat = job.heartbeat_at
-    if heartbeat.tzinfo is None:     # stored naive, as UTC wall clock
-        heartbeat = heartbeat.replace(tzinfo=timezone.utc)
-    return now - heartbeat > STALE_AFTER
+    return now - job.heartbeat_at > STALE_AFTER
 
 
 def _newest_first():
