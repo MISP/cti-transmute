@@ -99,13 +99,14 @@ SECRET_KEY=$(openssl rand -hex 32)
 CTI-Transmute ships with a `manage` script that covers all day-to-day operations:
 
 ```bash
-uv run manage init     # First-time setup (submodules + deps + DB + migrations)
-uv run manage start    # Run the website in the foreground (development)
-uv run manage update   # Pull latest code + sync deps + run DB migrations
-uv run manage backup   # Backup the PostgreSQL database
-uv run manage deploy   # backup → update → restart the systemd service
-uv run manage db       # Run flask db upgrade (or: db migrate, db downgrade…)
-uv run manage help     # Show all commands
+uv run manage init             # First-time setup (submodules + deps + DB + migrations)
+uv run manage start            # Run the website in the foreground (development)
+uv run manage update           # Pull latest code + sync deps + run DB migrations
+uv run manage update-datasets  # Refresh misp-taxonomies + misp-galaxy to upstream HEAD
+uv run manage backup           # Backup the PostgreSQL database
+uv run manage deploy           # backup → update → restart the systemd service
+uv run manage db               # Run flask db upgrade (or: db migrate, db downgrade…)
+uv run manage help             # Show all commands
 ```
 
 **Daily development** — run the app in your terminal:
@@ -124,6 +125,20 @@ starts it again. A production instance is owned by systemd instead — see
 uv run manage update
 uv run manage start
 ```
+
+**Refreshing the MISP tag datasets** — `update` checks out the submodule
+pointers the repository records, so misp-taxonomies and misp-galaxy stay where
+they are pinned and two installs updated a week apart carry the same tag set.
+Moving them to upstream HEAD is a separate, deliberate step:
+
+```bash
+uv run manage update-datasets   # advances the two dataset submodules
+```
+
+Then load the new entries from the **Tag Management** admin page, with its
+*Taxonomies* and *Galaxies* import buttons; existing tags are never modified.
+Commit the moved pointers afterwards, or the next `update` checks the old ones
+back out.
 
 ## Running in production
 
