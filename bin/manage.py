@@ -6,13 +6,14 @@ Usage:
     uv run manage <command>
 
 Commands:
-    init      First-time setup on a new machine (submodules + deps + DB)
-    start     Run the website in the foreground (development)
-    update    Pull latest code + sync deps + run DB migrations
-    backup    Backup the PostgreSQL database
-    deploy    Full deployment: backup + update + restart the service
-    db        Run Flask-Migrate commands (upgrade by default)
-    help      Show this help message
+    init             First-time setup on a new machine (submodules + deps + DB)
+    start            Run the website in the foreground (development)
+    update           Pull latest code + sync deps + run DB migrations
+    update-datasets  Refresh the MISP taxonomy/galaxy submodules to upstream HEAD
+    backup           Backup the PostgreSQL database
+    deploy           Full deployment: backup + update + restart the service
+    db               Run Flask-Migrate commands (upgrade by default)
+    help             Show this help message
 """
 
 import datetime
@@ -30,6 +31,9 @@ VENV_UV = ["uv", "run"]
 # The unit documented in README.md, and the one both dev-container
 # provisioners generate.
 SERVICE_NAME = "cti-transmute.service"
+# The submodules `update-datasets` refreshes to upstream HEAD. pivotick is
+# left out on purpose: it is a pinned library, not a MISP dataset.
+DATASET_SUBMODULES = ["submodules/misp-taxonomies", "submodules/misp-galaxy"]
 # Present only where systemd is PID 1: a container image can ship systemctl
 # without ever running systemd.
 SYSTEMD_MARKER = Path("/run/systemd/system")
@@ -113,6 +117,12 @@ def cmd_help() -> None:
 
   {G}update{R}    {D}Pull latest code from git + sync deps + run DB migrations{R}
               {D}→ Use this after someone pushed new code{R}
+
+  {G}update-datasets{R}  {D}Refresh misp-taxonomies + misp-galaxy to upstream HEAD{R}
+              {D}→ Deliberately separate from 'update', which checks out the{R}
+              {D}  pinned pointers so deploys stay reproducible{R}
+              {D}→ Then import the new tags from the Tag Management admin page{R}
+              {D}→ Commit the moved pointers, or the next 'update' reverts them{R}
 
   {G}backup{R}    {D}Backup the PostgreSQL database to backups/{R}
               {D}→ Use this before any risky operation{R}
@@ -351,6 +361,62 @@ def cmd_update() -> None:
     _run_db_upgrade()
 
 
+def _submodule_sha(path: str) -> str:
+    """The revision checked out in one submodule, or '?' when there is none.
+
+    An uninitialised submodule is an empty directory, where `git rev-parse`
+    walks up and answers with the *superproject's* revision - so the checkout
+    is tested first rather than taking git's answer at face value.
+    """
+    if not (ROOT / path / ".git").exists():
+        return "?"
+    return run_capture(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT / path) or "?"
+
+
+def cmd_update_datasets() -> None:
+    """Refresh the MISP dataset submodules to upstream HEAD.
+
+    Deliberately not part of `update`, which checks out the pinned pointers:
+    advancing misp-taxonomies and misp-galaxy on every update would make
+    deploys irreproducible and hand two operators updating a week apart two
+    different tag sets. Moving the pointers stays an explicit operator act.
+    """
+    header("Refreshing the MISP dataset submodules")
+
+    before = {path: _submodule_sha(path) for path in DATASET_SUBMODULES}
+    run(["git", "submodule", "update", "--remote", *DATASET_SUBMODULES])
+
+    moved, uninitialised = [], []
+    for path in DATASET_SUBMODULES:
+        after = _submodule_sha(path)
+        if after == "?":
+            uninitialised.append(path)
+            error(f"{path} is not initialised — nothing was refreshed")
+        elif after == before[path]:
+            ok(f"{path} already current ({after})")
+        else:
+            moved.append(path)
+            ok(f"{path} {before[path]} → {after}")
+
+    if moved:
+        info("Load the new data from the Tag Management admin page, with the")
+        info("Taxonomies and Galaxies import buttons.")
+        info("The new submodule pointers are uncommitted; the next `manage update`")
+        info("checks the old ones back out until you commit them:")
+        print(f"\n    git add {' '.join(moved)}")
+        print("    git commit -m 'chg: [submodules] Refresh the MISP datasets'\n")
+    elif not uninitialised:
+        info("Nothing moved — the working tree is unchanged.")
+
+    if uninitialised:
+        # `git submodule update --remote` says "not initialized" and still
+        # exits 0, so the refresh has to fail here or it reads as a success.
+        info("A clone made without --recurse-submodules has no dataset to")
+        info("refresh. Check the submodules out first:")
+        print("\n    uv run manage init\n")
+        sys.exit(1)
+
+
 def _service_is_supervised() -> bool:
     """Whether systemd runs here and knows the unit.
 
@@ -557,15 +623,16 @@ def cmd_db() -> None:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 COMMANDS = {
-    "init":         cmd_init,
-    "start":        cmd_start,
-    "backup":       cmd_backup,
-    "update":       cmd_update,
-    "deploy":       cmd_deploy,
-    "db":           cmd_db,
-    "psql":         cmd_psql,
-    "create_admin": cmd_create_admin,
-    "help":         cmd_help,
+    "init":            cmd_init,
+    "start":           cmd_start,
+    "backup":          cmd_backup,
+    "update":          cmd_update,
+    "update-datasets": cmd_update_datasets,
+    "deploy":          cmd_deploy,
+    "db":              cmd_db,
+    "psql":            cmd_psql,
+    "create_admin":    cmd_create_admin,
+    "help":            cmd_help
 }
 
 
