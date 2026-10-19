@@ -5,10 +5,11 @@
 runs report, which a module-level dict used to hold.
 
 These tests exercise the repo's public surface directly against the in-memory
-SQLite ``app_db`` fixture (real ORM/session/transaction), pinning the three
+SQLite ``app_db`` fixture (real ORM/session/transaction), pinning the four
 properties the table exists for: the interrupted verdict is derived and never
-stored, the error list is capped while the count stays truthful, and the
-history stays bounded to the 30 newest jobs.
+stored, the error list is capped while the count stays truthful, the messages
+ride on the single-job read rather than the polled list, and the history stays
+bounded to the 30 newest jobs.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -119,6 +120,29 @@ def test_errors_past_the_cap_are_counted_but_not_stored(app_db):
     assert len(payload["errors"]) == jobs_repo.ERROR_CAP
     assert payload["errors"][0] == "#0: boom"          # the first ones are kept
     assert payload["error_count"] == 60                # the count is truthful
+
+
+# --- which read carries the messages ------------------------------------------
+
+def test_the_messages_ride_on_the_single_job_read_not_the_polled_list(app_db):
+    """The polled list counts failures; only the single-job read spells them out.
+
+    A job that failed every item has to cost the same per poll as one that
+    failed none, so the row gets ``error_count`` and nothing more.
+    """
+    from website.repos import bulk_tag_jobs as jobs_repo
+
+    noisy = jobs_repo.create(job_type="assign", total=50, user_id=1)
+    for i in range(50):
+        jobs_repo.append_error(token=noisy.token, message=f"#{i}: boom")
+    quiet = jobs_repo.create(job_type="assign", total=50, user_id=1)
+
+    by_token = {row["id"]: row for row in jobs_repo.list_recent()}
+
+    assert "errors" not in by_token[noisy.token]
+    assert by_token[noisy.token]["error_count"] == 50
+    assert by_token[noisy.token].keys() == by_token[quiet.token].keys()
+    assert jobs_repo.get(noisy.token)["errors"][0] == "#0: boom"
 
 
 # --- the history bound --------------------------------------------------------
