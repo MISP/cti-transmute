@@ -96,6 +96,35 @@ def test_a_finished_job_with_an_old_heartbeat_still_reads_done(app_db):
     assert payload["affected"] == 7
 
 
+def test_the_write_path_stamps_the_clocks_naive_on_utc(app_db):
+    """What the writes stamp has to be what the staleness read assumes.
+
+    ``created_at`` and ``heartbeat_at`` are ``timestamp without time zone``.
+    An aware datetime reaches Postgres as a ``timestamptz`` literal, which the
+    server converts through its session clock before dropping the offset, so
+    on an install whose Postgres is not on UTC the column would hold local
+    wall time while the reader treats it as UTC - and the staleness
+    arithmetic would be off by that offset, in whichever direction it runs.
+
+    SQLite hands back whatever wall clock it was given, so it cannot show
+    that; the invariant is pinned here instead, where the clocks are stamped.
+    ``commit=False`` keeps the session from expiring the attributes, so these
+    are the values the writes produced rather than the ones a round trip
+    returned.
+    """
+    from website.repos import bulk_tag_jobs as jobs_repo
+
+    before = datetime.now(timezone.utc).replace(tzinfo=None)
+    job = jobs_repo.create(job_type="scan", total=1, user_id=1, commit=False)
+    touched = jobs_repo.touch(token=job.token, progress=1, commit=False)
+    after = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    stamps = (job.created_at, job.heartbeat_at, touched.heartbeat_at)
+    assert all(stamp.tzinfo is None for stamp in stamps)
+    # naive is not enough: a local-clock stamp would fall outside this bracket
+    assert all(before <= stamp <= after for stamp in stamps)
+
+
 def test_writing_an_unknown_field_is_refused(app_db):
     import pytest
 
