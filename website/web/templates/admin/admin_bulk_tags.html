@@ -271,78 +271,99 @@
             <span v-if="jobRunning" style="font-size:0.75rem;color:var(--accent);">
               <i class="fas fa-spinner fa-spin me-1"></i>Running…
             </span>
+            <button v-if="finishedCount > 0" type="button"
+                    class="btn btn-sm btn-outline-secondary ms-auto"
+                    style="font-size:0.72rem; padding:1px 7px;"
+                    @click="clearFinished"
+                    :title="'Dismiss the ' + finishedCount + ' job(s) that are no longer running'">
+              Clear finished
+            </button>
+          </div>
+
+          <div v-if="clearFailed" class="mb-2" style="font-size:0.78rem;color:var(--warning);">
+            Could not dismiss the jobs. The list below is what the server still holds.
           </div>
 
           <div v-if="jobs.length === 0" style="font-size:0.82rem;color:var(--text-3);font-style:italic;">No jobs yet.</div>
 
-          <div v-for="job in jobs" :key="job.id"
-               class="mb-2 p-2"
-               style="border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.78rem;">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <span>
-                <span class="badge me-1"
-                      :style="{ background: job.type==='scan' ? 'var(--accent)' : removalColor(job), color:'#fff', fontSize:'0.68rem' }">
-                  [[ job.type ]]
+          <!-- The list holds history, not this process's run, so it sits at the
+               30 the trim keeps. The viewport is what bounds the card: roughly
+               seven rows, against a left column paginated at 50 conversions. -->
+          <div style="max-height:420px;overflow-y:auto;">
+            <div v-for="job in jobs" :key="job.id"
+                 class="mb-2 p-2"
+                 style="border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.78rem;">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span>
+                  <span class="badge me-1"
+                        :style="{ background: job.type==='scan' ? 'var(--accent)' : removalColor(job), color:'#fff', fontSize:'0.68rem' }">
+                    [[ job.type ]]
+                  </span>
+                  <span style="font-family:monospace;font-size:0.72rem;color:var(--text-3);">#[[ job.id ]]</span>
+                  <!-- Fresh rows read relative, older ones by the day, with the
+                       instant on hover: at this width a full timestamp crowds
+                       the status out of the row. -->
+                  <span class="ms-1" style="font-size:0.72rem;color:var(--text-3);"
+                        :title="formatDateTime(job.created_at)">[[ timeAgoOrDate(job.created_at) ]]</span>
                 </span>
-                <span style="font-family:monospace;font-size:0.72rem;color:var(--text-3);">#[[ job.id ]]</span>
-              </span>
-              <div class="d-flex align-items-center gap-2">
-                <span :style="{ color: statusMeta(job).color }">
-                  <i :class="statusMeta(job).icon" class="me-1"></i>
-                  [[ job.status ]]
+                <div class="d-flex align-items-center gap-2">
+                  <span :style="{ color: statusMeta(job).color }">
+                    <i :class="statusMeta(job).icon" class="me-1"></i>
+                    [[ job.status ]]
+                  </span>
+                  <button type="button" @click="deleteJob(job.id)"
+                          :disabled="job.status === 'running'"
+                          style="background:none;border:none;padding:0;font-size:0.72rem;cursor:pointer;color:var(--text-3);"
+                          title="Delete job">
+                    <i class="fas fa-xmark"></i>
+                  </button>
+                </div>
+              </div>
+              <!-- Progress bar: an interrupted job holds at the progress it reached -->
+              <div style="background:var(--border);border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px;">
+                <div :style="{ width: job.total > 0 ? (job.progress/job.total*100)+'%' : '0%',
+                               background: progressColor(job),
+                               height:'100%', transition:'width 0.3s' }"></div>
+              </div>
+              <div style="color:var(--text-3);">
+                [[ job.progress ]]/[[ job.total ]]
+                <span v-if="job.affected > 0" class="ms-1"
+                      :style="{ color: removalColor(job) }">
+                  [[ isRemoval(job) ? '-' : '+' ]][[ job.affected ]]
                 </span>
-                <button type="button" @click="deleteJob(job.id)"
-                        :disabled="job.status === 'running'"
-                        style="background:none;border:none;padding:0;font-size:0.72rem;cursor:pointer;color:var(--text-3);"
-                        title="Delete job">
-                  <i class="fas fa-xmark"></i>
+                <span v-if="job.skipped > 0" class="ms-1">· [[ job.skipped ]] skipped</span>
+                <button v-if="job.error_count > 0" type="button" class="ms-1"
+                        @click="toggleErrors(job.id)"
+                        :title="errorsOpen(job.id) ? 'Hide the error messages' : 'Show the error messages'"
+                        style="background:none;border:none;padding:0;color:var(--danger);cursor:pointer;font-size:inherit;text-decoration:underline;">
+                  [[ job.error_count ]] err
+                  <i :class="errorsOpen(job.id) ? 'fas fa-caret-up' : 'fas fa-caret-down'"></i>
                 </button>
               </div>
-            </div>
-            <!-- Progress bar: an interrupted job holds at the progress it reached -->
-            <div style="background:var(--border);border-radius:99px;height:5px;overflow:hidden;margin-bottom:4px;">
-              <div :style="{ width: job.total > 0 ? (job.progress/job.total*100)+'%' : '0%',
-                             background: progressColor(job),
-                             height:'100%', transition:'width 0.3s' }"></div>
-            </div>
-            <div style="color:var(--text-3);">
-              [[ job.progress ]]/[[ job.total ]]
-              <span v-if="job.affected > 0" class="ms-1"
-                    :style="{ color: removalColor(job) }">
-                [[ isRemoval(job) ? '-' : '+' ]][[ job.affected ]]
-              </span>
-              <span v-if="job.skipped > 0" class="ms-1">· [[ job.skipped ]] skipped</span>
-              <button v-if="job.error_count > 0" type="button" class="ms-1"
-                      @click="toggleErrors(job.id)"
-                      :title="errorsOpen(job.id) ? 'Hide the error messages' : 'Show the error messages'"
-                      style="background:none;border:none;padding:0;color:var(--danger);cursor:pointer;font-size:inherit;text-decoration:underline;">
-                [[ job.error_count ]] err
-                <i :class="errorsOpen(job.id) ? 'fas fa-caret-up' : 'fas fa-caret-down'"></i>
-              </button>
-            </div>
-            <!-- Error messages: fetched per job from the detail route, and
-                 interpolated as text - they carry exception output. -->
-            <div v-if="errorsOpen(job.id)" class="mt-1 p-2"
-                 style="background:var(--surface-2);border-radius:var(--radius-sm);">
-              <div v-if="jobErrors[job.id].loading" style="color:var(--text-3);">
-                <i class="fas fa-spinner fa-spin me-1"></i>Loading…
-              </div>
-              <div v-else-if="jobErrors[job.id].failed" style="color:var(--warning);">
-                Could not load the messages. The job may have been dismissed.
-              </div>
-              <template v-else>
-                <div v-for="(message, i) in jobErrors[job.id].messages" :key="i"
-                     style="font-family:monospace;font-size:0.72rem;color:var(--danger);word-break:break-word;">
-                  [[ message ]]
+              <!-- Error messages: fetched per job from the detail route, and
+                   interpolated as text - they carry exception output. -->
+              <div v-if="errorsOpen(job.id)" class="mt-1 p-2"
+                   style="background:var(--surface-2);border-radius:var(--radius-sm);">
+                <div v-if="jobErrors[job.id].loading" style="color:var(--text-3);">
+                  <i class="fas fa-spinner fa-spin me-1"></i>Loading…
                 </div>
-                <div v-if="job.error_count > jobErrors[job.id].messages.length"
-                     class="mt-1" style="color:var(--text-3);font-style:italic;">
-                  Showing the first [[ jobErrors[job.id].messages.length ]] of [[ job.error_count ]].
+                <div v-else-if="jobErrors[job.id].failed" style="color:var(--warning);">
+                  Could not load the messages. The job may have been dismissed.
                 </div>
-              </template>
-            </div>
-            <div v-if="job.status === 'interrupted'" class="mt-1" style="color:var(--warning);">
-              Stopped before it finished. Re-running the same selection is safe.
+                <template v-else>
+                  <div v-for="(message, i) in jobErrors[job.id].messages" :key="i"
+                       style="font-family:monospace;font-size:0.72rem;color:var(--danger);word-break:break-word;">
+                    [[ message ]]
+                  </div>
+                  <div v-if="job.error_count > jobErrors[job.id].messages.length"
+                       class="mt-1" style="color:var(--text-3);font-style:italic;">
+                    Showing the first [[ jobErrors[job.id].messages.length ]] of [[ job.error_count ]].
+                  </div>
+                </template>
+              </div>
+              <div v-if="job.status === 'interrupted'" class="mt-1" style="color:var(--warning);">
+                Stopped before it finished. Re-running the same selection is safe.
+              </div>
             </div>
           </div>
         </div>
@@ -408,6 +429,7 @@ createApp({
             // to survive those.
             jobErrors:   {},
             jobRunning:  false,
+            clearFailed: false,
             _pollTimer:  null,
             _debounce:   null,
         };
@@ -419,6 +441,13 @@ createApp({
         somePageSelected() {
             return this.conversions.some(c => this.selected.has(c.id));
         },
+        // What "clear finished" would take: every job the panel no longer
+        // shows as live, interrupted ones included. A count off the last poll,
+        // so it says whether the control is worth offering, not how many rows
+        // the server will actually find.
+        finishedCount() {
+            return this.jobs.filter(j => j.status !== 'running').length;
+        }
     },
     watch: {
         tagSearch(val) {
@@ -448,6 +477,7 @@ createApp({
     },
     methods: {
         formatDateTime: ctiDate.formatDateTime,
+        timeAgoOrDate:  ctiDate.timeAgoOrDate,
 
         statusMeta(job) {
             return STATUS_META[job.status] || STATUS_META.running;
@@ -617,6 +647,32 @@ createApp({
             await fetch(`/tags/admin/bulk_conversions/job/${jid}`, { method: 'DELETE' });
             this.jobs = this.jobs.filter(j => j.id !== jid);
             delete this.jobErrors[jid];
+        },
+        // The server decides again which jobs are finished: a job may have
+        // ended, or started reading as interrupted, since the last poll. So
+        // the confirm names no number it cannot honour, and the list is
+        // re-read afterwards rather than filtered in place - the rows that
+        // come back are the answer.
+        //
+        // A request that did not land says so. Dismissing is destructive and
+        // the card has no other feedback: a 403 or a route that moved would
+        // otherwise look exactly like a list that was already empty.
+        async clearFinished() {
+            if (!confirm('Dismiss every finished job? This cannot be undone.')) return;
+            this.clearFailed = false;
+            let ok = false;
+            try {
+                const r = await fetch('/tags/admin/bulk_conversions/jobs', { method: 'DELETE' });
+                ok = r.ok;
+            } catch (e) {
+                console.error(e);
+            }
+            this.clearFailed = !ok;
+            await this.loadJobs();
+            const kept = new Set(this.jobs.map(j => j.id));
+            Object.keys(this.jobErrors).forEach(jid => {
+                if (!kept.has(jid)) delete this.jobErrors[jid];
+            });
         },
 
         errorsOpen(jid) {
