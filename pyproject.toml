@@ -45,6 +45,13 @@ dev = [
     "ruff>=0.15.17"
 ]
 
+[tool.pytest.ini_options]
+# Without this, collection starts at the repo root and walks everything parked
+# there: the submodules, and any sibling project checked out alongside the code
+# for reference. A stray conftest.py that fails to import kills the whole run
+# before a single test executes.
+testpaths = ["tests"]
+
 [tool.ruff]
 target-version = "py310"
 # submodules are upstream checkouts a root-level --fix must never edit;
