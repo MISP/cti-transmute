@@ -224,6 +224,55 @@ def test_an_item_that_dies_mid_write_does_not_take_the_run_with_it(
     assert ConversionTagAssociation.query.count() == 0
 
 
+def test_a_tag_write_that_really_fails_reaches_the_job_row(
+        app_db, inline_jobs, monkeypatch):
+    """The other failure tests patch ``tags_core`` away; this one lets the
+    real body fail.
+
+    ``merge_conversion_tags`` used to answer any failed commit with ``0``, so a
+    run whose every write died read exactly like a clean run with nothing to
+    tag: affected 0, errors 0. The duplicate uuid here is only the lever - what
+    is pinned is that the error out of the real commit lands in the job row.
+    """
+    from website.db_class.db import ConversionTagAssociation
+    from website.repos import bulk_tag_jobs as jobs_repo
+    from website.web import application, db
+    from website.web.tags import tags_core
+
+    user = _user()
+    tag = _tag(user.id)
+    conversion_ids = _conversions(user.id, 2)
+
+    taken_uuid = str(_uuid.uuid4())
+    db.session.add(ConversionTagAssociation(
+        uuid=taken_uuid, conversion_id=conversion_ids[0], tag_id=tag.id,
+        user_id=user.id, added_at=datetime.now(timezone.utc),
+        source_type="json"))
+    db.session.commit()
+
+    class _CollidingUuid:
+        """Stands in for the ``uuid`` module ``tags_core`` writes through, so
+        only its inserts collide and the job row's own writes are untouched."""
+
+        @staticmethod
+        def uuid4():
+            return taken_uuid
+
+    monkeypatch.setattr(tags_core, "uuid", _CollidingUuid)
+
+    token = inline_jobs.start_assign(
+        application, conversion_ids, [tag.id], user.id)
+
+    payload = jobs_repo.get(token)
+    assert payload["status"] == "done"
+    assert payload["affected"] == 0
+    assert payload["skipped"] == 0          # a failure is not a nothing-to-do
+    assert payload["error_count"] == 2
+    assert payload["errors"][0].startswith(f"#{conversion_ids[0]}: ")
+    assert ConversionTagAssociation.query.filter_by(
+        source_type="user").count() == 0
+
+
 def test_a_long_run_does_not_write_the_job_row_per_item(
         app_db, inline_jobs, monkeypatch):
     """900 items meant 900 UPDATEs on top of the tag writes themselves.
