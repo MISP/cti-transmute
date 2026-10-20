@@ -3,8 +3,9 @@
 """Production entry point: hand the process over to gunicorn.
 
 Werkzeug's ``application.run()`` lives in ``bin/dev_server.py`` instead, so this
-path never calls it and the interactive debugger cannot be switched on here by
-an environment variable. The process is replaced rather than spawned, so a
+path never calls it and the interactive debugger does not exist here whatever
+the environment says. The rest of debug mode is settled by
+``gunicorn_environment()``. The process is replaced rather than spawned, so a
 supervisor signals gunicorn directly.
 """
 
@@ -54,9 +55,24 @@ def gunicorn_command() -> list[str]:
     ]
 
 
+def gunicorn_environment() -> dict[str, str]:
+    """The environment gunicorn is exec'd with, debug settled before the exec."""
+    environment = dict(os.environ)
+    # Flask reads FLASK_DEBUG when the application object is built and keeps it
+    # as the default for DEBUG, which propagates exceptions past the error
+    # handlers and reloads templates. Only the interactive console needs
+    # application.run(), so everything else debug turns on reaches gunicorn
+    # through the environment - from a service unit, or a shell export nobody
+    # remembers. Set rather than removed: the application reads .env itself,
+    # after this exec, and load_dotenv() leaves a variable that already exists
+    # alone. Development reads the operator's own value in bin/dev_server.py.
+    environment['FLASK_DEBUG'] = 'false'
+    return environment
+
+
 def main():
     command = gunicorn_command()
-    os.execvp(command[0], command)
+    os.execvpe(command[0], command, gunicorn_environment())
 
 
 if __name__ == '__main__':
