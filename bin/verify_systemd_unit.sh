@@ -66,7 +66,10 @@ if [ -z "$URL" ]; then
     CONFIG="$WORKDIR/config/generic.json"
     if [ -r "$CONFIG" ]; then
         # 0.0.0.0 is a bind, not an address to request: ask loopback instead.
-        URL="$(python3 - "$CONFIG" <<'PY'
+        # -I because this runs as root and the script arrives on stdin, which
+        # puts the invoking directory on sys.path: a file named json.py sitting
+        # there would otherwise be imported with root privileges.
+        URL="$(python3 -I - "$CONFIG" <<'PY'
 import json, sys
 config = json.load(open(sys.argv[1]))
 ip = config.get("website_listen_ip", "127.0.0.1")
