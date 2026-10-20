@@ -3,7 +3,7 @@
 Production used to be Werkzeug's own server with ``debug`` read from
 ``FLASK_DEBUG``. The split is what takes the interactive debugger out of
 production, so what is pinned here is what makes the split true: the worker
-count bulk tag jobs depend on, the worker class that keeps today's concurrency,
+count the launcher hard-codes, the worker class that keeps today's concurrency,
 the environment the production launcher refuses to pass on, and the development
 guard that refuses to put the debugger on a reachable interface.
 """
@@ -40,7 +40,12 @@ def test_runs_the_gunicorn_of_the_running_interpreter(generic_config):
 
 
 def test_single_worker_and_threaded_class(generic_config):
-    """One worker keeps bulk-job state visible; gthread keeps concurrency."""
+    """The launcher hard-codes one worker, and gthread rather than sync.
+
+    Neither is a configuration key, so this is the only place a change to
+    either shows up. One worker is a capacity default and nothing depends on
+    it for correctness; raising it would be a measured decision, not a fix.
+    """
     command = start_website.gunicorn_command()
 
     assert command[command.index("-w") + 1] == "1"
