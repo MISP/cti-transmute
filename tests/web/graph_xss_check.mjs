@@ -12,12 +12,14 @@
  *      if that resolution changes. Fires on hover (tooltip) and click (sidebar).
  * Run by the pytest wrapper (test_graph_xss_js.py): node graph_xss_check.mjs
  * Prints one line per check; exits non-zero on any failure. */
+import { createHash } from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const graphJs = join(repoRoot, 'website/web/static/js/graph');
+const pivotickStatic = join(repoRoot, 'website/web/static/pivotick');
 const { renderRawJson, normaliseNodeTypes, textCell } = await import(join(graphJs, 'graphSafety.js'));
 const { _nodeProperties } = await import(join(graphJs, 'conversionGraph.js'));
 
@@ -91,16 +93,45 @@ assert(benign.edges[0].data.label === 'http://x/?a=1&b=2',
        'a URL label keeps its query-string ampersand');
 
 // Label safety is Pivotick's guarantee from 1.5.0 on ("a string always renders
-// as text", docs/security.md), so pin the vendored version that promise came
-// with. Skipped where the submodule is not checked out (CI clones without it).
-const pivotickPkg = join(repoRoot, 'submodules/pivotick/package.json');
-if (existsSync(pivotickPkg)) {
-    const { version } = JSON.parse(readFileSync(pivotickPkg, 'utf8'));
+// as text", docs/security.md), so pin the version that promise came with. What
+// gets pinned is the copy the browser loads, not the submodule: the two are
+// coupled only by a manual bin/build_assets.py run, so a static/ copy left
+// behind by a submodule bump would pass a check that read the submodule.
+// build_assets.py records the version and the digests beside the bundle.
+const bundleRecord = join(pivotickStatic, 'BUNDLE.json');
+const hasRecord = existsSync(bundleRecord);
+assert(hasRecord,
+       'static/pivotick/BUNDLE.json exists, recording which Pivotick is served');
+
+// Everything below reads the record, so a missing one stops here: assert only
+// marks the run failed, and reading on would bury that FAIL under a stack.
+if (hasRecord) {
+    const { version, sha256 } = JSON.parse(readFileSync(bundleRecord, 'utf8'));
     const [major, minor] = version.split('.').map(Number);
     assert(major > 1 || (major === 1 && minor >= 5),
-           `vendored Pivotick is >= 1.5.0, which renders labels as text (found ${version})`);
-} else {
-    console.log('skip: Pivotick submodule not checked out, version floor not verified');
+           `served Pivotick is >= 1.5.0, which renders labels as text (found ${version})`);
+
+    for (const [name, digest] of Object.entries(sha256)) {
+        const served = join(pivotickStatic, name);
+        if (!existsSync(served)) {
+            assert(false, `${name} is where BUNDLE.json says it is`);
+            continue;
+        }
+        const actual = createHash('sha256').update(readFileSync(served)).digest('hex');
+        assert(actual === digest,
+               `${name} is the build BUNDLE.json recorded, not an edited or stale copy`);
+    }
+
+    // When the submodule is checked out it must agree, or static/ is a rebuild
+    // behind. CI clones without it, so this part alone stays conditional.
+    const pivotickPkg = join(repoRoot, 'submodules/pivotick/package.json');
+    if (existsSync(pivotickPkg)) {
+        const pkg = JSON.parse(readFileSync(pivotickPkg, 'utf8'));
+        assert(pkg.version === version,
+               `the served bundle is built from the vendored submodule (static ${version}, submodule ${pkg.version})`);
+    } else {
+        console.log('skip: Pivotick submodule not checked out, rebuild staleness not verified');
+    }
 }
 
 // ── Sink 3: properties-panel cells ──────────────────────────────────────────
