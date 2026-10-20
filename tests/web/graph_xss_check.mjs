@@ -18,7 +18,7 @@ import { fileURLToPath } from 'url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const graphJs = join(repoRoot, 'website/web/static/js/graph');
-const { renderRawJson, sanitizeGraphData, textCell } = await import(join(graphJs, 'graphSafety.js'));
+const { renderRawJson, normaliseNodeTypes, textCell } = await import(join(graphJs, 'graphSafety.js'));
 const { _nodeProperties } = await import(join(graphJs, 'conversionGraph.js'));
 
 const assert = (cond, msg) => {
@@ -67,7 +67,7 @@ const parsed = {
     } }],
     edges: [{ from: 'n1', to: 'n2', data: { label: '<b onmouseover=alert(3)>' } }],
 };
-sanitizeGraphData(parsed);
+normaliseNodeTypes(parsed);
 
 assert(parsed.nodes[0].data.label === '<img src=x onerror=alert(1)>',
        'a hostile node label is passed through verbatim (Pivotick inserts it as text)');
@@ -84,7 +84,7 @@ const benign = {
     nodes: [{ id: 'a', data: { label: 'Phishing "ACME" & co', sublabel: 'filename' } }],
     edges: [{ from: 'a', to: 'b', data: { label: 'http://x/?a=1&b=2' } }],
 };
-sanitizeGraphData(benign);
+normaliseNodeTypes(benign);
 assert(benign.nodes[0].data.label === 'Phishing "ACME" & co',
        'an event info keeps its ampersand and quotes, not &amp;/&quot;');
 assert(benign.edges[0].data.label === 'http://x/?a=1&b=2',
@@ -132,7 +132,7 @@ const typed = {
     ],
     edges: []
 };
-sanitizeGraphData(typed);
+normaliseNodeTypes(typed);
 assert(!/[<>"']/.test(typed.nodes[0].data.type),
        'a hostile node type keeps no HTML specials for the ego-graph property map');
 assert(typed.nodes[1].data.type === 'ipv4-addr',
@@ -168,10 +168,10 @@ assert(!/document\.write/.test(src),
        'conversionGraph.js no longer calls document.write');
 assert(/renderRawJson\(/.test(src),
        'conversionGraph.js opens the raw-JSON popup via renderRawJson');
-assert(/sanitizeGraphData\(/.test(src),
-       'conversionGraph.js routes the parsed graph through sanitizeGraphData');
-assert(src.indexOf('sanitizeGraphData(') < src.indexOf('new window.Pivotick('),
-       'the parsed graph is sanitized before it is handed to Pivotick');
+assert(/normaliseNodeTypes\(/.test(src),
+       'conversionGraph.js routes the parsed graph through normaliseNodeTypes');
+assert(src.indexOf('normaliseNodeTypes(') < src.indexOf('new window.Pivotick('),
+       'the node types are normalised before the graph is handed to Pivotick');
 
 // The inline edgePropertiesMap cannot be imported, so assert on its source that
 // no cell is left as a bare string (Fix: stop relying on label escaping).
