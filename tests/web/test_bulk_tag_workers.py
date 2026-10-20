@@ -110,37 +110,36 @@ def _conversions(user_id, count, *, tag_id=None, misp=None):
 
 # --- the counts land in `affected` --------------------------------------------
 
-def test_remove_reports_how_many_tags_it_took_off(app_db, inline_jobs):
-    """Removal counts used to be written into the field named ``added``."""
-    from website.repos import bulk_tag_jobs as jobs_repo
+@pytest.mark.parametrize("launcher,count,pre_tagged", [
+    pytest.param("start_assign", 2, False, id="assign"),
+    pytest.param("start_remove", 3, True, id="remove"),
+    pytest.param("start_clear", 2, True, id="clear")
+])
+def test_a_launcher_reports_the_associations_it_changed(
+        app_db, inline_jobs, launcher, count, pre_tagged):
+    """``affected`` counts associations whichever direction the run went.
 
-    user = _user()
-    tag = _tag(user.id)
-    conversion_ids = _conversions(user.id, 3, tag_id=tag.id)
-
-    from website.web import application
-    token = inline_jobs.start_remove(
-        application, conversion_ids, [tag.id], user.id)
-
-    payload = jobs_repo.get(token)
-    assert payload["status"] == "done"
-    assert payload["progress"] == 3
-    assert payload["affected"] == 3
-
-
-def test_clear_reports_how_many_tags_it_took_off(app_db, inline_jobs):
+    Removal counts used to be written into the field named ``added``.
+    ``pre_tagged`` is what each direction needs to find: the two removers want
+    the associations already there, assign wants them absent.
+    """
     from website.repos import bulk_tag_jobs as jobs_repo
     from website.web import application
 
     user = _user()
     tag = _tag(user.id)
-    conversion_ids = _conversions(user.id, 2, tag_id=tag.id)
+    conversion_ids = _conversions(
+        user.id, count, tag_id=tag.id if pre_tagged else None)
 
-    token = inline_jobs.start_clear(application, conversion_ids, user.id)
+    # clear takes every tag off, so it is the launcher without a tag list
+    tag_args = () if launcher == "start_clear" else ([tag.id],)
+    token = getattr(inline_jobs, launcher)(
+        application, conversion_ids, *tag_args, user.id)
 
     payload = jobs_repo.get(token)
     assert payload["status"] == "done"
-    assert payload["affected"] == 2
+    assert payload["progress"] == count
+    assert payload["affected"] == count
 
 
 def test_scan_counts_what_it_tagged_and_what_it_had_nothing_to_tag(
@@ -326,19 +325,3 @@ def test_a_run_that_fails_every_item_stays_inside_that_bound(
     payload = jobs_repo.get(token)
     assert payload["error_count"] == 900
     assert len(payload["errors"]) == jobs_repo.ERROR_CAP
-
-
-def test_assign_reports_the_associations_it_added(app_db, inline_jobs):
-    from website.repos import bulk_tag_jobs as jobs_repo
-    from website.web import application
-
-    user = _user()
-    tag = _tag(user.id)
-    conversion_ids = _conversions(user.id, 2)
-
-    token = inline_jobs.start_assign(
-        application, conversion_ids, [tag.id], user.id)
-
-    payload = jobs_repo.get(token)
-    assert payload["status"] == "done"
-    assert payload["affected"] == 2

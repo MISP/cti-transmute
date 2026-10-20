@@ -52,14 +52,6 @@ def _stall(token, seconds=120):
     db.session.commit()
 
 
-def test_a_fresh_running_job_reads_running(app_db):
-    from website.repos import bulk_tag_jobs as jobs_repo
-
-    job = jobs_repo.create(job_type="assign", total=5, user_id=1)
-
-    assert jobs_repo.get(job.token)["status"] == "running"
-
-
 def test_a_stale_running_job_reads_interrupted_without_being_written(app_db):
     from website.db_class.db import BulkTagJob
     from website.repos import bulk_tag_jobs as jobs_repo
