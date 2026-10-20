@@ -144,8 +144,13 @@ back out.
 
 `start_website` serves the application through **gunicorn** with a single
 threaded worker (`config/generic.json`'s `website_threads`, default 8). One
-worker is a constraint rather than a default to tune: bulk tag jobs keep their
-state in the worker's memory, and a second worker process cannot see them.
+worker is a capacity choice rather than a correctness constraint, and unlike
+the thread count it is not a configuration key: `bin/start_website.py` fixes it
+at one. Bulk tag job records live in the database rather than in a worker's
+memory, so a second worker would not lose sight of a running job — the work
+itself still runs in the process that started it. More workers would buy GIL
+parallelism for CPU-bound STIX parsing and cost one SQLAlchemy connection pool
+each. Nobody has measured that trade, which is why it stays at one.
 
 ### The listen address is not a firewall
 
