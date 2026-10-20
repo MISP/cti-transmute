@@ -192,6 +192,10 @@ Environment=PYTHONUNBUFFERED=1
 # start.
 RuntimeDirectory=cti-transmute
 Environment=XDG_RUNTIME_DIR=/run/cti-transmute
+# Logged-in sessions, outside the checkout: systemd creates
+# /var/lib/cti-transmute owned by User= above, and it survives a deploy.
+StateDirectory=cti-transmute
+Environment=SESSION_FILE_DIR=/var/lib/cti-transmute/flask-session
 ExecStart=/opt/cti-transmute/.venv/bin/start_website
 Restart=always
 RestartSec=2
@@ -208,6 +212,14 @@ WantedBy=multi-user.target
   `postgresql.service` in `After=`, or the unit refuses to start.
 - `TRANSMUTE_HOME` is read before the application loads your `.env`, so the unit
   has to carry it. `SECRET_KEY` and the rest stay in the `.env` in the checkout.
+- `SESSION_FILE_DIR` is the session store — where a logged-in user's session
+  lives. Sessions are state rather than code: they have to outlive a deploy and
+  be writable by the `User=` above, which is what `StateDirectory=` gives you.
+  Leave the pair out and the store defaults to `flask_session/` inside the
+  checkout, which only works when the service user owns the code. On the two
+  ordinary deployments where it does not — a read-only checkout, or one owned
+  by `root` and run as `cti-transmute` — the service refuses to start and says
+  so, naming the directory and this variable.
 - `Restart=always` is the point of the exercise — a worker that dies is
   replaced, and the service comes back after a reboot.
 - gunicorn logs every request to standard output, which journald collects.
@@ -218,6 +230,14 @@ sudo systemctl enable --now cti-transmute.service   # start, and start on boot
 sudo systemctl status cti-transmute.service
 sudo systemctl restart cti-transmute.service
 sudo journalctl -u cti-transmute.service -f         # live log
+```
+
+To check that the unit you wrote actually supervises the service — that a
+killed worker is replaced, a killed server is restarted, and the service comes
+back after a reboot — run it against your install:
+
+```bash
+sudo bin/verify_systemd_unit.sh
 ```
 
 ### Reverse proxy
