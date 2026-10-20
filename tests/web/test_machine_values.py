@@ -3,11 +3,11 @@
 Renamed the activity-log and notification stored values (``conversion_*``
 event types, ``target_type``/``related_type`` of
 ``conversion``/``conversion_history``, notification type
-``new_follow_conversion``) and migrated historical rows in place
-(ADR-0016). This test keeps a future call site — or a well-meaning
-revert — from reintroducing the retired values into code, which would
-silently re-mix the stored data (exactly how the ticket-14 drive-by
-slipped through unnoticed).
+``new_follow_conversion``) and migrated historical rows in place. This
+test keeps a future call site - or a well-meaning revert - from
+reintroducing the retired values into code, which would silently re-mix
+the stored data (exactly how an earlier drive-by slipped through
+unnoticed).
 
 Scope: stored-value literals only. The verb surfaces ruled permanent
 (``/api/convert/`` routes, the ``convert`` namespace, submit buttons named
@@ -71,6 +71,7 @@ def test_no_retired_stored_values_in_code():
                 rel = path.relative_to(REPO_ROOT)
                 offenders.append(f"{rel}:{lineno}: {line.strip()[:120]}")
     assert not offenders, (
-        "retired 'convert' stored values written by code (ticket 15 renamed "
-        "them and migrated the rows — see ADR-0016):\n" + "\n".join(offenders)
+        "retired 'convert' stored values written by code (the rename "
+        "migrated the rows; these values must not come back):\n"
+        + "\n".join(offenders)
     )

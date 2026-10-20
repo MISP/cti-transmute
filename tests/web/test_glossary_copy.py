@@ -2,9 +2,9 @@
 
 CONTEXT.md retired "Convert" as a noun — the persisted record is a
 *Conversion*, the engine is a *Converter*, and *to convert* stays a verb.
-Issue 12 swept the display copy, docstrings and comments; this test keeps
-the retired noun from creeping back into user-facing surfaces (templates,
-non-vendored static JS, and Python under ``website/``).
+An earlier sweep covered the display copy, docstrings and comments; this
+test keeps the retired noun from creeping back into user-facing surfaces
+(templates, non-vendored static JS, and Python under ``website/``).
 
 The patterns match noun *contexts* rather than the bare word, so verb
 usage ("Convert to STIX", "Converts the Markdown…") and identifiers

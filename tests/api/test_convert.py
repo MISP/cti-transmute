@@ -5,8 +5,8 @@ def test_list_available_keyed_by_registry_urls(client):
     """The list reflects the registry: one entry per registered Converter,
     keyed by that Converter's POST URL.
 
-    ADR-0011: MISP->STIX is a single Converter with `version` as a param, so
-    there are two entries (not a 2.0/2.1 split). The keys are the existing
+    MISP->STIX is a single Converter with `version` as a param, so there
+    are two entries (not a 2.0/2.1 split). The keys are the existing
     public URLs the README and integrations rely on.
     """
     resp = client.get("/api/convert/list")

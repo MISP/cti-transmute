@@ -112,8 +112,8 @@ def test_owner_can_open_the_refresh_form(web_client, misp_event):
 
 
 def test_owner_post_refresh_json_writes_a_pending_history_row(web_client, misp_event):
-    """The refresh POST is a fetch/JSON submission (ADR-0006): params travel in
-    the body, the response reports identical/different plus the pending row's id."""
+    """The refresh POST is a fetch/JSON submission: params travel in the body,
+    the response reports identical/different plus the pending row's id."""
     from website.db_class.db import ConversionHistory
 
     owner = _make_user(email="owner@test.test")

@@ -6,7 +6,7 @@ Two concerns share this file:
   URL must keep working via a permanent (301) redirect to its
   ``/conversions/*`` equivalent, so existing links/bookmarks survive at least
   one release.
-- The forward contract of ADR-0004: the API persist envelope advertises
+- The forward contract of the API persist envelope: it advertises
   ``url: /conversions/<id>``, so that address must resolve.
 """
 

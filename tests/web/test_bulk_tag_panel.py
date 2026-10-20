@@ -3,7 +3,7 @@
 Each message is `#<id>: ` plus exception output derived from conversion
 content, so it is attacker-reachable in the same sense as any stored field.
 The panel fetches the messages as JSON and renders them through Vue
-interpolation; ADR-0021's rule is that data never becomes template markup, and
+interpolation; the rule is that data never becomes template markup, and
 `v-html` in this card would be exactly that.
 """
 
