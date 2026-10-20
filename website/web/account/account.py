@@ -556,8 +556,8 @@ def admin_deleted_conversions():
 
 @account_blueprint.route("/admin/deleted_converts", methods=['GET'])
 def legacy_admin_deleted_converts():
-    """301 shim for the pre-rename page URL — bookmarks and ``?highlight=``
-    deep links survive one release, like the ticket-04 ``/convert`` shim."""
+    """301 shim for the pre-rename page URL - bookmarks and ``?highlight=``
+    deep links survive one release, like the ``/convert`` shim."""
     dest = url_for(".admin_deleted_conversions")
     query = request.query_string.decode()
     if query:

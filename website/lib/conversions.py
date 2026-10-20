@@ -101,9 +101,9 @@ def _record_activity(event_type: str, actor, target_type: str, target_id: int,
 
     Staged, not committed: the caller owns the commit, so the entry lands
     atomically with the mutation it describes — the clean commit boundary is
-    the point, not durability (the Activity log is disposable display data,
-    ADR-0016). ``actor`` is the *acting* user (e.g. an admin refreshing
-    someone else's Conversion), which can differ from the row's owner.
+    the point, not durability (the Activity log is disposable display data).
+    ``actor`` is the *acting* user (e.g. an admin refreshing someone else's
+    Conversion), which can differ from the row's owner.
     """
     db.session.add(
         SystemLog(

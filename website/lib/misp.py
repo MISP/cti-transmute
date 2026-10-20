@@ -63,8 +63,8 @@ def _misp_request(method: str, path: str, *, url: str, key: str,
     """Call ``path`` on the MISP instance at ``url`` and return parsed JSON.
 
     Owns the shared transport cascade: headers, TLS verify (default on —
-    self-signed remote MISP is a deferred product question, ADR-0018),
-    redirects refused, the connection/timeout/SSL/HTTP-error handling, and the
+    self-signed remote MISP is a deferred product question), redirects
+    refused, the connection/timeout/SSL/HTTP-error handling, and the
     401/403 → auth mapping. Anything it raises is a ``MispError``.
     """
     try:
