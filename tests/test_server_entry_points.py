@@ -4,13 +4,17 @@ Production used to be Werkzeug's own server with ``debug`` read from
 ``FLASK_DEBUG``. The split is what takes the interactive debugger out of
 production, so what is pinned here is what makes the split true: the worker
 count bulk tag jobs depend on, the worker class that keeps today's concurrency,
-and the development guard that refuses to put the debugger on a reachable
-interface.
+the environment the production launcher refuses to pass on, and the development
+guard that refuses to put the debugger on a reachable interface.
 """
 
+import os
 import sys
+from unittest import mock
 
 import pytest
+from dotenv import load_dotenv
+from flask import Flask
 
 from bin import dev_server, start_website
 
@@ -68,6 +72,55 @@ def test_thread_count_falls_back_when_the_key_predates_it(generic_config):
     command = start_website.gunicorn_command()
 
     assert command[command.index("--threads") + 1] == str(start_website.DEFAULT_THREADS)
+
+
+@pytest.fixture
+def exec_call(monkeypatch):
+    """Record the exec rather than replacing the test process with gunicorn.
+
+    Both spellings are stubbed: the environment is what matters, not which
+    call carries it, and an unstubbed one would serve a real port from here.
+    """
+    recorded = {}
+    monkeypatch.setattr(
+        os, "execvp",
+        lambda file, args: recorded.update(args=args, environment=dict(os.environ))
+    )
+    monkeypatch.setattr(
+        os, "execvpe",
+        lambda file, args, environment: recorded.update(args=args, environment=environment)
+    )
+    return recorded
+
+
+def test_the_exec_hands_over_an_environment_debug_is_off_in(generic_config, exec_call,
+                                                            monkeypatch):
+    """The split removes the console; the rest of debug mode rides the environment.
+
+    DEBUG propagates exceptions past the error handlers and reloads templates,
+    and Flask reads the flag when the application object is built - which under
+    gunicorn happens after the exec, from whatever it inherited.
+    """
+    monkeypatch.setenv("FLASK_DEBUG", "true")
+
+    start_website.main()
+    environment = exec_call["environment"]
+
+    assert environment["PATH"] == os.environ["PATH"]
+    with mock.patch.dict(os.environ, environment, clear=True):
+        assert Flask(__name__).debug is False
+
+
+def test_a_dotenv_cannot_switch_debug_back_on(monkeypatch, tmp_path):
+    """website/web/__init__.py reads .env inside the served process, after the exec."""
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("FLASK_DEBUG=true\n")
+    monkeypatch.delenv("FLASK_DEBUG", raising=False)
+
+    with mock.patch.dict(os.environ, start_website.gunicorn_environment(), clear=True):
+        load_dotenv(dotenv)
+
+        assert Flask(__name__).debug is False
 
 
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1", "localhost"])
