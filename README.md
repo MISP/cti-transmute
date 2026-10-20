@@ -245,6 +245,11 @@ back after a reboot — run it against your install:
 sudo bin/verify_systemd_unit.sh
 ```
 
+It kills the running worker and the gunicorn arbiter to prove systemd brings
+them back, so the service is interrupted for a few seconds: run it on a new
+install, or during a maintenance window. The reboot check is the one step it
+leaves to you — it tells you when to reboot, then `--post-reboot` resumes.
+
 ### Reverse proxy
 
 A TLS-terminating nginx in front of the service:
