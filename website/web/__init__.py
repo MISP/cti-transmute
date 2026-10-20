@@ -38,8 +38,51 @@ application.config['SESSION_TYPE'] = 'filesystem'
 # whatever the working directory is - with SESSION_FILE_DIR as the operator
 # override for an install that keeps state outside the code.
 _default_session_file_dir = Path(__file__).resolve().parents[2] / "flask_session"
-_session_file_dir = Path(os.environ.get("SESSION_FILE_DIR") or _default_session_file_dir)
-_session_file_dir.mkdir(parents=True, exist_ok=True)
+
+# What the operator reads when the service user cannot write that directory -
+# an ordinary deployment: the checkout owned by root or shipped read-only, the
+# unit running as its own service user. Unguarded, the mkdir raises at import,
+# before any route exists, and the traceback points at a path nobody
+# configured, which reads like a bug in flask-session rather than the
+# permissions decision it is. So name the directory, what it holds, and the
+# override that moves it.
+_SESSION_FILE_DIR_HELP = (
+    "{problem}: {path}\n"
+    "That directory is the session store - it holds every logged-in user's "
+    "session, and the user the service runs as has to be able to write it. "
+    "Either give that user write access, or set SESSION_FILE_DIR to a "
+    "directory it owns. Under systemd that is two lines in the unit: "
+    "StateDirectory=cti-transmute, which creates /var/lib/cti-transmute owned "
+    "by the User= the service runs as, and "
+    "Environment=SESSION_FILE_DIR=/var/lib/cti-transmute/flask-session."
+)
+
+
+def _session_file_dir_error(problem: str, path: Path) -> RuntimeError:
+    return RuntimeError(_SESSION_FILE_DIR_HELP.format(problem=problem, path=path))
+
+
+def _ensure_session_file_dir(path: Path) -> Path:
+    """``path``, created if it is missing; raises when the service cannot write it.
+
+    The write check is not what the mkdir already proved: mkdir(exist_ok=True)
+    succeeds on a directory that exists and belongs to somebody else, which is
+    what a deploy run as root leaves behind for a service user to inherit. The
+    store is then read-only, flask-session's own probe fails to stderr and is
+    swallowed, and the service comes up with every session write failing.
+    """
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise _session_file_dir_error(
+            f"Cannot create the session directory ({error.strerror or error})", path) from error
+    if not os.access(path, os.W_OK | os.X_OK):
+        raise _session_file_dir_error("Cannot write the session directory", path)
+    return path
+
+
+_session_file_dir = _ensure_session_file_dir(
+    Path(os.environ.get("SESSION_FILE_DIR") or _default_session_file_dir))
 application.config["SESSION_FILE_DIR"] = str(_session_file_dir)
 
 # Flask 3.x defaults MAX_FORM_MEMORY_SIZE to 500 KB which rejects large MISP JSON payloads.
