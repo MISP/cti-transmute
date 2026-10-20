@@ -39,7 +39,7 @@ function fakeWindow() {
         set textContent(v) { this._text = String(v); },
         get textContent() { return this._text; },
         set innerHTML(v) { innerHTMLWrites.push(v); },
-        appendChild(child) { this.children.push(child); },
+        appendChild(child) { this.children.push(child); }
     });
     const body = makeEl('body');
     return { innerHTMLWrites, body, win: { document: { body, createElement: makeEl } } };
@@ -63,9 +63,9 @@ const parsed = {
     nodes: [{ id: 'n1', data: {
         label: '<img src=x onerror=alert(1)>',
         sublabel: '<svg onload=alert(2)>',
-        type: 'x', raw: { value: '<img src=x onerror=alert(1)>' },
+        type: 'x', raw: { value: '<img src=x onerror=alert(1)>' }
     } }],
-    edges: [{ from: 'n1', to: 'n2', data: { label: '<b onmouseover=alert(3)>' } }],
+    edges: [{ from: 'n1', to: 'n2', data: { label: '<b onmouseover=alert(3)>' } }]
 };
 normaliseNodeTypes(parsed);
 
@@ -82,7 +82,7 @@ assert(parsed.nodes[0].data.raw.value === '<img src=x onerror=alert(1)>',
 // event info or a URL attribute must not arrive as entities.
 const benign = {
     nodes: [{ id: 'a', data: { label: 'Phishing "ACME" & co', sublabel: 'filename' } }],
-    edges: [{ from: 'a', to: 'b', data: { label: 'http://x/?a=1&b=2' } }],
+    edges: [{ from: 'a', to: 'b', data: { label: 'http://x/?a=1&b=2' } }]
 };
 normaliseNodeTypes(benign);
 assert(benign.nodes[0].data.label === 'Phishing "ACME" & co',

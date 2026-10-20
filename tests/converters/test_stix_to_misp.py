@@ -59,7 +59,7 @@ def test_params_reject_unknown_field():
 
 def test_params_accept_sharing_group_distribution_without_sharing_group():
     # Shape-only validation. The "sharing_group_id required when
-    # distribution == 4" rule is the target tool's job, NOT ours — this must
+    # distribution == 4" rule is the target tool's job, NOT ours - this must
     # construct cleanly.
     params = StixToMispParams(distribution=4)
 
@@ -154,5 +154,5 @@ def test_shadowed_duplicate_id_is_reported_under_the_bundle(duplicated_id_bundle
     warnings = result.diagnostics["warnings"][duplicated_id_bundle["id"]]
     assert any(duplicated_id in message for message in warnings)
     assert result.diagnostics["counts"]["warnings"] >= 1
-    # The document is still there — a Diagnostic is not a failure.
+    # The document is still there - a Diagnostic is not a failure.
     assert result.document["info"] == "TDD fixture event"

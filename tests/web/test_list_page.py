@@ -2,7 +2,7 @@
 
 It renders its endpoint cards and testers client-side from
 ``GET /api/convert/list`` (each entry's ``params_schema``), mounting the same
-``paramSurface.js`` renderer as the conversion pages — so the old server-side
+``paramSurface.js`` renderer as the conversion pages - so the old server-side
 ``/get_features`` loopback proxy (an HTTP call from the app to its own port)
 is gone.
 """
@@ -20,7 +20,7 @@ def full_web_client():
     from website.web.account.account import account_blueprint
     from website.web.conversions.conversions import (
         conversions_blueprint,
-        legacy_convert_blueprint,
+        legacy_convert_blueprint
     )
     from website.web.evaluate.evaluate import evaluate_blueprint
     from website.web.home import home_blueprint
@@ -37,7 +37,7 @@ def full_web_client():
         (legacy_convert_blueprint, "/convert"),
         (account_blueprint, "/account"),
         (tags_blueprint, "/tags"),
-        (evaluate_blueprint, "/evaluate"),
+        (evaluate_blueprint, "/evaluate")
     ]:
         if bp.name not in application.blueprints:
             application.register_blueprint(bp, url_prefix=prefix)

@@ -26,7 +26,7 @@ def web_client(app_db):
     for bp, prefix in (
         (conversions_blueprint, "/conversions"),
         (legacy_convert_blueprint, "/convert"),
-        (account_blueprint, "/account"),
+        (account_blueprint, "/account")
     ):
         if bp.name not in application.blueprints:
             application.register_blueprint(bp, url_prefix=prefix)
@@ -67,7 +67,7 @@ def test_stix_to_misp_json_submit_persists_and_returns_url(web_client, stix_bund
 
     resp = web_client.post("/conversions/stix_to_misp", json={
         "payload": json.dumps(stix_bundle),
-        "params": {"distribution": 2},
+        "params": {"distribution": 2}
     })
 
     assert resp.status_code == 200
@@ -87,7 +87,7 @@ def test_misp_to_stix_json_submit_persists(web_client, misp_event):
 
     resp = web_client.post("/conversions/misp_to_stix", json={
         "payload": json.dumps(misp_event),
-        "params": {"version": "2.0"},
+        "params": {"version": "2.0"}
     })
 
     assert resp.status_code == 200
@@ -103,7 +103,7 @@ def test_stix_to_misp_bad_param_returns_error_fields(web_client, stix_bundle):
 
     resp = web_client.post("/conversions/stix_to_misp", json={
         "payload": json.dumps(stix_bundle),
-        "params": {"distribution": 99},
+        "params": {"distribution": 99}
     })
 
     assert resp.status_code == 400
@@ -116,7 +116,7 @@ def test_stix_to_misp_bad_param_returns_error_fields(web_client, stix_bundle):
 def test_stix_to_misp_unknown_param_is_rejected(web_client, stix_bundle):
     resp = web_client.post("/conversions/stix_to_misp", json={
         "payload": json.dumps(stix_bundle),
-        "params": {"sharing_group": 5},
+        "params": {"sharing_group": 5}
     })
 
     assert resp.status_code == 400
@@ -132,7 +132,7 @@ def test_missing_payload_returns_an_error(web_client):
 
 def test_non_json_payload_returns_an_error(web_client):
     resp = web_client.post("/conversions/stix_to_misp", json={
-        "payload": "this is not json", "params": {},
+        "payload": "this is not json", "params": {}
     })
 
     assert resp.status_code == 400
@@ -141,10 +141,10 @@ def test_non_json_payload_returns_an_error(web_client):
 
 def test_valid_json_but_non_dict_payload_is_a_clean_error_not_500(web_client):
     """A valid-JSON but non-MISP payload (an array/scalar) must yield a clean
-    client/unprocessable error, not a 500 — auto-naming must not crash on it."""
+    client/unprocessable error, not a 500 - auto-naming must not crash on it."""
     for payload in ("[1, 2, 3]", "42", "null", '"just a string"'):
         resp = web_client.post("/conversions/misp_to_stix", json={
-            "payload": payload, "params": {"version": "2.1"},
+            "payload": payload, "params": {"version": "2.1"}
         })
         assert resp.status_code in (400, 422), f"{payload!r} -> {resp.status_code}"
         body = resp.get_json()
@@ -168,7 +168,7 @@ def test_authenticated_submit_owns_the_row_and_saves_tags(web_client, stix_bundl
         "payload": json.dumps(stix_bundle),
         "params": {"distribution": 0},
         "name": "auth-run", "description": "mine", "public": True,
-        "tag_ids": [tag.id],
+        "tag_ids": [tag.id]
     })
 
     assert resp.status_code == 200

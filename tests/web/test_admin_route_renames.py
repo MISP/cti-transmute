@@ -93,7 +93,7 @@ def test_bulk_endpoints_no_longer_read_the_convert_ids_key(admin_client):
 
     resp = admin_client.post(
         "/tags/admin/bulk_conversions/remove_tags",
-        json={"convert_ids": [1], "tag_ids": [1]},
+        json={"convert_ids": [1], "tag_ids": [1]}
     )
     assert resp.status_code == 400
 
@@ -106,7 +106,7 @@ def test_legacy_bulk_page_preserves_query_string(admin_client):
 
 def test_bulk_scan_accepts_the_conversion_ids_key(admin_client, monkeypatch):
     """Positive side of the key rename: ``conversion_ids`` selects rows and
-    the scan starts (job spawn stubbed out — only the contract is pinned)."""
+    the scan starts (job spawn stubbed out - only the contract is pinned)."""
     from website.web.tags import bulk_jobs
 
     monkeypatch.setattr(bulk_jobs, "start_scan", lambda app, ids, uid: "jid-1")
@@ -135,7 +135,7 @@ def test_my_comments_emits_conversion_name_and_active_keys(admin_client):
     conv = Conversion(
         user_id=user.id, name="c", source_format="misp", target_format="stix",
         input_text=_json.dumps({}), output_text="x", params=None,
-        created_at=now, updated_at=now, public=True, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=True, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()

@@ -24,7 +24,7 @@ def _make_conversion():
     conv = Conversion(
         user_id=None, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
-        created_at=now, updated_at=now, public=True, uuid=str(uuid_lib.uuid4()),
+        created_at=now, updated_at=now, public=True, uuid=str(uuid_lib.uuid4())
     )
     db.session.add(conv)
     db.session.commit()
@@ -35,7 +35,7 @@ def _make_report(conversion_id, *, reason="spam", user_id=7, **kwargs):
     from website.repos import reports as reports_repo
 
     return reports_repo.create(
-        conversion_id=conversion_id, user_id=user_id, reason=reason, **kwargs,
+        conversion_id=conversion_id, user_id=user_id, reason=reason, **kwargs
     )
 
 
@@ -47,7 +47,7 @@ def test_create_persists_a_report_and_assigns_identity(app_db):
 
     conv = _make_conversion()
     report = reports_repo.create(
-        conversion_id=conv.id, user_id=7, reason="spam", description="  bad  ",
+        conversion_id=conv.id, user_id=7, reason="spam", description="  bad  "
     )
 
     assert report.id is not None
@@ -79,7 +79,7 @@ def test_create_with_commit_false_stages_without_committing(app_db):
 
     conv = _make_conversion()
     report = reports_repo.create(
-        conversion_id=conv.id, user_id=1, reason="spam", commit=False,
+        conversion_id=conv.id, user_id=1, reason="spam", commit=False
     )
 
     assert report.id is not None         # flushed → id assigned within the tx

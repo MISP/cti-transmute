@@ -2,7 +2,7 @@
 
 ``get_following`` used to copy ``user.email`` into every entry, so any
 authenticated user could harvest addresses by following people and reading
-the list — inconsistent with ``search_users`` and ``get_followers``, which
+the list - inconsistent with ``search_users`` and ``get_followers``, which
 already omit it. The UI needs name + since (+ user_id to key unfollows).
 
 Fixture/helper prior art: ``test_my_comments_filter.py``.

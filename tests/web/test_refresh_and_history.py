@@ -1,6 +1,6 @@
 """Web-layer tests: refresh + history accept/reject route matrix.
 
-These pin the *authorisation gating* and *route wiring* the slice introduces —
+These pin the *authorisation gating* and *route wiring* the slice introduces -
 anonymous is bounced to login, a stranger gets 403, the owner is allowed, and
 the moderation endpoints are POST verbs that call the use-cases. The conversion
 logic itself is covered at the use-case layer (``tests/lib/test_conversions.py``).
@@ -25,7 +25,7 @@ def web_client(app_db):
     from website.web.account.account import account_blueprint
     from website.web.conversions.conversions import (
         conversions_blueprint,
-        legacy_convert_blueprint,
+        legacy_convert_blueprint
     )
 
     application.config["TESTING"] = True
@@ -33,7 +33,7 @@ def web_client(app_db):
     for bp, prefix in (
         (conversions_blueprint, "/conversions"),
         (legacy_convert_blueprint, "/convert"),
-        (account_blueprint, "/account"),
+        (account_blueprint, "/account")
     ):
         if bp.name not in application.blueprints:
             application.register_blueprint(bp, url_prefix=prefix)
@@ -65,7 +65,7 @@ def _make_conversion(misp_event, owner_id, *, output="OLD-OUTPUT", public=True):
     conv = Conversion(
         user_id=owner_id, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps(misp_event), output_text=output, params=None,
-        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()
@@ -122,7 +122,7 @@ def test_owner_post_refresh_json_writes_a_pending_history_row(web_client, misp_e
 
     resp = web_client.post(
         f"/conversions/refresh/{conv.uuid}",
-        json={"params": {"version": "2.1"}},
+        json={"params": {"version": "2.1"}}
     )
 
     assert resp.status_code == 200
@@ -147,7 +147,7 @@ def test_post_refresh_shape_violation_returns_error_fields_400(web_client, misp_
 
     resp = web_client.post(
         f"/conversions/refresh/{conv.uuid}",
-        json={"params": {"version": "9.9"}},
+        json={"params": {"version": "9.9"}}
     )
 
     assert resp.status_code == 400
@@ -257,8 +257,8 @@ def test_legacy_history_action_is_gone(web_client):
 
 
 def test_dead_success_line_is_removed_from_the_codebase():
-    """AC: the `success = True  # Replace with actual database call` line — which
-    masked accept/reject's real return — must no longer exist anywhere."""
+    """AC: the `success = True  # Replace with actual database call` line - which
+    masked accept/reject's real return - must no longer exist anywhere."""
     import pathlib
 
     root = pathlib.Path(__file__).resolve().parents[1].parent / "website"

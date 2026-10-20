@@ -1,6 +1,6 @@
 """Glossary guard: 'convert' is not a noun in user-facing copy.
 
-CONTEXT.md retired "Convert" as a noun — the persisted record is a
+CONTEXT.md retired "Convert" as a noun - the persisted record is a
 *Conversion*, the engine is a *Converter*, and *to convert* stays a verb.
 An earlier sweep covered the display copy, docstrings and comments; this
 test keeps the retired noun from creeping back into user-facing surfaces
@@ -29,16 +29,16 @@ RETIRED_NOUN_PATTERNS = [
     re.compile(
         r"\b(this|a|the|each|every|any|no|all|public|private|selected"
         r"|deleted|last|one|per|other|stored|new)\s+converts?\b",
-        re.IGNORECASE,
+        re.IGNORECASE
     ),
-    # capitalised plural is the noun — unless a determiner follows, which
+    # capitalised plural is the noun - unless a determiner follows, which
     # marks the sentence-initial verb ("Converts an icon name to …")
     re.compile(r"\bConverts\b(?!\s+(?:an?|the)\b)"),
     # possessive: "the convert's input JSON"
     re.compile(r"\bconverts?['’]s\b", re.IGNORECASE),
     # tag-delimited plural: <th>Converts</th>. Singular ">Convert<" stays
-    # legal — it is the verb on action buttons ("click <strong>Convert</strong>").
-    re.compile(r">Converts<"),
+    # legal - it is the verb on action buttons ("click <strong>Convert</strong>").
+    re.compile(r">Converts<")
 ]
 
 

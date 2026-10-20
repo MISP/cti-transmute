@@ -37,7 +37,7 @@ def _make_conversion(owner_id=None, *, public=True):
     conv = Conversion(
         user_id=owner_id, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
-        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()

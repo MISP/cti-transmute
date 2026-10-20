@@ -29,7 +29,7 @@ def _make_conversion(*, owner=None, public=True, name):
         user_id=None if owner is None else owner.id,
         name=name, source_format="misp", target_format="stix",
         input_text="IN", output_text="OUT", params={"version": "2.1"},
-        public=public,
+        public=public
     )
 
 

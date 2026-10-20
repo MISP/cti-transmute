@@ -45,7 +45,7 @@ def _make_user(email, admin=False):
 
 def _login(client, user):
     # One auth state per test: flask-login caches the loaded user in ``g``,
-    # and the app context `app_db` holds open spans every request in a test —
+    # and the app context `app_db` holds open spans every request in a test -
     # so the first request's identity sticks. Log in before the first request
     # and don't switch users mid-test (the norm across tests/web/).
     with client.session_transaction() as sess:

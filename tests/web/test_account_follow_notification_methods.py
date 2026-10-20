@@ -82,7 +82,7 @@ def _follow_row_exists(follower_id, followed_id):
     "/account/follow",
     "/account/delete_notification",
     "/account/mark_notification_read",
-    "/account/mark_all_read",
+    "/account/mark_all_read"
 ])
 def test_get_is_rejected_with_405(web_client, path):
     assert web_client.get(path).status_code == 405

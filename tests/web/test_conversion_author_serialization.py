@@ -22,7 +22,7 @@ def _ownerless_conversion():
     return Conversion(
         user_id=None, name="anon", source_format="misp", target_format="stix",
         input_text="{}", output_text="{}", params=None,
-        created_at=now, updated_at=now, public=True, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=True, uuid=str(_uuid.uuid4())
     )
 
 

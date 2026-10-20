@@ -53,7 +53,7 @@ def _make_trashed_conversion(user_id, name="c"):
         user_id=user_id, name=name, source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
         created_at=now, updated_at=now, public=True, uuid=str(_uuid.uuid4()),
-        is_active=False, deleted_at=now,
+        is_active=False, deleted_at=now
     )
     db.session.add(conv)
     db.session.commit()

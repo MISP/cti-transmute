@@ -12,7 +12,7 @@ unnoticed).
 Scope: stored-value literals only. The verb surfaces ruled permanent
 (``/api/convert/`` routes, the ``convert`` namespace, submit buttons named
 ``convert``) are out of scope by pattern design, and ``website/migrations/``
-is excluded — migration files legitimately spell the old values.
+is excluded - migration files legitimately spell the old values.
 """
 
 import re
@@ -40,7 +40,7 @@ RETIRED_VALUE_PATTERNS = [
     # …or as unquoted JS object keys (EVENT_META-style styling maps)
     re.compile(rf"\bconvert_(?:{_EVENT_STEMS})\s*:"),
     # The retired notification type, quoted or bare
-    re.compile(r"\bnew_follow_convert\b"),
+    re.compile(r"\bnew_follow_convert\b")
 ]
 
 # Positional writes slip past the kwarg pattern; catch 'convert' literals on

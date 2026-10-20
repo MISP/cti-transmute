@@ -15,7 +15,7 @@ def test_list_available_keyed_by_registry_urls(client):
     available = resp.get_json()["available"]
     assert set(available) == {
         "/api/convert/misp_to_stix",
-        "/api/convert/stix_to_misp",
+        "/api/convert/stix_to_misp"
     }
 
 
@@ -177,7 +177,7 @@ def test_build_params_coerces_present_bool_flag_to_true():
     # A present bool flag arrives with no parseable value (web UI sends "") and
     # is coerced to True; an absent flag falls back to the model default; an int
     # arrives as a string and Pydantic coerces it; the `persist` and
-    # `diagnostics` transport flags are dropped, not treated as params — were
+    # `diagnostics` transport flags are dropped, not treated as params - were
     # they not, the model's extra="forbid" would reject the whole request.
     params = MispStixConverter._build_params(
         StixToMispParams,
@@ -206,7 +206,7 @@ def test_bad_param_shape_returns_400_error_fields_envelope(client, stix_bundle):
 
 def test_unknown_param_name_is_rejected_naming_the_key(client, stix_bundle):
     """An unknown/misremembered param name (here `sharing_group` instead of
-    `sharing_group_id`) is rejected — not silently dropped — with the offending
+    `sharing_group_id`) is rejected - not silently dropped - with the offending
     key named. The params model's `extra="forbid"` is the sole authority, so the
     endpoint agrees with the published schema's `additionalProperties: false`."""
     resp = client.post("/api/convert/stix_to_misp?sharing_group=5", json=stix_bundle)
@@ -221,7 +221,7 @@ def test_default_body_stays_the_bare_document_when_diagnostics_exist(
     client, duplicated_id_bundle
 ):
     """The stateless body *is* the converted document, and a conversion that
-    reported something must not change that — every existing client parses the
+    reported something must not change that - every existing client parses the
     document straight out of the body."""
     resp = client.post("/api/convert/stix_to_misp", json=duplicated_id_bundle)
 
@@ -254,7 +254,7 @@ def test_diagnostics_flag_wraps_the_document_in_an_envelope(
     client, duplicated_id_bundle
 ):
     """The opt-in envelope carries the messages themselves, keyed by the
-    identifier they concern — the counts in the headers only say how many."""
+    identifier they concern - the counts in the headers only say how many."""
     duplicated_id = next(
         obj["id"] for obj in duplicated_id_bundle["objects"]
         if obj["type"] == "indicator"
@@ -321,7 +321,7 @@ def test_new_converter_validated_by_params_class_alone(client):
 def test_endpoint_verdict_matches_published_schema(client, stix_bundle):
     """Round-trip: for each sample, an independent JSON-Schema engine's verdict
     against the published params_schema matches the live endpoint's accept/reject
-    — including an unknown key, which `additionalProperties: false` rejects."""
+    - including an unknown key, which `additionalProperties: false` rejects."""
     from jsonschema import Draft202012Validator
 
     available = client.get("/api/convert/list").get_json()["available"]

@@ -25,7 +25,7 @@ pytestmark = pytest.mark.skipif(
     "http://127.0.0.1:6868/static/image/logo.png",
     "http://internal-service.local/admin/status",
     "https://fonts.googleapis.com/css2?family=Inter",
-    "ftp://example.com/x",
+    "ftp://example.com/x"
 ])
 def test_pdf_url_fetcher_blocks_external_resources(url):
     with pytest.raises(ValueError):

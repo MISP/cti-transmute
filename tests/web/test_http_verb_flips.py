@@ -1,6 +1,6 @@
 """HTTP-method contracts of the state-changing conversion routes.
 
-Six operations used to mutate on an HTTP **GET** — a CSRF/correctness smell, a
+Six operations used to mutate on an HTTP **GET** - a CSRF/correctness smell, a
 state change reachable from a cross-site ``<img>``/link or a crawler: visibility
 toggle, share-key regeneration, comment delete, comment-privacy toggle, report
 review, and report delete. Flips them to POST/DELETE, and the soft-delete
@@ -59,7 +59,7 @@ def _make_conversion(user_id, public=True):
     conv = Conversion(
         user_id=user_id, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
-        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()
@@ -100,7 +100,7 @@ def _make_report(conversion_id, user_id):
     "/conversions/toggle_comment_private",
     "/conversions/admin/review_report",
     "/conversions/admin/delete_report",
-    "/conversions/delete_item",
+    "/conversions/delete_item"
 ])
 def test_get_is_rejected_with_405(web_client, path):
     assert web_client.get(path).status_code == 405

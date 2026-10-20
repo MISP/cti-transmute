@@ -17,7 +17,7 @@ def test_create_persists_a_conversion_and_assigns_identity(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c1", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params={"a": 1},
+        input_text="IN", output_text="OUT", params={"a": 1}
     )
 
     assert conv.id is not None
@@ -39,7 +39,7 @@ def test_create_with_commit_false_stages_without_committing(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="staged", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None, commit=False,
+        input_text="IN", output_text="OUT", params=None, commit=False
     )
 
     assert conv.id is not None        # flushed → id assigned within the tx
@@ -57,14 +57,14 @@ def test_next_history_version_starts_at_2_and_increments(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
 
     assert conv_repo.next_history_version(conv.id) == 2
 
     db.session.add(ConversionHistory(
         conversion_id=conv.id, version=2, uuid=str(uuid_lib.uuid4()),
-        status="pending",
+        status="pending"
     ))
     db.session.commit()
 
@@ -77,11 +77,11 @@ def test_create_history_derives_fields_from_the_parent_conversion(app_db):
 
     conv = conv_repo.create(
         user_id=7, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OLD", params=None, public=False,
+        input_text="IN", output_text="OLD", params=None, public=False
     )
 
     history = conv_repo.create_history(
-        conversion=conv, new_output_text="NEW", params={"v": "2.1"},
+        conversion=conv, new_output_text="NEW", params={"v": "2.1"}
     )
 
     assert history.id is not None
@@ -104,10 +104,10 @@ def test_set_history_status_persists_the_new_status(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OLD", params=None,
+        input_text="IN", output_text="OLD", params=None
     )
     history = conv_repo.create_history(
-        conversion=conv, new_output_text="NEW", params=None,
+        conversion=conv, new_output_text="NEW", params=None
     )
 
     conv_repo.set_history_status(history, "accepted")
@@ -121,7 +121,7 @@ def test_get_hides_soft_deleted_unless_requested(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
     assert conv_repo.get(conv.id).id == conv.id
 
@@ -137,7 +137,7 @@ def test_get_by_uuid_returns_the_matching_row(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
 
     assert conv_repo.get_by_uuid(conv.uuid).id == conv.id
@@ -150,7 +150,7 @@ def test_soft_delete_restore_and_hard_delete_lifecycle(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
     cid = conv.id
 
@@ -181,7 +181,7 @@ def test_toggle_visibility_flips_and_persists_public(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None, public=True,
+        input_text="IN", output_text="OUT", params=None, public=True
     )
 
     ok, new_value = conv_repo.toggle_visibility(conv.id)
@@ -198,11 +198,11 @@ def test_edit_updates_fields_and_rejects_duplicate_names(app_db):
 
     a = conv_repo.create(
         user_id=None, name="alpha", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
     conv_repo.create(
         user_id=None, name="beta", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
 
     ok, msg = conv_repo.edit(a.id, {"name": "alpha-2", "description": "d"})
@@ -223,7 +223,7 @@ def test_regenerate_share_key_mints_a_new_key(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
     old_key = conv.share_key
 
@@ -240,7 +240,7 @@ def test_history_readers_order_and_filter_by_status(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="c", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
     h2 = conv_repo.create_history(conversion=conv, new_output_text="v2", params=None)
     h3 = conv_repo.create_history(conversion=conv, new_output_text="v3", params=None)
@@ -281,7 +281,7 @@ def _make_conv(*, user_id, public, name="c"):
 
     return conv_repo.create(
         user_id=user_id, name=name, source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None, public=public,
+        input_text="IN", output_text="OUT", params=None, public=public
     )
 
 
@@ -396,7 +396,7 @@ def test_search_in_content_returns_snippets_for_matches(app_db):
     conv = conv_repo.create(
         user_id=None, name="needle in the name", source_format="misp",
         target_format="stix", input_text="the needle is buried in here too",
-        output_text="OUT", params=None,
+        output_text="OUT", params=None
     )
 
     results = conv_repo.search_in_content("needle", conv.id)
@@ -411,7 +411,7 @@ def test_search_in_content_guards_empty_query_and_missing_row(app_db):
 
     conv = conv_repo.create(
         user_id=None, name="x", source_format="misp", target_format="stix",
-        input_text="IN", output_text="OUT", params=None,
+        input_text="IN", output_text="OUT", params=None
     )
     assert conv_repo.search_in_content("", conv.id) == []
     assert conv_repo.search_in_content("q", 999999) == []
@@ -421,7 +421,7 @@ def test_list_deleted_returns_soft_deleted_rows_only(app_db):
     """The admin Trash view must show soft-deleted rows, never live ones.
 
     Regression guard: ``list_deleted`` originally filtered ``Conversion.is_active``
-    and so listed *active* conversions in Trash — where "Delete permanently" could
+    and so listed *active* conversions in Trash - where "Delete permanently" could
     then destroy them. It must filter ``~is_active`` instead.
     """
     from website.repos import conversions as conv_repo

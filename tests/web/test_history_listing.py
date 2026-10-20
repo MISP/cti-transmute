@@ -27,7 +27,7 @@ def web_client(app_db):
     application.config["WTF_CSRF_ENABLED"] = False
     for bp, prefix in (
         (conversions_blueprint, "/conversions"),
-        (account_blueprint, "/account"),
+        (account_blueprint, "/account")
     ):
         if bp.name not in application.blueprints:
             application.register_blueprint(bp, url_prefix=prefix)
@@ -59,7 +59,7 @@ def _make_conversion(*, owner_id, public, name):
     conv = Conversion(
         user_id=owner_id, name=name, source_format="misp", target_format="stix",
         input_text="IN", output_text="OUT", params=None,
-        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()

@@ -1,7 +1,7 @@
 """Integration tests for the bulk tag job repository.
 
 ``website/repos/bulk_tag_jobs.py`` is the single persistence home for the
-``BulkTagJob`` aggregate — the durable home for the state bulk conversion-tag
+``BulkTagJob`` aggregate - the durable home for the state bulk conversion-tag
 runs report, which a module-level dict used to hold.
 
 These tests exercise the repo's public surface directly against the in-memory
