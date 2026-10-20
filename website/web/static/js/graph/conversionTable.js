@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  ConversionTable — flat tabular view of MISP / STIX conversion data
+//  ConversionTable - flat tabular view of MISP / STIX conversion data
 //  Parses JSON client-side (no backend round-trip).
 //  Features: search, column sort, pagination, click-row → JsonViewer panel.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,8 +43,8 @@ function parseMispRows(text) {
             { key: 'value', label: 'Value', width: '35%', mono: true },
             { key: 'object', label: 'Object', width: '12%' },
             { key: 'comment', label: 'Comment', width: '18%' },
-            { key: 'to_ids', label: 'To IDS', width: '9%', bool: true },
-        ],
+            { key: 'to_ids', label: 'To IDS', width: '9%', bool: true }
+        ]
     }
 }
 
@@ -72,7 +72,7 @@ function parseStixRows(text) {
             value,
             created: (obj.created || '').slice(0, 10),
             modified: (obj.modified || '').slice(0, 10),
-            _raw: obj,
+            _raw: obj
         }
     })
 
@@ -84,8 +84,8 @@ function parseStixRows(text) {
             { key: 'id', label: 'ID (prefix)', width: '16%', mono: true, title: 'id_full' },
             { key: 'value', label: 'Name / Value', width: '40%', mono: true },
             { key: 'created', label: 'Created', width: '15%' },
-            { key: 'modified', label: 'Modified', width: '15%' },
-        ],
+            { key: 'modified', label: 'Modified', width: '15%' }
+        ]
     }
 }
 
@@ -259,7 +259,7 @@ const ConversionTable = {
             'identity': '#8b5cf6', 'vulnerability': '#ec4899', 'tool': '#a855f7',
             'infrastructure': '#6366f1', 'intrusion-set': '#14b8a6', 'relationship': '#94a3b8',
             'report': '#1d4ed8', 'grouping': '#2563eb', 'ipv4-addr': '#0ea5e9',
-            'domain-name': '#06b6d4', 'url': '#22d3ee', 'file': '#84cc16',
+            'domain-name': '#06b6d4', 'url': '#22d3ee', 'file': '#84cc16'
         }
         function stixColor(type) { return STIX_COLORS[type] || '#64748b' }
 
@@ -342,7 +342,7 @@ const ConversionTable = {
             selectedRow.value = selectedRow.value === row ? null : row
         }
 
-        // immediate: true — fires on mount even when conversionData is already set
+        // immediate: true - fires on mount even when conversionData is already set
         watch(
             () => props.conversionData,
             v => { if (v?.input_text || v?.output_text) parse() },
@@ -353,9 +353,9 @@ const ConversionTable = {
             side, search, sortKey, sortDir, currentPage,
             loading, error, parsed, selectedRow,
             filteredRows, totalPages, pageRows,
-            setSide, setSort, highlight, stixColor, selectRow,
+            setSide, setSort, highlight, stixColor, selectRow
         }
-    },
+    }
 }
 
 export default ConversionTable

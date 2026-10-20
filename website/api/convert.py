@@ -40,7 +40,7 @@ def _count_headers(diagnostics: dict | None) -> dict:
     """The ``X-Transmute-*`` Diagnostics count headers for one conversion.
 
     Both headers go out together as soon as either bucket holds something, and
-    neither when the conversion was clean — so a client that reads one can read
+    neither when the conversion was clean - so a client that reads one can read
     the other without special-casing an absent header. The numbers are the
     converter's own ``counts``, which are taken before the messages are capped,
     so they stay honest when the body shows a summary.
@@ -77,7 +77,7 @@ class ConvertersList(Resource):
                 'target': c.target_format,
                 'method': 'POST',
                 'description': c.description,
-                'params_schema': c.params_class.model_json_schema(),
+                'params_schema': c.params_class.model_json_schema()
             }
             for c in transmute.list()
         }
@@ -115,7 +115,7 @@ class MispStixConverter(Resource):
         Transport flags (``persist``, ``diagnostics``) shape the response rather
         than the conversion, so they are not Converter params and are dropped;
         any other unknown key is left for the model's ``extra="forbid"``
-        contract to reject — mirroring the published params_schema's
+        contract to reject - mirroring the published params_schema's
         ``additionalProperties: false``. Raises ``ValidationError`` on a
         rejected value or unknown key; the caller maps it to the
         ``{error, fields}`` 400.
@@ -193,7 +193,7 @@ class MispStixConverter(Resource):
         """Convert without saving: the response body *is* the converted document.
 
         That default body is what every existing client parses, so the
-        Diagnostics reach it out of band — in the count headers — unless the
+        Diagnostics reach it out of band - in the count headers - unless the
         caller asked for them in the body with ``?diagnostics=true``, which
         wraps the document in a ``{conversion, diagnostics}`` envelope.
         """
@@ -209,11 +209,11 @@ class MispStixConverter(Resource):
         envelope: the converted payload plus the new Conversion's id, uuid, URL
         and the Diagnostics its output came with.
 
-        The envelope carries the Diagnostics unconditionally — a caller already
+        The envelope carries the Diagnostics unconditionally - a caller already
         reading an envelope loses nothing by one more key, and it matches what
         the stored Conversion says about itself.
 
-        ``g.api_user`` is whatever `@api_actor` resolved from ``X-API-KEY`` — a
+        ``g.api_user`` is whatever `@api_actor` resolved from ``X-API-KEY`` - a
         ``User`` or ``None`` (anonymous persistence is allowed; the row gets
         ``user_id IS NULL``).
         """
@@ -225,7 +225,7 @@ class MispStixConverter(Resource):
             'diagnostics': conversion.diagnostics,
             'id': conversion.id,
             'uuid': conversion.uuid,
-            'url': f'/conversions/{conversion.id}',
+            'url': f'/conversions/{conversion.id}'
         }, 200, _count_headers(conversion.diagnostics)
 
 

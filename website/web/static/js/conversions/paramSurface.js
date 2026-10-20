@@ -1,5 +1,5 @@
 /*
- * ParamSurface — one schema-driven renderer for a Converter's parameters.
+ * ParamSurface - one schema-driven renderer for a Converter's parameters.
  *
  * Given a Converter's published Parameter schema (from GET /api/convert/list),
  * it renders one control per parameter with a type -> widget mapping, so a new
@@ -48,7 +48,7 @@ function fieldFor(key, raw) {
         widget = 'select';
         options = raw.oneOf.map((o) => ({
             value: o.const,
-            label: o.title != null ? o.title : String(o.const),
+            label: o.title != null ? o.title : String(o.const)
         }));
     } else if (Array.isArray(raw.enum)) {
         widget = 'select';
@@ -64,7 +64,7 @@ function fieldFor(key, raw) {
         // Presentation hints, read straight off the schema property:
         fullWidth: !!raw.fullWidth,            // render on its own full-width row
         enabledWhen: raw.enabledWhen || null,  // {field, equals}: grey out unless met
-        placeholder: raw.placeholder || '',    // short placeholder (falls back to description)
+        placeholder: raw.placeholder || ''    // short placeholder (falls back to description)
     };
 }
 
@@ -73,7 +73,7 @@ const ParamSurface = {
     props: {
         schema: { type: Object, required: true },
         initial: { type: Object, default: () => ({}) },
-        idPrefix: { type: String, default: 'ps-' },
+        idPrefix: { type: String, default: 'ps-' }
     },
     data() {
         return { fields: [], values: {}, errors: {} };
@@ -98,14 +98,14 @@ const ParamSurface = {
 
         // Whether a field is currently active. A field with an `enabledWhen`
         // hint is greyed out (and omitted from submission) unless another
-        // field holds the required value — a UI affordance, not validation.
+        // field holds the required value - a UI affordance, not validation.
         isEnabled(f) {
             const w = f.enabledWhen;
             return !w || this.values[w.field] === w.equals;
         },
 
         // Tooltip explaining why a field is greyed out, derived from its
-        // enabledWhen (no extra schema) — shows the target field's label and,
+        // enabledWhen (no extra schema) - shows the target field's label and,
         // for a select, the human option label rather than the raw value.
         disabledHint(f) {
             const w = f.enabledWhen;
@@ -148,7 +148,7 @@ const ParamSurface = {
         clearErrors() {
             this.errors = {};
         },
-        // NB: no leading underscore — Vue 3's template render context blocks
+        // NB: no leading underscore - Vue 3's template render context blocks
         // access to `_`/`$`-prefixed members, so a `@change="_clearFieldError(…)"`
         // binding would throw "not defined" at runtime.
         clearFieldError(key) {
@@ -156,7 +156,7 @@ const ParamSurface = {
             const next = { ...this.errors };
             delete next[key];
             this.errors = next;
-        },
+        }
     },
     template: `
         <div class="param-surface">
@@ -216,7 +216,7 @@ const ParamSurface = {
                 </div>
             </div>
         </div>
-    `,
+    `
 };
 
 /*

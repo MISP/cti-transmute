@@ -1,6 +1,6 @@
 """Persistence for the BulkTagJob aggregate.
 
-This is the single place that reads and writes ``bulk_tag_job`` rows — the
+This is the single place that reads and writes ``bulk_tag_job`` rows - the
 durable home for the state a bulk conversion-tag run reports: progress, counts
 and per-item errors.
 
@@ -120,7 +120,7 @@ def append_errors(*, token: str, messages: list[str],
 
 
 def remove(token: str, *, commit: bool = True) -> bool:
-    """Delete a job row — the admin dismissing it. False if it is already gone."""
+    """Delete a job row - the admin dismissing it. False if it is already gone."""
     job = _row(token)
     if job is None:
         return False
@@ -155,7 +155,7 @@ def remove_finished(*, commit: bool = True) -> int:
 # --- reads --------------------------------------------------------------------
 
 def get(token: str) -> dict | None:
-    """One job in full — the only read that carries the stored error messages.
+    """One job in full - the only read that carries the stored error messages.
 
     The capped list travels here, once, when something asks for a single job;
     the polled list below leaves it behind.

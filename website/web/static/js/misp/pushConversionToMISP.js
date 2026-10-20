@@ -7,7 +7,7 @@ const PushConversionToMISP = {
     delimiters: ['[[', ']]'],
     props: {
         conversionId:   { type: Number, required: true },
-        conversionData: { type: Object, default: null },
+        conversionData: { type: Object, default: null }
     },
     template: `
 <div :id="'misp-push-modal-' + conversionId" class="modal fade" tabindex="-1" aria-hidden="true">
@@ -375,7 +375,7 @@ const PushConversionToMISP = {
             preview.value        = null
             try {
                 const res  = await fetch(`/conversions/misp_push_preview/${props.conversionId}`, {
-                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' },
+                    headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
                 })
                 const body = await res.json()
                 if (res.ok && body.success && body.has_evaluations) {
@@ -393,7 +393,7 @@ const PushConversionToMISP = {
         }
 
         async function copyJson() {
-            // Copy whichever tab is active — cti-evaluation object or full event
+            // Copy whichever tab is active - cti-evaluation object or full event
             const text = jsonTab.value === 'object'
                 ? JSON.stringify(preview.value?.cti_object, null, 2)
                 : fullEventJson.value
@@ -414,9 +414,9 @@ const PushConversionToMISP = {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
                     },
-                    body: JSON.stringify({ misp_url: mispUrl.value, api_key: apiKey.value }),
+                    body: JSON.stringify({ misp_url: mispUrl.value, api_key: apiKey.value })
                 })
                 const body = await res.json()
                 if (res.ok && body.success) {
@@ -484,14 +484,14 @@ const PushConversionToMISP = {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': document.getElementById('csrf_token')?.value || '',
+                        'X-CSRFToken': document.getElementById('csrf_token')?.value || ''
                     },
                     body: JSON.stringify({
                         conversion_id: props.conversionId,
                         misp_url:   mispUrl.value,
                         api_key:    apiKey.value,
-                        tags:       selectedTags.value.map(t => t.name),
-                    }),
+                        tags:       selectedTags.value.map(t => t.name)
+                    })
                 })
                 const body = await res.json()
                 if (res.ok && body.success) {
@@ -513,9 +513,9 @@ const PushConversionToMISP = {
             preview, previewLoading, previewOpen, jsonOpen, jsonTab, copied,
             fullEventDisplay, fullEventTruncated,
             open, onClose, testConnection, searchTags, hideSuggestionsDelayed,
-            addTag, removeTag, isLightColor, pushToMISP, levelFromTag, copyJson,
+            addTag, removeTag, isLightColor, pushToMISP, levelFromTag, copyJson
         }
-    },
+    }
 }
 
 export default PushConversionToMISP

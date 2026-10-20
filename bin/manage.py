@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-manage.py — CTI-Transmute management script
+manage.py - CTI-Transmute management script
 
 Usage:
     uv run manage <command>
@@ -192,7 +192,7 @@ def _db_state() -> str:
         conn = psycopg2.connect(
             host=DB_HOST, port=int(DB_PORT),
             user=DB_USER, password=DB_PASSWORD,
-            dbname=DB_NAME, connect_timeout=5,
+            dbname=DB_NAME, connect_timeout=5
         )
     except Exception as e:
         error(f"Could not connect to the database: {e}")
@@ -248,7 +248,7 @@ def _schema_matches_models() -> bool:
 def _run_db_upgrade() -> None:
     """Bring the database to the latest migration, whatever its bootstrap.
 
-    - fresh (no tables): build the schema from the models and stamp head —
+    - fresh (no tables): build the schema from the models and stamp head -
       the early migration chain is not replayable on an empty database;
     - unstamped (tables from a db.create_all() bootstrap, no alembic_version):
       stamp what the schema actually embodies, then upgrade so any migrations
@@ -291,7 +291,7 @@ def cmd_init() -> None:
     ok("Dependencies installed")
 
     # Try to create the PostgreSQL user and database if they don't exist yet.
-    # Best-effort — may fail if the OS user has no PostgreSQL superuser rights.
+    # Best-effort - may fail if the OS user has no PostgreSQL superuser rights.
     header("Setting up PostgreSQL database")
     info(f"Attempting to create role '{DB_USER}' and database '{DB_NAME}'…")
     create_role_sql  = f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='{DB_USER}') THEN CREATE ROLE {DB_USER} WITH LOGIN PASSWORD '{DB_PASSWORD}'; END IF; END $$;"
@@ -299,20 +299,20 @@ def cmd_init() -> None:
 
     r1 = subprocess.run(
         ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-c", create_role_sql],
-        cwd=ROOT, capture_output=True, text=True,
+        cwd=ROOT, capture_output=True, text=True
     )
     if r1.returncode == 0:
         ok(f"Role '{DB_USER}' ensured")
         # Check if database exists, create if not
         r2 = subprocess.run(
             ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-tAc", create_db_sql],
-            cwd=ROOT, capture_output=True, text=True,
+            cwd=ROOT, capture_output=True, text=True
         )
         if r2.stdout.strip() != "ok":
             subprocess.run(
                 ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-c",
                  f"CREATE DATABASE {DB_NAME} OWNER {DB_USER};"],
-                cwd=ROOT, check=True,
+                cwd=ROOT, check=True
             )
             ok(f"Database '{DB_NAME}' created")
         else:
@@ -565,7 +565,7 @@ def cmd_create_admin() -> None:
         conn = psycopg2.connect(
             host=DB_HOST, port=int(DB_PORT),
             user=DB_USER, password=DB_PASSWORD,
-            dbname=DB_NAME,
+            dbname=DB_NAME
         )
     except Exception as e:
         error(f"Could not connect to the database: {e}")
@@ -595,7 +595,7 @@ def cmd_create_admin() -> None:
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
-            (first_name, last_name, email, True, password_hash, api_key, False),
+            (first_name, last_name, email, True, password_hash, api_key, False)
         )
         new_id = cur.fetchone()[0]
         conn.commit()
@@ -634,7 +634,7 @@ def cmd_psql() -> None:
 
     result = subprocess.run(
         ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", DB_USER, DB_NAME],
-        env=env,
+        env=env
     )
     if result.returncode not in (0, 1):
         error("psql exited with an error.")

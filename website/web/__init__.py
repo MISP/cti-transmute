@@ -87,8 +87,8 @@ application.config["SESSION_FILE_DIR"] = str(_session_file_dir)
 
 # Flask 3.x defaults MAX_FORM_MEMORY_SIZE to 500 KB which rejects large MISP JSON payloads.
 # Set both limits to 50 MB to accommodate large events.
-application.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024   # 50 MB — total request size
-application.config["MAX_FORM_MEMORY_SIZE"] = 50 * 1024 * 1024  # 50 MB — non-file form fields
+application.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024   # 50 MB - total request size
+application.config["MAX_FORM_MEMORY_SIZE"] = 50 * 1024 * 1024  # 50 MB - non-file form fields
 
 csrf = CSRFProtect(application)
 
@@ -216,7 +216,7 @@ _CSP_TEMPLATE = "; ".join((
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self'"
 ))
 
 

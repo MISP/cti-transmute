@@ -44,7 +44,7 @@ def get_tags_page(page, source=None, visibility_filter=None, search=None,
             (Tag.name.ilike(search), 0),
             (Tag.name.ilike(f"{search}:%"), 1),
             (Tag.name.ilike(f"{search}%"), 2),
-            else_=3,
+            else_=3
         )
         order = ([Tag.is_approved_by_admin.asc()] if pending_first else []) + [rel, Tag.name.asc()]
     else:
@@ -68,7 +68,7 @@ def create_tag(name, description, color, icon, source, created_by,
             is_active=is_active,
             is_approved_by_admin=is_approved_by_admin,
             created_at=now,
-            updated_at=now,
+            updated_at=now
         )
         db.session.add(tag)
         db.session.commit()
@@ -258,7 +258,7 @@ def import_taxonomies(admin_user_id, path=None):
                         is_approved_by_admin=True,
                         external_id=f"{namespace}:{pred_val}",
                         created_at=now,
-                        updated_at=now,
+                        updated_at=now
                     ))
                     imported += 1
             else:
@@ -280,7 +280,7 @@ def import_taxonomies(admin_user_id, path=None):
                     is_approved_by_admin=True,
                     external_id=namespace,
                     created_at=now,
-                    updated_at=now,
+                    updated_at=now
                 ))
                 imported += 1
 
@@ -314,7 +314,7 @@ def import_galaxies(admin_user_id, path=None, batch_size=500):
                 gd = json.loads(gf.read_text(encoding="utf-8"))
                 galaxy_meta_map[gd.get("type", "")] = {
                     "icon": gd.get("icon"),
-                    "description": gd.get("description"),
+                    "description": gd.get("description")
                 }
             except Exception:
                 pass
@@ -371,7 +371,7 @@ def import_galaxies(admin_user_id, path=None, batch_size=500):
                 external_id=cluster_type,
                 galaxy_meta=meta if meta else None,
                 created_at=now,
-                updated_at=now,
+                updated_at=now
             ))
             imported += 1
             batch_count += 1
@@ -402,7 +402,7 @@ def import_galaxies(admin_user_id, path=None, batch_size=500):
 _SOURCE_MAP = {
     'custom':        'Manual',
     'taxonomy':      'Taxonomy',
-    'vulnerability': 'Vulnerability',
+    'vulnerability': 'Vulnerability'
 }
 
 def get_available_tags(user_id, search=None, source=None, is_evaluation=False, limit=60):
@@ -417,8 +417,8 @@ def get_available_tags(user_id, search=None, source=None, is_evaluation=False, l
         Tag.is_active,
         or_(
             db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin),
-            db.and_(Tag.visibility == 'private', Tag.created_by == user_id),
-        ),
+            db.and_(Tag.visibility == 'private', Tag.created_by == user_id)
+        )
     )
     if is_evaluation:
         query = query.filter(Tag.is_evaluation_tag)
@@ -428,7 +428,7 @@ def get_available_tags(user_id, search=None, source=None, is_evaluation=False, l
         # Prefix matches rank higher
         order = [
             case((Tag.name.ilike(f'{search}%'), 0), else_=1),
-            Tag.name.asc(),
+            Tag.name.asc()
         ]
     else:
         order = [Tag.name.asc()]
@@ -490,9 +490,9 @@ def find_tags_by_names(user_id, names: list[str]) -> list:
             Tag.is_active,
             or_(
                 db.and_(Tag.visibility == 'public', Tag.is_approved_by_admin),
-                db.and_(Tag.visibility == 'private', Tag.created_by == user_id),
+                db.and_(Tag.visibility == 'private', Tag.created_by == user_id)
             ),
-            func.lower(Tag.name).in_(lower_names),
+            func.lower(Tag.name).in_(lower_names)
         )
         .order_by(Tag.name.asc())
         .all()
@@ -505,7 +505,7 @@ def resolve_tag_ids_from_names(tag_names: list[str]) -> list[int]:
         return []
     lower_names = {n.lower() for n in tag_names}
     tags = Tag.query.filter(
-        Tag.is_active, Tag.is_approved_by_admin, Tag.visibility == 'public',
+        Tag.is_active, Tag.is_approved_by_admin, Tag.visibility == 'public'
     ).all()
     return [t.id for t in tags if t.name.lower() in lower_names]
 
@@ -537,7 +537,7 @@ def merge_conversion_tags(conversion_id: int, tag_ids: list, user_id: int, sourc
             tag_id=tid,
             user_id=user_id,
             added_at=now,
-            source_type=source_type,
+            source_type=source_type
         ))
         count += 1
     db.session.commit()
@@ -550,7 +550,7 @@ def remove_conversion_tags(conversion_id: int, tag_ids: list) -> int:
     nothing to remove, and only that."""
     q = ConversionTagAssociation.query.filter(
         ConversionTagAssociation.conversion_id == conversion_id,
-        ConversionTagAssociation.tag_id.in_(tag_ids),
+        ConversionTagAssociation.tag_id.in_(tag_ids)
     )
     count = q.count()
     q.delete(synchronize_session=False)
@@ -587,7 +587,7 @@ def get_all_tags_usage():
         Tag.query
         .filter(
             Tag.id.in_(counts.keys()), Tag.is_active,
-            Tag.visibility == 'public', Tag.is_approved_by_admin,
+            Tag.visibility == 'public', Tag.is_approved_by_admin
         )
         .order_by(Tag.name.asc())
         .all()
@@ -599,7 +599,7 @@ def get_all_tags_usage():
             "color": t.color,
             "icon": t.icon,
             "source": t.source,
-            "usage_count": counts.get(t.id, 0),
+            "usage_count": counts.get(t.id, 0)
         }
         for t in tags
     ]
@@ -629,6 +629,6 @@ def save_conversion_tags(conversion_id, tag_ids, user_id):
             tag_id=tid,
             user_id=user_id,
             added_at=now,
-            source_type="user",
+            source_type="user"
         ))
     db.session.commit()

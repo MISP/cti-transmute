@@ -109,7 +109,7 @@ class Conversion(db.Model):
     def conversion_type(self):
         """Derived direction discriminator, e.g. ``"MISP_TO_STIX"``.
 
-        No longer a stored free-form column — computed from the Converter's
+        No longer a stored free-form column - computed from the Converter's
         source/target slugs so it can never drift from them.
         """
         if self.source_format is None or self.target_format is None:
@@ -235,7 +235,7 @@ class Comment(db.Model):
                 current_user_id == self.user_id or is_admin
             )),
             "can_edit": bool(current_user_id and current_user_id == self.user_id and not self.is_deleted),
-            "is_evaluation": self.is_evaluation,
+            "is_evaluation": self.is_evaluation
         }
 
 
@@ -333,7 +333,7 @@ class ConversionReport(db.Model):
             "status": self.status,
             "created_at": utc_iso(self.created_at),
             "reviewed_at": utc_iso(self.reviewed_at),
-            "reviewed_by": reviewer.first_name if reviewer else None,
+            "reviewed_by": reviewer.first_name if reviewer else None
         }
 
 
@@ -467,9 +467,9 @@ class Tag(db.Model):
             "source": self.source,
             "galaxy_meta": self.galaxy_meta if self.galaxy_meta else None,
             "is_evaluation_tag": self.is_evaluation_tag,
-            # Injected by _inject_usage_counts() — falls back to 0 outside listing context
+            # Injected by _inject_usage_counts() - falls back to 0 outside listing context
             "rule_count":   getattr(self, '_rule_count',   0),
-            "bundle_count": getattr(self, '_bundle_count', 0),
+            "bundle_count": getattr(self, '_bundle_count', 0)
         }
 
 
@@ -503,7 +503,7 @@ class GraphConfig(db.Model):
                 is_admin or
                 (current_user_id and self.created_by == current_user_id and not self.is_default)
             ),
-            "can_hard_delete": is_admin,
+            "can_hard_delete": is_admin
         }
 
 
@@ -587,7 +587,7 @@ class ConversionEvaluation(db.Model):
 class BulkTagJob(db.Model):
     """A bulk conversion-tag operation: its progress, counts and errors.
 
-    Durable across restarts, which the worker thread running it is not — a job
+    Durable across restarts, which the worker thread running it is not - a job
     whose process died keeps its row at the last recorded progress. The
     ``running`` / ``interrupted`` distinction is drawn from ``heartbeat_at`` at
     read time in ``website/repos/bulk_tag_jobs.py``; the column itself only

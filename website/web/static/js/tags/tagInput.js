@@ -5,7 +5,7 @@ const TagInput = {
     props: {
         conversionId:     { type: Number,  default: null },
         hiddenInputId: { type: String,  default: '' },
-        canEdit:       { type: Boolean, default: true },
+        canEdit:       { type: Boolean, default: true }
     },
     delimiters: ['[[', ']]'],
     data() {
@@ -32,7 +32,7 @@ const TagInput = {
             saveFailed:    false,
             tagsCollapsed: false,
 
-            _debounceTimer: null,
+            _debounceTimer: null
         };
     },
     computed: {
@@ -57,9 +57,9 @@ const TagInput = {
                 { key: 'all',           label: 'All' },
                 { key: 'taxonomy',      label: 'Taxonomy' },
                 { key: 'custom',        label: 'Custom' },
-                { key: 'vulnerability', label: 'Vuln' },
+                { key: 'vulnerability', label: 'Vuln' }
             ];
-        },
+        }
     },
     watch: {
         search(val) {
@@ -74,7 +74,7 @@ const TagInput = {
                 const el = document.getElementById(this.hiddenInputId);
                 if (el) el.value = tags.map(t => t.id).join(',');
             }
-        },
+        }
     },
     async mounted() {
         if (this.conversionId) {
@@ -82,7 +82,7 @@ const TagInput = {
             await Promise.all([
                 this._loadEvaluationTags(),
                 this._loadContentTags(),
-                this._loadAppliedTags(),
+                this._loadAppliedTags()
             ]);
         }
         this.loadingCurrent = false;
@@ -147,7 +147,7 @@ const TagInput = {
                             color:       a.tag_color,
                             icon:        a.tag_icon,
                             visibility:  a.tag_visibility,
-                            description: a.tag_description,
+                            description: a.tag_description
                         }));
                     }
                 }
@@ -205,7 +205,7 @@ const TagInput = {
                 const res = await fetch(`/tags/save_for_conversion/${this.conversionId}`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ tag_ids: this.selectedTags.map(t => t.id) }),
+                    body:    JSON.stringify({ tag_ids: this.selectedTags.map(t => t.id) })
                 });
                 // What is on screen is what the user picked, not what the
                 // server kept: saying nothing here leaves them reading the
@@ -217,7 +217,7 @@ const TagInput = {
             } finally {
                 this.saving = false;
             }
-        },
+        }
 
     },
     template: `
@@ -413,7 +413,7 @@ const TagInput = {
             </template>
             </template>
         </div>
-    `,
+    `
 };
 
 export default TagInput;

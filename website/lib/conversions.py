@@ -8,7 +8,7 @@ one all-or-nothing transaction.
 `add_comment` is the first catalogue mutation on the same seam:
 validate → authz → one atomic mutate+activity transaction → post-commit notification.
 Every use-case takes the acting Submitter (``User | None``) explicitly - no
-``current_user`` in here — and raises the typed exceptions from
+``current_user`` in here - and raises the typed exceptions from
 ``website/lib/exceptions.py``.
 """
 
@@ -54,7 +54,7 @@ def submit_conversion(
     result = transmute.convert(source, target, payload, params)
 
     now = datetime.now(timezone.utc)
-    # One all-or-nothing transaction — the Conversion row and its audit log
+    # One all-or-nothing transaction - the Conversion row and its audit log
     # commit together, or not at all. The repo stages the row (add + flush,
     # assigning conversion.id and minting its uuid/share_key); this use-case owns
     # the commit so the audit entry lands in the same transaction.
@@ -91,7 +91,7 @@ def _record_creation(conversion: Conversion, user, now: datetime) -> None:
     """Add the `conversion_created` activity-log entry inside the conversion's transaction."""
     _record_activity(
         "conversion_created", user, "conversion", conversion.id, conversion.name, now,
-        details=f"Type: {conversion.conversion_type}, Public: {conversion.public}",
+        details=f"Type: {conversion.conversion_type}, Public: {conversion.public}"
     )
 
 
@@ -100,7 +100,7 @@ def _record_activity(event_type: str, actor, target_type: str, target_id: int,
     """Add an Activity-log (``SystemLog``) row to the current transaction.
 
     Staged, not committed: the caller owns the commit, so the entry lands
-    atomically with the mutation it describes — the clean commit boundary is
+    atomically with the mutation it describes - the clean commit boundary is
     the point, not durability (the Activity log is disposable display data).
     ``actor`` is the *acting* user (e.g. an admin refreshing someone else's
     Conversion), which can differ from the row's owner.
@@ -340,7 +340,7 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
     # The converter runs outside the DB transaction.
     result = transmute.convert(
         conversion.source_format, conversion.target_format,
-        conversion.input_text, params,
+        conversion.input_text, params
     )
 
     now = datetime.now(timezone.utc)
@@ -355,7 +355,7 @@ def refresh_conversion(user, conversion: Conversion, params) -> ConversionHistor
         commit=False
     )
     _record_activity(
-        "conversion_refreshed", user, "conversion", conversion.id, conversion.name, now,
+        "conversion_refreshed", user, "conversion", conversion.id, conversion.name, now
     )
     try:
         db.session.commit()
@@ -370,9 +370,9 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
 
     Owner-or-admin only (``assert_can_moderate``). Marks the history row
     ``accepted`` and copies its ``new_output_text``, ``params`` and
-    ``diagnostics`` onto the parent Conversion as one unit — the three describe
+    ``diagnostics`` onto the parent Conversion as one unit - the three describe
     the same run, so the Conversion never mixes an output with the Diagnostics
-    of a different one — atomically with the audit log.
+    of a different one - atomically with the audit log.
     """
     conversion = history.conversion
     assert_can_moderate(user, conversion)
@@ -385,7 +385,7 @@ def accept_history(user, history: ConversionHistory) -> ConversionHistory:
     conversion.updated_at = now
     _record_activity(
         "conversion_history_accepted", user, "conversion_history", history.id,
-        conversion.name, now,
+        conversion.name, now
     )
     try:
         db.session.commit()
@@ -399,7 +399,7 @@ def reject_history(user, history: ConversionHistory) -> ConversionHistory:
     """Reject a pending refresh: mark it ``rejected``, leaving the Conversion as-is.
 
     Owner-or-admin only (``assert_can_moderate``). The mirror of
-    `accept_history` — but a rejection never adopts the new output onto the
+    `accept_history` - but a rejection never adopts the new output onto the
     parent Conversion.
     """
     conversion = history.conversion
@@ -409,7 +409,7 @@ def reject_history(user, history: ConversionHistory) -> ConversionHistory:
     conv_repo.set_history_status(history, "rejected", commit=False)
     _record_activity(
         "conversion_history_rejected", user, "conversion_history", history.id,
-        conversion.name, now,
+        conversion.name, now
     )
     try:
         db.session.commit()

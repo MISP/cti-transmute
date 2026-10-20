@@ -1,4 +1,4 @@
-// overview.js — Vue 3 Options API component for /evaluate/overview
+// overview.js - Vue 3 Options API component for /evaluate/overview
 
 const OverviewApp = {
     delimiters: ['[[', ']]'],
@@ -21,7 +21,7 @@ const OverviewApp = {
             _donutChart: null,
             _barChart: null,
             _radarChart: null,
-            _timelineChart: null,
+            _timelineChart: null
         }
     },
 
@@ -49,7 +49,7 @@ const OverviewApp = {
         },
         timeline_total() {
             return this.timeline.reduce((s, d) => s + d.count, 0)
-        },
+        }
     },
 
     methods: {
@@ -144,8 +144,8 @@ const OverviewApp = {
                                 data: [this.stats.total_likes, this.stats.total_dislikes],
                                 backgroundColor: ['#2563eb', '#dc2626'],
                                 borderWidth: 0,
-                                hoverOffset: 6,
-                            }],
+                                hoverOffset: 6
+                            }]
                         },
                         options: {
                             responsive: true,
@@ -155,15 +155,15 @@ const OverviewApp = {
                             plugins: {
                                 legend: {
                                     position: 'bottom',
-                                    labels: { color: text2, font: { size: 11 }, boxWidth: 10, padding: 10 },
+                                    labels: { color: text2, font: { size: 11 }, boxWidth: 10, padding: 10 }
                                 },
                                 tooltip: {
                                     callbacks: {
-                                        label: ctx => ` ${ctx.label}: ${ctx.raw}`,
-                                    },
-                                },
-                            },
-                        },
+                                        label: ctx => ` ${ctx.label}: ${ctx.raw}`
+                                    }
+                                }
+                            }
+                        }
                     })
                 }
 
@@ -180,8 +180,8 @@ const OverviewApp = {
                                 data: topTags.map(t => t.count),
                                 backgroundColor: topTags.map(t => t.color || accent),
                                 borderWidth: 0,
-                                borderRadius: 4,
-                            }],
+                                borderRadius: 4
+                            }]
                         },
                         options: {
                             indexAxis: 'y',
@@ -193,9 +193,9 @@ const OverviewApp = {
                                 tooltip: {
                                     callbacks: {
                                         title: (items) => topTags[items[0].dataIndex]?.name || '',
-                                        label: ctx => ` ${ctx.raw} vote${ctx.raw !== 1 ? 's' : ''}`,
-                                    },
-                                },
+                                        label: ctx => ` ${ctx.raw} vote${ctx.raw !== 1 ? 's' : ''}`
+                                    }
+                                }
                             },
                             scales: {
                                 x: {
@@ -203,15 +203,15 @@ const OverviewApp = {
                                     ticks: { color: text3, font: { size: 10 }, stepSize: 1 },
                                     grid: { color: border },
                                     border: { display: false },
-                                    title: { display: true, text: 'Number of votes', color: text3, font: { size: 10 } },
+                                    title: { display: true, text: 'Number of votes', color: text3, font: { size: 10 } }
                                 },
                                 y: {
                                     ticks: { color: text2, font: { size: 10 } },
                                     grid: { display: false },
-                                    title: { display: true, text: 'Reaction tag', color: text3, font: { size: 10 } },
-                                },
-                            },
-                        },
+                                    title: { display: true, text: 'Reaction tag', color: text3, font: { size: 10 } }
+                                }
+                            }
+                        }
                     })
                 }
 
@@ -242,8 +242,8 @@ const OverviewApp = {
                                 borderColor: accent,
                                 borderWidth: 2,
                                 pointBackgroundColor: accent,
-                                pointRadius: 4,
-                            }],
+                                pointRadius: 4
+                            }]
                         },
                         options: {
                             responsive: true,
@@ -256,18 +256,18 @@ const OverviewApp = {
                                     ticks: { color: text3, font: { size: 9 }, stepSize: 25 },
                                     grid: { color: border },
                                     pointLabels: { color: text2, font: { size: 10 } },
-                                    angleLines: { color: border },
-                                },
+                                    angleLines: { color: border }
+                                }
                             },
                             plugins: {
                                 legend: { display: false },
                                 tooltip: {
                                     callbacks: {
-                                        label: ctx => ` Score: ${ctx.raw}/100`,
-                                    },
-                                },
-                            },
-                        },
+                                        label: ctx => ` Score: ${ctx.raw}/100`
+                                    }
+                                }
+                            }
+                        }
                     })
                 }
             } catch (e) {
@@ -312,8 +312,8 @@ const OverviewApp = {
                             pointRadius: 3,
                             pointBackgroundColor: accent,
                             fill: true,
-                            tension: 0.35,
-                        }],
+                            tension: 0.35
+                        }]
                     },
                     options: {
                         responsive: true,
@@ -323,9 +323,9 @@ const OverviewApp = {
                             legend: { display: false },
                             tooltip: {
                                 callbacks: {
-                                    label: ctx => ` ${ctx.raw} evaluation${ctx.raw !== 1 ? 's' : ''}`,
-                                },
-                            },
+                                    label: ctx => ` ${ctx.raw} evaluation${ctx.raw !== 1 ? 's' : ''}`
+                                }
+                            }
                         },
                         scales: {
                             x: {
@@ -333,35 +333,35 @@ const OverviewApp = {
                                     color: text3,
                                     font: { size: 10 },
                                     maxRotation: 0,
-                                    maxTicksLimit: 10,
+                                    maxTicksLimit: 10
                                 },
                                 grid: { display: false },
                                 border: { display: false },
-                                title: { display: true, text: 'Date', color: text3, font: { size: 10 } },
+                                title: { display: true, text: 'Date', color: text3, font: { size: 10 } }
                             },
                             y: {
                                 min: 0,
                                 ticks: { color: text3, font: { size: 10 }, stepSize: 1, precision: 0 },
                                 grid: { color: border },
                                 border: { display: false },
-                                title: { display: true, text: 'Evaluations', color: text3, font: { size: 10 } },
-                            },
-                        },
-                    },
+                                title: { display: true, text: 'Evaluations', color: text3, font: { size: 10 } }
+                            }
+                        }
+                    }
                 })
             } catch (e) {
                 console.error('overview: drawTimelineChart error', e)
             }
-        },
+        }
     },
 
     async mounted() {
         await Promise.all([
             this.fetchGlobalStats(),
             this.fetchRecent(),
-            this.fetchTimeline(),
+            this.fetchTimeline()
         ])
-    },
+    }
 }
 
 export default OverviewApp

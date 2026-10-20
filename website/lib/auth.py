@@ -2,7 +2,7 @@
 
 The public API accepts an optional ``X-API-KEY`` header:
 - **absent** → anonymous (``None``); the request proceeds and any persisted
-  Conversion gets ``user_id IS NULL`` — matching the web view for logged-out
+  Conversion gets ``user_id IS NULL`` - matching the web view for logged-out
   visitors.
 - **present and matches a User** → that ``User`` becomes the actor.
 - **present but matches nobody** → ``InvalidApiKey`` (the API maps it to 403).

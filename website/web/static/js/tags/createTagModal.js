@@ -10,7 +10,7 @@ const FA_FEATURED = [
     'file-shield','user-secret','id-card','flag','bell','star','bookmark','triangle-exclamation',
     'circle-exclamation','circle-xmark','circle-check','circle-info','robot','gears','wrench',
     'cloud','wifi','tower-broadcast','hard-drive','usb','earth-americas','sitemap','layer-group',
-    'user','users','building','landmark','scroll','chart-bar','chart-line','link','map-pin','clock',
+    'user','users','building','landmark','scroll','chart-bar','chart-line','link','map-pin','clock'
 ];
 let _faIconsCache = null;
 async function loadFaIcons() {
@@ -34,7 +34,7 @@ const VULN_TYPES = [
     { name: 'RHSA',   prefix: 'RHSA-',     example: 'RHSA-2024:1234',        icon: 'fas fa-lock',          color: '#b91c1c' },
     { name: 'CERTFR', prefix: 'CERTFR-',   example: 'CERTFR-2024-AVI-001',   icon: 'fas fa-flag',          color: '#15803d' },
     { name: 'Cisco',  prefix: 'cisco-sa-', example: 'cisco-sa-20241001-xxx', icon: 'fas fa-network-wired', color: '#1e293b' },
-    { name: 'MSRC',   prefix: 'msrc_CVE-', example: 'msrc_CVE-2024-12345',   icon: 'fas fa-shield-virus',  color: '#7c3aed' },
+    { name: 'MSRC',   prefix: 'msrc_CVE-', example: 'msrc_CVE-2024-12345',   icon: 'fas fa-shield-virus',  color: '#7c3aed' }
 ];
 
 /**
@@ -46,7 +46,7 @@ const CreateTagModal = {
     components: { 'single-tag': SingleTagDisplay },
     emits: ['created'],
     props: {
-        isAdmin: { type: Boolean, default: false },
+        isAdmin: { type: Boolean, default: false }
     },
     delimiters: ['[[', ']]'],
     data() {
@@ -67,7 +67,7 @@ const CreateTagModal = {
             saving:       false,
             vulnTypes:    VULN_TYPES,
             _modal:       null,
-            _onDocClick:  null,
+            _onDocClick:  null
         };
     },
     computed: {
@@ -92,7 +92,7 @@ const CreateTagModal = {
             if (raw.length > 2 && !this.vulnValid) return { cls: 'text-danger', icon: 'fa-times-circle', msg: `Invalid format for ${this.vulnFormat.name}` };
             if (this.vulnValid)                     return { cls: 'text-success', icon: 'fa-check-circle', msg: 'Valid format' };
             return { cls: 'text-muted', icon: '', msg: `Example: ${this.vulnFormat.example}` };
-        },
+        }
     },
     methods: {
         csrf() { return document.getElementById('csrf_token')?.value || ''; },
@@ -138,7 +138,7 @@ const CreateTagModal = {
                 const res = await fetch('/tags/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf() },
-                    body: JSON.stringify({ name: this.name.trim(), source: 'Manual', description: this.description, color: this.color, icon: this.icon }),
+                    body: JSON.stringify({ name: this.name.trim(), source: 'Manual', description: this.description, color: this.color, icon: this.icon })
                 });
                 const data = await res.json();
                 this.$emit('toast', data.message, data.toast_class);
@@ -154,7 +154,7 @@ const CreateTagModal = {
                     const res = await fetch('/tags/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': this.csrf() },
-                        body: JSON.stringify({ name: id, source: 'Vulnerability', description: this.description, color: this.vulnFormat.color, icon: this.vulnFormat.icon.replace('fas fa-','') }),
+                        body: JSON.stringify({ name: id, source: 'Vulnerability', description: this.description, color: this.vulnFormat.color, icon: this.vulnFormat.icon.replace('fas fa-','') })
                     });
                     const data = await res.json();
                     if (data.success) { ok++; this.$emit('created', data.tag); }
@@ -165,7 +165,7 @@ const CreateTagModal = {
                 if (ok) this._modal?.hide();
                 this.saving = false;
             }
-        },
+        }
     },
     mounted() {
         const modalEl = this.$el?.id === 'createTagModal' ? this.$el : this.$el?.querySelector?.('#createTagModal') || document.getElementById('createTagModal');
@@ -348,7 +348,7 @@ const CreateTagModal = {
     </div>
   </div>
 </div>
-    `,
+    `
 };
 
 export default CreateTagModal;

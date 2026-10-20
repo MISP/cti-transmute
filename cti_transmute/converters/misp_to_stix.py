@@ -14,7 +14,7 @@ class MispToStixParams(BaseModel):
 
     version: Literal["2.0", "2.1"] = Field(
         default="2.1", title="STIX Version",
-        description="STIX specification version of the generated bundle.",
+        description="STIX specification version of the generated bundle."
     )
 
 

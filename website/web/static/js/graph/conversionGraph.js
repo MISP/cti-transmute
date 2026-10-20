@@ -1,7 +1,7 @@
 import { normaliseNodeTypes, renderRawJson, sanitizeConfigPatch, textCell } from './graphSafety.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  GRAPH CONFIG — edit this object to change graph behaviour & appearance.
+//  GRAPH CONFIG - edit this object to change graph behaviour & appearance.
 //  All options are documented inline. No need to touch the logic below.
 // ─────────────────────────────────────────────────────────────────────────────
 export const GRAPH_CONFIG = {
@@ -24,7 +24,7 @@ export const GRAPH_CONFIG = {
     // Pivotick top-level UI options (mode, sidebar default state, …).
     pivotickUI: {
         mode: 'full',
-        sidebar: { collapsed: 'auto' },
+        sidebar: { collapsed: 'auto' }
     },
 
     // ── Node style maps ───────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ export const GRAPH_CONFIG = {
         'email-addr': { shape: 'circle', color: '#fb923c', size: 12 },
         'network-traffic': { shape: 'circle', color: '#38bdf8', size: 11 },
         'marking-definition': { shape: 'square', color: '#dc2626', size: 11 },
-        '_default': { shape: 'circle', color: '#64748b', size: 13 },
+        '_default': { shape: 'circle', color: '#64748b', size: 13 }
     },
 
     mispStyles: {
@@ -68,17 +68,17 @@ export const GRAPH_CONFIG = {
         'group-payload': { shape: 'hexagon', color: '#f97316', size: 18 },
         'group-external': { shape: 'hexagon', color: '#10b981', size: 17 },
         'group-other': { shape: 'hexagon', color: '#64748b', size: 17 },
-        '_default': { shape: 'circle', color: '#64748b', size: 12 },
+        '_default': { shape: 'circle', color: '#64748b', size: 12 }
     },
 
     // MISP attribute types that belong to the "network" or "payload" families.
     // Extend these sets to reclassify how attributes are coloured.
     mispNetworkTypes: new Set(['ip-src', 'ip-dst', 'domain', 'hostname', 'url', 'uri', 'email-src', 'email-dst']),
-    mispPayloadTypes: new Set(['md5', 'sha1', 'sha256', 'sha512', 'filename', 'malware-sample']),
+    mispPayloadTypes: new Set(['md5', 'sha1', 'sha256', 'sha512', 'filename', 'malware-sample'])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Internal helpers — no need to edit below unless changing the graph logic.
+//  Internal helpers - no need to edit below unless changing the graph logic.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function safeId(id) {
@@ -113,7 +113,7 @@ function _parseMispEvent(event, nodes, edges) {
         id: evId, data: {
             label: event.info || `Event #${event.id || '?'}`,
             sublabel: tlp ? 'TLP:' + tlp.split(':')[1].toUpperCase() : 'Event',
-            type: 'Event', raw: event,
+            type: 'Event', raw: event
         }
     })
 
@@ -137,7 +137,7 @@ function _parseMispEvent(event, nodes, edges) {
                     label: `${type} (${attrs.length})`,
                     sublabel: 'group',
                     type: _mispGroupStyle(type, sampleAttr.category),
-                    raw: null,
+                    raw: null
                 }
             })
             edges.push({ from: evId, to: clusterId, data: { label: type } })
@@ -150,7 +150,7 @@ function _parseMispEvent(event, nodes, edges) {
                     id: nId, data: {
                         label: String(attr.value).slice(0, 60),
                         sublabel: attr.type,
-                        type: _mispAttrStyle(attr), raw: attr,
+                        type: _mispAttrStyle(attr), raw: attr
                     }
                 })
                 edges.push({ from: clusterId, to: nId, data: { label: '' } })
@@ -165,7 +165,7 @@ function _parseMispEvent(event, nodes, edges) {
                     id: nId, data: {
                         label: String(attr.value).slice(0, 60),
                         sublabel: attr.type,
-                        type: _mispAttrStyle(attr), raw: attr,
+                        type: _mispAttrStyle(attr), raw: attr
                     }
                 })
                 edges.push({ from: evId, to: nId, data: { label: attr.type || '' } })
@@ -185,7 +185,7 @@ function _parseMispEvent(event, nodes, edges) {
             id: oId, data: {
                 label: obj.name || `Object #${obj.id}`,
                 sublabel: obj['meta-category'] || '',
-                type: 'Object', raw: obj, childAttrs,
+                type: 'Object', raw: obj, childAttrs
             }
         })
         edges.push({ from: evId, to: oId, data: { label: '', _default: true } })
@@ -202,7 +202,7 @@ function _parseMispEvent(event, nodes, edges) {
                 id: aId, data: {
                     label: String(attr.value).slice(0, 60),
                     sublabel: attr.object_relation || attr.type,
-                    type: _mispAttrStyle(attr), raw: attr,
+                    type: _mispAttrStyle(attr), raw: attr
                 }
             })
             edges.push({ from: oId, to: aId, data: { label: attr.object_relation || '' } })
@@ -260,7 +260,7 @@ function parseStix(json) {
             id: sid, data: {
                 label: String(label).slice(0, 60),
                 sublabel: mispType ? mispType.replace('misp:type=', '').replace(/"/g, '') : obj.type,
-                type: obj.type, raw: obj,
+                type: obj.type, raw: obj
             }
         })
     }
@@ -478,7 +478,7 @@ async function _initViewer(containerId, jsonText, format) {
         layout,
         simulation: {
             useWorker: false,
-            warmupTicks: parsed.nodes.length > 300 ? 0 : 'auto',
+            warmupTicks: parsed.nodes.length > 300 ? 0 : 'auto'
         },
         render: {
             nodeTypeAccessor: (node) => node.getData()?.type ?? '_default',
@@ -487,20 +487,20 @@ async function _initViewer(containerId, jsonText, format) {
             defaultEdgeStyle: { markerEnd: 'arrow' },
             nodeHeaderMap: {
                 title: (node) => node.getData()?.label ?? '',
-                subtitle: (node) => node.getData()?.sublabel ?? '',
-            },
+                subtitle: (node) => node.getData()?.sublabel ?? ''
+            }
         },
         UI: {
             ...pivotickUI,
             mainHeader: {
                 nodeHeaderMap: {
                     title: (node) => node.getData()?.label ?? String(node.id),
-                    subtitle: (node) => node.getData()?.sublabel ?? node.getData()?.type ?? '',
+                    subtitle: (node) => node.getData()?.sublabel ?? node.getData()?.type ?? ''
                 },
                 edgeHeaderMap: {
                     title: (edge) => edge.getData()?.label || 'Relationship',
-                    subtitle: (edge) => `${edge.from} → ${edge.to}`,
-                },
+                    subtitle: (edge) => `${edge.from} → ${edge.to}`
+                }
             },
             propertiesPanel: {
                 nodePropertiesMap: (node) => _nodeProperties(node),
@@ -508,14 +508,14 @@ async function _initViewer(containerId, jsonText, format) {
                     { name: textCell('Relationship'), value: textCell(edge.getData()?.label || '—') },
                     { name: textCell('From'), value: textCell(String(edge.from)) },
                     { name: textCell('To'), value: textCell(String(edge.to)) }
-                ],
+                ]
             },
             tooltip: {
                 nodeHeaderMap: {
                     title: (node) => node.getData()?.label ?? '',
-                    subtitle: (node) => node.getData()?.sublabel ?? '',
+                    subtitle: (node) => node.getData()?.sublabel ?? ''
                 },
-                renderNodeExtra: (node) => _buildTooltip(node),
+                renderNodeExtra: (node) => _buildTooltip(node)
             },
             contextMenu: {
                 menuNode: {
@@ -532,7 +532,7 @@ async function _initViewer(containerId, jsonText, format) {
                                 val = raw.value || raw.name || raw.pattern || d?.label || String(node.id)
                             }
                             navigator.clipboard.writeText(val).catch(() => { })
-                        },
+                        }
                     }],
                     menu: [{
                         text: 'Open raw JSON',
@@ -542,11 +542,11 @@ async function _initViewer(containerId, jsonText, format) {
                             const isDark = document.documentElement.classList.contains('dark-mode')
                             const win = window.open('', '_blank')
                             if (win) renderRawJson(win, raw, isDark)
-                        },
-                    }],
-                },
-            },
-        },
+                        }
+                    }]
+                }
+            }
+        }
     })
     _guardTooltip(graph)
 }
@@ -628,7 +628,7 @@ export function reRenderGraph() {
  * It registers the lazy-render hook so the graph only builds when the tab
  * is first opened.
  *
- * @param {object} conversionData  — the object returned by /conversions/get_conversion
+ * @param {object} conversionData  - the object returned by /conversions/get_conversion
  */
 export function initConversionGraph(conversionData) {
     _conversionData = conversionData

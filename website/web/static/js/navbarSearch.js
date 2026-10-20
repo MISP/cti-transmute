@@ -3,10 +3,10 @@ const SECTIONS_USER = [
     { icon: 'fa-book',                    label: 'History',       url: '/conversions/history' },
     { icon: 'fa-arrow-right-arrow-left',  label: 'MISP → STIX',  url: '/conversions/misp_to_stix' },
     { icon: 'fa-arrow-right-arrow-left',  label: 'STIX → MISP',  url: '/conversions/stix_to_misp' },
-    { icon: 'fa-plug',                    label: 'API Endpoints', url: '/list' },
+    { icon: 'fa-plug',                    label: 'API Endpoints', url: '/list' }
 ]
 const SECTIONS_AUTH  = [
-    { icon: 'fa-user', label: 'Profile', url: '/account/' },
+    { icon: 'fa-user', label: 'Profile', url: '/account/' }
 ]
 const SECTIONS_ADMIN = [
     { icon: 'fa-users',     label: 'Manage Users',     url: '/account/manage_user',            admin: true },
@@ -14,7 +14,7 @@ const SECTIONS_ADMIN = [
     { icon: 'fa-flag',      label: 'Reports',          url: '/account/admin/reports',          admin: true },
     { icon: 'fa-trash-alt', label: 'Deleted Conversions', url: '/account/admin/deleted_conversions', admin: true },
     { icon: 'fa-stream',    label: 'Activity Logs',    url: '/account/admin/logs',             admin: true },
-    { icon: 'fa-tags',      label: 'Tag Management',   url: '/tags/admin/',                    admin: true },
+    { icon: 'fa-tags',      label: 'Tag Management',   url: '/tags/admin/',                    admin: true }
 ]
 
 function validHex(c) { return /^#[0-9a-fA-F]{6}$/.test(c || '') }
@@ -22,7 +22,7 @@ function validHex(c) { return /^#[0-9a-fA-F]{6}$/.test(c || '') }
 const NavbarSearch = {
     props: {
         isAdmin: { type: Boolean, default: false },
-        isAuth:  { type: Boolean, default: false },
+        isAuth:  { type: Boolean, default: false }
     },
 
     data() {
@@ -31,7 +31,7 @@ const NavbarSearch = {
             groups: [],
             show:   false,
             timer:  null,
-            idx:    -1,
+            idx:    -1
         }
     },
 
@@ -40,9 +40,9 @@ const NavbarSearch = {
             return [
                 ...SECTIONS_USER,
                 ...(this.isAuth  ? SECTIONS_AUTH  : []),
-                ...(this.isAdmin ? SECTIONS_ADMIN : []),
+                ...(this.isAdmin ? SECTIONS_ADMIN : [])
             ]
-        },
+        }
     },
 
     methods: {
@@ -85,7 +85,7 @@ const NavbarSearch = {
                         id: 'conversions', type: 'conversion',
                         icon: 'fa-exchange-alt', label: 'Conversions',
                         items,
-                        seeAll: '/conversions/history?search=' + encodeURIComponent(q),
+                        seeAll: '/conversions/history?search=' + encodeURIComponent(q)
                     })
                 }
             } catch {}
@@ -100,7 +100,7 @@ const NavbarSearch = {
                             id: 'tags', type: 'tag',
                             icon: 'fa-tags', label: 'Tags',
                             items,
-                            seeAll: '/tags/admin/?search=' + encodeURIComponent(q),
+                            seeAll: '/tags/admin/?search=' + encodeURIComponent(q)
                         })
                     }
                 } catch {}
@@ -150,7 +150,7 @@ const NavbarSearch = {
 
         _focusable() { return Array.from(this.$el.querySelectorAll('.nav-sd-focusable')) },
 
-        _outsideClick(e) { if (!this.$el.contains(e.target)) this.show = false },
+        _outsideClick(e) { if (!this.$el.contains(e.target)) this.show = false }
     },
 
     mounted() {
@@ -234,7 +234,7 @@ const NavbarSearch = {
     </div>
   </div>
 </form>
-    `,
+    `
 }
 
 export default NavbarSearch

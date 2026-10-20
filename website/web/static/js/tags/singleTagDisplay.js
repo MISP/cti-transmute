@@ -11,7 +11,7 @@ const SingleTagDisplay = {
         showNamespace: { type: Boolean, default: true  },
         showFull:      { type: Boolean, default: false },
         selected:      { type: Boolean, default: false },
-        highlight:     { type: String,  default: ''    },
+        highlight:     { type: String,  default: ''    }
     },
     emits: ['click', 'dblclick'],
     delimiters: ['[[', ']]'],
@@ -128,7 +128,7 @@ const SingleTagDisplay = {
                 <div class="tooltip-arrow"></div>
             </div>
         </div>
-    `,
+    `
 };
 
 export default SingleTagDisplay;

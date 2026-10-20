@@ -1,4 +1,4 @@
-// EvaluationPanel — Vue 3 component for conversion evaluations.
+// EvaluationPanel - Vue 3 component for conversion evaluations.
 // Register with: app.component('evaluation-panel', EvaluationPanel)
 
 const CSRF_TOKEN = () =>
@@ -9,7 +9,7 @@ const VALUE_COLORS = {
     'low':       '#fd7e14',
     'moderate':  '#ffc107',
     'high':      '#198754',
-    'very-high': '#0d9488',
+    'very-high': '#0d9488'
 }
 
 const VALUE_LABELS = {
@@ -17,13 +17,13 @@ const VALUE_LABELS = {
     'low':       'Low',
     'moderate':  'Moderate',
     'high':      'High',
-    'very-high': 'Very High',
+    'very-high': 'Very High'
 }
 
 const CATEGORY_ORDER = [
     'overall-score', 'accuracy', 'relevance', 'timeliness', 'clarity',
     'specificity', 'usefulness', 'format-validity', 'conversion-fidelity',
-    'source-reliability', 'evidence-strength', 'confidence',
+    'source-reliability', 'evidence-strength', 'confidence'
 ]
 
 const EvaluationPanel = {
@@ -32,7 +32,7 @@ const EvaluationPanel = {
         conversionId: { type: Number, required: true },
         isAuth:    { type: Boolean, default: false },
         isOwner:   { type: Boolean, default: false },
-        isPublic:  { type: Boolean, default: true },
+        isPublic:  { type: Boolean, default: true }
     },
     template: `
 <div class="eval-panel-root">
@@ -166,7 +166,7 @@ const EvaluationPanel = {
             viewer_like: false, viewer_dislike: false,
             can_evaluate: false,
             is_owner: false, eval_comments: 0,
-            cti_categories: {},
+            cti_categories: {}
         })
 
         const score = computed(() => data.value.approval_score ?? null)
@@ -223,7 +223,7 @@ const EvaluationPanel = {
             const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN() },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(payload)
             })
             try {
                 return await res.json()
@@ -251,7 +251,7 @@ const EvaluationPanel = {
         async function toggleReaction(key) {
             if (!data.value.can_evaluate) return
             const body = await apiPost('/evaluate/toggle_reaction', {
-                conversion_id: props.conversionId, reaction_key: key,
+                conversion_id: props.conversionId, reaction_key: key
             })
             if (body.success && body.summary) { data.value = { ...data.value, ...body.summary }; notifyEvalUpdated() }
         }
@@ -267,9 +267,9 @@ const EvaluationPanel = {
             loading, data, score, scoreColor,
             sortedCtiCategories,
             formatCatName, formatValue, valueColor, valueBtnStyle,
-            selectCatValue, toggleLike, toggleDislike,
+            selectCatValue, toggleLike, toggleDislike
         }
-    },
+    }
 }
 
 export default EvaluationPanel

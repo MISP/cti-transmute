@@ -38,7 +38,7 @@ def get_public_activity():
     PUBLIC_EVENTS = [
         'conversion_created', 'eval_like', 'eval_dislike',
         'eval_reaction', 'conversion_edited', 'conversion_visibility_changed',
-        'conversion_favorited',
+        'conversion_favorited'
     ]
     try:
         from website.db_class.db import User

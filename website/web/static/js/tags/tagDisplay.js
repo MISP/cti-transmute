@@ -12,7 +12,7 @@ const TagDisplay = {
         loading:      { type: Boolean, default: false },
         maxVisible:   { type: Number,  default: 10    },
         sectionTitle: { type: String,  default: 'Included Tags' },
-        showNamespace:{ type: Boolean, default: true  },
+        showNamespace:{ type: Boolean, default: true  }
     },
     delimiters: ['[[', ']]'],
     data() {
@@ -21,7 +21,7 @@ const TagDisplay = {
     computed: {
         visibleTags() {
             return this.isShowingAll ? this.tags : this.tags.slice(0, this.maxVisible);
-        },
+        }
     },
     template: `
         <div class="mt-4">
@@ -73,7 +73,7 @@ const TagDisplay = {
                 </div>
             </div>
         </div>
-    `,
+    `
 };
 
 export default TagDisplay;

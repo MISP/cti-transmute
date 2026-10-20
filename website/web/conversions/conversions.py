@@ -142,7 +142,7 @@ def _manual_tag_ids(raw) -> list[int]:
     """Normalise submitted tag ids to a list of ints.
 
     Accepts a JSON list or the old comma-separated hidden-input string, keeping
-    only the digit entries — the same lenient parse the classic form used.
+    only the digit entries - the same lenient parse the classic form used.
     """
     if raw is None:
         return []
@@ -215,12 +215,12 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
     try:
         conversion = submit_conversion(
             user, source, target, payload=payload, params=params,
-            name=name, description=description, public=public,
+            name=name, description=description, public=public
         )
     except ConversionError as exc:
         return (
             jsonify({"error": _conversion_error_message(exc)}),
-            _status_for_conversion_error(exc),
+            _status_for_conversion_error(exc)
         )
 
     tags_saved = True
@@ -255,7 +255,7 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
     return jsonify({
         "url": url_for("conversions.detail", id=conversion.id),
         "id": conversion.id,
-        "uuid": conversion.uuid,
+        "uuid": conversion.uuid
     }), 200
 
 
@@ -334,11 +334,11 @@ def fetch_misp_event():
         "includeEventUuid", "includeEventTags", "event_timestamp",
         "threat_level_id", "eventinfo", "sharinggroup", "includeProposals",
         "includeDecayScore", "includeFullModel", "decayingModel",
-        "excludeDecayed", "score", "first_seen", "last_seen",
+        "excludeDecayed", "score", "first_seen", "last_seen"
     ]
     body: dict = {
         "returnFormat": "json",
-        "eventid": event_ids if len(event_ids) > 1 else event_ids[0],
+        "eventid": event_ids if len(event_ids) > 1 else event_ids[0]
     }
     for param in OPTIONAL_PARAMS:
         if param in data and data[param] not in (None, "", []):
@@ -437,7 +437,7 @@ def misp_search_events():
             "published":       ev.get("published", False),
             "distribution":    str(ev.get("distribution", "3")),
             "sharing_group":   (ev.get("SharingGroup") or {}).get("name", ""),
-            "tags":            visible_tags,
+            "tags":            visible_tags
         })
 
     return jsonify({"events": events, "count": len(events), "page": page, "limit": limit}), 200
@@ -495,7 +495,7 @@ def get_page_history():
         tag_names=tag_names,
         vis_filter=vis_filter,
         favorites_only=favorites_only,
-        favorites_user_id=favorites_user_id,
+        favorites_user_id=favorites_user_id
     )
     items = pagination.items
     conversion_list = [item.to_json_list() for item in items]
@@ -513,7 +513,7 @@ def get_page_history():
 
     return {
         "list": conversion_list,
-        "total_page": pagination.pages,
+        "total_page": pagination.pages
     }, 200
 
 
@@ -537,7 +537,7 @@ def toggle_favorite():
         target_type="conversion",
         target_id=conversion_id,
         target_name=conversion.name,
-        details=f"{'Added to' if is_fav else 'Removed from'} favorites by {current_user.first_name}",
+        details=f"{'Added to' if is_fav else 'Removed from'} favorites by {current_user.first_name}"
     )
     return {"success": True, "is_favorite": is_fav}, 200
 
@@ -558,7 +558,7 @@ def most_favorited():
     fav_counts = (
         db.session.query(
             ConversionFavorite.conversion_id,
-            func.count(ConversionFavorite.id).label("fav_count"),
+            func.count(ConversionFavorite.id).label("fav_count")
         )
         .group_by(ConversionFavorite.conversion_id)
         .subquery()
@@ -658,7 +658,7 @@ def conversion_by_id(id):
 
 @conversions_blueprint.route("/detail/<id>", methods=['GET'])
 def detail(id):
-    """Detail page — accepts numeric ID or UUID string."""
+    """Detail page - accepts numeric ID or UUID string."""
     try:
         conversion = conv_repo.get(int(id))
     except (ValueError, TypeError):
@@ -871,7 +871,7 @@ def refresh(uuid):
 
     GET renders the page; its param controls are drawn client-side from the
     Converter's Parameter schema, prefilled from the stored params. POST is a
-    fetch/JSON re-run — ``{"params": {...}}`` in, ``{message, identical,
+    fetch/JSON re-run - ``{"params": {...}}`` in, ``{message, identical,
     history_id}`` out; a shape violation returns the shared ``{error, fields}``
     400 every param surface returns.
     """
@@ -881,7 +881,7 @@ def refresh(uuid):
         flash("Conversion not found.", "danger")
         return redirect(url_for("conversions.history"))
 
-    # Owner-or-admin only — gate both the form (GET) and the re-run (POST).
+    # Owner-or-admin only - gate both the form (GET) and the re-run (POST).
     # Anonymous callers were already bounced to login by @login_required.
     user = current_user._get_current_object()
     try:
@@ -900,7 +900,7 @@ def refresh(uuid):
         if request.method == "POST":
             return (
                 jsonify({"error": _conversion_error_message(exc)}),
-                _status_for_conversion_error(exc),
+                _status_for_conversion_error(exc)
             )
         flash("Unsupported conversion type.", "danger")
         return redirect(url_for("conversions.history"))
@@ -1049,14 +1049,14 @@ def _moderate_history(history_id, use_case, past_tense):
 @conversions_blueprint.route("/history/<int:history_id>/accept", methods=['POST'])
 @login_required
 def history_accept(history_id):
-    """Accept a pending refresh (owner-or-admin) — adopts its output."""
+    """Accept a pending refresh (owner-or-admin) - adopts its output."""
     return _moderate_history(history_id, accept_history, "accepted")
 
 
 @conversions_blueprint.route("/history/<int:history_id>/reject", methods=['POST'])
 @login_required
 def history_reject(history_id):
-    """Reject a pending refresh (owner-or-admin) — leaves the Conversion as-is."""
+    """Reject a pending refresh (owner-or-admin) - leaves the Conversion as-is."""
     return _moderate_history(history_id, reject_history, "rejected")
 
 
@@ -1068,7 +1068,7 @@ def history_action_gone():
         "message": ("This endpoint has moved. Use "
                     "POST /conversions/history/<id>/accept or "
                     "POST /conversions/history/<id>/reject."),
-        "toast_class": "danger",
+        "toast_class": "danger"
     }, 410
 
 
@@ -1199,7 +1199,7 @@ def add_comment():
 
 @conversions_blueprint.route("/get_comment_info", methods=['GET'])
 def get_comment_info():
-    """Return conversion_id and is_evaluation for a comment — used for notification deep-linking."""
+    """Return conversion_id and is_evaluation for a comment - used for notification deep-linking."""
     comment_id = request.args.get('comment_id', type=int)
     if not comment_id:
         return {"success": False}, 400
@@ -1244,12 +1244,12 @@ def edit_comment():
             target_type="comment",
             target_id=comment_id,
             target_name=f"On conversion #{comment.conversion_id}",
-            details=content[:120] + ('…' if len(content) > 120 else ''),
+            details=content[:120] + ('…' if len(content) > 120 else '')
         )
     return {
         "success": success,
         "message": message,
-        "toast_class": "success" if success else "danger",
+        "toast_class": "success" if success else "danger"
     }, 200 if success else 403
 
 
@@ -1457,7 +1457,7 @@ def get_trash():
         "list": [c.to_json_list() for c in pagination.items],
         "total_page": pagination.pages,
         "total_count": pagination.total,
-        "page": page,
+        "page": page
     }, 200
 
 
@@ -1575,7 +1575,7 @@ def download_input(conversion_id):
     filename = f"{label}-input-{conversion_id}.json"
     return json.dumps(json.loads(conversion.input_text), indent=2), 200, {
         "Content-Type": "application/json",
-        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Disposition": f'attachment; filename="{filename}"'
     }
 
 
@@ -1594,14 +1594,14 @@ def download_output(conversion_id):
     filename = f"{label}-output-{conversion_id}.json"
     return json.dumps(json.loads(conversion.output_text), indent=2), 200, {
         "Content-Type": "application/json",
-        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Disposition": f'attachment; filename="{filename}"'
     }
 
 
 @conversions_blueprint.route("/download/<int:conversion_id>/misp-push")
 def download_misp_push(conversion_id):
     """
-    Download the full PyMISP-built event payload — identical to what
+    Download the full PyMISP-built event payload - identical to what
     would be sent to a MISP instance during a push (includes the
     cti-evaluation object and all community evaluation tags).
     """
@@ -1624,7 +1624,7 @@ def download_misp_push(conversion_id):
     filename = f"misp-push-payload-{conversion_id}.json"
     return json.dumps({"Event": event_dict}, indent=2), 200, {
         "Content-Type": "application/json",
-        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Content-Disposition": f'attachment; filename="{filename}"'
     }
 
 
@@ -1666,7 +1666,7 @@ def push_to_misp():
     return {
         "success": True,
         "message": f"Event pushed to MISP successfully!{' (event #' + str(new_event_id) + ')' if new_event_id else ''}",
-        "event_id": new_event_id,
+        "event_id": new_event_id
     }, 200
 
 
@@ -1691,7 +1691,7 @@ def _misp_push_attributes_meta(cti_obj_dict, consensus_tags) -> list[dict]:
         "overall-score":               "Dominant quality level across all community votes",
         "overall-score-value":         "Numeric overall quality score 0–100 (mean of all votes)",
         "taxonomy-tag":                "cti-evaluation machine tag applied on the MISP event",
-        "taxonomy-reference":          "Link to the official MISP cti-evaluation taxonomy",
+        "taxonomy-reference":          "Link to the official MISP cti-evaluation taxonomy"
     }
     for tag in consensus_tags:
         cat = tag["category"]
@@ -1714,7 +1714,7 @@ def _misp_push_attributes_meta(cti_obj_dict, consensus_tags) -> list[dict]:
 @login_required
 def misp_push_preview(conversion_id):
     """
-    JSON endpoint — builds the real PyMISP event payload and returns it for
+    JSON endpoint - builds the real PyMISP event payload and returns it for
     preview in the push modal. Includes the full event JSON, the isolated
     cti-evaluation object, and a human-readable attribute table.
     """
@@ -1737,7 +1737,7 @@ def misp_push_preview(conversion_id):
     return {
         "success":         True,
         "has_evaluations": bool(push_tags),
-        # Full event as PyMISP built it — what would be sent to MISP
+        # Full event as PyMISP built it - what would be sent to MISP
         "event_dict":      event_dict,
         # Just the cti-evaluation object, isolated for easy reading
         "cti_object":      cti_obj_dict,
@@ -1751,8 +1751,8 @@ def misp_push_preview(conversion_id):
         "event_stats": {
             "attribute_count": len(event_dict.get("Attribute", [])),
             "object_count":    len(event_dict.get("Object", [])),
-            "tag_count":       len(event_dict.get("Tag", [])),
-        },
+            "tag_count":       len(event_dict.get("Tag", []))
+        }
     }, 200
 
 
@@ -1872,6 +1872,6 @@ def get_json_tags(conversion_id):
             "icon":        t.icon if t else None,
             "description": t.description if t else None,
             "visibility":  t.visibility if t else "public",
-            "source_type": "json",
+            "source_type": "json"
         })
     return {"success": True, "tags": tags}, 200
