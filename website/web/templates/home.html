@@ -89,7 +89,10 @@
                        :href="'/conversions/detail/' + item.id"
                        class="home-recent-card">
                         <div class="home-recent-card-top">
-                            <template v-if="item.conversion_type === 'STIX_TO_MISP'">
+                            <template v-if="item.conversion_type?.endsWith('_TO_OCSF')">
+                                <div class="cti-convert-row">[[ item.conversion_type.replace('_TO_', ' → ') ]]</div>
+                            </template>
+                            <template v-else-if="item.conversion_type === 'STIX_TO_MISP'">
                                 <div class="cti-convert-row">
                                     <span class="cti-badge cti-badge-stix">STIX</span>
                                     <i class="fas fa-arrow-right cti-arrow"></i>

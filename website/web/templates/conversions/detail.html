@@ -37,12 +37,9 @@
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <span class="type-pill"
                                 :class="conversion.conversion_type === 'STIX_TO_MISP' ? 'type-stix' : 'type-misp'">
-                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">
-                                    STIX <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> MISP
-                                </template>
-                                <template v-else>
-                                    MISP <i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i> STIX
-                                </template>
+                                [[ (conversion.source_format || '').toUpperCase() ]]
+                                <i class="fas fa-arrow-right mx-1"></i>
+                                [[ (conversion.target_format || '').toUpperCase() ]]
                             </span>
                             <span class="vis-badge" :class="conversion.public ? 'vis-public' : 'vis-private'">
                                 <i :class="conversion.public ? 'fas fa-globe' : 'fas fa-lock'" style="font-size:0.6rem;"></i>
@@ -100,7 +97,8 @@
                             :data-bs-target="'#delete_modal_'+conversion.id">
                             <i class="fas fa-trash me-1"></i> Delete
                         </button>
-                        <button class="btn btn-sm btn-outline-primary" title="Push to MISP"
+                        <button v-if="conversion.source_format === 'misp' || conversion.target_format === 'misp'"
+                            class="btn btn-sm btn-outline-primary" title="Push to MISP"
                             @click="$refs.mispModal.open()">
                             <img src="/static/image/misp.svg" width="14" height="14"
                                 style="vertical-align:middle; margin-right:4px;"> MISP
@@ -125,22 +123,22 @@
                                 <li>
                                     <a class="dropdown-item"
                                        :href="'/conversions/download/' + conversion.id + '/input'">
-                                        <img v-if="conversion.conversion_type === 'MISP_TO_STIX'"
+                                        <img v-if="conversion.source_format === 'misp'"
                                             src="/static/image/misp.svg" width="13" height="13"
                                             style="vertical-align:middle; margin-right:6px;">
                                          <img v-else src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
-                                        [[ conversion.conversion_type === 'MISP_TO_STIX' ? 'MISP input' : 'STIX input' ]]
+                                        [[ (conversion.source_format || '').toUpperCase() + ' input' ]]
                                         <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
                                     </a>
                                 </li>
                                 <li>
                                     <a class="dropdown-item"
                                        :href="'/conversions/download/' + conversion.id + '/output'">
-                                        <img v-if="conversion.conversion_type === 'MISP_TO_STIX'"
-                                            src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">  
-                                        <img v-else src="/static/image/misp.svg" width="13" height="13"
-                                            style="vertical-align:middle; margin-right:6px;">
-                                        [[ conversion.conversion_type === 'MISP_TO_STIX' ? 'STIX output' : 'MISP output' ]]
+                                        <img v-if="conversion.target_format === 'stix'"
+                                            src="/static/image/logo_stix.svg" width="14" height="14" style="vertical-align:middle; margin-right:4px;">
+                                        <img v-else-if="conversion.target_format === 'misp'"
+                                            src="/static/image/misp.svg" width="13" height="13" style="vertical-align:middle; margin-right:6px;">
+                                        [[ (conversion.target_format || '').toUpperCase() + ' output' ]]
                                         <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
                                     </a>
                                 </li>
@@ -259,15 +257,13 @@
                     <li class="nav-item">
                         <a class="nav-link active" data-bs-toggle="tab" :href="'#input-pane-'+conversion.id" role="tab">
                             <i class="fas fa-file-import me-1"></i>
-                            <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
-                            <template v-else>MISP Input</template>
+                            [[ (conversion.source_format || '').toUpperCase() ]] Input
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="tab" :href="'#output-pane-'+conversion.id" role="tab">
                             <i class="fas fa-file-export me-1"></i>
-                            <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
-                            <template v-else>STIX Output</template>
+                            [[ (conversion.target_format || '').toUpperCase() ]] Output
                         </a>
                     </li>
                     <li class="nav-item">
@@ -278,20 +274,20 @@
                             </span>
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" v-if="conversion.target_format !== 'ocsf'">
                         <a class="nav-link" data-bs-toggle="tab"
                             :href="'#graph-pane-'+conversion.id" role="tab"
                             id="graph-tab-link">
                             <i class="fas fa-diagram-project me-1"></i> Graph
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" v-if="conversion.target_format !== 'ocsf'">
                         <a class="nav-link" data-bs-toggle="tab"
                             :href="'#sunburst-pane-'+conversion.id" role="tab">
                             <i class="fas fa-circle-dot me-1"></i> Sunburst
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item" v-if="conversion.target_format !== 'ocsf'">
                         <a class="nav-link" data-bs-toggle="tab"
                             :href="'#table-pane-'+conversion.id" role="tab">
                             <i class="fas fa-table me-1"></i> Table
@@ -318,8 +314,7 @@
                     <div class="code-panel-wrapper">
                         <div class="code-panel-toolbar">
                             <span class="code-panel-label">
-                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX</template>
-                                <template v-else>MISP</template>
+                                [[ (conversion.source_format || '').toUpperCase() ]]
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
@@ -356,8 +351,7 @@
                     <div class="code-panel-wrapper">
                         <div class="code-panel-toolbar">
                             <span class="code-panel-label">
-                                <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP</template>
-                                <template v-else>STIX</template>
+                                [[ (conversion.target_format || '').toUpperCase() ]]
                                 · JSON
                             </span>
                             <div class="d-flex gap-2">
@@ -421,7 +415,7 @@
                 </div>
 
                 <!-- Graph pane -->
-                <div class="tab-pane fade" :id="'graph-pane-'+conversion.id" role="tabpanel">
+                <div v-if="conversion.target_format !== 'ocsf'" class="tab-pane fade" :id="'graph-pane-'+conversion.id" role="tabpanel">
                     <div class="graph-panel-wrapper">
                         <div class="graph-panel-toolbar">
                             <span class="code-panel-label">
@@ -437,14 +431,12 @@
                                 <button class="btn btn-sm btn-outline-secondary"
                                     id="graph-view-input">
                                     <i class="fas fa-file-import me-1"></i>
-                                    <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">STIX Input</template>
-                                    <template v-else>MISP Input</template>
+                                    [[ (conversion.source_format || '').toUpperCase() ]] Input
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
                                     id="graph-view-output">
                                     <i class="fas fa-file-export me-1"></i>
-                                    <template v-if="conversion.conversion_type === 'STIX_TO_MISP'">MISP Output</template>
-                                    <template v-else>STIX Output</template>
+                                    [[ (conversion.target_format || '').toUpperCase() ]] Output
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary"
                                     id="graph-config-btn" title="Configure graph display">
@@ -632,12 +624,12 @@
                 </div>
 
                 <!-- ── Sunburst tab ──────────────────────────────── -->
-                <div class="tab-pane fade" :id="'sunburst-pane-'+conversion.id" role="tabpanel">
+                <div v-if="conversion.target_format !== 'ocsf'" class="tab-pane fade" :id="'sunburst-pane-'+conversion.id" role="tabpanel">
                     <conversion-sunburst :conversion-data="conversion"></conversion-sunburst>
                 </div>
 
                 <!-- ── Table tab ─────────────────────────────────── -->
-                <div class="tab-pane fade" :id="'table-pane-'+conversion.id" role="tabpanel">
+                <div v-if="conversion.target_format !== 'ocsf'" class="tab-pane fade" :id="'table-pane-'+conversion.id" role="tabpanel">
                     <conversion-table :conversion-data="conversion"></conversion-table>
                 </div>
 
@@ -1109,7 +1101,8 @@
         pre.classList.add('d-none')
         setTimeout(() => {
             block.removeAttribute('data-highlighted')
-            hljs.highlightElement(block)
+            // The JSON remains readable when the optional CDN is unavailable.
+            if (window.hljs) window.hljs.highlightElement(block)
             spinner?.classList.add('d-none')
             spinner?.classList.remove('d-flex')
             if (!treeState[side]) pre.classList.remove('d-none')
@@ -1193,7 +1186,7 @@
                         try { rawInput = JSON.stringify(JSON.parse(rawInput), null, 2); if (elIn) elIn.textContent = rawInput } catch {}
                         try { rawOutput = JSON.stringify(JSON.parse(rawOutput), null, 2); if (elOut) elOut.textContent = rawOutput } catch {}
                         highlightAll()
-                        initConversionGraph(c)
+                        if (c.target_format !== 'ocsf') initConversionGraph(c)
                     }, 0)
 
                 } else {

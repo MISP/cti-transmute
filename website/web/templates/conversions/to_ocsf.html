@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/convert_form.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="custom-card p-4 mb-4">
+        <h3>Convert {{ source|upper }} to OCSF</h3>
+        <p>Export threat intelligence as OCSF 1.9.0 OSINT Inventory Info events.
+            Original records are preserved by default for fields without an OCSF equivalent.</p>
+        <form id="ocsf-form" data-source="{{ source }}" data-auth="{{ 'true' if current_user.is_authenticated else 'false' }}">
+            <label class="form-label" for="ocsf-input">{{ source|upper }} JSON</label>
+            <textarea id="ocsf-input" class="json-editor form-control" rows="14" spellcheck="false"></textarea>
+            <label class="form-label mt-3" for="ocsf-file">Or upload a JSON file</label>
+            <input id="ocsf-file" class="form-control" type="file" accept=".json,application/json">
+            <div id="ocsf-params" class="my-3"></div>
+            <label class="form-label" for="ocsf-name">Conversion name (optional)</label>
+            <input id="ocsf-name" class="form-control mb-3" maxlength="512">
+            <div class="form-check mb-3">
+                <input id="ocsf-save" type="checkbox" class="form-check-input">
+                <label for="ocsf-save" class="form-check-label">Save conversion to history</label>
+            </div>
+            <div class="form-check mb-3">
+                <input id="ocsf-public" type="checkbox" class="form-check-input">
+                <label for="ocsf-public" class="form-check-label">Make the saved conversion public</label>
+            </div>
+            <p id="ocsf-error" class="text-danger" role="alert"></p>
+            <button id="ocsf-submit" class="btn btn-primary" type="submit" disabled>Convert to OCSF</button>
+        </form>
+    </div>
+    <div id="ocsf-result" class="custom-card p-4" hidden>
+        <h4>OCSF output</h4>
+        <a id="ocsf-download" class="btn btn-outline-primary mb-3" download="ocsf-output.json">Download JSON</a>
+        <pre id="ocsf-diagnostics" class="text-wrap"></pre>
+        <pre id="ocsf-output"></pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module" nonce="{{ csp_nonce }}">
+    import ParamSurface from '/static/js/conversions/paramSurface.js';
+    const form = document.getElementById('ocsf-form');
+    const button = document.getElementById('ocsf-submit');
+    const error = document.getElementById('ocsf-error');
+    let params;
+    let downloadUrl;
+    try {
+        const response = await fetch('/api/convert/list');
+        if (!response.ok) throw new Error('Unable to load conversion parameters.');
+        const data = await response.json();
+        const schema = data.available[`/api/convert/${form.dataset.source}_to_ocsf`].params_schema;
+        params = Vue.createApp(ParamSurface, { schema }).mount('#ocsf-params');
+        button.disabled = false;
+    } catch (err) { error.textContent = err.message; }
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        error.textContent = '';
+        document.getElementById('ocsf-result').hidden = true;
+        params?.clearErrors();
+        button.disabled = true;
+        try {
+            const file = document.getElementById('ocsf-file').files[0];
+            const payload = file ? await file.text() : document.getElementById('ocsf-input').value;
+            if (!payload.trim()) throw new Error('Paste JSON or upload a file.');
+            const parsed = JSON.parse(payload);
+            const save = document.getElementById('ocsf-save').checked;
+            const isPublic = document.getElementById('ocsf-public').checked;
+            if (save && !isPublic && form.dataset.auth !== 'true') {
+                throw new Error('Sign in to save a private conversion, or convert without saving.');
+            }
+            const endpoint = save ? window.location.pathname
+                : `/api/convert/${form.dataset.source}_to_ocsf?diagnostics=true&${new URLSearchParams(params.collect())}`;
+            const body = save ? { payload, params: params.collect(),
+                name: document.getElementById('ocsf-name').value.trim(), public: isPublic } : parsed;
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json',
+                    'X-CSRFToken': document.getElementById('csrf_token').value },
+                body: JSON.stringify(body),
+            });
+            const data = await response.json();
+            if (response.ok && data.url) { window.location.assign(data.url); return; }
+            if (response.ok && !save) {
+                const output = JSON.stringify(data.conversion, null, 2);
+                document.getElementById('ocsf-output').textContent = output;
+                document.getElementById('ocsf-diagnostics').textContent = data.diagnostics?.counts
+                    ? JSON.stringify(data.diagnostics, null, 2) : '';
+                if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+                downloadUrl = URL.createObjectURL(new Blob([output], { type: 'application/json' }));
+                document.getElementById('ocsf-download').href = downloadUrl;
+                document.getElementById('ocsf-result').hidden = false;
+                return;
+            }
+            if (data.fields) params.setErrors(data.fields);
+            throw new Error(data.error || data.errors?.input || data.message || `Conversion failed (HTTP ${response.status}).`);
+        } catch (err) { error.textContent = err.message; }
+        finally { button.disabled = false; }
+    });
+</script>
+{% endblock %}

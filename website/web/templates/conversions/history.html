@@ -33,7 +33,7 @@
                     [[ searchQuery.length > 18 ? searchQuery.slice(0,18)+'…' : searchQuery ]]
                 </span>
                 <span v-if="filter_type" class="filter-chip-active">
-                    [[ filter_type === 'MISP_TO_STIX' ? 'MISP→STIX' : 'STIX→MISP' ]]
+                    [[ filter_type.replace('_TO_', '→') ]]
                 </span>
                 <span v-if="favorites_only" class="filter-chip-active" style="color:#f59e0b; border-color:#f59e0b;">
                     <i class="fas fa-star" style="font-size:0.65rem;"></i> Favorites
@@ -106,6 +106,8 @@
                         <option value="">All types</option>
                         <option value="MISP_TO_STIX">MISP → STIX</option>
                         <option value="STIX_TO_MISP">STIX → MISP</option>
+                        <option value="MISP_TO_OCSF">MISP → OCSF</option>
+                        <option value="STIX_TO_OCSF">STIX → OCSF</option>
                     </select>
                 </div>
 
@@ -247,7 +249,7 @@
                         <span v-else-if="item.conversion_type === 'STIX_TO_MISP'" class="type-pill type-stix">
                             <img src="/static/image/logo_stix.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">STIX<i class="fas fa-arrow-right mx-1" style="font-size:0.6rem;opacity:0.7;"></i><img src="/static/image/misp.svg" width="11" height="11" style="vertical-align:middle; margin-right:3px;">MISP
                         </span>
-                        <span v-else class="type-pill type-default">—</span>
+                        <span v-else class="type-pill type-default">[[ (item.conversion_type || "—").replace("_TO_", "→") ]]</span>
                     </div>
 
                     <!-- Center: content -->

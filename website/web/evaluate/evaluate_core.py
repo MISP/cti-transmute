@@ -522,8 +522,9 @@ def build_evaluation_report(conversion_id: int, actor=None) -> dict | None:
             'created_at': c.created_at.strftime('%Y-%m-%d %H:%M UTC') if c.created_at else ''
         })
 
-    source_fmt = 'MISP'     if conversion.conversion_type == 'MISP_TO_STIX' else 'STIX 2.1'
-    target_fmt = 'STIX 2.1' if conversion.conversion_type == 'MISP_TO_STIX' else 'MISP'
+    labels = {'misp': 'MISP', 'stix': 'STIX 2.1', 'ocsf': 'OCSF 1.9.0'}
+    source_fmt = labels.get(conversion.source_format, conversion.source_format)
+    target_fmt = labels.get(conversion.target_format, conversion.target_format)
 
     return {
         'conversion': {

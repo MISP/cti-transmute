@@ -299,6 +299,11 @@ a second server being started against the port the first one holds.
 
 ## Query Examples
 
+**OCSF output:** MISP and STIX 2.0/2.1 can also be exported as OCSF 1.9.0 OSINT
+Inventory Info events using `/api/convert/misp_to_ocsf` and
+`/api/convert/stix_to_ocsf`, or the Convert menu. See [OCSF usage and mapping
+coverage](docs/ocsf.md) for parameters, preservation guarantees and limitations.
+
 The main feature provided with the API is a seamless conversion between CTI standards.
 
 Here are some examples:

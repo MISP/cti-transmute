@@ -136,6 +136,7 @@ MOUNT_ROOTS = (
     MountRoot("conversions/stix_to_misp.html", "main-container", "page", "mount call"),
     MountRoot("conversions/stix_to_misp.html", "param-surface", "widget", "mount call"),
     MountRoot("conversions/stix_to_misp.html", "tag-input-mount-s2m", "widget", "mount call"),
+    MountRoot("conversions/to_ocsf.html", "ocsf-params", "widget", "mount call"),
     MountRoot("conversions/trash.html", "main-containers", "page", "mount call"),
     MountRoot("evaluate/admin_evaluations.html", "main-container", "page", "mount call"),
     MountRoot("evaluate/overview.html", "ov-app", "page", "mount call"),

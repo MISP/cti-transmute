@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from cti_transmute import transmute
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
+from cti_transmute.converters.ocsf import OcsfParams
 from cti_transmute.exceptions import (
     ConverterFailed, InvalidParameters, InvalidPayload, UnknownConverter)
 from website.lib.auth import api_actor
@@ -245,6 +246,22 @@ class MISPtoSTIX(MispStixConverter):
     @api_actor
     def post(self):
         return self._run('misp', 'stix', MispToStixParams)
+
+
+@convert_ns.route('/misp_to_ocsf')
+@convert_ns.doc(description='Convert MISP to OCSF 1.9.0 OSINT Inventory Info.' + _TRANSPORT_DOC)
+class MISPtoOCSF(MispStixConverter):
+    @api_actor
+    def post(self):
+        return self._run('misp', 'ocsf', OcsfParams)
+
+
+@convert_ns.route('/stix_to_ocsf')
+@convert_ns.doc(description='Convert STIX 2.0/2.1 to OCSF 1.9.0 OSINT Inventory Info.' + _TRANSPORT_DOC)
+class STIXtoOCSF(MispStixConverter):
+    @api_actor
+    def post(self):
+        return self._run('stix', 'ocsf', OcsfParams)
 
 
 @convert_ns.route('/stix_to_misp')

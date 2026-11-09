@@ -6,7 +6,7 @@ def test_list_available_keyed_by_registry_urls(client):
     keyed by that Converter's POST URL.
 
     MISP->STIX is a single Converter with `version` as a param, so there
-    are two entries (not a 2.0/2.1 split). The keys are the existing
+    is one entry per direction (not a 2.0/2.1 split). The keys are the existing
     public URLs the README and integrations rely on.
     """
     resp = client.get("/api/convert/list")
@@ -15,7 +15,9 @@ def test_list_available_keyed_by_registry_urls(client):
     available = resp.get_json()["available"]
     assert set(available) == {
         "/api/convert/misp_to_stix",
-        "/api/convert/stix_to_misp"
+        "/api/convert/stix_to_misp",
+        "/api/convert/misp_to_ocsf",
+        "/api/convert/stix_to_ocsf"
     }
 
 

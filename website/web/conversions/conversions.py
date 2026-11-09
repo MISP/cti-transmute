@@ -14,6 +14,7 @@ from sqlalchemy import func
 from cti_transmute import transmute
 from cti_transmute.converters.misp_to_stix import MispToStixParams
 from cti_transmute.converters.stix_to_misp import StixToMispParams
+from cti_transmute.converters.ocsf import OcsfParams
 from cti_transmute.exceptions import (
     ConversionError, InvalidParameters, InvalidPayload, UnknownConverter)
 from website.db_class.db import Comment as CommentModel
@@ -292,6 +293,21 @@ def misp_to_stix():
     if request.method == 'POST':
         return _submit_via_json("misp", "stix", MispToStixParams, _misp_auto_meta)
     return render_template("conversions/misp_to_stix.html")
+
+
+@conversions_blueprint.route("/misp_to_ocsf", methods=['GET', 'POST'])
+@conversions_blueprint.route("/stix_to_ocsf", methods=['GET', 'POST'])
+def to_ocsf():
+    source = "misp" if request.path.endswith("/misp_to_ocsf") else "stix"
+    if request.method == 'POST':
+        body = request.get_json(silent=True) or {}
+        if current_user.is_anonymous() and not body.get("public", True):
+            return jsonify({"error": "Sign in to save a private conversion, or convert without saving."}), 400
+        def auto_meta(payload, body, params):
+            return ((body.get("name") or "").strip() or None,
+                    (body.get("description") or "").strip() or f"{source.upper()} to OCSF conversion")
+        return _submit_via_json(source, "ocsf", OcsfParams, auto_meta)
+    return render_template("conversions/to_ocsf.html", source=source)
 
 
 @conversions_blueprint.route("/fetch_misp_event", methods=['POST'])
@@ -1571,7 +1587,7 @@ def download_input(conversion_id):
     if not access.can_see(current_user, conversion):
         return {"success": False, "error": "Forbidden"}, 403
 
-    label    = "misp" if conversion.conversion_type == "MISP_TO_STIX" else "stix"
+    label    = conversion.source_format
     filename = f"{label}-input-{conversion_id}.json"
     return json.dumps(json.loads(conversion.input_text), indent=2), 200, {
         "Content-Type": "application/json",
@@ -1590,7 +1606,7 @@ def download_output(conversion_id):
     if not conversion.output_text:
         return {"success": False, "error": "No output data"}, 404
 
-    label    = "stix" if conversion.conversion_type == "MISP_TO_STIX" else "misp"
+    label    = conversion.target_format
     filename = f"{label}-output-{conversion_id}.json"
     return json.dumps(json.loads(conversion.output_text), indent=2), 200, {
         "Content-Type": "application/json",

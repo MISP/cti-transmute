@@ -1,0 +1,5219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Derived from ocsf/ocsf-schema@856d462bd20dc46cc1ffed2dfffe3b91ef0fbeba; types, required fields and enums; no profiles/extensions or semantic constraints.",
+  "$ref": "#/$defs/osint_inventory_info",
+  "$defs": {
+    "osint_inventory_info": {
+      "type": "object",
+      "properties": {
+        "activity_id": {
+          "const": 1
+        },
+        "activity_name": {
+          "type": "string"
+        },
+        "category_name": {
+          "type": "string"
+        },
+        "category_uid": {
+          "const": 5
+        },
+        "class_name": {
+          "type": "string"
+        },
+        "class_uid": {
+          "const": 5021
+        },
+        "count": {
+          "type": "integer"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "end_time": {
+          "type": "integer"
+        },
+        "enrichments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/enrichment"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "observables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observable"
+          }
+        },
+        "raw_data": {
+          "type": "string"
+        },
+        "raw_data_hash": {
+          "$ref": "#/$defs/fingerprint"
+        },
+        "raw_data_size": {
+          "type": "integer"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "severity_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            99
+          ]
+        },
+        "start_time": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "status_code": {
+          "type": "string"
+        },
+        "status_detail": {
+          "type": "string"
+        },
+        "status_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2
+          ]
+        },
+        "time": {
+          "type": "integer"
+        },
+        "timezone_offset": {
+          "type": "integer"
+        },
+        "type_name": {
+          "type": "string"
+        },
+        "type_uid": {
+          "const": 502101
+        },
+        "unmapped": {
+          "type": "object"
+        },
+        "actor": {
+          "$ref": "#/$defs/actor"
+        },
+        "osint": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/osint"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "category_uid",
+        "class_uid",
+        "metadata",
+        "severity_id",
+        "time",
+        "type_uid",
+        "osint"
+      ]
+    },
+    "enrichment": {
+      "type": "object",
+      "properties": {
+        "created_time": {
+          "type": "integer"
+        },
+        "data": {},
+        "desc": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reputation": {
+          "$ref": "#/$defs/reputation"
+        },
+        "short_desc": {
+          "type": "string"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "data",
+        "name",
+        "value"
+      ]
+    },
+    "reputation": {
+      "type": "object",
+      "properties": {
+        "base_score": {
+          "type": "number"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "score": {
+          "type": "string"
+        },
+        "score_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            99
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "base_score",
+        "score_id"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "correlation_uid": {
+          "type": "string"
+        },
+        "debug": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "event_code": {
+          "type": "string"
+        },
+        "extension": {
+          "$ref": "#/$defs/extension"
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/extension"
+          }
+        },
+        "is_truncated": {
+          "type": "boolean"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "log_format": {
+          "type": "string"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "log_name": {
+          "type": "string"
+        },
+        "log_provider": {
+          "type": "string"
+        },
+        "log_source": {
+          "type": "string"
+        },
+        "log_version": {
+          "type": "string"
+        },
+        "logged_time": {
+          "type": "integer"
+        },
+        "loggers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/logger"
+          }
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "original_event_uid": {
+          "type": "string"
+        },
+        "original_time": {
+          "type": "string"
+        },
+        "processed_time": {
+          "type": "integer"
+        },
+        "product": {
+          "$ref": "#/$defs/product"
+        },
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reporter": {
+          "$ref": "#/$defs/reporter"
+        },
+        "sequence": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key_value_object"
+          }
+        },
+        "tenant_uid": {
+          "type": "string"
+        },
+        "total_queued_duration": {
+          "$ref": "#/$defs/timespan"
+        },
+        "transformation_info_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transformation_info"
+          }
+        },
+        "transmit_time": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "untruncated_size": {
+          "type": "integer"
+        },
+        "version": {
+          "const": "1.9.0"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "product",
+        "version"
+      ]
+    },
+    "extension": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "version"
+      ]
+    },
+    "logger": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "device": {
+          "$ref": "#/$defs/device"
+        },
+        "event_uid": {
+          "type": "string"
+        },
+        "is_truncated": {
+          "type": "boolean"
+        },
+        "log_format": {
+          "type": "string"
+        },
+        "log_level": {
+          "type": "string"
+        },
+        "log_name": {
+          "type": "string"
+        },
+        "log_provider": {
+          "type": "string"
+        },
+        "log_version": {
+          "type": "string"
+        },
+        "logged_time": {
+          "type": "integer"
+        },
+        "product": {
+          "$ref": "#/$defs/product"
+        },
+        "transmit_time": {
+          "type": "integer"
+        },
+        "untruncated_size": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "device": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "agent_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agent"
+          }
+        },
+        "domain": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "hw_info": {
+          "$ref": "#/$defs/device_hw_info"
+        },
+        "instance_uid": {
+          "type": "string"
+        },
+        "interface_name": {
+          "type": "string"
+        },
+        "interface_uid": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "mac": {
+          "type": "string"
+        },
+        "mac_vendor": {
+          "type": "string"
+        },
+        "os": {
+          "$ref": "#/$defs/os"
+        },
+        "owner": {
+          "$ref": "#/$defs/user"
+        },
+        "pool": {
+          "$ref": "#/$defs/group"
+        },
+        "subnet_uid": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99
+          ]
+        },
+        "vlan_uid": {
+          "type": "string"
+        },
+        "vpc_uid": {
+          "type": "string"
+        },
+        "zone": {
+          "type": "string"
+        },
+        "autoscale_uid": {
+          "type": "string"
+        },
+        "boot_time": {
+          "type": "integer"
+        },
+        "boot_uid": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "eid": {
+          "type": "string"
+        },
+        "first_seen_time": {
+          "type": "integer"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        },
+        "hypervisor": {
+          "type": "string"
+        },
+        "iccid": {
+          "type": "string"
+        },
+        "image": {
+          "$ref": "#/$defs/image"
+        },
+        "imei": {
+          "type": "string"
+        },
+        "imei_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "is_backed_up": {
+          "type": "boolean"
+        },
+        "is_compliant": {
+          "type": "boolean"
+        },
+        "is_managed": {
+          "type": "boolean"
+        },
+        "is_mobile_account_active": {
+          "type": "boolean"
+        },
+        "is_personal": {
+          "type": "boolean"
+        },
+        "is_shared": {
+          "type": "boolean"
+        },
+        "is_supervised": {
+          "type": "boolean"
+        },
+        "is_trusted": {
+          "type": "boolean"
+        },
+        "last_seen_time": {
+          "type": "integer"
+        },
+        "meid": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "network_interfaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/network_interface"
+          }
+        },
+        "org": {
+          "$ref": "#/$defs/organization"
+        },
+        "os_machine_uuid": {
+          "type": "string"
+        },
+        "peripheral_devices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/peripheral_device"
+          }
+        },
+        "region": {
+          "type": "string"
+        },
+        "risk_level": {
+          "type": "string"
+        },
+        "risk_level_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            99
+          ]
+        },
+        "risk_score": {
+          "type": "integer"
+        },
+        "subnet": {
+          "type": "string"
+        },
+        "udid": {
+          "type": "string"
+        },
+        "uid_alt": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type_id"
+      ]
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/policy"
+          }
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_alt": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "data": {},
+        "desc": {
+          "type": "string"
+        },
+        "group": {
+          "$ref": "#/$defs/group"
+        },
+        "is_applied": {
+          "type": "boolean"
+        },
+        "type": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "group": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "privileges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "type": {
+          "type": "string"
+        },
+        "uid_alt": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "device_hw_info": {
+      "type": "object",
+      "properties": {
+        "bios_date": {
+          "type": "string"
+        },
+        "bios_manufacturer": {
+          "type": "string"
+        },
+        "bios_ver": {
+          "type": "string"
+        },
+        "chassis": {
+          "type": "string"
+        },
+        "cores": {
+          "type": "integer"
+        },
+        "cpu_architecture": {
+          "type": "string"
+        },
+        "cpu_architecture_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            99
+          ]
+        },
+        "cpu_bits": {
+          "type": "integer"
+        },
+        "cpu_cores": {
+          "type": "integer"
+        },
+        "cpu_count": {
+          "type": "integer"
+        },
+        "cpu_info_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cpu_info"
+          }
+        },
+        "cpu_speed": {
+          "type": "integer"
+        },
+        "cpu_type": {
+          "type": "string"
+        },
+        "desktop_display": {
+          "$ref": "#/$defs/display"
+        },
+        "gpu_count": {
+          "type": "integer"
+        },
+        "gpu_info_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gpu_info"
+          }
+        },
+        "keyboard_info": {
+          "$ref": "#/$defs/keyboard_info"
+        },
+        "ram_size": {
+          "type": "integer"
+        },
+        "serial_number": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "cpu_info": {
+      "type": "object",
+      "properties": {
+        "cores": {
+          "type": "integer"
+        },
+        "cpu_architecture": {
+          "type": "string"
+        },
+        "cpu_architecture_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            99
+          ]
+        },
+        "cpu_bits": {
+          "type": "integer"
+        },
+        "model": {
+          "type": "string"
+        },
+        "speed_mhz": {
+          "type": "integer"
+        },
+        "vendor_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "display": {
+      "type": "object",
+      "properties": {
+        "color_depth": {
+          "type": "integer"
+        },
+        "physical_height": {
+          "type": "integer"
+        },
+        "physical_orientation": {
+          "type": "integer"
+        },
+        "physical_width": {
+          "type": "integer"
+        },
+        "scale_factor": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gpu_info": {
+      "type": "object",
+      "properties": {
+        "bus_type": {
+          "type": "string"
+        },
+        "bus_type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            99
+          ]
+        },
+        "cores": {
+          "type": "integer"
+        },
+        "model": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "vram_mode": {
+          "type": "string"
+        },
+        "vram_mode_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            99
+          ]
+        },
+        "vram_size": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "keyboard_info": {
+      "type": "object",
+      "properties": {
+        "function_keys": {
+          "type": "integer"
+        },
+        "ime": {
+          "type": "string"
+        },
+        "keyboard_layout": {
+          "type": "string"
+        },
+        "keyboard_subtype": {
+          "type": "integer"
+        },
+        "keyboard_type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "aerial_height": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "continent": {
+          "type": "string"
+        },
+        "coordinates": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "country": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "geodetic_altitude": {
+          "type": "string"
+        },
+        "geodetic_vertical_accuracy": {
+          "type": "string"
+        },
+        "geohash": {
+          "type": "string"
+        },
+        "horizontal_accuracy": {
+          "type": "string"
+        },
+        "is_on_premises": {
+          "type": "boolean"
+        },
+        "isp": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "long": {
+          "type": "number"
+        },
+        "postal_code": {
+          "type": "string"
+        },
+        "pressure_altitude": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "os": {
+      "type": "object",
+      "properties": {
+        "build": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "cpe_name": {
+          "type": "string"
+        },
+        "cpu_bits": {
+          "type": "integer"
+        },
+        "edition": {
+          "type": "string"
+        },
+        "kernel_release": {
+          "type": "string"
+        },
+        "lang": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sp_name": {
+          "type": "string"
+        },
+        "sp_ver": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            100,
+            101,
+            200,
+            201,
+            300,
+            301,
+            302,
+            400,
+            401,
+            402
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type_id"
+      ]
+    },
+    "user": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "account": {
+          "$ref": "#/$defs/account"
+        },
+        "credential_uid": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "email_addr": {
+          "type": "string"
+        },
+        "forward_addr": {
+          "type": "string"
+        },
+        "full_name": {
+          "type": "string"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        },
+        "has_mfa": {
+          "type": "boolean"
+        },
+        "ldap_person": {
+          "$ref": "#/$defs/ldap_person"
+        },
+        "org": {
+          "$ref": "#/$defs/organization"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "programmatic_credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/programmatic_credential"
+          }
+        },
+        "risk_level": {
+          "type": "string"
+        },
+        "risk_level_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            99
+          ]
+        },
+        "risk_score": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "uid_alt": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "account": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "is_disabled": {
+          "type": "boolean"
+        },
+        "is_locked": {
+          "type": "boolean"
+        },
+        "is_on_premises_sync_enabled": {
+          "type": "boolean"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key_value_object"
+          }
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "key_value_object": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    },
+    "ldap_person": {
+      "type": "object",
+      "properties": {
+        "cost_center": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "deleted_time": {
+          "type": "integer"
+        },
+        "department": {
+          "type": "string"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "email_addrs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "employee_uid": {
+          "type": "string"
+        },
+        "given_name": {
+          "type": "string"
+        },
+        "hire_time": {
+          "type": "integer"
+        },
+        "job_title": {
+          "type": "string"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_login_time": {
+          "type": "integer"
+        },
+        "ldap_cn": {
+          "type": "string"
+        },
+        "ldap_dn": {
+          "type": "string"
+        },
+        "leave_time": {
+          "type": "integer"
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "manager": {
+          "$ref": "#/$defs/user"
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "office_location": {
+          "type": "string"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "surname": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key_value_object"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "organization": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "ou_name": {
+          "type": "string"
+        },
+        "ou_uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "programmatic_credential": {
+      "type": "object",
+      "properties": {
+        "last_used_time": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "uid"
+      ]
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "path": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key_value_object"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "uid"
+      ]
+    },
+    "network_interface": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "mac": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "open_ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port_info"
+          }
+        },
+        "subnet_prefix": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "port_info": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer"
+        },
+        "protocol_name": {
+          "type": "string"
+        },
+        "protocol_num": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "port"
+      ]
+    },
+    "peripheral_device": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "class": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "serial_number": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        "vendor_id_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "vendor_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    },
+    "product": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "cpe_name": {
+          "type": "string"
+        },
+        "feature": {
+          "$ref": "#/$defs/feature"
+        },
+        "lang": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "url_string": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "feature": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "reporter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "org": {
+          "$ref": "#/$defs/organization"
+        }
+      },
+      "additionalProperties": false
+    },
+    "timespan": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "integer"
+        },
+        "duration_days": {
+          "type": "integer"
+        },
+        "duration_hours": {
+          "type": "integer"
+        },
+        "duration_mins": {
+          "type": "integer"
+        },
+        "duration_months": {
+          "type": "integer"
+        },
+        "duration_secs": {
+          "type": "integer"
+        },
+        "duration_weeks": {
+          "type": "integer"
+        },
+        "duration_years": {
+          "type": "integer"
+        },
+        "end_time": {
+          "type": "integer"
+        },
+        "start_time": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "transformation_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "lang": {
+          "type": "string"
+        },
+        "product": {
+          "$ref": "#/$defs/product"
+        },
+        "time": {
+          "type": "integer"
+        },
+        "url_string": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "observable": {
+      "type": "object",
+      "properties": {
+        "event_uid": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "reputation": {
+          "$ref": "#/$defs/reputation"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99
+          ]
+        },
+        "type_uid": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type_id"
+      ]
+    },
+    "fingerprint": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "algorithm_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20
+          ]
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "encoding_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3
+          ]
+        },
+        "serialization": {
+          "type": "string"
+        },
+        "serialization_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            99
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "algorithm_id",
+        "value"
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "properties": {
+        "app_name": {
+          "type": "string"
+        },
+        "app_uid": {
+          "type": "string"
+        },
+        "application": {
+          "$ref": "#/$defs/application"
+        },
+        "authorizations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/authorization"
+          }
+        },
+        "iam_role": {
+          "$ref": "#/$defs/iam_role"
+        },
+        "idp": {
+          "$ref": "#/$defs/idp"
+        },
+        "invoked_by": {
+          "type": "string"
+        },
+        "process": {
+          "$ref": "#/$defs/process"
+        },
+        "session": {
+          "$ref": "#/$defs/session"
+        },
+        "user": {
+          "$ref": "#/$defs/user"
+        }
+      },
+      "additionalProperties": false
+    },
+    "application": {
+      "type": "object",
+      "properties": {
+        "activity_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99
+          ]
+        },
+        "activity_name": {
+          "type": "string"
+        },
+        "category_name": {
+          "type": "string"
+        },
+        "category_uid": {
+          "type": "integer",
+          "enum": [
+            0
+          ]
+        },
+        "class_name": {
+          "type": "string"
+        },
+        "class_uid": {
+          "type": "integer",
+          "enum": [
+            0
+          ]
+        },
+        "count": {
+          "type": "integer"
+        },
+        "duration": {
+          "type": "integer"
+        },
+        "end_time": {
+          "type": "integer"
+        },
+        "enrichments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/enrichment"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "observables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observable"
+          }
+        },
+        "raw_data": {
+          "type": "string"
+        },
+        "raw_data_hash": {
+          "$ref": "#/$defs/fingerprint"
+        },
+        "raw_data_size": {
+          "type": "integer"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "severity_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            99
+          ]
+        },
+        "start_time": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "status_code": {
+          "type": "string"
+        },
+        "status_detail": {
+          "type": "string"
+        },
+        "status_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2
+          ]
+        },
+        "time": {
+          "type": "integer"
+        },
+        "timezone_offset": {
+          "type": "integer"
+        },
+        "type_name": {
+          "type": "string"
+        },
+        "type_uid": {
+          "type": "integer"
+        },
+        "unmapped": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "activity_id",
+        "category_uid",
+        "class_uid",
+        "metadata",
+        "severity_id",
+        "time",
+        "type_uid"
+      ]
+    },
+    "authorization": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/policy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "iam_role": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "account": {
+          "$ref": "#/$defs/account"
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/policy"
+          }
+        },
+        "privileges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "programmatic_credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/programmatic_credential"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/resource_details"
+          }
+        },
+        "session": {
+          "$ref": "#/$defs/session"
+        },
+        "uid_alt": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "resource_details": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "data": {},
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key_value_object"
+          }
+        },
+        "type": {
+          "type": "string"
+        },
+        "uid_alt": {
+          "type": "string"
+        },
+        "agent_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agent"
+          }
+        },
+        "criticality": {
+          "type": "string"
+        },
+        "criticality_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            99
+          ]
+        },
+        "device": {
+          "$ref": "#/$defs/device"
+        },
+        "group": {
+          "$ref": "#/$defs/group"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "is_backed_up": {
+          "type": "boolean"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "owner": {
+          "$ref": "#/$defs/user"
+        },
+        "resource_relationship": {
+          "$ref": "#/$defs/graph"
+        },
+        "role": {
+          "type": "string"
+        },
+        "role_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "user": {
+          "$ref": "#/$defs/user"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "graph": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "is_directed": {
+          "type": "boolean"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/node"
+          }
+        },
+        "query_language": {
+          "type": "string"
+        },
+        "query_language_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "nodes"
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "data": {},
+        "is_directed": {
+          "type": "boolean"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "target"
+      ]
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "data": {},
+        "desc": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "uid"
+      ]
+    },
+    "session": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "credential_uid": {
+          "type": "string"
+        },
+        "expiration_reason": {
+          "type": "string"
+        },
+        "expiration_time": {
+          "type": "integer"
+        },
+        "is_mfa": {
+          "type": "boolean"
+        },
+        "is_remote": {
+          "type": "boolean"
+        },
+        "is_vpn": {
+          "type": "boolean"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "terminal": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_alt": {
+          "type": "string"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "idp": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "auth_factors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/auth_factor"
+          }
+        },
+        "domain": {
+          "type": "string"
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/fingerprint"
+        },
+        "has_mfa": {
+          "type": "boolean"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "protocol_name": {
+          "type": "string"
+        },
+        "scim": {
+          "$ref": "#/$defs/scim"
+        },
+        "sso": {
+          "$ref": "#/$defs/sso"
+        },
+        "state": {
+          "type": "string"
+        },
+        "state_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "tenant_uid": {
+          "type": "string"
+        },
+        "url_string": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "auth_factor": {
+      "type": "object",
+      "properties": {
+        "device": {
+          "$ref": "#/$defs/device"
+        },
+        "email_addr": {
+          "type": "string"
+        },
+        "factor_type": {
+          "type": "string"
+        },
+        "factor_type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            99
+          ]
+        },
+        "is_hotp": {
+          "type": "boolean"
+        },
+        "is_totp": {
+          "type": "boolean"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "security_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "factor_type_id"
+      ]
+    },
+    "scim": {
+      "type": "object",
+      "properties": {
+        "auth_protocol": {
+          "type": "string"
+        },
+        "auth_protocol_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            99
+          ]
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "is_group_provisioning_enabled": {
+          "type": "boolean"
+        },
+        "is_user_provisioning_enabled": {
+          "type": "boolean"
+        },
+        "last_run_time": {
+          "type": "integer"
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "protocol_name": {
+          "type": "string"
+        },
+        "rate_limit": {
+          "type": "integer"
+        },
+        "scim_group_schema": {},
+        "scim_user_schema": {},
+        "state": {
+          "type": "string"
+        },
+        "state_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_alt": {
+          "type": "string"
+        },
+        "url_string": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sso": {
+      "type": "object",
+      "properties": {
+        "auth_protocol": {
+          "type": "string"
+        },
+        "auth_protocol_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            99
+          ]
+        },
+        "certificate": {
+          "$ref": "#/$defs/certificate"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "duration_mins": {
+          "type": "integer"
+        },
+        "idle_timeout": {
+          "type": "integer"
+        },
+        "login_endpoint": {
+          "type": "string"
+        },
+        "logout_endpoint": {
+          "type": "string"
+        },
+        "metadata_endpoint": {
+          "type": "string"
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "protocol_name": {
+          "type": "string"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "uid": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "certificate": {
+      "type": "object",
+      "properties": {
+        "created_time": {
+          "type": "integer"
+        },
+        "expiration_time": {
+          "type": "integer"
+        },
+        "fingerprints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fingerprint"
+          }
+        },
+        "is_self_signed": {
+          "type": "boolean"
+        },
+        "issuer": {
+          "type": "string"
+        },
+        "sans": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/san"
+          }
+        },
+        "serial_number": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "issuer",
+        "serial_number"
+      ]
+    },
+    "san": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type"
+      ]
+    },
+    "process": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "cmd_line": {
+          "type": "string"
+        },
+        "cpid": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "ancestry": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/process_entity"
+          }
+        },
+        "environment_variables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/environment_variable"
+          }
+        },
+        "file": {
+          "$ref": "#/$defs/file"
+        },
+        "integrity": {
+          "type": "string"
+        },
+        "integrity_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            99
+          ]
+        },
+        "lineage": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "loaded_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parent_process": {
+          "$ref": "#/$defs/process"
+        },
+        "ptid": {
+          "type": "integer"
+        },
+        "sandbox": {
+          "type": "string"
+        },
+        "session": {
+          "$ref": "#/$defs/session"
+        },
+        "terminated_time": {
+          "type": "integer"
+        },
+        "tid": {
+          "type": "integer"
+        },
+        "user": {
+          "$ref": "#/$defs/user"
+        },
+        "working_directory": {
+          "type": "string"
+        },
+        "xattributes": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "process_entity": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "cmd_line": {
+          "type": "string"
+        },
+        "cpid": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "environment_variable": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value"
+      ]
+    },
+    "file": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "accessed_time": {
+          "type": "integer"
+        },
+        "accessor": {
+          "$ref": "#/$defs/user"
+        },
+        "attributes": {
+          "type": "integer"
+        },
+        "company_name": {
+          "type": "string"
+        },
+        "confidentiality": {
+          "type": "string"
+        },
+        "confidentiality_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            99
+          ]
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "creator": {
+          "$ref": "#/$defs/user"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "download_info": {
+          "$ref": "#/$defs/download_info"
+        },
+        "drive_type": {
+          "type": "string"
+        },
+        "drive_type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            99
+          ]
+        },
+        "encryption_details": {
+          "$ref": "#/$defs/encryption_details"
+        },
+        "ext": {
+          "type": "string"
+        },
+        "hashes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fingerprint"
+          }
+        },
+        "imported_symbols": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "internal_name": {
+          "type": "string"
+        },
+        "is_deleted": {
+          "type": "boolean"
+        },
+        "is_encrypted": {
+          "type": "boolean"
+        },
+        "is_readonly": {
+          "type": "boolean"
+        },
+        "is_system": {
+          "type": "boolean"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "modifier": {
+          "$ref": "#/$defs/user"
+        },
+        "owner": {
+          "$ref": "#/$defs/user"
+        },
+        "parent_folder": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "product": {
+          "$ref": "#/$defs/product"
+        },
+        "security_descriptor": {
+          "type": "string"
+        },
+        "signature": {
+          "$ref": "#/$defs/digital_signature"
+        },
+        "signatures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/digital_signature"
+          }
+        },
+        "size": {
+          "type": "integer"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/key_value_object"
+          }
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ]
+        },
+        "uri": {
+          "type": "string"
+        },
+        "url": {
+          "$ref": "#/$defs/url"
+        },
+        "version": {
+          "type": "string"
+        },
+        "volume": {
+          "type": "string"
+        },
+        "xattributes": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type_id"
+      ]
+    },
+    "download_info": {
+      "type": "object",
+      "properties": {
+        "referrer": {
+          "type": "string"
+        },
+        "src_endpoint": {
+          "$ref": "#/$defs/network_endpoint"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "network_endpoint": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "agent_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agent"
+          }
+        },
+        "domain": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "hw_info": {
+          "$ref": "#/$defs/device_hw_info"
+        },
+        "instance_uid": {
+          "type": "string"
+        },
+        "interface_name": {
+          "type": "string"
+        },
+        "interface_uid": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "mac": {
+          "type": "string"
+        },
+        "mac_vendor": {
+          "type": "string"
+        },
+        "os": {
+          "$ref": "#/$defs/os"
+        },
+        "owner": {
+          "$ref": "#/$defs/user"
+        },
+        "pool": {
+          "$ref": "#/$defs/group"
+        },
+        "subnet_uid": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99
+          ]
+        },
+        "vlan_uid": {
+          "type": "string"
+        },
+        "vpc_uid": {
+          "type": "string"
+        },
+        "zone": {
+          "type": "string"
+        },
+        "autonomous_system": {
+          "$ref": "#/$defs/autonomous_system"
+        },
+        "fingerprints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fingerprint"
+          }
+        },
+        "intermediate_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isp": {
+          "type": "string"
+        },
+        "isp_org": {
+          "type": "string"
+        },
+        "network_scope": {
+          "type": "string"
+        },
+        "network_scope_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            99
+          ]
+        },
+        "port": {
+          "type": "integer"
+        },
+        "proxy_endpoint": {
+          "$ref": "#/$defs/network_proxy"
+        },
+        "svc_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "autonomous_system": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "network_proxy": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "agent_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agent"
+          }
+        },
+        "domain": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "hw_info": {
+          "$ref": "#/$defs/device_hw_info"
+        },
+        "instance_uid": {
+          "type": "string"
+        },
+        "interface_name": {
+          "type": "string"
+        },
+        "interface_uid": {
+          "type": "string"
+        },
+        "ip": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "mac": {
+          "type": "string"
+        },
+        "mac_vendor": {
+          "type": "string"
+        },
+        "os": {
+          "$ref": "#/$defs/os"
+        },
+        "owner": {
+          "$ref": "#/$defs/user"
+        },
+        "pool": {
+          "$ref": "#/$defs/group"
+        },
+        "subnet_uid": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99
+          ]
+        },
+        "vlan_uid": {
+          "type": "string"
+        },
+        "vpc_uid": {
+          "type": "string"
+        },
+        "zone": {
+          "type": "string"
+        },
+        "autonomous_system": {
+          "$ref": "#/$defs/autonomous_system"
+        },
+        "fingerprints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fingerprint"
+          }
+        },
+        "intermediate_ips": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isp": {
+          "type": "string"
+        },
+        "isp_org": {
+          "type": "string"
+        },
+        "network_scope": {
+          "type": "string"
+        },
+        "network_scope_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            99
+          ]
+        },
+        "port": {
+          "type": "integer"
+        },
+        "proxy_endpoint": {
+          "$ref": "#/$defs/network_proxy"
+        },
+        "svc_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "encryption_details": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "algorithm_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        "key_length": {
+          "type": "integer"
+        },
+        "key_uid": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "digital_signature": {
+      "type": "object",
+      "properties": {
+        "algorithm": {
+          "type": "string"
+        },
+        "algorithm_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        "certificate": {
+          "$ref": "#/$defs/certificate"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "developer_uid": {
+          "type": "string"
+        },
+        "digest": {
+          "$ref": "#/$defs/fingerprint"
+        },
+        "serialization": {
+          "type": "string"
+        },
+        "serialization_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            99
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "state_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "algorithm_id"
+      ]
+    },
+    "url": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "category_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "enum": [
+              0,
+              1,
+              3,
+              4,
+              5,
+              6,
+              7,
+              9,
+              11,
+              14,
+              15,
+              16,
+              17,
+              18,
+              20,
+              21,
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              29,
+              30,
+              31,
+              32,
+              33,
+              34,
+              35,
+              36,
+              37,
+              38,
+              40,
+              43,
+              44,
+              45,
+              46,
+              47,
+              49,
+              50,
+              51,
+              52,
+              53,
+              54,
+              55,
+              56,
+              57,
+              58,
+              59,
+              60,
+              61,
+              63,
+              64,
+              65,
+              66,
+              67,
+              68,
+              71,
+              83,
+              84,
+              85,
+              86,
+              87,
+              88,
+              89,
+              90,
+              92,
+              93,
+              95,
+              96,
+              97,
+              98,
+              99,
+              101,
+              102,
+              103,
+              106,
+              107,
+              108,
+              109,
+              110,
+              111,
+              112,
+              113,
+              114,
+              118,
+              121
+            ]
+          }
+        },
+        "domain": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "query_string": {
+          "type": "string"
+        },
+        "resource_type": {
+          "type": "string"
+        },
+        "scheme": {
+          "type": "string"
+        },
+        "subdomain": {
+          "type": "string"
+        },
+        "url_string": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "osint": {
+      "type": "object",
+      "properties": {
+        "answers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dns_answer"
+          }
+        },
+        "attacks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/attack"
+          }
+        },
+        "autonomous_system": {
+          "$ref": "#/$defs/autonomous_system"
+        },
+        "campaign": {
+          "$ref": "#/$defs/campaign"
+        },
+        "category": {
+          "type": "string"
+        },
+        "comment": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string"
+        },
+        "confidence_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            99
+          ]
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "creator": {
+          "$ref": "#/$defs/user"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "detection_pattern": {
+          "type": "string"
+        },
+        "detection_pattern_type": {
+          "type": "string"
+        },
+        "detection_pattern_type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            99
+          ]
+        },
+        "email": {
+          "$ref": "#/$defs/email"
+        },
+        "email_auth": {
+          "$ref": "#/$defs/email_auth"
+        },
+        "expiration_time": {
+          "type": "integer"
+        },
+        "external_uid": {
+          "type": "string"
+        },
+        "file": {
+          "$ref": "#/$defs/file"
+        },
+        "intrusion_sets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kill_chain": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kill_chain_phase"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "malware": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/malware"
+          }
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_analytics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/analytic"
+          }
+        },
+        "reputation": {
+          "$ref": "#/$defs/reputation"
+        },
+        "risk_score": {
+          "type": "integer"
+        },
+        "script": {
+          "$ref": "#/$defs/script"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "severity_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            99
+          ]
+        },
+        "signatures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/digital_signature"
+          }
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "subdomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subnet": {
+          "type": "string"
+        },
+        "threat_actor": {
+          "$ref": "#/$defs/threat_actor"
+        },
+        "tlp": {
+          "type": "string",
+          "enum": [
+            "AMBER",
+            "AMBER STRICT",
+            "CLEAR",
+            "GREEN",
+            "RED",
+            "WHITE"
+          ]
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ]
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uploaded_time": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "vulnerabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/vulnerability"
+          }
+        },
+        "whois": {
+          "$ref": "#/$defs/whois"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type_id",
+        "value"
+      ]
+    },
+    "dns_answer": {
+      "type": "object",
+      "properties": {
+        "class": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "rdata": {
+          "type": "string"
+        },
+        "ttl": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "flag_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "enum": [
+              0,
+              99,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ]
+          }
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "packet_uid": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "rdata"
+      ]
+    },
+    "attack": {
+      "type": "object",
+      "properties": {
+        "mitigation": {
+          "$ref": "#/$defs/mitigation"
+        },
+        "sub_technique": {
+          "$ref": "#/$defs/sub_technique"
+        },
+        "tactic": {
+          "$ref": "#/$defs/tactic"
+        },
+        "tactics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tactic"
+          }
+        },
+        "technique": {
+          "$ref": "#/$defs/technique"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "mitigation": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "countermeasures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/d3fend"
+          }
+        },
+        "src_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "d3fend": {
+      "type": "object",
+      "properties": {
+        "d3f_tactic": {
+          "$ref": "#/$defs/d3f_tactic"
+        },
+        "d3f_technique": {
+          "$ref": "#/$defs/d3f_technique"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "d3f_tactic": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "src_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "d3f_technique": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "src_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sub_technique": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "src_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tactic": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "src_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "technique": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "src_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "campaign": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    },
+    "email": {
+      "type": "object",
+      "properties": {
+        "bcc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bcc_mailboxes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cc": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cc_mailboxes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "delivered_to": {
+          "type": "string"
+        },
+        "delivered_to_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          }
+        },
+        "from": {
+          "type": "string"
+        },
+        "from_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "from_mailbox": {
+          "type": "string"
+        },
+        "from_mailboxes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "http_headers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/http_header"
+          }
+        },
+        "is_read": {
+          "type": "boolean"
+        },
+        "message_uid": {
+          "type": "string"
+        },
+        "raw_header": {
+          "type": "string"
+        },
+        "reply_to": {
+          "type": "string"
+        },
+        "reply_to_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reply_to_mailboxes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "return_path": {
+          "type": "string"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "sender_mailbox": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "smtp_from": {
+          "type": "string"
+        },
+        "smtp_to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subject": {
+          "type": "string"
+        },
+        "to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "to_mailboxes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "uid": {
+          "type": "string"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/url"
+          }
+        },
+        "x_originating_ip": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "http_header": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value"
+      ]
+    },
+    "email_auth": {
+      "type": "object",
+      "properties": {
+        "dkim": {
+          "type": "string"
+        },
+        "dkim_domain": {
+          "type": "string"
+        },
+        "dkim_signature": {
+          "type": "string"
+        },
+        "dmarc": {
+          "type": "string"
+        },
+        "dmarc_override": {
+          "type": "string"
+        },
+        "dmarc_policy": {
+          "type": "string"
+        },
+        "spf": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "kill_chain_phase": {
+      "type": "object",
+      "properties": {
+        "phase": {
+          "type": "string"
+        },
+        "phase_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            99
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "phase_id"
+      ]
+    },
+    "malware": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "classification_ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "enum": [
+              0,
+              99,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21,
+              22
+            ]
+          }
+        },
+        "classifications": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "cves": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cve"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/file"
+          }
+        },
+        "num_infected": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "severity_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            99
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "classification_ids"
+      ]
+    },
+    "cve": {
+      "type": "object",
+      "properties": {
+        "created_time": {
+          "type": "integer"
+        },
+        "cvss": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cvss"
+          }
+        },
+        "cwe": {
+          "$ref": "#/$defs/cwe"
+        },
+        "cwe_uid": {
+          "type": "string"
+        },
+        "cwe_url": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "epss": {
+          "$ref": "#/$defs/epss"
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "product": {
+          "$ref": "#/$defs/product"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_cwes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cwe"
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "uid"
+      ]
+    },
+    "cvss": {
+      "type": "object",
+      "properties": {
+        "base_score": {
+          "type": "number"
+        },
+        "depth": {
+          "type": "string",
+          "enum": [
+            "Base",
+            "Environmental",
+            "Temporal"
+          ]
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/metric"
+          }
+        },
+        "overall_score": {
+          "type": "number"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "vector_string": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "base_score",
+        "version"
+      ]
+    },
+    "metric": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "value"
+      ]
+    },
+    "cwe": {
+      "type": "object",
+      "properties": {
+        "caption": {
+          "type": "string"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "uid"
+      ]
+    },
+    "epss": {
+      "type": "object",
+      "properties": {
+        "created_time": {
+          "type": "integer"
+        },
+        "percentile": {
+          "type": "number"
+        },
+        "score": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "score"
+      ]
+    },
+    "analytic": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "algorithm": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "related_analytics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/analytic"
+          }
+        },
+        "sensor_info_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sensor_info"
+          }
+        },
+        "state": {
+          "type": "string"
+        },
+        "state_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3
+          ]
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type_id"
+      ]
+    },
+    "sensor_info": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "sensor_layer": {
+          "type": "string"
+        },
+        "sensor_layer_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            99
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "sensor_layer_id"
+      ]
+    },
+    "script": {
+      "type": "object",
+      "properties": {
+        "file": {
+          "$ref": "#/$defs/file"
+        },
+        "hashes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fingerprint"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "parent_uid": {
+          "type": "string"
+        },
+        "script_content": {
+          "$ref": "#/$defs/long_string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "script_content",
+        "type_id"
+      ]
+    },
+    "long_string": {
+      "type": "object",
+      "properties": {
+        "is_truncated": {
+          "type": "boolean"
+        },
+        "untruncated_size": {
+          "type": "integer"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "value"
+      ]
+    },
+    "threat_actor": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    },
+    "vulnerability": {
+      "type": "object",
+      "properties": {
+        "advisory": {
+          "$ref": "#/$defs/advisory"
+        },
+        "affected_code": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/affected_code"
+          }
+        },
+        "affected_packages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/affected_package"
+          }
+        },
+        "category": {
+          "type": "string"
+        },
+        "cve": {
+          "$ref": "#/$defs/cve"
+        },
+        "cwe": {
+          "$ref": "#/$defs/cwe"
+        },
+        "dependency_chain": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "exploit_last_seen_time": {
+          "type": "integer"
+        },
+        "exploit_ref_url": {
+          "type": "string"
+        },
+        "exploit_requirement": {
+          "type": "string"
+        },
+        "exploit_type": {
+          "type": "string"
+        },
+        "first_seen_time": {
+          "type": "integer"
+        },
+        "fix_available": {
+          "type": "boolean"
+        },
+        "fix_coverage": {
+          "type": "string"
+        },
+        "fix_coverage_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3
+          ]
+        },
+        "is_exploit_available": {
+          "type": "boolean"
+        },
+        "is_fix_available": {
+          "type": "boolean"
+        },
+        "kb_article_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kb_article"
+          }
+        },
+        "kb_articles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "last_seen_time": {
+          "type": "integer"
+        },
+        "packages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/package"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_vulnerabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "remediation": {
+          "$ref": "#/$defs/remediation"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "advisory": {
+      "type": "object",
+      "properties": {
+        "avg_timespan": {
+          "$ref": "#/$defs/timespan"
+        },
+        "bulletin": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "install_state": {
+          "type": "string"
+        },
+        "install_state_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            99
+          ]
+        },
+        "is_superseded": {
+          "type": "boolean"
+        },
+        "modified_time": {
+          "type": "integer"
+        },
+        "os": {
+          "$ref": "#/$defs/os"
+        },
+        "product": {
+          "$ref": "#/$defs/product"
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_cves": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cve"
+          }
+        },
+        "related_cwes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cwe"
+          }
+        },
+        "size": {
+          "type": "integer"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "uid"
+      ]
+    },
+    "affected_code": {
+      "type": "object",
+      "properties": {
+        "end_column": {
+          "type": "integer"
+        },
+        "end_line": {
+          "type": "integer"
+        },
+        "file": {
+          "$ref": "#/$defs/file"
+        },
+        "owner": {
+          "$ref": "#/$defs/user"
+        },
+        "remediation": {
+          "$ref": "#/$defs/remediation"
+        },
+        "rule": {
+          "$ref": "#/$defs/rule"
+        },
+        "start_column": {
+          "type": "integer"
+        },
+        "start_line": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file"
+      ]
+    },
+    "remediation": {
+      "type": "object",
+      "properties": {
+        "cis_controls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cis_control"
+          }
+        },
+        "desc": {
+          "type": "string"
+        },
+        "kb_article_list": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kb_article"
+          }
+        },
+        "kb_articles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "desc"
+      ]
+    },
+    "cis_control": {
+      "type": "object",
+      "properties": {
+        "desc": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    },
+    "kb_article": {
+      "type": "object",
+      "properties": {
+        "avg_timespan": {
+          "$ref": "#/$defs/timespan"
+        },
+        "bulletin": {
+          "type": "string"
+        },
+        "classification": {
+          "type": "string"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "install_state": {
+          "type": "string"
+        },
+        "install_state_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            99
+          ]
+        },
+        "is_superseded": {
+          "type": "boolean"
+        },
+        "os": {
+          "$ref": "#/$defs/os"
+        },
+        "product": {
+          "$ref": "#/$defs/product"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "rule": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uid": {
+          "type": "string"
+        },
+        "uid_numeric": {
+          "type": "integer"
+        },
+        "category": {
+          "type": "string"
+        },
+        "desc": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "affected_package": {
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "type": "string"
+        },
+        "cpe_name": {
+          "type": "string"
+        },
+        "epoch": {
+          "type": "integer"
+        },
+        "hash": {
+          "$ref": "#/$defs/fingerprint"
+        },
+        "license": {
+          "type": "string"
+        },
+        "license_url": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "package_manager": {
+          "type": "string"
+        },
+        "package_manager_url": {
+          "type": "string"
+        },
+        "purl": {
+          "type": "string"
+        },
+        "release": {
+          "type": "string"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2
+          ]
+        },
+        "uid": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "fixed_in_version": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "remediation": {
+          "$ref": "#/$defs/remediation"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ]
+    },
+    "package": {
+      "type": "object",
+      "properties": {
+        "architecture": {
+          "type": "string"
+        },
+        "cpe_name": {
+          "type": "string"
+        },
+        "epoch": {
+          "type": "integer"
+        },
+        "hash": {
+          "$ref": "#/$defs/fingerprint"
+        },
+        "license": {
+          "type": "string"
+        },
+        "license_url": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "package_manager": {
+          "type": "string"
+        },
+        "package_manager_url": {
+          "type": "string"
+        },
+        "purl": {
+          "type": "string"
+        },
+        "release": {
+          "type": "string"
+        },
+        "src_url": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2
+          ]
+        },
+        "uid": {
+          "type": "string"
+        },
+        "vendor_name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version"
+      ]
+    },
+    "whois": {
+      "type": "object",
+      "properties": {
+        "autonomous_system": {
+          "$ref": "#/$defs/autonomous_system"
+        },
+        "created_time": {
+          "type": "integer"
+        },
+        "dnssec_status": {
+          "type": "string"
+        },
+        "dnssec_status_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            99
+          ]
+        },
+        "domain": {
+          "type": "string"
+        },
+        "domain_contacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/domain_contact"
+          }
+        },
+        "email_addr": {
+          "type": "string"
+        },
+        "isp": {
+          "type": "string"
+        },
+        "isp_org": {
+          "type": "string"
+        },
+        "last_seen_time": {
+          "type": "integer"
+        },
+        "name_servers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "registrar": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "subdomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "subnet": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "domain_contact": {
+      "type": "object",
+      "properties": {
+        "email_addr": {
+          "type": "string"
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "name": {
+          "type": "string"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "type_id": {
+          "type": "integer",
+          "enum": [
+            0,
+            99,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "uid": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "type_id"
+      ]
+    }
+  }
+}
