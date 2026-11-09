@@ -44,3 +44,20 @@ def test_anonymous_private_save_is_rejected_before_creating_an_inaccessible_row(
     assert response.status_code == 400
     assert "Sign in" in response.get_json()["error"]
     assert Conversion.query.count() == 0
+
+
+@pytest.mark.parametrize("source,fixture", [("misp", "misp_event"), ("stix", "stix_bundle")])
+@pytest.mark.parametrize("length", [255, 256, 512])
+def test_ocsf_saved_name_database_limit(ocsf_client, source, fixture, length, request):
+    from website.db_class.db import Conversion
+
+    name = "é" * length
+    response = ocsf_client.post(f"/conversions/{source}_to_ocsf", json={
+        "payload": json.dumps(request.getfixturevalue(fixture)), "public": True, "name": name})
+    if length == 255:
+        assert response.status_code == 200
+        assert Conversion.query.one().name == name
+    else:
+        assert response.status_code == 400
+        assert "255" in response.get_json()["fields"]["name"]
+        assert Conversion.query.count() == 0

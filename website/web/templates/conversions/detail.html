@@ -142,7 +142,7 @@
                                         <span class="text-muted ms-1" style="font-size:.73rem;">.json</span>
                                     </a>
                                 </li>
-                                <li>
+                                <li v-if="conversion.source_format === 'misp' || conversion.target_format === 'misp'">
                                     <a class="dropdown-item"
                                        :href="'/conversions/download/' + conversion.id + '/misp-push'">
                                         <img src="/static/image/misp.svg" width="13" height="13"

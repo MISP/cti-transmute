@@ -28,7 +28,7 @@ _SDO_TYPES = {
     "incident", "indicator", "infrastructure", "intrusion-set", "location",
     "malware", "malware-analysis", "note", "observed-data", "opinion",
     "report", "threat-actor", "tool", "vulnerability", "language-content",
-    "marking-definition", "relationship", "sighting",
+    "marking-definition", "extension-definition", "relationship", "sighting",
 }
 
 

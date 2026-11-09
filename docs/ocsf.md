@@ -39,6 +39,15 @@ those tabs are hidden on OCSF conversions.
 | `source_data` | `preserve` | Preserve original records in `unmapped`; `omit` explicitly permits loss of fields that cannot be normalized. |
 | `fallback_time` | `0` | Milliseconds since the epoch used when the source has no usable event timestamp; a warning identifies each use. |
 
+MISP exports are limited to 1,000 records, 10,000 attributes/objects in total,
+and 1,024 tags per event, object or attribute scope. The converted document and
+diagnostics must fit within 16 MiB of ASCII-escaped JSON. Inherited label fan-out
+is checked before mapping, and actual output size is checked incrementally,
+including repeated object enrichments and preserved source data. Exceeding a
+limit returns a payload error (HTTP 400) without saving a partial conversion;
+split large collections into smaller requests. Limits also apply when
+`source_data=omit`.
+
 ## Coverage and preservation
 
 One event is emitted per MISP event, standalone MISP object/attribute collection,
@@ -59,7 +68,7 @@ bundles, object lists and individual objects, including custom `x-` objects.
 | STIX indicators | Complete detection pattern, pattern language, validity expiration and normalized confidence. STIX patterns are syntax checked; compound expressions and qualifiers are preserved without inventing observations. |
 | STIX observed-data | Resolves embedded STIX 2.0 SCOs and STIX 2.1 `object_refs`, including local network/email/file references. |
 | STIX attack-pattern/malware/threat-actor/campaign/intrusion-set/location/vulnerability | Native ATT&CK, malware classification, actor/campaign/intrusion-set, geography and vulnerability context. Explicit relationships can enrich related indicators. |
-| STIX reports, groupings, identities, relationships, sightings, notes, opinions, infrastructure, tools, courses of action, markings and custom objects | Context records represented as OSINT `Other`, with diagnostics and the original object preserved. No source objects are silently discarded. |
+| STIX reports, groupings, identities, relationships, sightings, notes, opinions, infrastructure, tools, courses of action, marking/extension definitions and custom objects | Context records represented as OSINT `Other`, with diagnostics and the original object preserved. No source objects are silently discarded. |
 
 Original MISP records are in `unmapped.misp`; wrapper and response metadata are
 in `unmapped.context`. Original STIX objects are in `unmapped.stix`; bundle

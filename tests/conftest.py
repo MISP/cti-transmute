@@ -15,6 +15,21 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture
+def extension_definition():
+    """A standard STIX 2.1 meta object, validated by the STIX library."""
+    from stix2 import ExtensionDefinition
+
+    definition = ExtensionDefinition(
+        id="extension-definition--d93f9947-36e1-4e13-b073-aaa69702cfea",
+        created_by_ref="identity--b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+        created="2024-01-01T00:00:00Z", modified="2024-01-01T00:00:00Z",
+        name="Additional file context", schema="https://example.org/schema/file-context.json",
+        version="1.0.0", extension_types=["property-extension"],
+    )
+    return json.loads(definition.serialize())
+
+
+@pytest.fixture
 def misp_event() -> dict:
     """A minimal but valid MISP event, as a parsed dict."""
     return json.loads((FIXTURES / "misp_event.json").read_text())

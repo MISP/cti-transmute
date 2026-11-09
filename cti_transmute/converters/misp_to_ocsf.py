@@ -9,12 +9,19 @@ from .ocsf import (
     HASH_ALGORITHMS, OcsfParams, Report, add_times, apply_tlp, attack, event,
     certificate_info, file_info, fingerprint, hash_key, indicator, malware, read_json, text,
 )
+from .ocsf_limits import MispOutputBudget, json_size
+
+MAX_MISP_RECORDS = 1000
+MAX_MISP_ATTRIBUTES = 10000
+MAX_MISP_TAGS_PER_SCOPE = 1024
 
 
 def _tags(record: dict) -> list[str]:
     tags = record.get("Tag", [])
     if not isinstance(tags, list):
         raise InvalidPayload("MISP Tag must be an array.")
+    if len(tags) > MAX_MISP_TAGS_PER_SCOPE:
+        raise InvalidPayload(f"MISP Tag exceeds the {MAX_MISP_TAGS_PER_SCOPE} tags per scope limit; split the input.")
     if not all(isinstance(tag, dict) and isinstance(tag.get("name"), str) for tag in tags):
         raise InvalidPayload("MISP tags require a string name.")
     return [tag["name"] for tag in tags]
@@ -56,7 +63,7 @@ def _galaxies(target: dict, record: dict):
                 target["campaign"] = {"name": value}
 
 
-def _attribute(attr: dict, context: dict, report: Report, path: str) -> list[dict]:
+def _attribute(attr: dict, context: dict, report: Report, path: str, budget: MispOutputBudget) -> list[dict]:
     kind = attr.get("type")
     if not isinstance(kind, str) or "value" not in attr or attr["value"] is None:
         raise InvalidPayload(f"{path}: MISP attributes require type and value.")
@@ -142,17 +149,20 @@ def _attribute(attr: dict, context: dict, report: Report, path: str) -> list[dic
         results.append({**result, **indicator(value.split("|", 1)[1], 1)})
     if kind == "regkey|value" and "|" in value:
         results.append({**result, **indicator(value.split("|", 1)[1], 13)})
+    for item in results:
+        budget.add_indicator(item)
     return results
 
 
-def _object(obj: dict, context: dict, report: Report, path: str) -> list[dict]:
+def _object(obj: dict, context: dict, report: Report, path: str, budget: MispOutputBudget) -> list[dict]:
     attributes = obj.get("Attribute", [])
     if not isinstance(attributes, list) or not all(isinstance(a, dict) for a in attributes):
         raise InvalidPayload(f"{path}: Object.Attribute must be an array of objects.")
     if any("object_relation" in a and not isinstance(a["object_relation"], str) for a in attributes):
         raise InvalidPayload(f"{path}: object_relation must be a string.")
     results = [value for i, attr in enumerate(attributes)
-               for value in _attribute(attr, context, report, f"{path}.Attribute[{i}]")]
+               for value in _attribute(attr, context, report, f"{path}.Attribute[{i}]", budget)]
+    sizes = [json_size(result) for result in results]
     relations = {a.get("object_relation"): a.get("value") for a in attributes}
     if obj.get("name") in ("file", "pe", "elf", "macho"):
         hashes = {a["type"]: a["value"] for a in attributes if hash_key(a.get("type", "")) in HASH_ALGORITHMS}
@@ -214,33 +224,83 @@ def _object(obj: dict, context: dict, report: Report, path: str) -> list[dict]:
         if obj.get("uuid"):
             result["uid"] = str(obj["uuid"])
         results.append(result)
+        budget.add_indicator(result)
+        sizes.append(json_size(result))
         report.warn(path, "Object has no attributes; retained as OSINT Other.")
-    for result in results:
+    for result, previous_size in zip(results, sizes):
         _galaxies(result, obj)
         labels = list(dict.fromkeys(result.get("labels", []) + _tags(obj)))
         if labels:
             result["labels"] = labels
         apply_tlp(result, labels)
+        # Each repeated file/email/script/certificate/galaxy context contributes
+        # its serialized size even when Python objects share the same storage.
+        budget.reserve(json_size(result) - previous_size)
     return results
 
 
-def _records(payload: dict | list) -> list[tuple[dict, dict]]:
+def _records(payload: dict | list):
     if isinstance(payload, dict) and "response" in payload:
         extra = {k: v for k, v in payload.items() if k != "response"}
-        return [(record, {**context, **({"response_context": extra} if extra else {})})
-                for record, context in _records(payload["response"])]
+        for record, context in _records(payload["response"]):
+            yield record, {**context, **({"response_context": extra} if extra else {})}
+        return
     if isinstance(payload, list):
-        return [record for item in payload for record in _records(item)]
+        for item in payload:
+            yield from _records(item)
+        return
     if not isinstance(payload, dict):
         raise InvalidPayload("MISP input must contain objects.")
     if "Event" in payload:
         if not isinstance(payload["Event"], dict):
             raise InvalidPayload("MISP Event must be an object.")
         extra = {k: v for k, v in payload.items() if k != "Event"}
-        return [(payload["Event"], {"event_wrapper": extra} if extra else {})]
+        yield payload["Event"], {"event_wrapper": extra} if extra else {}
+        return
     if "info" in payload or ("type" in payload and "value" in payload) or "Attribute" in payload or "Object" in payload:
-        return [(payload, {})]
+        yield payload, {}
+        return
     raise InvalidPayload("Expected MISP Event, attribute, object, or restSearch collection.")
+
+
+def _preflight(payload, budget):
+    """Reject excessive cardinalities and inherited label fan-out up front."""
+    records = []
+    attribute_count = 0
+    predicted_labels = 0
+
+    def attributes(items, inherited):
+        nonlocal attribute_count, predicted_labels
+        if not isinstance(items, list) or not all(isinstance(a, dict) for a in items):
+            raise InvalidPayload("MISP Attribute must be an array of objects.")
+        attribute_count += len(items)
+        if attribute_count > MAX_MISP_ATTRIBUTES:
+            raise InvalidPayload(f"MISP input exceeds the {MAX_MISP_ATTRIBUTES} attributes/objects limit; split the input.")
+        for attr in items:
+            _tags(attr)  # Validate every scope before converting any record.
+        count = sum(2 if a.get("type") in ("domain|ip", "regkey|value")
+                    and isinstance(a.get("value"), str) and "|" in a["value"] else 1 for a in items)
+        if inherited:
+            # All inherited labels must appear on every emitted indicator.
+            # Count their escaped JSON size, not just the number of labels.
+            predicted_labels += max(1, count) * json_size({"labels": inherited})
+            budget.check(predicted_labels)
+
+    for record, context in _records(payload):
+        if len(records) >= MAX_MISP_RECORDS:
+            raise InvalidPayload(f"MISP input exceeds the {MAX_MISP_RECORDS} records limit; split the input.")
+        tags = list(dict.fromkeys(_tags(record)))
+        attrs = record.get("Attribute", [])
+        objects = record.get("Object", [])
+        if not isinstance(objects, list) or not all(isinstance(obj, dict) for obj in objects):
+            raise InvalidPayload("MISP Object must be an array of objects.")
+        attribute_count += len(objects)
+        attributes([record] if "type" in record and "value" in record else attrs, tags)
+        for obj in objects:
+            inherited = list(dict.fromkeys(tags + _tags(obj)))
+            attributes(obj.get("Attribute", []), inherited)
+        records.append((record, context))
+    return records
 
 
 class MispToOcsf(Converter):
@@ -253,32 +313,44 @@ class MispToOcsf(Converter):
     def process(self, payload: Any, params: OcsfParams):
         payload = read_json(payload)
         report = Report()
+        budget = MispOutputBudget()
+        records = _preflight(payload, budget)
         events = []
-        for i, (record, context) in enumerate(_records(payload)):
+        for i, (record, context) in enumerate(records):
             path = f"misp[{i}]"
+            start = budget.used
+            if params.source_data == "preserve":
+                budget.reserve(json_size({"misp": record, "context": context}))
             attrs, objects = record.get("Attribute", []), record.get("Object", [])
             if not isinstance(attrs, list) or not isinstance(objects, list):
                 raise InvalidPayload(f"{path}: Attribute and Object must be arrays.")
             if not all(isinstance(a, dict) for a in attrs + objects):
                 raise InvalidPayload(f"{path}: Attribute and Object entries must be objects.")
             if "type" in record and "value" in record:
-                indicators = _attribute(record, {}, report, path)
+                indicators = _attribute(record, {}, report, path, budget)
             elif "name" in record and "info" not in record and "Attribute" in record:
-                indicators = _object(record, {}, report, path)
+                indicators = _object(record, {}, report, path, budget)
             else:
                 indicators = [value for j, a in enumerate(attrs)
-                              for value in _attribute(a, record, report, f"{path}.Attribute[{j}]")]
+                              for value in _attribute(a, record, report, f"{path}.Attribute[{j}]", budget)]
                 indicators.extend(value for j, obj in enumerate(objects)
-                                  for value in _object(obj, record, report, f"{path}.Object[{j}]"))
+                                  for value in _object(obj, record, report, f"{path}.Object[{j}]", budget))
             if not indicators:
                 info = indicator(record.get("info") or record.get("uuid") or "MISP event", source_type="MISP event")
                 _galaxies(info, record)
                 info["labels"] = _tags(record)
                 apply_tlp(info, info["labels"])
                 indicators = [info]
+                budget.add_indicator(info)
                 report.warn(path, "No indicator attributes; event context retained as OSINT Other.")
-            events.append(event("misp", record, path, indicators,
+            converted = event("misp", record, path, indicators,
                                 [record.get("timestamp"), record.get("date"),
                                  record.get("publish_timestamp"), *[a.get("timestamp") for a in attrs]],
-                                params, report, context))
-        return report.result(events)
+                                params, report, context)
+            budget.finish_event(converted, start)
+            events.append(converted)
+        result = report.result(events)
+        # Include diagnostics in the final exact size check. Nothing has been
+        # serialized into a response or persisted at this point.
+        json_size({"conversion": result.document, "diagnostics": result.diagnostics})
+        return result

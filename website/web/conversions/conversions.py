@@ -211,6 +211,10 @@ def _submit_via_json(source: str, target: str, params_class, auto_meta):
         return jsonify(error_body), status
 
     name, description = auto_meta(payload, body, params)
+    name_limit = Conversion.name.type.length
+    if name is not None and len(name) > name_limit:
+        message = f"Conversion name must be at most {name_limit} characters."
+        return jsonify({"error": message, "fields": {"name": message}}), 400
     public = bool(body.get("public", True))
     user = None if current_user.is_anonymous() else current_user
     try:

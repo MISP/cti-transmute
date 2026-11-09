@@ -211,6 +211,20 @@ def test_stix_duplicate_ids_do_not_drop_source_records():
     assert result.document[0]["metadata"]["uid"] != result.document[1]["metadata"]["uid"]
 
 
+def test_stix_extension_definition_preserves_the_extended_object_and_bundle(extension_definition):
+    file = {"type": "file", "spec_version": "2.1", "name": "sample.exe",
+            "id": "file--c6d774d2-dcd6-4ed8-9117-82abfe1146f3",
+            "extensions": {extension_definition["id"]: {
+                "extension_type": "property-extension", "example_score": 10}}}
+    payload = {"type": "bundle", "objects": [file, extension_definition]}
+    result = convert("stix", payload)
+    assert len(result.document) == 2
+    assert result.document[0]["unmapped"]["stix"] == file
+    assert result.document[1]["unmapped"]["stix"] == extension_definition
+    assert result.document[1]["osint"][0]["type"] == "extension-definition"
+    assert convert("stix", extension_definition).document[0]["unmapped"]["stix"] == extension_definition
+
+
 @pytest.mark.parametrize("source,fixture", [("misp", "misp_event"), ("stix", "stix_bundle")])
 def test_serialized_inputs_are_equivalent_and_source_not_mutated(source, fixture, request):
     payload = request.getfixturevalue(fixture)
