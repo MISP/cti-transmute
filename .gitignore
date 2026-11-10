@@ -200,3 +200,8 @@ submodules/pivotick/node_modules/
 
 /to_do
 tests/lib/misp_config.json
+
+# Maintainer-local plans and tickets (see CLAUDE.md)
+.scratch/
+# Local copies of the knowledge bases, the repo tracks them as submodules
+/vendor/
