@@ -1,0 +1,79 @@
+<!doctype html>
+<!--
+  Graph lab — develop and eyeball the Graph tab without the Flask app.
+
+  Serve the repository root and open this page:
+      python -m http.server 8765        (from the repo root)
+      http://localhost:8765/tests/web/graph_lab/
+
+  Pick a fixture (tests/fixtures/, or tests/fixtures/large/ after
+  `uv run python bin/gen_graph_fixtures.py`) or drop any MISP / STIX JSON
+  file on the page. The graph is built by the same modules the site uses.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph lab</title>
+<link rel="stylesheet" href="/website/web/static/fontawesome-6.3.0/css/fontawesome.css">
+<link rel="stylesheet" href="/website/web/static/fontawesome-6.3.0/css/solid.css">
+<link rel="stylesheet" href="/website/web/static/pivotick/pivotick.css">
+<style>
+  html, body { height: 100%; margin: 0; font: 14px system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; background: #f5f7fa; color: #1f2937; }
+  body.dark { background: #0f141b; color: #e5e7eb; }
+  header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid #d1d5db; }
+  header select, header button { font: inherit; padding: 3px 8px; }
+  #stats { margin-left: auto; font-variant-numeric: tabular-nums; color: #6b7280; }
+  #graph { flex: 1; min-height: 0; position: relative; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Graph lab</strong>
+  <label>Fixture <select id="fixture"></select></label>
+  <label>View <select id="view"></select></label>
+  <button id="theme" type="button">Dark</button>
+  <span id="stats"></span>
+</header>
+<div id="graph"></div>
+<script src="/website/web/static/pivotick/pivotick.iife.js"></script>
+<script type="module">
+import { mountGraph, VIEWS } from '/website/web/static/js/graph/graphView.js'
+
+const FIXTURES = [
+    ['tests/fixtures/misp_event.json', 'misp'], ['tests/fixtures/stix_bundle.json', 'stix'],
+    ['tests/fixtures/large/misp_1000.json', 'misp'], ['tests/fixtures/large/stix_1000.json', 'stix'],
+    ['tests/fixtures/large/misp_multi.json', 'misp'],
+    ['tests/fixtures/large/misp_5000.json', 'misp'], ['tests/fixtures/large/stix_5000.json', 'stix'],
+    ['tests/fixtures/large/misp_10000.json', 'misp'], ['tests/fixtures/large/stix_10000.json', 'stix'],
+]
+const params = new URLSearchParams(location.search)
+const fx = document.getElementById('fixture'), vw = document.getElementById('view')
+for (const [path, format] of FIXTURES) fx.add(new Option(path.split('/').pop(), `${path}|${format}`))
+for (const [id, v] of Object.entries(VIEWS)) vw.add(new Option(v.label, id))
+if (params.get('f')) fx.value = FIXTURES.map(f => f.join('|')).find(v => v.includes(params.get('f'))) ?? fx.value
+if (params.get('v')) vw.value = params.get('v')
+if (params.get('dark')) document.body.classList.add('dark')
+
+let current = null
+async function load() {
+    const [path, format] = fx.value.split('|')
+    const text = await (await fetch('/' + path)).text()
+    current?.destroy?.()
+    const t0 = performance.now()
+    current = await mountGraph(document.getElementById('graph'), text, format, { view: vw.value })
+    document.getElementById('stats').textContent =
+        `${current.stats.nodes} nodes · ${current.stats.edges} edges · built in ${Math.round(performance.now() - t0)} ms`
+    window.lab = current
+}
+fx.onchange = vw.onchange = () => {
+    const q = new URLSearchParams({ f: fx.value.split('|')[0].split('/').pop(), v: vw.value })
+    if (document.body.classList.contains('dark')) q.set('dark', '1')
+    history.replaceState(null, '', '?' + q); load()
+}
+document.getElementById('theme').onclick = () => { document.body.classList.toggle('dark'); load() }
+load()
+</script>
+</body>
+</html>

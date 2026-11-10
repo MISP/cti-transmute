@@ -13,16 +13,16 @@
 //  turns these entries into node and edge styles.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Element → shape. Containers are squares, domain objects hexagons,
- *  detection logic triangles, observables circles. */
+/** Element → size (every node is a circle: the icon says what it is).
+ *  Containers are the largest, observables the smallest. */
 export const ELEMENTS = {
-    container:  { label: 'Container',  shape: 'square',   size: 22 },
-    entity:     { label: 'Entity',     shape: 'hexagon',  size: 18 },
-    indicator:  { label: 'Indicator',  shape: 'triangle', size: 16 },
-    object:     { label: 'Object',     shape: 'hexagon',  size: 16 },
+    container:  { label: 'Container',  shape: 'circle',   size: 24 },
+    entity:     { label: 'Entity',     shape: 'circle',   size: 18 },
+    indicator:  { label: 'Indicator',  shape: 'circle',   size: 15 },
+    object:     { label: 'Object',     shape: 'circle',   size: 16 },
     observable: { label: 'Observable', shape: 'circle',   size: 12 },
-    context:    { label: 'Context',    shape: 'square',   size: 14 },
-    meta:       { label: 'Marking',    shape: 'square',   size: 10 },
+    context:    { label: 'Context',    shape: 'circle',   size: 14 },
+    meta:       { label: 'Marking',    shape: 'circle',   size: 10 },
 }
 
 /** Family → colour. Ten hues at most, each readable as a fill under a white
