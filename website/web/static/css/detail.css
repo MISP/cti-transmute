@@ -204,12 +204,12 @@
      border-bottom: 1px solid var(--border);
  }
 
- /* The Conversion page uses the width of the screen (up to 1800px): the graph,
+ /* The Conversion page uses the full width of the screen: the graph,
     the sunburst, the table and the code panes all show more at once. */
  .conversion-detail-page {
-     max-width: 1800px;
-     padding-left: max(16px, 2vw);
-     padding-right: max(16px, 2vw);
+     max-width: none;
+     padding-left: 16px;
+     padding-right: 16px;
  }
 
  /* Input / Output toggle: the site's .btn-primary padding overrode btn-sm, so the

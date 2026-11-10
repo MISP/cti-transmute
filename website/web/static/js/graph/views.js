@@ -54,16 +54,31 @@ function baseRules({ neighbours = 4, chains = 4, byType = false, byFamily = fals
             // turned on when the canvas is crowded (graphView keepWithinBudget).
             kind: 'custom', id: 'byFamily', label: 'By family', enabled: byFamily, minSize: 8,
             description: 'Everything of one family and element folds together: all network observables, all file objects…',
-            partition: partitionBy(d => d.element && d.element !== 'container', d => `${d.element}:${d.family}`),
+            // Only families that mix types: a family of one type would fold, once
+            // opened, into the very same group again ("13 × vulnerability"), and
+            // the first double-click would seem to do nothing.
+            partition: (v) => {
+                const map = partitionBy(d => d.element && d.element !== 'container', d => `${d.element}:${d.family}`)(v)
+                const types = new Map()
+                for (const n of v.nodes) {
+                    const key = map.get(n.id)
+                    if (!key) continue
+                    if (!types.has(key)) types.set(key, new Set())
+                    types.get(key).add(n.getData?.()?.type)
+                }
+                for (const [id, key] of map) if (types.get(key).size < 2) map.delete(id)
+                return map
+            },
         }
     )
     const rules = [
         // First, it gives an overview by family; opening a family drills down
         // into the type and chain groups of its members.
         ...(familyFirst ? [family] : []),
-        // chains first: placed after neighbours, Pivotick's chains rule folded
-        // again the members of a neighbours group the reader had just opened.
-        { kind: 'chains', minSize: chains },
+        // Off by default: Pivotick's chains rule ignores opened groups, so it folded
+        // back the members of any group the reader opened (first double-click
+        // "did nothing"). "By type" covers its main case (indicator → observable).
+        { kind: 'chains', minSize: chains, enabled: false },
         { kind: 'neighbours', minSize: neighbours },
         {
             // What the structural rules leave (nodes with one extra link, a
