@@ -1,5 +1,20 @@
 {
   "source": "https://github.com/ecrou-exact/vitrine",
   "commit": "cec50e2f7f1c6da5c8ee1d5e1c53d2150a1f3209",
-  "files": "dist/esm, dist/languages, dist/syntax-themes (no source maps)"
+  "components": [
+    "vt-json",
+    "vt-markdown",
+    "vt-code",
+    "vt-table",
+    "vt-chart",
+    "vt-openapi",
+    "vt-http",
+    "vt-timeline",
+    "vt-field"
+  ],
+  "chunks": 23,
+  "vendor": [
+    "echarts.js"
+  ],
+  "rebuild": "uv run python bin/vendor_vitrine.py /path/to/vitrine"
 }
