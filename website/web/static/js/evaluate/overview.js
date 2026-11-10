@@ -18,6 +18,13 @@ const OverviewApp = {
             timeline: [],
             timeline_loading: true,
 
+            // Chart or table, per chart (the site's switch, not Vitrine's tabs).
+            chartViews: { donut: 'chart', bar: 'chart', radar: 'chart', timeline: 'chart' },
+            CHART_VIEW_OPTIONS: [
+                { value: 'chart', label: 'Chart', icon: 'fas fa-chart-simple' },
+                { value: 'table', label: 'Table', icon: 'fas fa-table' },
+            ],
+
             // Chart instances
         }
     },
@@ -115,6 +122,12 @@ const OverviewApp = {
 
         // Charts are Vitrine <vt-chart> elements (Apache ECharts, self-hosted):
         // data handed over as CSV text, theme and accent kept in sync with the site.
+        setChartView(key, view) {
+            this.chartViews[key] = view
+            const id = { donut: 'ov-donut', bar: 'ov-bar', radar: 'ov-radar', timeline: 'ov-timeline' }[key]
+            document.querySelector(`#${id} vt-chart`)?.setAttribute('view', view)
+        },
+
         async mountChart(id, csv, attrs) {
             const host = document.getElementById(id)
             if (!host) return
@@ -141,12 +154,12 @@ const OverviewApp = {
                 if (this.has_donut_data) {
                     await this.mountChart('ov-donut',
                         `Answer,Votes\nHelpful,${this.stats.total_likes}\nNot helpful,${this.stats.total_dislikes}`,
-                        { type: 'pie', height: 280, tabs: true })
+                        { type: 'pie', height: 340 })
                 }
                 if (this.has_bar_data) {
                     const rows = this.stats.top_tags.map(t => `${this.csvCell(t.label || t.name)},${t.count}`)
                     await this.mountChart('ov-bar', `Reaction tag,Votes\n${rows.join('\n')}`,
-                        { type: 'bar', horizontal: true, height: Math.max(240, 28 * rows.length + 60), tabs: true, legend: false })
+                        { type: 'bar', horizontal: true, height: Math.max(300, 32 * rows.length + 60), legend: false })
                 }
                 if (this.has_radar_data) {
                     // Average score per category, 0 (very low) to 100 (very high).
@@ -159,7 +172,7 @@ const OverviewApp = {
                         return `${this.csvCell(cat.charAt(0).toUpperCase() + cat.slice(1))},${total ? Math.round(sum / total) : 0}`
                     })
                     await this.mountChart('ov-radar', `Category,Average score\n${rows.join('\n')}`,
-                        { type: 'bar', horizontal: true, min: 0, max: 100, height: Math.max(240, 32 * rows.length + 60), tabs: true, legend: false })
+                        { type: 'bar', horizontal: true, min: 0, max: 100, height: Math.max(300, 34 * rows.length + 60), legend: false })
                 }
             } catch (e) {
                 console.error('overview: drawCharts error', e)
@@ -171,7 +184,7 @@ const OverviewApp = {
             try {
                 const rows = this.timeline.map(d => `${String(d.date).slice(0, 10)},${d.count}`)
                 await this.mountChart('ov-timeline', `Date,Evaluations\n${rows.join('\n')}`,
-                    { type: 'area', smooth: true, height: 260, zoom: rows.length > 30, tabs: true, legend: false, min: 0 })
+                    { type: 'area', smooth: true, height: 320, zoom: rows.length > 30, legend: false, min: 0 })
             } catch (e) {
                 console.error('overview: drawTimelineChart error', e)
             }

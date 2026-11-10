@@ -506,3 +506,11 @@
         min-width: unset;
     }
 }
+
+/* One chart per row, full width: the labels get the room they need. */
+.ov-charts-grid { grid-template-columns: 1fr !important; }
+.ov-chart-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: .75rem;
+}
+.ov-chart-head .ov-chart-title { margin-bottom: 0; }

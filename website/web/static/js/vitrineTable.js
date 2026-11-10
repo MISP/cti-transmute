@@ -39,6 +39,31 @@ function tableShadowStyle(table, { noFilter }) {
     if (!add()) customElements.whenDefined('vt-table').then(() => requestAnimationFrame(add))
 }
 
+/**
+ * One click on a row opens its details, two clicks open it (vt-row-activate,
+ * which <vt-table> fires on a double-click). The single click waits a moment
+ * so that a double-click does not first unfold the row. Clicks on a button,
+ * a link or a field inside the row keep their own meaning.
+ */
+function rowClicks(table) {
+    let timer = null
+    const attach = () => {
+        const root = table.shadowRoot
+        if (!root) return false
+        root.addEventListener('click', (e) => {
+            const path = e.composedPath()
+            if (path.some((n) => n instanceof Element && n.matches('button, a, input, select, textarea, [role=button]'))) return
+            const row = path.find((n) => n instanceof Element && n.classList?.contains('tb-row'))
+            if (!row) return
+            clearTimeout(timer)
+            timer = setTimeout(() => row.querySelector('button[aria-expanded]')?.click(), 250)
+        })
+        root.addEventListener('dblclick', () => clearTimeout(timer))
+        return true
+    }
+    if (!attach()) customElements.whenDefined('vt-table').then(() => requestAnimationFrame(attach))
+}
+
 export const VitrineTable = {
     props: {
         rows: { type: Array, default: () => [] },
@@ -97,6 +122,7 @@ export const VitrineTable = {
                 })
                 host.value.replaceChildren(table)
                 tableShadowStyle(table, { noFilter: props.serverSide })
+                rowClicks(table)
             }
             // Server-driven: no local filtering or sorting at all (it would only act on
             // the rows of this page, not on the conversions the server holds).

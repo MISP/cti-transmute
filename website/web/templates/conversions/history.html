@@ -306,6 +306,10 @@
             </div>
 
             <!-- Modals -->
+
+        </div>
+
+        <!-- Delete confirmations, shared by the cards and the table -->
             <template v-for="item in conversion_history" :key="'modal_'+item.id">
                 <div class="modal fade" :id="'del_modal_'+item.id" tabindex="-1" aria-hidden="true">
                     <div class="modal-dialog">
@@ -331,8 +335,6 @@
                     </div>
                 </div>
             </template>
-
-        </div>
 
         <!-- Empty state -->
         <div v-if="conversion_history.length === 0" class="text-center py-5">

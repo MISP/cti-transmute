@@ -61,7 +61,11 @@
 
             <!-- Donut: like vs dislike -->
             <div class="ov-chart-card">
-                <div class="ov-chart-title"><i class="fas fa-circle-half-stroke"></i> Helpful vs Not</div>
+                <div class="ov-chart-head">
+                    <div class="ov-chart-title"><i class="fas fa-circle-half-stroke"></i> Helpful vs Not</div>
+                    <cti-switch size="sm" :label="'Helpful vs Not view'" :model-value="chartViews.donut"
+                        @update:model-value="setChartView('donut', $event)" :options="CHART_VIEW_OPTIONS"></cti-switch>
+                </div>
                 <div class="ov-chart-canvas-wrap" style="min-height:220px;">
                     <div id="ov-donut" class="ov-vt-chart" v-show="has_donut_data"></div>
                     <div v-if="!stats_loading && !has_donut_data" class="ov-chart-empty">
@@ -73,7 +77,11 @@
 
             <!-- Horizontal bar: top tags -->
             <div class="ov-chart-card">
-                <div class="ov-chart-title"><i class="fas fa-tags"></i> Top Reaction Tags</div>
+                <div class="ov-chart-head">
+                    <div class="ov-chart-title"><i class="fas fa-tags"></i> Top Reaction Tags</div>
+                    <cti-switch size="sm" :label="'Top Reaction Tags view'" :model-value="chartViews.bar"
+                        @update:model-value="setChartView('bar', $event)" :options="CHART_VIEW_OPTIONS"></cti-switch>
+                </div>
                 <div class="ov-chart-canvas-wrap" style="min-height:220px;">
                     <div id="ov-bar" class="ov-vt-chart" v-show="has_bar_data"></div>
                     <div v-if="!stats_loading && !has_bar_data" class="ov-chart-empty">
@@ -85,7 +93,11 @@
 
             <!-- Radar: category breakdown -->
             <div class="ov-chart-card">
-                <div class="ov-chart-title"><i class="fas fa-spider"></i> Category Breakdown</div>
+                <div class="ov-chart-head">
+                    <div class="ov-chart-title"><i class="fas fa-spider"></i> Category Breakdown</div>
+                    <cti-switch size="sm" :label="'Category Breakdown view'" :model-value="chartViews.radar"
+                        @update:model-value="setChartView('radar', $event)" :options="CHART_VIEW_OPTIONS"></cti-switch>
+                </div>
                 <div class="ov-chart-canvas-wrap" style="min-height:220px;">
                     <div id="ov-radar" class="ov-vt-chart" v-show="has_radar_data"></div>
                     <div v-if="!stats_loading && !has_radar_data" class="ov-chart-empty">
@@ -158,7 +170,11 @@
                 <span class="ov-panel-label">
                     <i class="fas fa-chart-line"></i> Evaluation Activity
                 </span>
-                <span style="font-size:0.72rem; color:var(--text-3);">Last 30 days — public conversions only</span>
+                <span class="d-flex align-items-center gap-3">
+                    <span style="font-size:0.72rem; color:var(--text-3);">Last 30 days — public conversions only</span>
+                    <cti-switch size="sm" label="Evaluation activity view" :model-value="chartViews.timeline"
+                        @update:model-value="setChartView('timeline', $event)" :options="CHART_VIEW_OPTIONS"></cti-switch>
+                </span>
             </div>
             <div class="ov-panel-body">
                 <div v-if="timeline_loading" class="ov-loading" style="min-height:180px;">
@@ -183,8 +199,10 @@
 <script type="module" nonce="{{ csp_nonce }}">
     import OverviewApp from '/static/js/evaluate/overview.js'
     import { isVitrineTag } from '/static/js/vitrine.js'
+    import CtiSwitch from '/static/js/ctiSwitch.js'
     const { createApp } = Vue
     const app = createApp(OverviewApp)
+    app.component('cti-switch', CtiSwitch)
     app.config.compilerOptions.isCustomElement = isVitrineTag
     app.mount('#ov-app')
 </script>
