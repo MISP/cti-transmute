@@ -258,8 +258,10 @@ def list_for_user(
         date_from: str | None = None, date_to: str | None = None,
         exact_match: bool = False, tag_names: list[str] | None = None,
         vis_filter: str | None = None, favorites_only: bool = False,
-        favorites_user_id: int | None = None) -> Pagination:
+        favorites_user_id: int | None = None, per_page: int = 10) -> Pagination:
     """Paginated Conversion listing, access-scoped to ``user``.
+
+    ``per_page`` is clamped to 1..100 (the history table asks for 50).
 
     ``user`` is the actor, lifted out of ``flask_login.current_user`` by the
     caller (``current_user._get_current_object()`` when authenticated, else
@@ -371,7 +373,7 @@ def list_for_user(
         query = query.filter(Conversion.id.in_(fav_subq))
 
     # Pagination
-    return query.paginate(page=page, per_page=10)
+    return query.paginate(page=page, per_page=max(1, min(int(per_page or 10), 100)))
 
 
 def list_by_user(

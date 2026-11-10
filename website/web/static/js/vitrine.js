@@ -55,9 +55,47 @@ function startThemeSync() {
     const style = document.createElement('style')
     style.dataset.vitrine = 'site'
     style.textContent = `
-:where(vt-json, vt-code, vt-markdown, vt-table, vt-chart, vt-openapi, vt-timeline, vt-field, vt-search, vt-tags, vt-stats, vt-diff) {
+/* Vitrine's design tokens mapped onto CTI Transmute's: every component takes the
+   site's colours, fonts and radii, and follows its theme (the site redefines
+   these variables per *-mode class). */
+:where(vt-json, vt-code, vt-markdown, vt-table, vt-chart, vt-openapi, vt-timeline, vt-field, vt-search, vt-tags, vt-stats, vt-diff, vt-http) {
   --vt-accent: var(--accent, #2563eb);
-}`
+  --vt-accent-soft: var(--accent-light, #eff4ff);
+  --vt-on-accent: var(--text-inv, #fff);
+  --vt-bg: var(--surface, #fff);
+  --vt-surface: var(--surface, #fff);
+  --vt-surface-raised: var(--surface, #fff);
+  --vt-surface-sunken: var(--surface-2, #f9fafb);
+  --vt-border: var(--border, #e3e8f0);
+  --vt-border-strong: var(--border-2, #d0d7e3);
+  --vt-fg: var(--text, #0f172a);
+  --vt-fg-muted: var(--text-2, #475569);
+  --vt-success: var(--success, #10b981);
+  --vt-danger: var(--danger, #ef4444);
+  --vt-warning: var(--warning, #f59e0b);
+  --vt-info: var(--accent-2, #0ea5e9);
+  --vt-highlight: var(--accent-light, #eff4ff);
+  --vt-font-ui: var(--font-ui, system-ui, sans-serif);
+  --vt-font-body: var(--font-ui, system-ui, sans-serif);
+  --vt-font-mono: var(--font-mono, ui-monospace, monospace);
+  --vt-radius: var(--radius-sm, 6px);
+  --vt-radius-sm: var(--radius-xs, 4px);
+  --vt-radius-lg: var(--radius-md, 10px);
+  --vt-shadow: var(--shadow-sm, none);
+  --vt-chart-1: var(--accent, #2563eb);
+  --vt-chart-2: var(--accent-2, #0ea5e9);
+  --vt-chart-3: var(--success, #10b981);
+  --vt-chart-4: var(--warning, #f59e0b);
+  --vt-chart-5: var(--danger, #ef4444);
+  --vt-chart-6: #8b5cf6;
+  --vt-chart-7: #ec4899;
+  --vt-chart-8: var(--text-3, #94a3b8);
+}
+/* Server-paginated tables: the page's own pagination is the pager. */
+vt-table.cti-server-table::part(pager) { display: none; }
+/* A chart already sits in a site card: no second frame around it. */
+vt-chart.cti-bare::part(container) { border: 0; box-shadow: none; background: transparent; }
+`
     document.head.appendChild(style)
     applyTheme()
     // Theme switches: <html> class changes. New elements: anything added to the page.

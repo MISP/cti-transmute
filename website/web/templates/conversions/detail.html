@@ -925,8 +925,8 @@
             el.setAttribute('download', `${(name || 'conversion').replace(/[^\w.-]+/g, '_')}_${side}.json`)
             el.setAttribute('depth', '2')
             el.setAttribute('max-height', '75vh')
-            // Past 1 MB the tree is slow to open: start on the raw view.
-            if (text.length > 1024 * 1024) el.setAttribute('view', 'raw')
+            // Raw view first (the tree is one tab away).
+            el.setAttribute('view', 'raw')
             el.content = text
             host.replaceChildren(el)
         }

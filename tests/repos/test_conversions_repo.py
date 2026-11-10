@@ -433,3 +433,13 @@ def test_list_deleted_returns_soft_deleted_rows_only(app_db):
     names = {c.name for c in conv_repo.list_deleted(1).items}
     assert "trashed" in names         # the soft-deleted row belongs in Trash
     assert "still-here" not in names  # the live row must never appear there
+
+
+def test_list_for_user_page_size_is_clamped(app_db):
+    """per_page follows the caller (the history table asks for 50) within 1..100."""
+    from website.repos import conversions as conv_repo
+    admin = _make_user(admin=True, email="admin-pp@test.test")
+    assert conv_repo.list_for_user(admin, 1, per_page=50).per_page == 50
+    assert conv_repo.list_for_user(admin, 1, per_page=5000).per_page == 100
+    assert conv_repo.list_for_user(admin, 1, per_page=0).per_page == 10   # 0: the default
+    assert conv_repo.list_for_user(admin, 1).per_page == 10

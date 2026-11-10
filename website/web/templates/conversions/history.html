@@ -136,15 +136,14 @@
         </app-pagination>
         <!-- Cards or table (Vitrine <vt-table>), remembered in this browser -->
         <div v-if="conversion_history.length > 0" class="d-flex justify-content-end mb-2">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Layout">
-                <button type="button" class="btn" :class="viewMode === 'cards' ? 'btn-primary' : 'btn-outline-secondary'"
-                    @click="setViewMode('cards')"><i class="fas fa-grip me-1"></i>Cards</button>
-                <button type="button" class="btn" :class="viewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'"
-                    @click="setViewMode('table')"><i class="fas fa-table me-1"></i>Table</button>
-            </div>
+            <cti-switch :model-value="viewMode" @update:model-value="setViewMode" size="sm" label="Layout" :options="[
+                { value: 'cards', label: 'Cards', icon: 'fas fa-grip' },
+                { value: 'table', label: 'Table', icon: 'fas fa-table' }
+            ]"></cti-switch>
         </div>
         <history-table v-if="conversion_history.length > 0 && viewMode === 'table'"
-            :rows="conversion_history"></history-table>
+            :rows="conversion_history" :signed-in="{{ 'true' if current_user.is_authenticated else 'false' }}"
+            :can-edit="canEdit" @favorite="toggleFavorite" @delete="openDelete"></history-table>
         <div v-if="conversion_history.length > 0 && viewMode === 'cards'">
 
             <div v-for="item in conversion_history" :key="item.id"
@@ -355,6 +354,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
     import MultiTagFilter from '/static/js/tags/multiTagFilter.js'
     import { useVitrine, isVitrineTag } from '/static/js/vitrine.js'
     import { HistoryTable } from '/static/js/vitrineTable.js'
+    import CtiSwitch from '/static/js/ctiSwitch.js'
     useVitrine('field')
 
     function adaptTag(t) {
@@ -369,7 +369,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
     }
 
     const app = createApp({
-        components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay, 'multi-tag-filter': MultiTagFilter, 'history-table': HistoryTable },
+        components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay, 'multi-tag-filter': MultiTagFilter, 'history-table': HistoryTable, 'cti-switch': CtiSwitch },
         delimiters: ['[[', ']]'],
         setup() {
             const conversion_history    = ref([])
@@ -378,8 +378,18 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             try { savedMode = localStorage.getItem('cti-history-view') || 'cards' } catch { }
             const viewMode = ref(savedMode === 'table' ? 'table' : 'cards')
             function setViewMode(mode) {
+                if (viewMode.value === mode) return
                 viewMode.value = mode
                 try { localStorage.setItem('cti-history-view', mode) } catch { }
+                // Page sizes differ (10 cards, 50 rows): start again from page 1.
+                fetchConversionHistory(1)
+            }
+            // Same rule as the cards' delete button: the owner or an admin.
+            const CURRENT_USER_ID = parseInt('{{ current_user.id if current_user.is_authenticated else 0 }}')
+            function canEdit(item) { return !!CURRENT_USER_ID && (item.user_id === CURRENT_USER_ID || !!current_user_is_admin.value) }
+            function openDelete(id) {
+                const el = document.getElementById('del_modal_' + id)
+                if (el && window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(el).show()
             }
             const current_page          = ref(1)
             const total_pages           = ref(1)
@@ -517,6 +527,8 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     tag_names:      selectedTagNames.value.join(','),
                     vis_filter:     vis_filter.value || '',
                     favorites_only: favorites_only.value,
+                    // The table shows 50 a page, the cards 10.
+                    per_page: viewMode.value === 'table' ? 50 : 10,
                 })
                 const res = await fetch('/conversions/get_conversion_page_history?' + params.toString())
                 if (res.ok) {
@@ -615,7 +627,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
-                favorites_only, toggleFavorite, viewMode, setViewMode,
+                favorites_only, toggleFavorite, viewMode, setViewMode, canEdit, openDelete,
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
                 formatDateTime: ctiDate.formatDateTime
             }

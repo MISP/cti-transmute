@@ -1733,3 +1733,56 @@ html.christmas-mode .alert-warning { color: #fde68a; }
 }
 .vt-filter-grid .vt-filter-wide { grid-column: span 2; }
 @media (max-width: 560px) { .vt-filter-grid .vt-filter-wide { grid-column: auto; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   CTI SWITCH — segmented view switch (js/ctiSwitch.js)
+═══════════════════════════════════════════════════════════════ */
+.cti-switch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.cti-switch-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font: 500 0.875rem/1.2 var(--font-ui);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--t), color var(--t), box-shadow var(--t), border-color var(--t);
+}
+.cti-switch-option i { font-size: 1rem; width: 1.1em; text-align: center; opacity: .8; }
+.cti-switch-option:hover { color: var(--text); background: var(--surface); }
+.cti-switch-option.active {
+  background: var(--surface);
+  color: var(--accent);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+.cti-switch-option.active i { opacity: 1; }
+.cti-switch-option:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+.cti-switch-text { display: flex; flex-direction: column; gap: 2px; }
+.cti-switch-hint { font-size: 0.72rem; font-weight: 400; color: var(--text-3); }
+.cti-switch-option.active .cti-switch-hint { color: var(--text-2); }
+.cti-switch-sm .cti-switch-option { padding: 5px 12px; font-size: 0.8rem; gap: 7px; }
+@media (prefers-reduced-motion: reduce) { .cti-switch-option { transition: none; } }
+
+/* Vitrine elements before their module defines them: their content is data
+   (JSON options, CSV…), never meant to be read as text. Keep the room, hide it. */
+:is(vt-field, vt-table, vt-json, vt-chart, vt-openapi, vt-timeline, vt-code, vt-markdown):not(:defined) {
+  visibility: hidden;
+  display: block;
+  min-height: 2.5rem;
+}

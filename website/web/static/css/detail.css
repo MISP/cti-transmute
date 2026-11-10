@@ -204,10 +204,12 @@
      border-bottom: 1px solid var(--border);
  }
 
- /* The Conversion page uses the full width of the screen: the graph,
+ /* The Conversion page is wider than the rest of the site (up to 1600px): the graph,
     the sunburst, the table and the code panes all show more at once. */
  .conversion-detail-page {
-     max-width: none;
+     max-width: 1600px;
+     margin-left: auto;
+     margin-right: auto;
      padding-left: 16px;
      padding-right: 16px;
  }

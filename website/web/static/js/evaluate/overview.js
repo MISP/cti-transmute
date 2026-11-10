@@ -121,6 +121,7 @@ const OverviewApp = {
             const [ok] = await useVitrine('chart')
             if (!ok) { host.textContent = 'The chart could not load.'; return }
             const el = document.createElement('vt-chart')
+            el.classList.add('cti-bare')
             for (const [k, v] of Object.entries(attrs)) {
                 if (v === true) el.setAttribute(k, '')
                 else if (v !== false && v !== undefined) el.setAttribute(k, String(v))
@@ -140,7 +141,7 @@ const OverviewApp = {
                 if (this.has_donut_data) {
                     await this.mountChart('ov-donut',
                         `Answer,Votes\nHelpful,${this.stats.total_likes}\nNot helpful,${this.stats.total_dislikes}`,
-                        { type: 'pie', height: 240, tabs: true })
+                        { type: 'pie', height: 280, tabs: true })
                 }
                 if (this.has_bar_data) {
                     const rows = this.stats.top_tags.map(t => `${this.csvCell(t.label || t.name)},${t.count}`)

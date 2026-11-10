@@ -479,6 +479,7 @@ def get_page_history():
     vis_filter      = request.args.get('vis_filter', '', type=str) or None
     favorites_only  = request.args.get('favorites_only', 'false', type=str) == 'true'
     favorites_user_id = current_user.id if (favorites_only and current_user.is_authenticated) else None
+    per_page = request.args.get('per_page', 10, type=int)
 
     actor = current_user._get_current_object() if current_user.is_authenticated else None
     pagination = conv_repo.list_for_user(
@@ -495,7 +496,8 @@ def get_page_history():
         tag_names=tag_names,
         vis_filter=vis_filter,
         favorites_only=favorites_only,
-        favorites_user_id=favorites_user_id
+        favorites_user_id=favorites_user_id,
+        per_page=per_page,
     )
     items = pagination.items
     conversion_list = [item.to_json_list() for item in items]

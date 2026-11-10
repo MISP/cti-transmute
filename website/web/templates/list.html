@@ -23,16 +23,12 @@
         </a>
     </div>
 
-    <!-- Two views: the full reference (Vitrine <vt-openapi>) and the converter tester -->
+    <!-- Two views: the converter tester (first) and the full reference (Vitrine <vt-openapi>) -->
     <div class="d-flex justify-content-center mb-4">
-        <div class="btn-group" role="tablist" aria-label="API page view">
-            <button type="button" class="btn" role="tab" :aria-selected="tab === 'reference'"
-                :class="tab === 'reference' ? 'btn-primary' : 'btn-outline-secondary'" @click="tab = 'reference'">
-                <i class="fas fa-book-open me-1"></i>API reference</button>
-            <button type="button" class="btn" role="tab" :aria-selected="tab === 'try'"
-                :class="tab === 'try' ? 'btn-primary' : 'btn-outline-secondary'" @click="tab = 'try'">
-                <i class="fas fa-flask me-1"></i>Try the converters</button>
-        </div>
+        <cti-switch v-model="tab" label="API page view" :options="[
+            { value: 'try', label: 'Try it out', icon: 'fas fa-flask', hint: 'Send real conversions from the page' },
+            { value: 'reference', label: 'API reference', icon: 'fas fa-book-open', hint: 'Every endpoint, parameter and schema' }
+        ]"></cti-switch>
     </div>
 
     <div v-show="tab === 'reference'" class="api-reference">
@@ -194,6 +190,7 @@
     import ParamSurface, { scalarType } from '{{ asset_url('js/conversions/paramSurface.js') }}';
     import { useVitrine, isVitrineTag } from '/static/js/vitrine.js';
     import JsonViewer from '/static/js/graph/jsonViewer.js';
+    import CtiSwitch from '/static/js/ctiSwitch.js';
     useVitrine('openapi');
 
     const { createApp, ref, reactive, nextTick } = Vue
@@ -204,9 +201,9 @@
 
     const app = createApp({
         delimiters: ['[[', ']]'],
-        components: { 'json-viewer': JsonViewer },
+        components: { 'json-viewer': JsonViewer, 'cti-switch': CtiSwitch },
         setup() {
-            const tab        = ref('reference')
+            const tab        = ref('try')
             const endpoints  = ref({})
             const loaded     = ref(false)
             const copied     = ref(null)
