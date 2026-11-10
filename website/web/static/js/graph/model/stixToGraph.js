@@ -250,15 +250,16 @@ export function stixToGraph(json, opts = {}) {
         }
     }
 
-    // Pattern links, after every relationship is known. One adds nothing where a
-    // relationship (based-on) already joins the two: it would only stop Simplify
-    // from folding indicator → observable.
-    const joined = new Set(edges.map(e => `${e.from}>${e.to}`))
+    // Pattern links. One adds nothing where a based-on relationship already ties
+    // the indicator to its observables: it would only stop Simplify from folding
+    // indicator → observable.
+    // An indicator already `based-on` its observables is not linked again by pattern.
+    const basedOn = new Set(objects.filter(o => o.type === 'relationship' && o.relationship_type === 'based-on').map(o => o.source_ref))
     for (const o of objects) {
-        if (o.type !== 'indicator') continue
+        if (o.type !== 'indicator' || basedOn.has(o.id)) continue
         for (const ob of patternObservables(o.pattern)) {
             const match = scoIndex.get(`${ob.type}|${ob.value}`)
-            if (match && !ends(match).some(t => joined.has(`${id(o.id)}>${t}`))) link(o.id, match, 'pattern', { relation: ob.path })
+            if (match) link(o.id, match, 'pattern', { relation: ob.path })
         }
     }
 

@@ -18,10 +18,19 @@
 const containers = (g) => g.nodes.filter(n => n.data.element === 'container')
 
 /** The rules every view starts from: fold the repetition, keep the shape. */
-function baseRules({ neighbours = 4, chains = 4, communities = false } = {}) {
+function baseRules({ neighbours = 4, chains = 4, communities = false, byType = false } = {}) {
     const rules = [
         { kind: 'neighbours', minSize: neighbours },
         { kind: 'chains', minSize: chains },
+        {
+            // What the structural rules leave (nodes with one extra link, a
+            // sighting, an opinion…) still folds by type: "349 × indicator".
+            kind: 'custom', id: 'byType', label: 'By type', enabled: byType, minSize: 8,
+            description: 'Indicators and observables of the same type fold together, whatever they link to.',
+            partition: (v) => new Map(v.nodes
+                .filter(n => ['indicator', 'observable'].includes(n.getData?.()?.element))
+                .map(n => [n.id, n.getData().type])),
+        },
         { kind: 'degree', minDegree: 2, enabled: false },
         { kind: 'kcore', k: 2, enabled: false },
         { kind: 'communities', level: 4, enabled: communities },
@@ -72,7 +81,7 @@ export const VIEWS = {
             ? { type: 'tree', radial: true, rootId: containers(g)[0].id }
             : { type: 'force' },
         edgeKinds: { contains: true, reference: true, relationship: true, galaxy: true, sighting: false, correlation: true },
-        simplify: (g) => baseRules({ communities: g.nodes.length > 4000 }),
+        simplify: (g) => baseRules({ byType: g.nodes.length > 600, communities: g.nodes.length > 8000 }),
     },
     relations: {
         label: 'Relations',
