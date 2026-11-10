@@ -210,31 +210,8 @@
                     <i class="fas fa-stream"></i>
                     No public activity yet.
                 </div>
-                <div v-else class="activity-list">
-                    <div v-for="item in activity_list.slice(0, 8)" :key="item.id" class="activity-row">
-                        <div class="activity-dot" :class="eventDotClass(item.event_type)">
-                            <i :class="eventIcon(item.event_type)"></i>
-                        </div>
-                        <div class="activity-body">
-                            <div class="activity-line">
-                                <a v-if="item.actor_id" :href="'/account/public/' + item.actor_id" class="activity-actor activity-actor-link">[[ item.actor_name ]]</a>
-                                <span v-else class="activity-actor">[[ item.actor_name ]]</span>
-                                <span class="activity-verb">[[ eventVerb(item.event_type) ]]</span>
-                                <a :href="'/conversions/detail/' + item.target_id"
-                                   class="activity-target" :title="item.target_name">
-                                    [[ item.target_name ]]
-                                </a>
-                            </div>
-                            <div class="activity-footer">
-                                <span v-if="item.event_type === 'eval_reaction' && reactionKey(item.details)"
-                                      class="activity-reaction-tag">
-                                    [[ reactionKey(item.details) ]]
-                                </span>
-                                <span class="activity-time">[[ timeAgo(item.created_at) ]]</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Vitrine <vt-timeline>: grouped by day, coloured by kind, searchable -->
+                <activity-timeline v-else :items="activity_list"></activity-timeline>
             </div>
 
             <!-- Demo Video -->
@@ -291,6 +268,8 @@
 <script type="module" nonce="{{ csp_nonce }}">
     const { createApp, ref, onMounted, onUnmounted } = Vue;
     import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js';
+    import { isVitrineTag } from '/static/js/vitrine.js';
+    import { ActivityTimeline } from '/static/js/vitrineTable.js';
 
     function adaptTag(t) {
         return {
@@ -334,8 +313,8 @@
     const timeAgo = ctiDate.timeAgo;
     const formatDate = ctiDate.formatDate;
 
-    createApp({
-        components: { 'single-tag': SingleTagDisplay },
+    const app = createApp({
+        components: { 'single-tag': SingleTagDisplay, 'activity-timeline': ActivityTimeline },
         delimiters: ['[[', ']]'],
         setup() {
             const recent_list      = ref([]);
@@ -435,6 +414,8 @@
                 eventIcon, eventDotClass, eventVerb, reactionKey, timeAgo,
             };
         }
-    }).mount('#home-app');
+    });
+    app.config.compilerOptions.isCustomElement = isVitrineTag;
+    app.mount('#home-app');
 </script>
 {% endblock %}

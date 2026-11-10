@@ -23,6 +23,23 @@
         </a>
     </div>
 
+    <!-- Two views: the full reference (Vitrine <vt-openapi>) and the converter tester -->
+    <div class="d-flex justify-content-center mb-4">
+        <div class="btn-group" role="tablist" aria-label="API page view">
+            <button type="button" class="btn" role="tab" :aria-selected="tab === 'reference'"
+                :class="tab === 'reference' ? 'btn-primary' : 'btn-outline-secondary'" @click="tab = 'reference'">
+                <i class="fas fa-book-open me-1"></i>API reference</button>
+            <button type="button" class="btn" role="tab" :aria-selected="tab === 'try'"
+                :class="tab === 'try' ? 'btn-primary' : 'btn-outline-secondary'" @click="tab = 'try'">
+                <i class="fas fa-flask me-1"></i>Try the converters</button>
+        </div>
+    </div>
+
+    <div v-show="tab === 'reference'" class="api-reference">
+        <vt-openapi variant="full" label="CTI Transmute API" src="/api/swagger.json" expand="false"></vt-openapi>
+    </div>
+
+    <div v-show="tab === 'try'">
     <!-- Loading -->
     <div v-if="!loaded" class="text-center py-5" style="color:var(--text-3);">
         <div class="spinner-border spinner-border-sm me-2" style="color:var(--accent);"></div>
@@ -160,12 +177,13 @@
                             <i class="fas" :class="copiedResp[path] ? 'fa-check' : 'fa-copy'"></i>
                         </button>
                     </div>
-                    <pre class="at-resp-pre">[[ testers[path].response.data ]]</pre>
+                    <json-viewer :json="testers[path].response.data" :filename="'response'"></json-viewer>
                 </div>
 
             </div>
 
         </div>
+    </div>
     </div>
 
 </div>
@@ -174,6 +192,9 @@
 {% block script %}
 <script type="module" nonce="{{ csp_nonce }}">
     import ParamSurface, { scalarType } from '{{ asset_url('js/conversions/paramSurface.js') }}';
+    import { useVitrine, isVitrineTag } from '/static/js/vitrine.js';
+    import JsonViewer from '/static/js/graph/jsonViewer.js';
+    useVitrine('openapi');
 
     const { createApp, ref, reactive, nextTick } = Vue
 
@@ -181,9 +202,11 @@
     // object (not reactive): these are live Vue app handles, not view state.
     const paramVms = {}
 
-    createApp({
+    const app = createApp({
         delimiters: ['[[', ']]'],
+        components: { 'json-viewer': JsonViewer },
         setup() {
+            const tab        = ref('reference')
             const endpoints  = ref({})
             const loaded     = ref(false)
             const copied     = ref(null)
@@ -392,7 +415,7 @@
 
             fetchEndpoints()
             return {
-                endpoints, loaded, copied, UI_MAP,
+                tab, endpoints, loaded, copied, UI_MAP,
                 copyPath,
                 testers, copiedCurl, copiedResp,
                 paramList, mountId, toggleTester, onBodyInput,
@@ -401,6 +424,8 @@
                 copyCurl, copyResp, sendRequest,
             }
         }
-    }).mount('#main-containers')
+    })
+    app.config.compilerOptions.isCustomElement = isVitrineTag
+    app.mount('#main-containers')
 </script>
 {% endblock %}

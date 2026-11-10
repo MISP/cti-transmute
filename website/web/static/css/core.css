@@ -1721,3 +1721,15 @@ html.christmas-mode .alert-warning { color: #fde68a; }
 }
 .christmas-mode .flash-container .btn-close-custom       { color: #a9b6dc; }
 .christmas-mode .flash-container .btn-close-custom:hover { color: #f1f5ff; }
+
+/* ═══════════════════════════════════════════════════════════════
+   VITRINE — filter grids built from <vt-field> (history, list…)
+═══════════════════════════════════════════════════════════════ */
+.vt-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+}
+.vt-filter-grid .vt-filter-wide { grid-column: span 2; }
+@media (max-width: 560px) { .vt-filter-grid .vt-filter-wide { grid-column: auto; } }

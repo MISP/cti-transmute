@@ -59,7 +59,7 @@
     {% include 'sidebar.html' %}
 
     <!-- ── MAIN CONTENT ─────────────────────────────────────────── -->
-    <main id="main-containers" class="container">
+    <main id="main-containers" class="{% block main_class %}container{% endblock %}">
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}

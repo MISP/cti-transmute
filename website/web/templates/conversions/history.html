@@ -65,130 +65,33 @@
         <!-- ── Body (collapsible) ────────────────────────────────── -->
         <div v-show="filtersOpen" class="history-filter-body">
 
-            <!-- Row 1: Search + Type + Sort -->
-            <div class="filter-row mb-3">
-
-                <!-- Search -->
-                <div>
-                    <div class="filter-label">Search</div>
-                    <div class="filter-search-group">
-                        <select class="filter-search-select form-select form-select-sm"
-                                v-model="search_scope" @change="onSearchInput"
-                                title="Search scope">
-                            <option value="all">All</option>
-                            <option value="name">Name</option>
-                            <option value="description">Desc</option>
-                            <option value="content">JSON</option>
-                        </select>
-                        <input type="text"
-                               class="filter-search-input form-control form-control-sm"
-                               v-model="searchQuery"
-                               @input="onSearchInput" @keyup.enter="onSearchInput"
-                               :placeholder="searchPlaceholder">
-                        <label class="filter-exact-wrap" title="Match exact phrase">
-                            <input type="checkbox" v-model="exact_match" @change="onSearchInput"
-                                   class="form-check-input" style="width:.85rem;height:.85rem;cursor:pointer;margin:0;flex-shrink:0;">
-                            <span class="d-none d-md-inline">Exact</span>
-                        </label>
-                    </div>
-                    <div v-if="searchQuery" class="mt-1" style="font-size:0.7rem; color:var(--text-3);">
-                        <i class="fas fa-info-circle me-1"></i>
-                        <strong>[[ scopeLabel ]]</strong>
-                        <span v-if="exact_match"> · exact phrase</span>
-                    </div>
-                </div>
-
-                <!-- Type -->
-                <div>
-                    <div class="filter-label">Type</div>
-                    <select class="form-select form-select-sm" @change="onSearchInput" v-model="filter_type"
-                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
-                        <option value="">All types</option>
-                        <option value="MISP_TO_STIX">MISP → STIX</option>
-                        <option value="STIX_TO_MISP">STIX → MISP</option>
-                    </select>
-                </div>
-
-                <!-- Sort -->
-                <div>
-                    <div class="filter-label">Sort</div>
-                    <select class="form-select form-select-sm" v-model="sort_order" @change="onSearchInput"
-                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
-                        <option value="desc">Newest first</option>
-                        <option value="asc">Oldest first</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Row 2: Dates + Visibility + Toggles -->
-            <div class="filter-row-dates mb-3">
-
-                <!-- Date from -->
-                <div>
-                    <div class="filter-label">From</div>
-                    <input type="date" class="form-control form-control-sm" v-model="date_from"
-                           @change="onSearchInput"
-                           style="background:var(--surface); color:var(--text); border-color:var(--border);">
-                </div>
-
-                <!-- Date to -->
-                <div>
-                    <div class="filter-label">To</div>
-                    <input type="date" class="form-control form-control-sm" v-model="date_to"
-                           @change="onSearchInput"
-                           style="background:var(--surface); color:var(--text); border-color:var(--border);">
-                </div>
-
+            <!-- Filters: Vitrine fields (<vt-field>), wired to the same Vue state -->
+            <div class="vt-filter-grid mb-3">
+                <vt-field type="search" label="Search" clearable class="vt-filter-wide"
+                    :placeholder="searchPlaceholder" :value="searchQuery"
+                    @vt-input="searchQuery = $event.detail.value; onSearchInput()"></vt-field>
+                <vt-field type="select" label="Search in" :value="search_scope"
+                    @vt-change="search_scope = $event.detail.value; onSearchInput()">[{"value":"all","label":"Everything"},{"value":"name","label":"Name"},{"value":"description","label":"Description"},{"value":"content","label":"JSON content"}]</vt-field>
+                <vt-field type="switch" label="Exact phrase" :checked="exact_match || null"
+                    @vt-change="exact_match = !!$event.detail.value; onSearchInput()"></vt-field>
+                <vt-field type="select" label="Type" :value="filter_type || 'all'"
+                    @vt-change="filter_type = $event.detail.value === 'all' ? '' : $event.detail.value; onSearchInput()">[{"value":"all","label":"All types"},{"value":"MISP_TO_STIX","label":"MISP → STIX"},{"value":"STIX_TO_MISP","label":"STIX → MISP"}]</vt-field>
+                <vt-field type="select" label="Sort" :value="sort_order"
+                    @vt-change="sort_order = $event.detail.value; onSearchInput()">[{"value":"desc","label":"Newest first"},{"value":"asc","label":"Oldest first"}]</vt-field>
+                <vt-field type="date" label="From" :value="date_from" clearable
+                    @vt-change="date_from = $event.detail.value; onSearchInput()"></vt-field>
+                <vt-field type="date" label="To" :value="date_to" clearable
+                    @vt-change="date_to = $event.detail.value; onSearchInput()"></vt-field>
                 {% if current_user.is_authenticated %}
-                <!-- Visibility — more room now -->
-                <div class="filter-mine-wrap">
-                    <div class="filter-label">Visibility</div>
-                    <select class="form-select form-select-sm" v-model="vis_filter" @change="onSearchInput"
-                            style="background:var(--surface); color:var(--text); border-color:var(--border);">
-                        <option value="">All</option>
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
-                    </select>
-                </div>
-
-                <!-- Mine only + Favorites side by side -->
-                <div class="filter-toggles-group">
-                    <div class="filter-label">Filters</div>
-                    <div class="d-flex gap-3 align-items-center">
-                        <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
-                            <input class="form-check-input" type="checkbox" id="myConversionsOnly"
-                                   v-model="only_mine" @change="onSearchInput"
-                                   style="width:2.2rem; height:1.2rem; cursor:pointer;">
-                            <label class="form-check-label" for="myConversionsOnly"
-                                   style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
-                                Mine only
-                            </label>
-                        </div>
-                        <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
-                            <input class="form-check-input" type="checkbox" id="favoritesOnly"
-                                   v-model="favorites_only" @change="onSearchInput"
-                                   style="width:2.2rem; height:1.2rem; cursor:pointer;">
-                            <label class="form-check-label" for="favoritesOnly"
-                                   style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
-                                Favorites
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                <vt-field type="select" label="Visibility" :value="vis_filter || 'all'"
+                    @vt-change="vis_filter = $event.detail.value === 'all' ? '' : $event.detail.value; onSearchInput()">[{"value":"all","label":"All"},{"value":"public","label":"Public"},{"value":"private","label":"Private"}]</vt-field>
+                <vt-field type="switch" label="Mine only" :checked="only_mine || null"
+                    @vt-change="only_mine = !!$event.detail.value; onSearchInput()"></vt-field>
+                <vt-field type="switch" label="Favorites" :checked="favorites_only || null"
+                    @vt-change="favorites_only = !!$event.detail.value; onSearchInput()"></vt-field>
                 {% else %}
-                <!-- Mine only (non-authenticated: no favorites) -->
-                <div class="filter-mine-wrap">
-                    <div class="filter-label">Mine only</div>
-                    <div class="form-check form-switch mb-0" style="padding-left:2.5em;">
-                        <input class="form-check-input" type="checkbox" id="myConversionsOnly"
-                               v-model="only_mine" @change="onSearchInput"
-                               style="width:2.2rem; height:1.2rem; cursor:pointer;">
-                        <label class="form-check-label" for="myConversionsOnly"
-                               style="font-size:0.8rem; color:var(--text-2); cursor:pointer;">
-                            [[ only_mine ? 'On' : 'Off' ]]
-                        </label>
-                    </div>
-                </div>
+                <vt-field type="switch" label="Mine only" :checked="only_mine || null"
+                    @vt-change="only_mine = !!$event.detail.value; onSearchInput()"></vt-field>
                 {% endif %}
             </div>
 
@@ -231,7 +134,18 @@
             :page="current_page" :total="total_pages"
             @change="fetchConversionHistory" class="mb-4">
         </app-pagination>
-        <div v-if="conversion_history.length > 0">
+        <!-- Cards or table (Vitrine <vt-table>), remembered in this browser -->
+        <div v-if="conversion_history.length > 0" class="d-flex justify-content-end mb-2">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Layout">
+                <button type="button" class="btn" :class="viewMode === 'cards' ? 'btn-primary' : 'btn-outline-secondary'"
+                    @click="setViewMode('cards')"><i class="fas fa-grip me-1"></i>Cards</button>
+                <button type="button" class="btn" :class="viewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'"
+                    @click="setViewMode('table')"><i class="fas fa-table me-1"></i>Table</button>
+            </div>
+        </div>
+        <history-table v-if="conversion_history.length > 0 && viewMode === 'table'"
+            :rows="conversion_history"></history-table>
+        <div v-if="conversion_history.length > 0 && viewMode === 'cards'">
 
             <div v-for="item in conversion_history" :key="item.id"
                 class="history-card" :class="{ 'hc-expanded': expandedIds.has(item.id) }">
@@ -416,7 +330,7 @@
         </div>
 
         <!-- Empty state -->
-        <div v-else class="text-center py-5">
+        <div v-if="conversion_history.length === 0" class="text-center py-5">
             <i class="fas fa-inbox fa-3x mb-3" style="color:var(--text-3);"></i>
             <p style="color:var(--text-2); font-weight:500;">No conversions found</p>
             <p style="color:var(--text-3); font-size:0.85rem;">Try adjusting your filters or create a new conversion.</p>
@@ -439,6 +353,9 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
     import AppPagination from '/static/js/pagination.js'
     import SingleTagDisplay from '/static/js/tags/singleTagDisplay.js'
     import MultiTagFilter from '/static/js/tags/multiTagFilter.js'
+    import { useVitrine, isVitrineTag } from '/static/js/vitrine.js'
+    import { HistoryTable } from '/static/js/vitrineTable.js'
+    useVitrine('field')
 
     function adaptTag(t) {
         return {
@@ -452,10 +369,18 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
     }
 
     const app = createApp({
-        components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay, 'multi-tag-filter': MultiTagFilter },
+        components: { 'app-pagination': AppPagination, 'single-tag': SingleTagDisplay, 'multi-tag-filter': MultiTagFilter, 'history-table': HistoryTable },
         delimiters: ['[[', ']]'],
         setup() {
             const conversion_history    = ref([])
+            // Cards or table, remembered in this browser.
+            let savedMode = 'cards'
+            try { savedMode = localStorage.getItem('cti-history-view') || 'cards' } catch { }
+            const viewMode = ref(savedMode === 'table' ? 'table' : 'cards')
+            function setViewMode(mode) {
+                viewMode.value = mode
+                try { localStorage.setItem('cti-history-view', mode) } catch { }
+            }
             const current_page          = ref(1)
             const total_pages           = ref(1)
             const filter_type           = ref('')
@@ -690,12 +615,13 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
-                favorites_only, toggleFavorite,
+                favorites_only, toggleFavorite, viewMode, setViewMode,
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
                 formatDateTime: ctiDate.formatDateTime
             }
         }
     })
+    app.config.compilerOptions.isCustomElement = isVitrineTag
     app.component('evaluation-panel', EvaluationPanel)
     app.mount('#main-containers')
 </script>

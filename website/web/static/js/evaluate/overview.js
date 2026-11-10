@@ -1,3 +1,4 @@
+import { useVitrine } from '../vitrine.js'
 // overview.js - Vue 3 Options API component for /evaluate/overview
 
 const OverviewApp = {
@@ -18,10 +19,6 @@ const OverviewApp = {
             timeline_loading: true,
 
             // Chart instances
-            _donutChart: null,
-            _barChart: null,
-            _radarChart: null,
-            _timelineChart: null
         }
     },
 
@@ -116,159 +113,52 @@ const OverviewApp = {
             return getComputedStyle(document.documentElement).getPropertyValue(v).trim() || ''
         },
 
+        // Charts are Vitrine <vt-chart> elements (Apache ECharts, self-hosted):
+        // data handed over as CSV text, theme and accent kept in sync with the site.
+        async mountChart(id, csv, attrs) {
+            const host = document.getElementById(id)
+            if (!host) return
+            const [ok] = await useVitrine('chart')
+            if (!ok) { host.textContent = 'The chart could not load.'; return }
+            const el = document.createElement('vt-chart')
+            for (const [k, v] of Object.entries(attrs)) {
+                if (v === true) el.setAttribute(k, '')
+                else if (v !== false && v !== undefined) el.setAttribute(k, String(v))
+            }
+            el.content = csv
+            host.replaceChildren(el)
+        },
+
+        csvCell(v) {
+            const t = String(v ?? '')
+            return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t
+        },
+
         async drawCharts() {
             if (!this.stats) return
             try {
-                const { Chart, registerables } = await import(
-                    'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm'
-                )
-                Chart.register(...registerables)
-
-                const text2  = this.cssVar('--text-2')  || '#6b7280'
-                const text3  = this.cssVar('--text-3')  || '#9ca3af'
-                const border = this.cssVar('--border')  || '#e5e7eb'
-                const accent = this.cssVar('--accent')  || '#2563eb'
-
-                if (this._donutChart) { this._donutChart.destroy(); this._donutChart = null }
-                if (this._barChart)   { this._barChart.destroy();   this._barChart   = null }
-                if (this._radarChart) { this._radarChart.destroy(); this._radarChart  = null }
-
-                // ── Donut: like vs dislike ──
-                const donutEl = document.getElementById('ov-donut')
-                if (donutEl && this.has_donut_data) {
-                    this._donutChart = new Chart(donutEl, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Helpful', 'Not helpful'],
-                            datasets: [{
-                                data: [this.stats.total_likes, this.stats.total_dislikes],
-                                backgroundColor: ['#2563eb', '#dc2626'],
-                                borderWidth: 0,
-                                hoverOffset: 6
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            cutout: '70%',
-                            animation: { duration: 600 },
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: { color: text2, font: { size: 11 }, boxWidth: 10, padding: 10 }
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        label: ctx => ` ${ctx.label}: ${ctx.raw}`
-                                    }
-                                }
-                            }
-                        }
-                    })
+                if (this.has_donut_data) {
+                    await this.mountChart('ov-donut',
+                        `Answer,Votes\nHelpful,${this.stats.total_likes}\nNot helpful,${this.stats.total_dislikes}`,
+                        { type: 'pie', height: 240, tabs: true })
                 }
-
-                // ── Horizontal bar: top tags ──
-                const barEl = document.getElementById('ov-bar')
-                if (barEl && this.has_bar_data) {
-                    const topTags = this.stats.top_tags
-                    const shortLabel = (label) => label.length > 28 ? label.substring(0, 26) + '…' : label
-                    this._barChart = new Chart(barEl, {
-                        type: 'bar',
-                        data: {
-                            labels: topTags.map(t => shortLabel(t.label || t.name)),
-                            datasets: [{
-                                data: topTags.map(t => t.count),
-                                backgroundColor: topTags.map(t => t.color || accent),
-                                borderWidth: 0,
-                                borderRadius: 4
-                            }]
-                        },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: { duration: 600 },
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        title: (items) => topTags[items[0].dataIndex]?.name || '',
-                                        label: ctx => ` ${ctx.raw} vote${ctx.raw !== 1 ? 's' : ''}`
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    min: 0,
-                                    ticks: { color: text3, font: { size: 10 }, stepSize: 1 },
-                                    grid: { color: border },
-                                    border: { display: false },
-                                    title: { display: true, text: 'Number of votes', color: text3, font: { size: 10 } }
-                                },
-                                y: {
-                                    ticks: { color: text2, font: { size: 10 } },
-                                    grid: { display: false },
-                                    title: { display: true, text: 'Reaction tag', color: text3, font: { size: 10 } }
-                                }
-                            }
-                        }
-                    })
+                if (this.has_bar_data) {
+                    const rows = this.stats.top_tags.map(t => `${this.csvCell(t.label || t.name)},${t.count}`)
+                    await this.mountChart('ov-bar', `Reaction tag,Votes\n${rows.join('\n')}`,
+                        { type: 'bar', horizontal: true, height: Math.max(240, 28 * rows.length + 60), tabs: true, legend: false })
                 }
-
-                // ── Radar: category breakdown ──
-                const radarEl = document.getElementById('ov-radar')
-                if (radarEl && this.has_radar_data) {
+                if (this.has_radar_data) {
+                    // Average score per category, 0 (very low) to 100 (very high).
                     const VALUE_SCORE = { 'very-low': 0, 'low': 25, 'moderate': 50, 'high': 75, 'very-high': 100 }
-                    const cats = Object.keys(this.stats.category_breakdown)
-                    const scores = cats.map(cat => {
-                        const counts = this.stats.category_breakdown[cat]
+                    const rows = Object.keys(this.stats.category_breakdown).map(cat => {
                         let total = 0, sum = 0
-                        for (const [val, cnt] of Object.entries(counts)) {
-                            if (val in VALUE_SCORE) {
-                                sum += VALUE_SCORE[val] * cnt
-                                total += cnt
-                            }
+                        for (const [val, cnt] of Object.entries(this.stats.category_breakdown[cat])) {
+                            if (val in VALUE_SCORE) { sum += VALUE_SCORE[val] * cnt; total += cnt }
                         }
-                        return total ? Math.round(sum / total) : 0
+                        return `${this.csvCell(cat.charAt(0).toUpperCase() + cat.slice(1))},${total ? Math.round(sum / total) : 0}`
                     })
-                    this._radarChart = new Chart(radarEl, {
-                        type: 'radar',
-                        data: {
-                            labels: cats.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
-                            datasets: [{
-                                label: 'Avg Score',
-                                data: scores,
-                                backgroundColor: 'rgba(37,99,235,0.15)',
-                                borderColor: accent,
-                                borderWidth: 2,
-                                pointBackgroundColor: accent,
-                                pointRadius: 4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: { duration: 600 },
-                            scales: {
-                                r: {
-                                    min: 0,
-                                    max: 100,
-                                    ticks: { color: text3, font: { size: 9 }, stepSize: 25 },
-                                    grid: { color: border },
-                                    pointLabels: { color: text2, font: { size: 10 } },
-                                    angleLines: { color: border }
-                                }
-                            },
-                            plugins: {
-                                legend: { display: false },
-                                tooltip: {
-                                    callbacks: {
-                                        label: ctx => ` Score: ${ctx.raw}/100`
-                                    }
-                                }
-                            }
-                        }
-                    })
+                    await this.mountChart('ov-radar', `Category,Average score\n${rows.join('\n')}`,
+                        { type: 'bar', horizontal: true, min: 0, max: 100, height: Math.max(240, 32 * rows.length + 60), tabs: true, legend: false })
                 }
             } catch (e) {
                 console.error('overview: drawCharts error', e)
@@ -278,77 +168,9 @@ const OverviewApp = {
         async drawTimelineChart() {
             if (!this.timeline.length) return
             try {
-                const { Chart, registerables } = await import(
-                    'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/+esm'
-                )
-                Chart.register(...registerables)
-
-                const text2  = this.cssVar('--text-2')  || '#6b7280'
-                const text3  = this.cssVar('--text-3')  || '#9ca3af'
-                const border = this.cssVar('--border')  || '#e5e7eb'
-                const accent = this.cssVar('--accent')  || '#2563eb'
-
-                if (this._timelineChart) { this._timelineChart.destroy(); this._timelineChart = null }
-
-                const el = document.getElementById('ov-timeline')
-                if (!el) return
-
-                const labels = this.timeline.map(d => {
-                    const date = new Date(d.date)
-                    return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
-                })
-                const counts = this.timeline.map(d => d.count)
-
-                this._timelineChart = new Chart(el, {
-                    type: 'line',
-                    data: {
-                        labels,
-                        datasets: [{
-                            label: 'Evaluations',
-                            data: counts,
-                            borderColor: accent,
-                            backgroundColor: 'rgba(37,99,235,0.08)',
-                            borderWidth: 2,
-                            pointRadius: 3,
-                            pointBackgroundColor: accent,
-                            fill: true,
-                            tension: 0.35
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: { duration: 600 },
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: ctx => ` ${ctx.raw} evaluation${ctx.raw !== 1 ? 's' : ''}`
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                ticks: {
-                                    color: text3,
-                                    font: { size: 10 },
-                                    maxRotation: 0,
-                                    maxTicksLimit: 10
-                                },
-                                grid: { display: false },
-                                border: { display: false },
-                                title: { display: true, text: 'Date', color: text3, font: { size: 10 } }
-                            },
-                            y: {
-                                min: 0,
-                                ticks: { color: text3, font: { size: 10 }, stepSize: 1, precision: 0 },
-                                grid: { color: border },
-                                border: { display: false },
-                                title: { display: true, text: 'Evaluations', color: text3, font: { size: 10 } }
-                            }
-                        }
-                    }
-                })
+                const rows = this.timeline.map(d => `${String(d.date).slice(0, 10)},${d.count}`)
+                await this.mountChart('ov-timeline', `Date,Evaluations\n${rows.join('\n')}`,
+                    { type: 'area', smooth: true, height: 260, zoom: rows.length > 30, tabs: true, legend: false, min: 0 })
             } catch (e) {
                 console.error('overview: drawTimelineChart error', e)
             }

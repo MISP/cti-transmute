@@ -63,7 +63,7 @@
             <div class="ov-chart-card">
                 <div class="ov-chart-title"><i class="fas fa-circle-half-stroke"></i> Helpful vs Not</div>
                 <div class="ov-chart-canvas-wrap" style="min-height:220px;">
-                    <canvas id="ov-donut" v-show="has_donut_data"></canvas>
+                    <div id="ov-donut" class="ov-vt-chart" v-show="has_donut_data"></div>
                     <div v-if="!stats_loading && !has_donut_data" class="ov-chart-empty">
                         <i class="fas fa-chart-pie"></i>
                         No like/dislike data yet
@@ -75,7 +75,7 @@
             <div class="ov-chart-card">
                 <div class="ov-chart-title"><i class="fas fa-tags"></i> Top Reaction Tags</div>
                 <div class="ov-chart-canvas-wrap" style="min-height:220px;">
-                    <canvas id="ov-bar" v-show="has_bar_data"></canvas>
+                    <div id="ov-bar" class="ov-vt-chart" v-show="has_bar_data"></div>
                     <div v-if="!stats_loading && !has_bar_data" class="ov-chart-empty">
                         <i class="fas fa-tag"></i>
                         No tag reaction data yet
@@ -87,7 +87,7 @@
             <div class="ov-chart-card">
                 <div class="ov-chart-title"><i class="fas fa-spider"></i> Category Breakdown</div>
                 <div class="ov-chart-canvas-wrap" style="min-height:220px;">
-                    <canvas id="ov-radar" v-show="has_radar_data"></canvas>
+                    <div id="ov-radar" class="ov-vt-chart" v-show="has_radar_data"></div>
                     <div v-if="!stats_loading && !has_radar_data" class="ov-chart-empty">
                         <i class="fas fa-chart-radar"></i>
                         No category data yet
@@ -170,7 +170,7 @@
                     No evaluation activity yet
                 </div>
                 <div v-else class="ov-chart-canvas-wrap" style="min-height:220px; padding:0.5rem 0;">
-                    <canvas id="ov-timeline"></canvas>
+                    <div id="ov-timeline" class="ov-vt-chart"></div>
                 </div>
             </div>
         </div>
@@ -182,7 +182,10 @@
 {% block script %}
 <script type="module" nonce="{{ csp_nonce }}">
     import OverviewApp from '/static/js/evaluate/overview.js'
+    import { isVitrineTag } from '/static/js/vitrine.js'
     const { createApp } = Vue
-    createApp(OverviewApp).mount('#ov-app')
+    const app = createApp(OverviewApp)
+    app.config.compilerOptions.isCustomElement = isVitrineTag
+    app.mount('#ov-app')
 </script>
 {% endblock %}

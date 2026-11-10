@@ -16,8 +16,9 @@ def setup_api(application) -> Api:
         api_blueprint,
         title='CTI Transmute API',
         version=_dist_version("cti-transmute"),
-        description="<a href='https://github.com/misp/cti-transmute' "
-        "rel='noreferrer' target='_blank'>CTI Transmute</a>",
+        # Markdown, which both Swagger UI and Vitrine's <vt-openapi> render.
+        description="[CTI Transmute](https://github.com/misp/cti-transmute): "
+        "convert threat intelligence between MISP and STIX.",
         license="GNU Affero General Public License version 3",
         license_url="https://www.gnu.org/licenses/agpl-3.0.html",
         doc="/",
