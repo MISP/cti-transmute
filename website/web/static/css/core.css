@@ -1794,3 +1794,8 @@ html.christmas-mode .alert-warning { color: #fde68a; }
 .vt-filter-grid vt-field:focus-within,
 .vt-filter-grid vt-field:hover { z-index: 30; }
 .history-filter-body, .history-filter-panel { overflow: visible !important; }
+/* ...and the whole grid above what follows it (the tag filter), while one of
+   its lists is open: the open list is never drawn under the next row. */
+.vt-filter-grid { position: relative; z-index: 2; }
+.vt-filter-grid:focus-within, .vt-filter-grid:hover { z-index: 1050; }
+.filter-tag-row { position: relative; z-index: 1; }
