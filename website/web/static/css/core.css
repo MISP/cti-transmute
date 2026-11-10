@@ -18,7 +18,8 @@ html {
 html.light-mode,
 html.dark-mode,
 html.dusk-mode,
-html.ocean-mode {
+html.ocean-mode,
+html.christmas-mode {
   visibility: visible;
 }
 
@@ -148,6 +149,35 @@ html.ocean-mode {
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
   --shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.14);
   --shadow-focus: 0 0 0 3px rgba(30, 58, 138, 0.20);
+}
+
+/* ── Christmas theme — snowy night, berry red + gold ────────── */
+html.christmas-mode {
+  --bg: #0a1128;
+  --bg-2: #0e1631;
+  --surface: #121b3a;
+  --surface-2: #172245;
+  --border: #22305c;
+  --border-2: #2c3d70;
+  --color-sidebar: #121b3a;
+
+  --accent: #f0525e;
+  --accent-light: rgba(240, 82, 94, 0.12);
+  --accent-hover: #dc3545;
+  --accent-2: #f6c453;
+  --success: #4ade80;
+  --danger: #fb7185;
+  --warning: #fbbf24;
+
+  --text: #f1f5ff;
+  --text-2: #a9b6dc;
+  --text-3: #56648f;
+
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.50);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.60);
+  --shadow-focus: 0 0 0 3px rgba(240, 82, 94, 0.28);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1642,3 +1672,52 @@ html.ocean-mode .alert-warning { color: #92400e; }
 .anim-hero-2 { animation-delay: 110ms; }
 .anim-hero-3 { animation-delay: 210ms; }
 .anim-hero-4 { animation-delay: 340ms; }
+
+/* ═══════════════════════════════════════════════════════════════
+   CHRISTMAS MODE — component overrides
+   (the night scene itself lives in christmas.css / christmas.js)
+═══════════════════════════════════════════════════════════════ */
+html.christmas-mode .alert-success { color: #86efac; }
+html.christmas-mode .alert-danger  { color: #fda4af; }
+html.christmas-mode .alert-warning { color: #fde68a; }
+
+.christmas-mode .toast-border-success-subtle,
+.christmas-mode .toast-border-success {
+  border-left-color: #4ade80;
+  background-color: #0d2a1c;
+}
+.christmas-mode .toast-border-danger-subtle,
+.christmas-mode .toast-border-danger {
+  border-left-color: #fb7185;
+  background-color: #2d0f18;
+}
+.christmas-mode .toast-border-warning-subtle,
+.christmas-mode .toast-border-warning {
+  border-left-color: #f6c453;
+  background-color: #2d2100;
+}
+.christmas-mode .toast-border-info-subtle,
+.christmas-mode .toast-border-info {
+  border-left-color: #f0525e;
+  background-color: #1c1430;
+}
+.christmas-mode .modern-toast .toast-body  { color: #f1f5ff; }
+.christmas-mode .toast-icon-wrapper        { background: rgba(255,255,255,0.08); }
+.christmas-mode .btn-close-custom          { color: #a9b6dc; }
+.christmas-mode .btn-close-custom:hover    { color: #f1f5ff; }
+
+.christmas-mode .flash-success {
+  border-left-color: #4ade80; background-color: #0d2a1c; color: #f1f5ff;
+}
+.christmas-mode .flash-danger,
+.christmas-mode .flash-error {
+  border-left-color: #fb7185; background-color: #2d0f18; color: #f1f5ff;
+}
+.christmas-mode .flash-warning {
+  border-left-color: #f6c453; background-color: #2d2100; color: #f1f5ff;
+}
+.christmas-mode .flash-info {
+  border-left-color: #f0525e; background-color: #1c1430; color: #f1f5ff;
+}
+.christmas-mode .flash-container .btn-close-custom       { color: #a9b6dc; }
+.christmas-mode .flash-container .btn-close-custom:hover { color: #f1f5ff; }

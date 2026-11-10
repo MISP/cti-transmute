@@ -1190,7 +1190,7 @@ export default MyViz</code></pre>
         <section class="dc-section" id="theming">
             <h2 class="dc-section-title"><i class="fas fa-palette"></i> CSS &amp; Theming</h2>
             <p class="dc-lead">
-                The app supports 4 themes — <code>light</code>, <code>dark</code>, <code>dusk</code>, <code>ocean</code>
+                The app supports 5 themes — <code>light</code>, <code>dark</code>, <code>dusk</code>, <code>ocean</code>, <code>christmas</code>
                 — applied as a class on <code>&lt;html&gt;</code> (e.g. <code>html.dark-mode</code>).
                 All color values are CSS custom properties defined in <code>core.css</code>.
             </p>
@@ -1225,7 +1225,7 @@ export default MyViz</code></pre>
                         <button class="dc-code-copy"><i class="fas fa-copy"></i> Copy</button>
                     </div>
                     <pre><code class="language-javascript">document.documentElement.addEventListener('themechange', (e) =&gt; {
-    const theme = e.detail?.theme  // 'light' | 'dark' | 'dusk' | 'ocean'
+    const theme = e.detail?.theme  // 'light' | 'dark' | 'dusk' | 'ocean' | 'christmas'
     const isDark = !['light', 'ocean'].includes(theme)
     // re-render charts, swap hljs stylesheet, etc.
 })</code></pre>
@@ -1255,7 +1255,7 @@ export default MyViz</code></pre>
     // ── Apply hljs theme based on page theme ────────────────────
     const _LIGHT = ['light', 'ocean']
     function applyDocsHljs(theme) {
-        const t = theme || ['light','dark','dusk','ocean'].find(
+        const t = theme || ['light','dark','dusk','ocean','christmas'].find(
             x => document.documentElement.classList.contains(x + '-mode')
         ) || 'light'
         const isDark = !_LIGHT.includes(t)

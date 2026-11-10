@@ -955,7 +955,7 @@
 
     const _LIGHT_THEMES = ['light', 'ocean']
     function applyHljsTheme(theme) {
-        const t = theme || ['light','dark','dusk','forest'].find(
+        const t = theme || ['light','dark','dusk','ocean','christmas'].find(
             x => document.documentElement.classList.contains(x + '-mode')
         ) || 'light'
         const isDark = !_LIGHT_THEMES.includes(t)

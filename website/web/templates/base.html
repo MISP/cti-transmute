@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
+{#- The Christmas theme is only offered to admins -#}
+{% set christmas_ok = current_user.is_authenticated and current_user.is_admin() %}
 
 <head>
     <meta charset="utf-8">
@@ -9,7 +11,7 @@
 
     <script nonce="{{ csp_nonce }}">
         (function () {
-            const THEMES = ['light', 'dark', 'dusk', 'ocean'];
+            const THEMES = ['light', 'dark', 'dusk', 'ocean'{% if christmas_ok %}, 'christmas'{% endif %}];
             let t = localStorage.getItem('theme') ||
                 (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             if (!THEMES.includes(t)) t = 'light';
@@ -26,6 +28,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tags.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pagination.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+    {% if christmas_ok %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/christmas.css') }}">
+    {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
@@ -157,6 +162,9 @@
     <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
     <script src="{{ url_for('static', filename='js/datetime.js') }}"></script>
+    {% if christmas_ok %}
+    <script src="{{ url_for('static', filename='js/christmas.js') }}" defer></script>
+    {% endif %}
     <script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
 
     <script nonce="{{ csp_nonce }}">
@@ -165,12 +173,13 @@
                 const html = document.documentElement;
                 const icon = document.getElementById('theme-icon');
 
-                const THEMES = ['light', 'dark', 'dusk', 'ocean'];
+                const THEMES = ['light', 'dark', 'dusk', 'ocean'{% if christmas_ok %}, 'christmas'{% endif %}];
                 const ICONS  = {
                     light:  'fas fa-sun',
                     dark:   'fas fa-moon',
                     dusk:   'fas fa-star',
                     ocean:  'fas fa-water',
+                    christmas: 'fas fa-tree',
                 };
 
                 function applyTheme(t) {
