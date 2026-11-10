@@ -1316,3 +1316,36 @@ html.christmas-mode .btn-action:focus {
     padding: .75rem 1rem;
     background: var(--surface);
 }
+
+/* ── Graph guide ("How to read this graph") ─────────────────────── */
+.graph-guide { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 22px; color: var(--text-2); }
+.graph-guide-toc { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.graph-guide-toc a {
+  font-size: .78rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--text-2); text-decoration: none; background: var(--surface-2);
+}
+.graph-guide-toc a:hover, .graph-guide-toc a:focus-visible { color: var(--accent); border-color: var(--accent); }
+.graph-guide-section { scroll-margin-top: 80px; }
+.graph-guide-section h6 {
+  font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text); margin-bottom: 8px;
+}
+.graph-guide-section p, .graph-guide-section li { font-size: .86rem; line-height: 1.6; max-width: 95ch; }
+.graph-guide-section ul { padding-left: 1.2rem; margin: 0 0 6px; }
+.graph-guide-section code { font-size: .8rem; }
+.graph-guide-section kbd { font-size: .72rem; padding: 1px 5px; }
+.graph-guide-table-wrap { overflow-x: auto; margin: 8px 0 12px; }
+.graph-guide-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.graph-guide-table th {
+  text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-3); padding: 6px 10px; border-bottom: 1px solid var(--border-2);
+}
+.graph-guide-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.graph-guide-table td:first-child { white-space: nowrap; font-weight: 600; color: var(--text); }
+.graph-guide-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; }
+.graph-guide-emblem {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  border: 4px double; background: var(--surface); font-size: .78rem;
+}
+.graph-guide-chips-title { font-size: .76rem; font-weight: 600; color: var(--text-3); align-self: center; margin-right: 4px; }
+.graph-guide-tlp { font: 700 .7rem/1 var(--font-mono); padding: 4px 7px; border-radius: 4px; border: 1px solid var(--border-2); }

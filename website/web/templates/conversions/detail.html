@@ -431,35 +431,148 @@
                     <div class="graph-legend mt-3">
                         <details>
                             <summary><i class="fas fa-circle-info me-1"></i> How to read this graph</summary>
-                            <div class="graph-legend-body">
-                                <div class="graph-legend-section">
-                                    <h6>Navigation</h6>
-                                    <p>Scroll to zoom, drag the background to pan, drag a node to move it. <strong>Hover</strong> a node or a link for a short card; <strong>click</strong> it for every detail in the side panel. The panel starts closed: a pulsing red dot on its button (bottom left) means a selection is waiting there. Right-click for more actions.</p>
-                                </div>
-                                <div class="graph-legend-section">
+                            <div class="graph-guide" id="graph-guide">
+                                <!-- Full guide to the Graph tab. The tables marked data-guide are
+                                     filled from the graph's own code (static/js/graph/guide.js), so
+                                     they always match what the graph draws. -->
+                                <nav class="graph-guide-toc" aria-label="Guide contents">
+                                    <a href="#gg-start">Getting around</a>
+                                    <a href="#gg-nodes">Nodes</a>
+                                    <a href="#gg-links">Links</a>
+                                    <a href="#gg-misp">From MISP</a>
+                                    <a href="#gg-stix">From STIX</a>
+                                    <a href="#gg-groups">Groups</a>
+                                    <a href="#gg-views">Views</a>
+                                    <a href="#gg-pivot">Pivot</a>
+                                    <a href="#gg-details">Details &amp; hover</a>
+                                    <a href="#gg-filter">Filter, search, table</a>
+                                    <a href="#gg-share">Share a view</a>
+                                </nav>
+
+                                <section id="gg-start" class="graph-guide-section">
+                                    <h6>Getting around</h6>
+                                    <ul>
+                                        <li><strong>Move</strong>: scroll to zoom, drag the background to pan, drag a node to move it. The buttons on the right fit the graph, zoom, and go fullscreen.</li>
+                                        <li><strong>Hover</strong> a node, a group or a link for a short card: its value, type, family, and a few facts with icons.</li>
+                                        <li><strong>Click</strong> one to select it and read everything in the side panel. The panel starts closed: when a selection is waiting, its button (bottom left) turns blue with a pulsing dot and a <em>Details</em> pill.</li>
+                                        <li><strong>Right-click</strong> a node: copy its value, or open its raw JSON over the graph (also in fullscreen).</li>
+                                        <li><strong>Input / Output</strong> (top right) switches between the document you converted and what the conversion produced.</li>
+                                        <li><strong>Left rail</strong>: Select, View (layout), Physics, Simplify (grouping rules), Pivot (<kbd>P</kbd>) and Views (<kbd>Shift</kbd>+<kbd>V</kbd>).</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-nodes" class="graph-guide-section">
                                     <h6>Nodes</h6>
-                                    <p>Each node is an <strong>icon</strong> in the colour of its <strong>family</strong> (network, file &amp; payload, email, threat, technique…). The same thing looks the same on both sides: a MISP <code>ip-dst</code> and a STIX <code>ipv4-addr</code> share colour and icon. Labels appear as you zoom in. A dot on a node's rim is its <strong>TLP</strong>; a number below is how many times it was <strong>sighted</strong>.</p>
-                                </div>
-                                <div class="graph-legend-section">
+                                    <p>Every node is an <strong>icon</strong> on a light disc ringed in the colour of its <strong>family</strong>. The same thing looks the same whichever side it comes from: a MISP <code>ip-dst</code> and a STIX <code>ipv4-addr</code> share colour and icon.</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="families">
+                                        <thead><tr><th>Family</th><th>Colour</th><th>Group emblem</th><th>For example</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                    <p><strong>Size</strong> says what kind of element it is: largest for the event, report or grouping, then entities (actors, malware…), objects, indicators, and smallest for single observables.</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="elements">
+                                        <thead><tr><th>Element</th><th>Size</th><th>What it is</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                    <p><strong>Label</strong>: a short value under the node, shown once the zoom makes it readable. Hashes keep both ends (<code>a3f9…c21e</code>), URLs lose their scheme, long text is cut in the middle.</p>
+                                    <p><strong>Badges</strong> on the rim: a coloured dot for a restrictive <strong>TLP</strong> (green, amber, red; clear is not marked), and a number for how many times it was <strong>sighted</strong>.</p>
+                                    <div class="graph-legend-chips" data-guide="tlp"></div>
+                                </section>
+
+                                <section id="gg-links" class="graph-guide-section">
                                     <h6>Links</h6>
-                                    <p>Thin grey lines are <strong>containment</strong> (event → attribute, report → object). Coloured arrows are <strong>relationships</strong> and object references, coloured by type and labelled with it (<em>indicates</em>, <em>uses</em>, <em>resolves-to</em>, <em>filename</em>…); dashed ones are sightings and galaxy links. The legend switches each kind of link on or off.</p>
-                                </div>
-                                <div class="graph-legend-section">
+                                    <p>A link's <strong>kind</strong> sets its line; a relationship's <strong>type</strong> sets its colour and its label (<em>uses</em>, <em>drops</em>, <em>resolves-to</em>…), shown as you zoom in. Container → content links stay silent, so the canvas is not covered with words. Each kind can be switched off in the legend (bottom right) or in Filter Graph.</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="links">
+                                        <thead><tr><th>Line</th><th>Kind</th><th>Shown at first</th><th>Where it comes from</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                    <div class="graph-legend-chips" data-guide="relations"></div>
+                                </section>
+
+                                <section id="gg-misp" class="graph-guide-section">
+                                    <h6>From MISP</h6>
+                                    <ul>
+                                        <li><strong>Event</strong> → the central container node (date, organisation, threat level, analysis, TLP, tags, galaxies).</li>
+                                        <li><strong>Object</strong> (file, domain-ip, email…) → one node named by its main attribute (a file by its filename), linked to the event and to each of its attributes by <em>contains</em>, labelled with the attribute's relation (<em>filename</em>, <em>md5</em>…).</li>
+                                        <li><strong>Attribute</strong> → an observable node; standalone ones hang off the event.</li>
+                                        <li><strong>Object reference</strong> → a <em>reference</em> link with its relationship type.</li>
+                                        <li><strong>Galaxy cluster</strong> (ATT&amp;CK technique, threat actor…) → a context node, shared by everything that carries it.</li>
+                                        <li><strong>Tags</strong> → chips on the node (their own colours); TLP becomes the badge. In the <em>Context</em> view tags become nodes.</li>
+                                        <li><strong>Sightings</strong> → counted on the attribute (seen, false positive, expired).</li>
+                                        <li><strong>Several events</strong> → the same value in two events is joined by a <em>same value</em> link.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-stix" class="graph-guide-section">
+                                    <h6>From STIX</h6>
+                                    <ul>
+                                        <li><strong>Report / grouping</strong> → the container; its <code>object_refs</code> become <em>contains</em> links. Its author (<code>created_by_ref</code>) hangs off it by <em>created by</em>.</li>
+                                        <li><strong>SDOs</strong> (malware, threat-actor, attack-pattern, vulnerability, identity…) → entity nodes.</li>
+                                        <li><strong>Indicator</strong> → a node in the family of the observable its pattern names; its pattern is shown formatted in the details.</li>
+                                        <li><strong>SCOs</strong> (ipv4-addr, domain-name, file, url…) → observable nodes.</li>
+                                        <li><strong>Relationship</strong> → a <em>relationship</em> link with its type; <strong>sighting</strong> → a dashed <em>sighting</em> link and a count.</li>
+                                        <li><strong>observed-data</strong> is a wrapper: it is not drawn, its observables take its place and keep its first/last observed dates.</li>
+                                        <li><strong>marking-definition</strong> is not drawn either: it becomes each object's TLP badge.</li>
+                                        <li>Other references (<code>resolves_to_refs</code>, <code>src_ref</code>…) are <em>embedded reference</em> links, hidden at first. <code>misp:type</code> labels from a MISP export are kept as the element's MISP origin.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-groups" class="graph-guide-section">
                                     <h6>Groups</h6>
-                                    <p>Nodes playing the same role are <strong>folded into a group</strong>: their icon on a double ring with a count. The canvas never draws more than about 250 elements; past that, things of one type, then of one family, fold together. Double-click a group to open it; <strong>Simplify</strong> (left rail) switches each folding rule on or off. Nothing is lost: search and the table still list every node.</p>
-                                </div>
-                                <div class="graph-legend-section">
+                                    <p>Nodes playing the same role are <strong>folded into a group</strong>: their icon on a double ring, with a count. A group is a view, not data: nothing is removed, search and the table still list every node.</p>
+                                    <ul>
+                                        <li><strong>By family</strong> (first in Structure): one group per family and element, <em>445 × Network</em>. Opening it shows its types and chains.</li>
+                                        <li><strong>Same neighbours</strong>: nodes of one type linked to exactly the same nodes (an event's 135 <code>ip-dst</code>).</li>
+                                        <li><strong>By type</strong>: indicators and observables of one type, whatever else they link to.</li>
+                                        <li>Off at first, in the Simplify mode: <em>chains</em>, <em>few links</em>, <em>core</em>, <em>communities</em>, <em>by TLP</em>, <em>by MISP category</em>.</li>
+                                        <li><strong>A canvas that stays readable</strong>: past about 250 drawn elements, or 40 groups, the graph folds one step further on its own (by type, then by family).</li>
+                                        <li><strong>Open</strong> a group with a double-click, Enter, or from its panel; its members come back in a coloured wash. Select a group to list its members; hover it to see the first ones.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-views" class="graph-guide-section">
                                     <h6>Views</h6>
-                                    <p><strong>Views</strong> (left rail, <kbd>Shift</kbd>+<kbd>V</kbd>) looks at the same document differently: <strong>Structure</strong> (what it holds), <strong>Relations</strong> (only the meaningful links), <strong>Infrastructure</strong> (domains, IPs, URLs, emails), <strong>Threat &amp; ATT&amp;CK</strong> (actors, malware, techniques, targets), <strong>Context</strong> (tags and galaxies as nodes), <strong>Detection</strong> (what is flagged for IDS) and <strong>Explore</strong> (start small, then pivot). <strong>Filter Graph</strong> narrows by family, type, MISP category, TLP, tag, IDS flag or value.</p>
-                                </div>
-                                <div class="graph-legend-section">
+                                    <p>A view shows the same document from another angle: which nodes and links, which layout, which grouping. Pick one from <strong>Views</strong> on the left rail (<kbd>Shift</kbd>+<kbd>V</kbd>).</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="views">
+                                        <thead><tr><th>View</th><th>What it shows</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                </section>
+
+                                <section id="gg-pivot" class="graph-guide-section">
                                     <h6>Pivot</h6>
-                                    <p>On a large document, open <strong>Explore</strong>, select a node and open <strong>Pivot</strong> (left rail, key <kbd>P</kbd>): <em>In this document</em> pulls in what the node links to, <em>Same value elsewhere</em> finds the value in another event, <em>Tags &amp; galaxies</em> brings its context. Narrow by type when the count is too high, then fetch: results land grouped, and undo takes them back. Everything is computed from the loaded document; nothing is sent anywhere.</p>
-                                </div>
-                                <div class="graph-legend-section">
-                                    <h6>Input vs Output</h6>
-                                    <p>Switch between <strong>Input</strong> and <strong>Output</strong> to compare how the conversion reorganized the data.</p>
-                                </div>
+                                    <p>For large documents: open <strong>Explore</strong> (only containers and threat entities), select a node, open <strong>Pivot</strong> (<kbd>P</kbd>) and pull in what you need. Pivots run on the loaded document only: nothing is sent anywhere.</p>
+                                    <ul>
+                                        <li><strong>In this document</strong>: what the node links to in the full document.</li>
+                                        <li><strong>Same value elsewhere</strong>: the value in another event of the input, or a duplicate observable.</li>
+                                        <li><strong>Tags &amp; galaxies</strong>: the context the node carries.</li>
+                                    </ul>
+                                    <p>Each pivot says how many results it has and lets you narrow by type when there are too many (over 2,000). Results land grouped by type; undo takes them back.</p>
+                                </section>
+
+                                <section id="gg-details" class="graph-guide-section">
+                                    <h6>Details &amp; hover</h6>
+                                    <p>The side panel is split into sections for each kind of element, with empty fields left out:</p>
+                                    <ul>
+                                        <li><strong>Event</strong>: summary, content counts, tags and galaxies, event reports (rendered Markdown).</li>
+                                        <li><strong>Object</strong>: its attributes as <em>relation → value</em>, then the object's own fields.</li>
+                                        <li><strong>Attribute</strong>: classification (type, category, IDS flag), first/last seen, tags, sightings, comment, parent object; rule values (YARA, Sigma, Snort) as code.</li>
+                                        <li><strong>Indicator</strong>: the pattern formatted, the observables it compares, validity, kill chain.</li>
+                                        <li><strong>SDO / SCO</strong>: description (Markdown), type-specific properties, hashes, kill chain, external references, provenance (author, dates, MISP origin).</li>
+                                        <li><strong>Link</strong>: source → relation → target, description, dates, confidence.</li>
+                                    </ul>
+                                    <p>Values can be copied in one click; links open in a new tab. The raw document is the last section, folded, as a searchable JSON tree.</p>
+                                </section>
+
+                                <section id="gg-filter" class="graph-guide-section">
+                                    <h6>Filter, search, table</h6>
+                                    <ul>
+                                        <li><strong>Filter Graph</strong> (top): family, element, type, MISP category, TLP, tag, IDS flag, sighted, and a value pattern.</li>
+                                        <li><strong>Legend</strong> (bottom right): click a family or a link kind to hide or show it.</li>
+                                        <li><strong>Search</strong> (top) looks into groups too: a match inside one says <em>in 12 × ip</em>, and opens it when picked.</li>
+                                        <li><strong>Table</strong> (bottom dock): every node of the document, sortable and filterable, with its group.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-share" class="graph-guide-section">
+                                    <h6>Share a view</h6>
+                                    <p>The page's address follows what you look at: the open tab, the graph view and the side (for example <code>?tab=graph&amp;view=threat&amp;side=output</code>). Copy it to share or bookmark it. A link only chooses what to show: a private Conversion stays visible to its owner and the admins only.</p>
+                                </section>
                             </div>
                         </details>
                     </div>
@@ -888,6 +1001,7 @@
     import DiagnosticsPanel from '/static/js/diagnosticsPanel.js';
     import { useVitrine, isVitrineTag } from '/static/js/vitrine.js';
     import { readParam, writeParams } from '/static/js/urlState.js';
+    import { fillGraphGuide } from '/static/js/graph/guide.js';
     // Delegated because Vue's in-DOM mount recreates these nodes, dropping any
     // listener attached to them directly (and CSP forbids inline on*= handlers).
     const GRAPH_TOOLBAR_ACTIONS = {
@@ -920,6 +1034,10 @@
         // A real click, so each tab's own loader runs (graph, comments…).
         document.querySelector(`a[data-bs-toggle="tab"][href^="#${TABS[tab]}-"]`)?.click()
     }
+    // The guide's tables come from the graph's code; filled when the guide opens.
+    document.addEventListener('toggle', (e) => {
+        if (e.target?.querySelector?.('#graph-guide') && e.target.open) fillGraphGuide(document.getElementById('graph-guide'))
+    }, true)
     document.addEventListener('shown.bs.tab', (e) => {
         const href = e.target?.getAttribute?.('href') || ''
         const tab = Object.keys(TABS).find(k => href.startsWith(`#${TABS[k]}-`))

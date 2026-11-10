@@ -230,7 +230,6 @@ export const EDGE_KINDS = {
     galaxy:       { label: 'Galaxy / tag',        color: '#a16207', width: 1,   dashed: true,  on: true  },
     correlation:  { label: 'Same value',          color: '#7c3aed', width: 1.2, dashed: true,  on: true  },
     pattern:      { label: 'Pattern observable',  color: '#0f766e', width: 1,   dashed: true,  on: false },
-    origin:       { label: 'MISP ↔ STIX',         color: '#9333ea', width: 1,   dashed: true,  on: true  },
 }
 
 /** relationship_type → colour, for the semantic edges. Others keep the kind's. */
