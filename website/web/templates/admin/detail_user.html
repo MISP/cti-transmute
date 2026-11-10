@@ -58,6 +58,11 @@
                         @click="changeAdminRight">
                     <i class="fas" :class="user.admin ? 'fa-user-minus' : 'fa-user-shield'"></i>
                 </button>
+                <!-- Regenerate the API key (revokes the current one) -->
+                <button class="du-action-btn du-action-revoke" @click="showRegenModal = true"
+                        title="Regenerate API key">
+                    <i class="fas fa-key"></i>
+                </button>
                 <!-- Delete -->
                 <button class="du-action-btn du-action-delete" @click="showDeleteModal = true"
                         title="Delete user">
@@ -237,6 +242,33 @@
     </div>
 </teleport>
 
+<!-- Regenerate API key modal -->
+<teleport to="body">
+    <div v-if="showRegenModal" class="du-modal-backdrop" @click.self="showRegenModal = false">
+        <div class="du-modal du-modal-sm">
+            <div class="du-modal-head du-modal-head-danger">
+                <span><i class="fas fa-key me-2"></i>Regenerate API key</span>
+                <button class="du-modal-close" @click="showRegenModal = false">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="du-modal-body" v-if="user">
+                <p style="font-size:0.88rem;color:var(--text-2);">
+                    Give <strong>[[ user.first_name ]] [[ user.last_name ]]</strong> a new API key?
+                    The current key stops working at once. The user finds the new one on their account page;
+                    it is not shown here.
+                </p>
+            </div>
+            <div class="du-modal-foot">
+                <button class="btn btn-secondary btn-sm" @click="showRegenModal = false">Cancel</button>
+                <button class="btn btn-danger btn-sm" :disabled="regenerating" @click="regenerateKey">
+                    <i class="fas fa-rotate me-1"></i>[[ regenerating ? 'Generating…' : 'Generate a new key' ]]
+                </button>
+            </div>
+        </div>
+    </div>
+</teleport>
+
 <!-- Delete modal -->
 <teleport to="body">
     <div v-if="showDeleteModal" class="du-modal-backdrop" @click.self="showDeleteModal = false">
@@ -321,6 +353,30 @@
 
             const showEditModal   = ref(false)
             const showDeleteModal = ref(false)
+
+            /* ── regenerate the user's API key (admin) ─────────── */
+            const showRegenModal = ref(false)
+            const regenerating   = ref(false)
+            async function regenerateKey() {
+                if (!user.value) return
+                regenerating.value = true
+                try {
+                    const res = await fetch(`/account/api_key/regenerate/${user.value.id}`, {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+                    })
+                    display_prepared_toast({
+                        message: res.ok ? 'New API key generated; the previous one no longer works.'
+                                        : 'The API key could not be regenerated.',
+                        toast_class: res.ok ? 'success-subtle' : 'danger-subtle',
+                        icon: 'fas fa-key',
+                        id: Math.random()
+                    })
+                    if (res.ok) showRegenModal.value = false
+                } finally {
+                    regenerating.value = false
+                }
+            }
             const editSaving      = ref(false)
             const editForm = reactive({ first_name: '', last_name: '', email: '' })
 
@@ -564,6 +620,7 @@
             })
 
             return {
+                showRegenModal, regenerating, regenerateKey,
                 user, stats, user_conversions, current_page, total_pages,
                 filter_type, sort_order, searchQuery, filter_public,
                 showEditModal, showDeleteModal, editSaving, editForm,
