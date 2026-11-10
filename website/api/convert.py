@@ -19,6 +19,9 @@ from website.lib.diagnostics import reported_counts
 from website.lib.exceptions import PersistenceFailed
 from website.lib.params import param_error
 
+from .docs import (
+    CONVERT_RESPONSES, MISP_EVENT_SCHEMA, STIX_BUNDLE_SCHEMA, converter_query_params)
+
 logger = logging.getLogger(__name__)
 
 convert_ns = Namespace('convert', description='Conversion operations.')
@@ -69,7 +72,8 @@ def _as_payload(text):
 
 @convert_ns.route('/list')
 class ConvertersList(Resource):
-    @convert_ns.doc(description='List available converters.')
+    @convert_ns.doc(description='List available converters, each with the JSON Schema of its parameters.',
+                    responses={200: '{available: {path: {source, target, method, description, params_schema}}}'})
     def get(self):
         available = {
             f'/api/convert/{c.source_format}_to_{c.target_format}': {
@@ -237,11 +241,19 @@ _TRANSPORT_DOC = (
 )
 
 
+# Documentation only (api/docs.py): the body, the query params and the answers.
+_misp_event = convert_ns.schema_model('MispEvent', MISP_EVENT_SCHEMA)
+_stix_bundle = convert_ns.schema_model('StixBundle', STIX_BUNDLE_SCHEMA)
+
+
 @convert_ns.route('/misp_to_stix')
 @convert_ns.doc(
-    description='Conversion MISP data collection to STIX format.' + _TRANSPORT_DOC
+    description='Conversion MISP data collection to STIX format.' + _TRANSPORT_DOC,
+    params=converter_query_params(MispToStixParams),
+    responses=CONVERT_RESPONSES,
 )
 class MISPtoSTIX(MispStixConverter):
+    @convert_ns.expect(_misp_event)
     @api_actor
     def post(self):
         return self._run('misp', 'stix', MispToStixParams)
@@ -249,9 +261,12 @@ class MISPtoSTIX(MispStixConverter):
 
 @convert_ns.route('/stix_to_misp')
 @convert_ns.doc(
-    description='Conversion STIX data collection to MISP format.' + _TRANSPORT_DOC
+    description='Conversion STIX data collection to MISP format.' + _TRANSPORT_DOC,
+    params=converter_query_params(StixToMispParams),
+    responses=CONVERT_RESPONSES,
 )
 class STIXtoMISP(MispStixConverter):
+    @convert_ns.expect(_stix_bundle)
     @api_actor
     def post(self):
         return self._run('stix', 'misp', StixToMispParams)

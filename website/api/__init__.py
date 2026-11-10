@@ -7,6 +7,8 @@ from flask_restx import Api
 
 from website.web import application, csrf
 
+from .docs import AUTHORIZATIONS
+
 api_blueprint = Blueprint('transmute_api', __name__, url_prefix='/api')
 csrf.exempt(api_blueprint)
 
@@ -25,7 +27,10 @@ def setup_api(application) -> Api:
         contact_email=application.config.get("ADMIN_EMAIL", "info@circl.lu"),
         contact_url=application.config.get(
             "ADMIN_WEBSITE", "https://www.circl.lu"
-        )
+        ),
+        # The optional X-API-KEY header, shown on every route (see api/docs.py).
+        authorizations=AUTHORIZATIONS,
+        security='apikey',
     )
 
     @api.documentation

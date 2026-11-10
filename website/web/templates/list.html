@@ -187,7 +187,8 @@
     import JsonViewer from '/static/js/graph/jsonViewer.js';
     import CtiSwitch from '/static/js/ctiSwitch.js';
     import { readParam, writeParams } from '/static/js/urlState.js';
-    useVitrine('openapi');
+    // <vt-openapi> draws descriptions with <vt-markdown> and examples with <vt-http>.
+    useVitrine('openapi', 'markdown', 'http');
 
     const { createApp, ref, reactive, nextTick, watch } = Vue
 
