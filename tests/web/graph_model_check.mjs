@@ -128,7 +128,9 @@ check('stix: observed-data edges are redirected to its observables', () => {
 
 check('stix: edge kinds', () => {
     const g = cleanGraph(stixToGraph(bundle))
-    eq([...new Set(kinds(g))], ['contains', 'embedded-ref', 'pattern', 'relationship', 'sighting'], 'kinds')
+    // created_by_ref is a field, not an edge; the pattern link duplicates based-on, so it is dropped.
+    eq([...new Set(kinds(g))], ['contains', 'relationship', 'sighting'], 'kinds')
+    eq(node(g, n => n.data.kind === 'indicator').data.fields.createdBy, 'CIRCL', 'created by')
     eq(g.edges.find(e => e.data.kind === 'sighting').data.count, 3, 'sighting count')
 })
 

@@ -49,10 +49,24 @@ function dropIsolated(g) {
     return g
 }
 
+/**
+ * Keep a container's direct `contains` edge only for what nothing else reaches.
+ * An SCO a STIX indicator is based on, or a MISP object another object
+ * references, hangs off that node instead: the tree reads as cause → effect,
+ * and chains (indicator → observable) become foldable.
+ */
+function pruneContainment(g) {
+    const reached = new Set(g.edges.filter(e => e.data.kind === 'reference' || e.data.kind === 'relationship').map(e => e.to))
+    const isContainer = new Set(g.nodes.filter(n => n.data.element === 'container').map(n => n.id))
+    g.edges = g.edges.filter(e => !(e.data.kind === 'contains' && isContainer.has(e.from) && reached.has(e.to)))
+    return g
+}
+
 export const VIEWS = {
     structure: {
         label: 'Structure',
         description: 'What the event or bundle holds: containers, objects and their attributes.',
+        transform: pruneContainment,
         // Radial tree only while it stays readable; past that, force + Simplify.
         layout: (g) => containers(g).length === 1 && g.nodes.length <= 300
             ? { type: 'tree', radial: true, rootId: containers(g)[0].id }

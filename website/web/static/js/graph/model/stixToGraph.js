@@ -25,15 +25,17 @@
 //    contains       report/grouping → object_refs, observed-data → object_refs
 //    relationship   SRO `relationship` (relationship_type kept as `relation`)
 //    sighting       see above
-//    embedded-ref   every other `*_ref` / `*_refs` (created_by_ref,
-//                   resolves_to_refs, src_ref, sample_refs…), named by the key
+//    embedded-ref   every other `*_ref` / `*_refs` (resolves_to_refs, src_ref,
+//                   sample_refs…), named by the key; created_by_ref is a field
 //    pattern        indicator → SCO whose value its pattern compares to
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { describe, familyOfStixType, FAMILIES, shortLabel, tlpKey } from './vocabulary.js'
 import { makeNode, makeEdge, nodeId } from './model.js'
 
-const SKIP_REFS = new Set(['object_marking_refs', 'object_refs', 'sighting_of_ref',
+// created_by_ref is read into `fields.createdBy`, not drawn: nearly every object
+// carries it, and one identity linked to everything hides every other shape.
+const SKIP_REFS = new Set(['created_by_ref', 'object_marking_refs', 'object_refs', 'sighting_of_ref',
     'where_sighted_refs', 'observed_data_refs', 'source_ref', 'target_ref'])
 const SDO_CONTAINERS = new Set(['report', 'grouping'])
 
@@ -246,11 +248,17 @@ export function stixToGraph(json, opts = {}) {
                 if (typeof r === 'string' && byId.has(r)) link(o.id, r, 'embedded-ref', { relation: key.replace(/_refs?$/, '').replace(/_/g, ' ') })
             }
         }
-        if (o.type === 'indicator') {
-            for (const ob of patternObservables(o.pattern)) {
-                const match = scoIndex.get(`${ob.type}|${ob.value}`)
-                if (match) link(o.id, match, 'pattern', { relation: ob.path })
-            }
+    }
+
+    // Pattern links, after every relationship is known. One adds nothing where a
+    // relationship (based-on) already joins the two: it would only stop Simplify
+    // from folding indicator → observable.
+    const joined = new Set(edges.map(e => `${e.from}>${e.to}`))
+    for (const o of objects) {
+        if (o.type !== 'indicator') continue
+        for (const ob of patternObservables(o.pattern)) {
+            const match = scoIndex.get(`${ob.type}|${ob.value}`)
+            if (match && !ends(match).some(t => joined.has(`${id(o.id)}>${t}`))) link(o.id, match, 'pattern', { relation: ob.path })
         }
     }
 

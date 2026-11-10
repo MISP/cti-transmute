@@ -81,7 +81,7 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
         ?? document.documentElement.classList.contains('dark-mode')
 
     container.replaceChildren()
-    const big = model.nodes.length > 1500
+    const big = model.nodes.length > 6000
 
     const options = {
         isDirected: true,

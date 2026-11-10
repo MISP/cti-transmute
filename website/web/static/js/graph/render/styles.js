@@ -68,7 +68,8 @@ export function renderOptions() {
             size: (node) => node.getData()?.size ?? 12,
             strokeColor: (node) => node.getData()?.color ?? '#64748b',
             strokeWidth: 1.2,
-            iconClass: (node) => fa(node.getData()?.icon ?? 'fa-circle'),
+            // No icon for nodes without one (Simplify groups draw their own html).
+            iconClass: (node) => node.getData()?.icon ? fa(node.getData().icon) : undefined,
             textColor: (node) => node.getData()?.color ?? '#64748b',
             text: (node) => node.getData()?.label ?? '',
             textVerticalShift: -1,
@@ -86,9 +87,53 @@ export function renderOptions() {
             styleCb: (edge) => ({ strokeColor: edgeColor(edge) }),
         },
         edgeStyleMap: edgeStyleMap(),
+        groupStyle,
         defaultLabelStyle: {
             fontSize: 8,
             labelAccessor: edgeLabel,
         },
     }
+}
+
+// ── Simplify groups ──────────────────────────────────────────────────────────
+//  A group reads like a node of its type, stacked: the same icon and colour on
+//  a double ring, with the member count in a pill. A group mixing types gets a
+//  neutral layered icon.
+
+function groupLook(group) {
+    const first = group.members?.[0]?.getData?.() ?? {}
+    const mixed = Object.keys(group.typeCounts ?? {}).length > 1
+    return mixed
+        ? { color: '#64748b', icon: 'fa-layer-group' }
+        : { color: first.color ?? '#64748b', icon: first.icon ?? 'fa-circle' }
+}
+
+const groupRadius = (n) => Math.min(30, 14 + 1.6 * Math.sqrt(n))
+
+function groupElement(group) {
+    const { color, icon } = groupLook(group)
+    const n = group.members?.length ?? 0
+    const r = groupRadius(n)
+    const el = document.createElement('div')
+    el.className = 'ctx-group'
+    el.style.cssText = `position:relative;width:${2 * r}px;height:${2 * r}px;border-radius:50%;` +
+        `background:var(--pvt-bg-color,#fff);border:2px solid ${color};` +
+        `box-shadow:0 0 0 3px var(--pvt-bg-color,#fff),0 0 0 4.5px ${color};` +
+        `display:grid;place-items:center;color:${color};font-size:${Math.round(r * 0.8)}px;box-sizing:border-box`
+    const i = document.createElement('i')
+    i.className = `fa-solid ${icon}`
+    el.appendChild(i)
+    const pill = document.createElement('span')
+    pill.textContent = n > 999 ? '999+' : String(n)
+    pill.style.cssText = `position:absolute;right:${-r * 0.55}px;top:${-r * 0.35}px;background:${color};color:#fff;` +
+        `font:600 11px/1 system-ui,sans-serif;padding:3px 6px;border-radius:9px;white-space:nowrap;` +
+        `box-shadow:0 0 0 2px var(--pvt-bg-color,#fff)`
+    el.appendChild(pill)
+    return el
+}
+
+export function groupStyle(group, base) {
+    // Size and footprint match the drawing (ring + halo + pill) so the layout spaces groups.
+    const r = groupRadius(group.members?.length ?? 0) + 8
+    return { ...base, shape: 'none', html: () => groupElement(group), tiers: [], size: r, layoutSize: r }
 }
