@@ -139,26 +139,32 @@ function groupElement(group) {
     const { color, icon } = groupLook(group)
     const n = group.members?.length ?? 0
     const r = groupRadius(n)
-    const el = document.createElement('div')
-    el.className = 'ctx-group'
-    el.style.cssText = `position:relative;width:${2 * r}px;height:${2 * r}px;border-radius:50%;` +
-        `background:var(--pvt-bg, #fff);border:2px solid ${color};` +
-        `box-shadow:0 0 0 3px var(--pvt-bg, #fff),0 0 0 4.5px ${color};` +
-        `display:grid;place-items:center;color:${color};font-size:${Math.round(r * 0.8)}px;box-sizing:border-box`
+    // Everything is drawn inside the measured box: Pivotick clips an html node
+    // to its own size, so no shadow halo and no pill hanging outside it.
+    const pad = 9
+    const box = document.createElement('div')
+    box.className = 'ctx-group'
+    box.style.cssText = `position:relative;width:${2 * r + 2 * pad}px;height:${2 * r + 2 * pad}px;` +
+        `display:grid;place-items:center;box-sizing:border-box`
+    const ring = document.createElement('div')
+    ring.style.cssText = `width:${2 * r}px;height:${2 * r}px;border-radius:50%;box-sizing:border-box;` +
+        `background:var(--pvt-bg,#fff);border:5px double ${color};` +
+        `display:grid;place-items:center;color:${color};font-size:${Math.round(r * 0.75)}px`
     const i = document.createElement('i')
     i.className = `fa-solid ${icon}`
-    el.appendChild(i)
+    ring.appendChild(i)
+    box.appendChild(ring)
     const pill = document.createElement('span')
     pill.textContent = n > 999 ? '999+' : String(n)
-    pill.style.cssText = `position:absolute;right:${-r * 0.55}px;top:${-r * 0.35}px;background:${color};color:#fff;` +
-        `font:600 11px/1 system-ui,sans-serif;padding:3px 6px;border-radius:9px;white-space:nowrap;` +
-        `box-shadow:0 0 0 2px var(--pvt-bg, #fff)`
-    el.appendChild(pill)
-    return el
+    pill.style.cssText = `position:absolute;right:0;top:0;background:${color};color:#fff;` +
+        `font:600 10px/1 system-ui,sans-serif;padding:3px 5px;border-radius:8px;white-space:nowrap;` +
+        `border:1.5px solid var(--pvt-bg,#fff)`
+    box.appendChild(pill)
+    return box
 }
 
 export function groupStyle(group, base) {
     // Size and footprint match the drawing (ring + halo + pill) so the layout spaces groups.
-    const r = groupRadius(group.members?.length ?? 0) + 8
+    const r = groupRadius(group.members?.length ?? 0) + 9
     return { ...base, shape: 'none', html: () => groupElement(group), tiers: [], size: r, layoutSize: r }
 }

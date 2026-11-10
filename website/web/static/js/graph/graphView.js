@@ -18,6 +18,7 @@ import { EDGE_KINDS, FAMILIES, ELEMENTS, TLP } from './model/vocabulary.js'
 import { renderOptions } from './render/styles.js'
 import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra } from './render/details.js'
 import { VIEWS } from './views.js'
+import { normaliseNodeTypes, textCell } from './graphSafety.js'
 
 export { VIEWS }
 
@@ -139,13 +140,14 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
             // Details: our own sectioned panel instead of the key/value list.
             propertiesPanel: { enabled: false },
             mainHeader: {
+                // Pivotick parses a string header as HTML: hand it text elements.
                 nodeHeaderMap: {
-                    title: (node) => node.getData()?.label ?? String(node.id),
-                    subtitle: (node) => node.getData()?.typeLabel ?? '',
+                    title: (node) => textCell(node.getData()?.label ?? String(node.id)),
+                    subtitle: (node) => textCell(node.getData()?.typeLabel ?? ''),
                 },
                 edgeHeaderMap: {
-                    title: (edge) => edge.getData()?.relation || 'Link',
-                    subtitle: (edge) => EDGE_KINDS[edge.getData()?.kind]?.label ?? '',
+                    title: (edge) => textCell(edge.getData()?.relation || 'Link'),
+                    subtitle: (edge) => textCell(EDGE_KINDS[edge.getData()?.kind]?.label ?? ''),
                 },
             },
             extraPanels: [{
@@ -168,7 +170,7 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
                 rules: view.simplify(model),
                 typeOf: (node) => node.getData()?.type,
                 colorOf: (node) => node.getData()?.color,
-                typeLabel: (type, count) => `${count} × ${String(type).replace(/^(attr|obj|stix|galaxy|tag):/, '')}`,
+                typeLabel: (type, count) => `${count} × ${String(type).replace(/^(attr|obj|stix|galaxy|tag)[:_]/, '')}`,
                 openConfirmAbove: 150,
             },
             ...(opts.ui ?? {}),
@@ -176,6 +178,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
         ...(opts.extra ?? {}),
     }
 
+    // Types come from the input document and serve as style keys: keep them plain.
+    normaliseNodeTypes(model)
     const graph = new window.Pivotick(container, { nodes: model.nodes, edges: model.edges }, options)
 
     // Edge layers the view keeps off at first (embedded refs, pattern links…).

@@ -199,16 +199,24 @@ assert(!/document\.write/.test(src),
        'conversionGraph.js no longer calls document.write');
 assert(/renderRawJson\(/.test(src),
        'conversionGraph.js opens the raw-JSON popup via renderRawJson');
-assert(/normaliseNodeTypes\(/.test(src),
-       'conversionGraph.js routes the parsed graph through normaliseNodeTypes');
-assert(src.indexOf('normaliseNodeTypes(') < src.indexOf('new window.Pivotick('),
+// The graph is mounted by graphView.js (conversionGraph.js only wires the page).
+const viewSrc = readFileSync(join(graphJs, 'graphView.js'), 'utf8');
+assert(/normaliseNodeTypes\(/.test(viewSrc),
+       'graphView.js routes the parsed graph through normaliseNodeTypes');
+assert(viewSrc.indexOf('normaliseNodeTypes(') < viewSrc.indexOf('new window.Pivotick('),
        'the node types are normalised before the graph is handed to Pivotick');
 
-// The inline edgePropertiesMap cannot be imported, so assert on its source that
-// no cell is left as a bare string (Fix: stop relying on label escaping).
-const edgeMap = src.slice(src.indexOf('edgePropertiesMap:'));
-const edgeMapBody = edgeMap.slice(0, edgeMap.indexOf(']'));
-const edgeCells = edgeMapBody.match(/\b(?:name|value):/g) || [];
-const wrappedCells = edgeMapBody.match(/\b(?:name|value):\s*textCell\(/g) || [];
-assert(edgeCells.length >= 6 && edgeCells.length === wrappedCells.length,
-       'every edge property cell (all three rows, name and value) is wrapped in textCell');
+// Header maps return strings Pivotick would parse as HTML: each one is a textCell.
+const headers = viewSrc.slice(viewSrc.indexOf('mainHeader:'), viewSrc.indexOf('extraPanels:'));
+const headerFns = headers.match(/\b(?:title|subtitle):/g) || [];
+const wrappedHeaders = headers.match(/\b(?:title|subtitle):\s*\([^)]*\)\s*=>\s*textCell\(/g) || [];
+assert(headerFns.length >= 4 && headerFns.length === wrappedHeaders.length,
+       'every node and edge header (title and subtitle) is wrapped in textCell');
+assert(/propertiesPanel:\s*\{\s*enabled:\s*false/.test(viewSrc),
+       'the string-based properties panel is off; details come from render/details.js');
+
+// The detail panel and tooltips build DOM themselves: no converted value may reach
+// innerHTML / insertAdjacentHTML / outerHTML there.
+const detailsSrc = readFileSync(join(graphJs, 'render', 'details.js'), 'utf8');
+assert(!/\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=/.test(detailsSrc),
+       'render/details.js never writes HTML from a string');
