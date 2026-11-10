@@ -205,7 +205,7 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
             // Closed at first: the canvas gets the room; a click on a node opens it.
             sidebar: { collapsed: true },
             // Folded at first too; its toggle stays in the corner.
-            minimap: { collapsed: true },
+            minimap: { collapsed: true, position: 'bottom-left' },
             // Read-only: a Conversion is looked at, never edited from the graph.
             editors: {
                 nodeCreator: { enabled: false }, edgeCreator: { enabled: false },
@@ -252,7 +252,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
                 renderEdgeExtra: (edge) => edgeTooltip(edge),
                 renderGroupExtra: (group) => groupTooltipExtra(group),
             },
-            legend: { position: 'bottom-left', sections: legendSections(model) },
+            // Bottom right, where the minimap was: the left side keeps the rail and the panel button.
+            legend: { position: 'bottom-right', sections: legendSections(model) },
             filter: {
                 facets: filterFacets(),
                 edgeFacets: [{ key: 'kind', label: 'Links' }],

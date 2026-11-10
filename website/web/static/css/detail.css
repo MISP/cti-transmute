@@ -204,6 +204,17 @@
      border-bottom: 1px solid var(--border);
  }
 
+ /* Input / Output toggle: the site's .btn-primary padding overrode btn-sm, so the
+    selected side grew. Same box for both states. */
+ .graph-panel-toolbar .btn {
+     padding: 0.3rem 0.75rem;
+     font-size: 0.8rem;
+     font-weight: 600;
+     border-width: 1px;
+     line-height: 1.4;
+     transform: none;
+ }
+
  .graph-legend {
      border: 1px solid var(--border);
      border-radius: var(--radius-md);

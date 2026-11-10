@@ -25,19 +25,19 @@ export const ELEMENTS = {
     meta:       { label: 'Marking',    shape: 'circle',   size: 10 },
 }
 
-/** Family → colour. Ten hues at most, each readable as a fill under a white
+/** Family → colour and emblem (for a whole-family group). Ten hues at most, each readable as a fill under a white
  *  glyph in both themes (all reach 4.5:1 against #fff). */
 export const FAMILIES = {
-    container: { label: 'Report / Event',      color: '#1e4fd8' },
-    network:   { label: 'Network',             color: '#0369a1' },
-    file:      { label: 'File & payload',      color: '#c2410c' },
-    email:     { label: 'Email',               color: '#be185d' },
-    host:      { label: 'Host & system',       color: '#6d28d9' },
-    threat:    { label: 'Threat',              color: '#b91c1c' },
-    ttp:       { label: 'Technique & defence', color: '#a16207' },
-    vuln:      { label: 'Vulnerability',       color: '#a21caf' },
-    identity:  { label: 'Identity & place',    color: '#0f766e' },
-    knowledge: { label: 'Notes & references',  color: '#475569' },
+    container: { label: 'Report / Event',      color: '#1e4fd8', icon: 'fa-folder-open' },
+    network:   { label: 'Network',             color: '#0369a1', icon: 'fa-network-wired' },
+    file:      { label: 'File & payload',      color: '#c2410c', icon: 'fa-file-lines' },
+    email:     { label: 'Email',               color: '#be185d', icon: 'fa-envelope' },
+    host:      { label: 'Host & system',       color: '#6d28d9', icon: 'fa-microchip' },
+    threat:    { label: 'Threat',              color: '#b91c1c', icon: 'fa-skull-crossbones' },
+    ttp:       { label: 'Technique & defence', color: '#a16207', icon: 'fa-crosshairs' },
+    vuln:      { label: 'Vulnerability',       color: '#a21caf', icon: 'fa-shield-virus' },
+    identity:  { label: 'Identity & place',    color: '#0f766e', icon: 'fa-building' },
+    knowledge: { label: 'Notes & references',  color: '#475569', icon: 'fa-book' },
 }
 
 /** Official FIRST TLP 2.0 colours, used for badges only. */

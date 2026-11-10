@@ -12,7 +12,7 @@
 //  - badges are kept for two facts only: a restrictive TLP and sightings.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { EDGE_KINDS, RELATION_COLORS, TLP } from '../model/vocabulary.js'
+import { EDGE_KINDS, FAMILIES, RELATION_COLORS, TLP } from '../model/vocabulary.js'
 
 const fa = (icon) => `fa-solid ${icon}`
 
@@ -79,9 +79,25 @@ g.label-container text { fill: var(--ctx-edge-label-color, #64748b); font-style:
   --pvt-badge-color: var(--accent, #2563eb) !important;
 }
 /* With the sidebar closed its open button sank under the dock's strip: lift it. */
-.pvt-sidebar-collapsed .pvt-sidebar-collapse-container { bottom: calc(var(--pvt-dock-height, 0px) + 14px) !important; }
+/* With the sidebar closed, its open button: bigger, and pinned to one spot
+   (Pivotick slid it right when a node was selected). */
+.pvt-sidebar-collapsed .pvt-sidebar-collapse-container {
+  bottom: calc(var(--pvt-dock-height, 0px) + 56px) !important;
+  left: 14px !important; right: auto !important;
+  font-size: 26px !important; padding: 9px !important;
+  transition: background .2s, color .2s !important;
+}
 /* A selection waiting in the closed sidebar: pulsing dot on its open button. */
-.pvt-sidebar-collapse-container.ctx-details-waiting { position: relative; }
+.pvt-sidebar-collapse-container.ctx-details-waiting {
+  background: var(--pvt-theme-primary, #2563eb) !important; color: #fff !important;
+  border-color: var(--pvt-theme-primary, #2563eb) !important; overflow: visible !important;
+}
+.pvt-sidebar-collapse-container.ctx-details-waiting::before {
+  content: 'Details'; position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+  background: var(--pvt-theme-primary, #2563eb); color: #fff; font: 600 12px/1 system-ui, sans-serif;
+  padding: 6px 10px; border-radius: 12px; white-space: nowrap; pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
 .pvt-sidebar-collapse-container.ctx-details-waiting::after {
   content: ''; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%;
   background: #ef4444; box-shadow: 0 0 0 0 rgba(239,68,68,.6); animation: ctx-pulse 1.4s ease-out infinite; pointer-events: none;
@@ -156,6 +172,10 @@ export function renderOptions() {
 
 function groupLook(group) {
     const first = group.members?.[0]?.getData?.() ?? {}
+    // A family group: that family's colour and emblem, whatever types it mixes.
+    if (group.rule === 'byFamily' && FAMILIES[first.family]) {
+        return { color: FAMILIES[first.family].color, icon: FAMILIES[first.family].icon }
+    }
     const mixed = Object.keys(group.typeCounts ?? {}).length > 1
     return mixed
         ? { color: '#64748b', icon: 'fa-layer-group' }
@@ -192,7 +212,19 @@ function groupElement(group) {
     return box
 }
 
+/** "Network", "File & payload objects"… */
+function familyName(d = {}) {
+    const name = FAMILIES[d.family]?.label ?? d.family ?? 'Other'
+    return d.element === 'object' ? `${name} objects` : d.element === 'context' ? `${name} context` : name
+}
+
 export function groupStyle(group, base) {
+    // A family group reads "445 × Network" rather than the list of every type in it
+    // (Pivotick only honours a rule's own typeOf for its built-in rules).
+    if (group.rule === 'byFamily') {
+        const label = `${group.members?.length ?? 0} × ${familyName(group.members?.[0]?.getData?.())}`
+        base = { ...base, text: () => label }
+    }
     // Size and footprint match the drawing (ring + halo + pill) so the layout spaces groups.
     const r = groupRadius(group.members?.length ?? 0) + 9
     return { ...base, shape: 'none', html: () => groupElement(group), tiers: [], size: r, layoutSize: r }

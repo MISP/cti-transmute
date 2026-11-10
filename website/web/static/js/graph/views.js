@@ -41,8 +41,21 @@ function partitionBy(filter, key) {
 }
 
 /** The rules every view starts from: fold the repetition, keep the shape. */
-function baseRules({ neighbours = 4, chains = 4, byType = false } = {}) {
+function baseRules({ neighbours = 4, chains = 4, byType = false, byFamily = false, familyFirst = false } = {}) {
+    const family = (
+        {
+            // One group per family and element (all network observables, all file
+            // objects…): still one kind per group. First in Structure; elsewhere
+            // turned on when the canvas is crowded (graphView keepWithinBudget).
+            kind: 'custom', id: 'byFamily', label: 'By family', enabled: byFamily, minSize: 8,
+            description: 'Everything of one family and element folds together: all network observables, all file objects…',
+            partition: partitionBy(d => d.element && d.element !== 'container', d => `${d.element}:${d.family}`),
+        }
+    )
     const rules = [
+        // First, it gives an overview by family; opening a family drills down
+        // into the type and chain groups of its members.
+        ...(familyFirst ? [family] : []),
         // chains first: placed after neighbours, Pivotick's chains rule folded
         // again the members of a neighbours group the reader had just opened.
         { kind: 'chains', minSize: chains },
@@ -53,13 +66,6 @@ function baseRules({ neighbours = 4, chains = 4, byType = false } = {}) {
             kind: 'custom', id: 'byType', label: 'By type', enabled: byType, minSize: 8,
             description: 'Indicators and observables of the same type fold together, whatever they link to.',
             partition: partitionBy(d => ['indicator', 'observable'].includes(d.element), d => d.type),
-        },
-        {
-            // Last resort for very large documents: one group per family and type of
-            // element (all network observables, all file objects…) still reads as one kind.
-            kind: 'custom', id: 'byFamily', label: 'By family', enabled: false, minSize: 8,
-            description: 'Everything of one family and element folds together: all network observables, all file objects…',
-            partition: partitionBy(d => d.element && d.element !== 'container', d => `${d.element}:${d.family}`),
         },
         { kind: 'degree', minDegree: 2, enabled: false },
         { kind: 'kcore', k: 2, enabled: false },
@@ -75,6 +81,7 @@ function baseRules({ neighbours = 4, chains = 4, byType = false } = {}) {
             partition: partitionBy(d => !!d.category, d => `cat:${d.category}`),
         },
     ]
+    if (!familyFirst) rules.splice(rules.findIndex(r => r.id === 'byType') + 1, 0, family)
     return rules
 }
 
@@ -109,7 +116,9 @@ export const VIEWS = {
             ? { type: 'tree', radial: true, rootId: containers(g)[0].id }
             : { type: 'force' },
         edgeKinds: { contains: true, reference: true, relationship: true, galaxy: true, sighting: false, correlation: true },
-        simplify: (g) => baseRules({ byType: g.nodes.length > 600 }),
+        // Folded by family from the start: the overview reads as "what kinds of
+        // things does this hold"; open a family to go down to its members.
+        simplify: (g) => baseRules({ byType: g.nodes.length > 600, byFamily: true, familyFirst: true }),
     },
     relations: {
         label: 'Relations',
