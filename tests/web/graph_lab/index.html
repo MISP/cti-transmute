@@ -60,16 +60,13 @@ let current = null
 async function load() {
     const [path, format] = fx.value.split('|')
     let text = await (await fetch('/' + path)).text(), fmt = format
-    if (vw.value === 'compare') {
-        // Pair the fixture with its other side: misp_1000 ↔ stix_1000.
-        const other = format === 'misp' ? path.replace('misp_', 'stix_') : path.replace('stix_', 'misp_')
-        const otherText = await (await fetch('/' + other)).text()
-        text = format === 'misp' ? { misp: JSON.parse(text), stix: JSON.parse(otherText) } : { misp: JSON.parse(otherText), stix: JSON.parse(text) }
-        fmt = 'compare'
-    }
     current?.destroy?.()
     const t0 = performance.now()
-    current = await mountGraph(document.getElementById('graph'), text, fmt, { view: vw.value })
+    current = await mountGraph(document.getElementById('graph'), text, fmt, {
+        view: vw.value,
+        // The Views rail mode inside Pivotick drives the same picker.
+        onViewChange: (id) => { vw.value = id; vw.onchange() },
+    })
     document.getElementById('stats').textContent =
         `${current.stats.nodes} nodes · ${current.stats.edges} edges · built in ${Math.round(performance.now() - t0)} ms`
     window.lab = current

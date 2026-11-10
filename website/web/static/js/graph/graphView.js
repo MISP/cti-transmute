@@ -13,46 +13,29 @@
 
 import { mispToGraph } from './model/mispToGraph.js'
 import { stixToGraph } from './model/stixToGraph.js'
-import { cleanGraph, makeEdge } from './model/model.js'
+import { cleanGraph } from './model/model.js'
 import { EDGE_KINDS, FAMILIES, ELEMENTS, TLP } from './model/vocabulary.js'
 import { renderOptions, edgeLabelText } from './render/styles.js'
 import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra } from './render/details.js'
 import { VIEWS } from './views.js'
 import { localPivots } from './pivots.js'
-import { normaliseNodeTypes, textCell } from './graphSafety.js'
+import { viewModePlugin } from './render/viewMode.js'
+import { normaliseNodeTypes } from './graphSafety.js'
 
 export { VIEWS }
 
-/**
- * Both sides of a Conversion in one graph, each MISP element linked to what it
- * became in STIX. misp-stix keeps the MISP UUID as the STIX id's suffix
- * (`indicator--<attribute uuid>`, `grouping--<event uuid>`), so the link is
- * an exact match, never a guess on values.
- */
-export function buildCompareModel(mispJson, stixJson) {
-    const misp = cleanGraph(mispToGraph(mispJson))
-    const stix = cleanGraph(stixToGraph(stixJson))
-    const byUuid = new Map()
-    for (const n of misp.nodes) if (n.data.uuid) byUuid.set(String(n.data.uuid).toLowerCase(), n.id)
-    const origin = []
-    for (const n of stix.nodes) {
-        const suffix = String(n.data.uuid ?? '').split('--')[1]?.toLowerCase()
-        const from = suffix && byUuid.get(suffix)
-        if (from) origin.push(makeEdge(from, n.id, 'origin', { relation: 'became' }))
-    }
-    // Side badge (M / S) only matters when both sides share the canvas.
-    for (const n of [...misp.nodes, ...stix.nodes]) n.data.showSide = true
-    return { nodes: [...misp.nodes, ...stix.nodes], edges: [...misp.edges, ...stix.edges, ...origin] }
-}
-
 /** Parse a document into the common model, for one view. */
 export function buildModel(json, format, view) {
-    if (format === 'compare') return view.transform ? view.transform(buildCompareModel(json.misp, json.stix)) : buildCompareModel(json.misp, json.stix)
     const g = format === 'misp'
         ? mispToGraph(json, { tagsAsNodes: !!view.tagsAsNodes })
         : stixToGraph(json, { observedDataAsNodes: !!view.observedDataAsNodes })
     cleanGraph(g)
     return view.transform ? view.transform(g) : g
+}
+
+/** `ip-dst · Network · MISP` */
+function subtitleOf(d = {}) {
+    return [d.typeLabel, FAMILIES[d.family]?.label, d.side === 'misp' ? 'MISP' : d.side === 'stix' ? 'STIX' : null].filter(Boolean).join(' · ')
 }
 
 const isEdge = (el) => (window.Pivotick?.Edge && el instanceof window.Pivotick.Edge) || ('from' in (el ?? {}) && 'to' in (el ?? {}))
@@ -114,32 +97,50 @@ function tooltipFollowsFullscreen(graph) {
     return () => document.removeEventListener('fullscreenchange', onChange)
 }
 
+/**
+ * The sidebar starts closed. When something is selected while it is closed, a
+ * pulsing red dot on its open button (bottom left) says the details are there.
+ * Opening the sidebar, or clearing the selection, removes the dot.
+ */
+function pointToDetails(graph, container) {
+    const gi = graph.renderer?.getGraphInteraction?.()
+    if (!gi?.on) return
+    const update = (selected) => {
+        const button = container.querySelector('.pvt-sidebar-collapse-container')
+        if (!button) return
+        const closed = !!container.querySelector('.pvt-sidebar-collapsed')
+        button.classList.toggle('ctx-details-waiting', selected && closed)
+    }
+    for (const ev of ['selectNode', 'selectEdge', 'selectNodes', 'selectEdges']) gi.on(ev, () => setTimeout(() => update(true), 0))
+    for (const ev of ['unselectNode', 'unselectEdge', 'unselectNodes', 'unselectEdges']) gi.on(ev, () => update(false))
+    container.addEventListener('click', (e) => {
+        if (e.target.closest?.('.pvt-sidebar-collapse-container')) setTimeout(() => update(false), 0)
+    })
+}
+
 /** How many elements the canvas shows at most before folding further. */
 export const MAX_VISIBLE = 250
 
 /**
  * Past `max` drawn elements, icons and labels stop reading as anything. Turn
- * on the stronger folds in order until the canvas fits: by type, then
- * communities (coarser and coarser). Each step is a Simplify rule the reader
- * can switch back off in the Simplify mode, and any group opens as a
- * sub-graph with a double-click.
+ * on the stronger folds in order until the canvas fits: by type, then by
+ * family (Network, File & payload…). Both keep groups of one kind, so a
+ * group always reads as "N × something"; communities, which mix kinds, stay
+ * a manual choice in the Simplify mode. Any group opens as a sub-graph.
  */
 function keepWithinBudget(graph, max) {
     const s = graph.simplify
     if (!s?.summary) return
     const steps = [
         () => s.setRuleEnabled('byType', true),
-        () => { s.setRuleEnabled('communities', true); s.setRuleSetting('communities', 3) },
-        () => s.setRuleSetting('communities', 5),
-        () => s.setRuleSetting('communities', 7),
+        () => s.setRuleEnabled('byFamily', true),
     ]
     const shown = () => s.summary().shown
     let i = 0
     const next = () => {
         if (shown() <= max || i >= steps.length) return
         try { steps[i++]() } catch { i++ }
-        // Communities are found in a worker: give it a moment before measuring again.
-        setTimeout(next, 400)
+        setTimeout(next, 200)
     }
     next()
 }
@@ -148,16 +149,14 @@ function keepWithinBudget(graph, max) {
  * @returns {Promise<{graph, model, stats, destroy}>}
  */
 export async function mountGraph(container, jsonText, format, opts = {}) {
-    const view = format === 'compare' ? VIEWS.compare : (VIEWS[opts.view] ?? VIEWS.structure)
+    const view = VIEWS[opts.view] ?? VIEWS.structure
     const json = typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText
-    if (format === 'compare' && !view.compare) throw new Error('compare needs the MISP ↔ STIX view')
     const model = buildModel(json, format, view)
     const dark = opts.dark ?? document.body.classList.contains('dark')
         ?? document.documentElement.classList.contains('dark-mode')
 
     // The whole document, tags as nodes: what local pivots expand from.
-    const full = format === 'compare' ? buildCompareModel(json.misp, json.stix)
-        : cleanGraph(format === 'misp' ? mispToGraph(json, { tagsAsNodes: true }) : stixToGraph(json))
+    const full = cleanGraph(format === 'misp' ? mispToGraph(json, { tagsAsNodes: true }) : stixToGraph(json))
     normaliseNodeTypes(full)
     const fullById = new Map(full.nodes.map(n => [n.id, n.data]))
     for (const e of full.edges) e.data.label = edgeLabelText(e.data, fullById.get(e.from))
@@ -177,7 +176,10 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
         UI: {
             mode: 'full',
             theme: dark ? 'dark' : 'light',
-            sidebar: { collapsed: 'auto' },
+            // Closed at first: the canvas gets the room; a click on a node opens it.
+            sidebar: { collapsed: true },
+            // Folded at first too; its toggle stays in the corner.
+            minimap: { collapsed: true },
             // Read-only: a Conversion is looked at, never edited from the graph.
             editors: {
                 nodeCreator: { enabled: false }, edgeCreator: { enabled: false },
@@ -188,14 +190,14 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
             // Details: our own sectioned panel instead of the key/value list.
             propertiesPanel: { enabled: false },
             mainHeader: {
-                // Pivotick parses a string header as HTML: hand it text elements.
+                // Header maps return strings: Pivotick writes them with textContent.
                 nodeHeaderMap: {
-                    title: (node) => textCell(node.getData()?.label ?? String(node.id)),
-                    subtitle: (node) => textCell(node.getData()?.typeLabel ?? ''),
+                    title: (node) => String(node.getData()?.label ?? String(node.id)),
+                    subtitle: (node) => String(node.getData()?.typeLabel ?? ''),
                 },
                 edgeHeaderMap: {
-                    title: (edge) => textCell(edge.getData()?.relation || 'Link'),
-                    subtitle: (edge) => textCell(EDGE_KINDS[edge.getData()?.kind]?.label ?? ''),
+                    title: (edge) => String(edge.getData()?.relation || 'Link'),
+                    subtitle: (edge) => String(EDGE_KINDS[edge.getData()?.kind]?.label ?? ''),
                 },
             },
             extraPanels: [{
@@ -206,7 +208,20 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
                 },
             }],
             tooltip: {
-                render: (el) => isEdge(el) ? edgeTooltip(el) : nodeTooltip(el),
+                // Pivotick's header (icon, value, type · family · side), our facts under it.
+                nodeHeaderMap: {
+                    title: (node) => String(node.getData()?.value || node.getData()?.label || node.id),
+                    subtitle: (node) => subtitleOf(node.getData()),
+                },
+                edgeHeaderMap: {
+                    title: (edge) => String(edge.getData()?.relation || 'Link'),
+                    subtitle: (edge) => EDGE_KINDS[edge.getData()?.kind]?.label ?? '',
+                },
+                // No raw property list: our card says what matters.
+                nodePropertiesMap: () => [],
+                edgePropertiesMap: () => [],
+                renderNodeExtra: (node) => nodeTooltip(node),
+                renderEdgeExtra: (edge) => edgeTooltip(edge),
                 renderGroupExtra: (group) => groupTooltipExtra(group),
             },
             legend: { position: 'bottom-left', sections: legendSections(model) },
@@ -224,6 +239,10 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
             ...(opts.ui ?? {}),
         },
         pivots: localPivots(full),
+        plugins: opts.onViewChange
+            ? [viewModePlugin(VIEWS, opts.view in VIEWS ? opts.view : 'structure',
+                opts.onViewChange, opts.views)]
+            : [],
         pivotIngestGrouped: true,
         ...(opts.extra ?? {}),
     }
@@ -243,6 +262,7 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
 
     keepWithinBudget(graph, opts.maxVisible ?? MAX_VISIBLE)
     const stopTooltipFollow = tooltipFollowsFullscreen(graph)
+    pointToDetails(graph, container)
 
     return {
         graph, model, view,

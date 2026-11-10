@@ -312,23 +312,50 @@ export function edgeDetails(edge) {
         rawSection(d.raw))
 }
 
-/** A compact card for hovering: header plus at most three facts. */
+/** One fact line of the hover card: icon, label, value. Nothing for an empty value. */
+function fact(iconName, label, v, opts) {
+    const el = value(v, opts)
+    if (!el) return null
+    return h('div', 'ctx-t-fact', icon(iconName), h('span', 'ctx-t-key', label), h('span', 'ctx-t-val', el))
+}
+
+/**
+ * The hover card, under Pivotick's own header: the TLP, a few facts, each
+ * with its icon and chosen per kind (empty ones are skipped), and the tags.
+ */
 export function nodeTooltip(node) {
     ensureStyles()
     const d = node.getData() ?? {}
     if (!d.kind) return null
     const f = d.fields ?? {}
     const facts = {
-        event: [['Date', fmtDate(f.date)], ['Org', f.org], ['Attributes', f.attributeCount]],
-        attribute: [['Category', f.category], ['IDS', f.toIds], ['Last seen', fmtDate(f.lastSeen)]],
-        object: (f.attributes ?? []).slice(0, 3).map(a => [a.relation, a.value]),
-        galaxy: [['Galaxy', f.galaxy], ['ID', f.externalId]],
-        indicator: [['Pattern', f.pattern], ['Valid from', fmtDate(f.valid_from)]],
-        sco: [['First observed', fmtDate(f.observed?.firstObserved)]],
-        sdo: [['Description', f.description ? f.description.slice(0, 140) + (f.description.length > 140 ? '…' : '') : null]],
+        event: [fact('fa-calendar', 'Date', fmtDate(f.date)), fact('fa-building', 'Org', f.org),
+            fact('fa-gauge-high', 'Threat level', f.threatLevel), fact('fa-cubes', 'Content', f.attributeCount ? `${f.attributeCount} attributes · ${f.objectCount} objects` : null)],
+        attribute: [fact('fa-shapes', 'Category', f.category), fact('fa-bullseye', 'For detection', f.toIds),
+            fact('fa-clock', 'Last seen', fmtDate(f.lastSeen)), fact('fa-cube', 'In object', f.parentObject?.name),
+            fact('fa-comment', 'Comment', f.comment)],
+        object: (f.attributes ?? []).slice(0, 4).map(a => fact('fa-angle-right', a.relation, a.value)),
+        galaxy: [fact('fa-circle-nodes', 'Galaxy', f.galaxy), fact('fa-hashtag', 'ID', f.externalId),
+            fact('fa-align-left', 'About', f.description ? f.description.slice(0, 160) + (f.description.length > 160 ? '…' : '') : null)],
+        tag: [],
+        indicator: [fact('fa-code', 'Pattern', f.pattern, { mono: true }), fact('fa-clock', 'Valid from', fmtDate(f.valid_from)),
+            fact('fa-route', 'Kill chain', f.killChain?.map(k => k.phase).join(', ') || null)],
+        sco: [fact('fa-eye', 'First observed', fmtDate(f.observed?.firstObserved)),
+            ...(d.raw?.hashes ? Object.entries(d.raw.hashes).slice(0, 2).map(([k, v]) => fact('fa-hashtag', k, v, { mono: true })) : [])],
+        sdo: [fact('fa-align-left', 'About', f.description ? f.description.slice(0, 160) + (f.description.length > 160 ? '…' : '') : null),
+            fact('fa-tags', 'Aliases', (f.aliases ?? []).join(', ') || null),
+            fact('fa-user-pen', 'Created by', f.createdBy)],
     }[d.kind] ?? []
-    const s = f.sightings?.total ? [['Sightings', f.sightings.total]] : []
-    return h('div', 'ctx-d ctx-d-tip', header(d), rows([...facts, ...s].slice(0, 3)), d.tags?.length ? chips(d.tags.slice(0, 4), t => t.colour) : null)
+    if (f.sightings?.total) facts.push(fact('fa-eye', 'Sightings', String(f.sightings.total)))
+    const kept = facts.filter(Boolean).slice(0, 4)
+    const more = d.kind === 'object' && (f.attributes?.length ?? 0) > 4 ? h('div', 'ctx-d-muted', `+ ${f.attributes.length - 4} more attributes`) : null
+    // Pivotick draws the header (icon, title, subtitle from graphView's
+    // tooltip.nodeHeaderMap); this card only adds what it does not say.
+    return h('div', 'ctx-d ctx-d-tip',
+        d.tlp ? h('div', null, tlpPill(d.tlp)) : null,
+        kept.length ? h('div', 'ctx-t-facts', kept) : null, more,
+        d.tags?.length ? chips(d.tags.slice(0, 5), t => t.colour) : null,
+        h('div', 'ctx-t-hint', 'Click for all details'))
 }
 
 export function edgeTooltip(edge) {
@@ -338,19 +365,25 @@ export function edgeTooltip(edge) {
     const rel = h('span', 'ctx-d-rel', d.relation || kind?.label || 'link')
     const color = RELATION_COLORS[d.relation] ?? kind?.color
     if (color) { rel.style.borderColor = color; rel.style.color = color }
+    const facts = [fact('fa-link', 'Kind', kind?.label), fact('fa-align-left', 'About', d.description),
+        fact('fa-eye', 'Times sighted', d.kind === 'sighting' ? d.count : null)].filter(Boolean)
     return h('div', 'ctx-d ctx-d-tip',
         h('div', 'ctx-d-edge', edgeEnd(edge.source ?? edge.from), h('span', 'ctx-d-arrow', '→'), rel, h('span', 'ctx-d-arrow', '→'), edgeEnd(edge.target ?? edge.to)),
-        h('div', 'ctx-d-muted', kind?.label ?? d.kind))
+        facts.length ? h('div', 'ctx-t-facts', facts) : null)
 }
 
-/** Extra lines under a Simplify group's tooltip: the first values it holds. */
+/** Under a Simplify group's tooltip: its first members, each with its icon. */
 export function groupTooltipExtra(group) {
     ensureStyles()
-    const values = (group.members ?? []).slice(0, 5).map(n => n.getData?.()?.label).filter(Boolean)
-    if (!values.length) return null
-    const more = (group.members?.length ?? 0) - values.length
-    return h('div', 'ctx-d ctx-d-tip', h('ul', 'ctx-d-list', values.map(v => h('li', 'ctx-d-mono', v))),
-        more > 0 ? h('div', 'ctx-d-muted', `and ${more} more — double-click to open`) : null)
+    const members = (group.members ?? []).slice(0, 6)
+    if (!members.length) return null
+    const more = (group.members?.length ?? 0) - members.length
+    return h('div', 'ctx-d ctx-d-tip',
+        h('div', 'ctx-t-facts', members.map(n => {
+            const d = n.getData?.() ?? {}
+            return h('div', 'ctx-t-member', d.icon ? icon(d.icon, d.color) : null, h('span', 'ctx-t-val', d.value || d.label || n.id))
+        })),
+        more > 0 ? h('div', 'ctx-t-hint', `and ${more} more · double-click to open`) : null)
 }
 
 // ── styles (once) ───────────────────────────────────────────────────────────
@@ -403,6 +436,16 @@ function ensureStyles() {
 .ctx-d-rel{font-size:12px;font-weight:600;padding:1px 8px;border:1.5px solid;border-radius:10px}
 .ctx-d-tip{max-width:340px;gap:6px;white-space:normal;overflow-wrap:anywhere}
 .ctx-d-tip *{white-space:normal}
+.ctx-d-tip{padding:2px}
+.ctx-d-tip .ctx-d-head{padding-bottom:8px;border-bottom:1px solid var(--pvt-border-color,rgba(127,127,127,.25))}
+.ctx-t-facts{display:flex;flex-direction:column;gap:5px}
+.ctx-t-fact{display:grid;grid-template-columns:16px auto 1fr;gap:6px;align-items:baseline;font-size:12.5px}
+.ctx-t-fact>i{opacity:.55;font-size:11px;text-align:center}
+.ctx-t-key{opacity:.65;white-space:nowrap}
+.ctx-t-val{min-width:0;overflow-wrap:anywhere;font-weight:500}
+.ctx-t-hint{font-size:11px;opacity:.5;padding-top:2px}
+.ctx-t-member{display:grid;grid-template-columns:16px 1fr;gap:6px;align-items:baseline;font-size:12.5px}
+.ctx-t-member>i{font-size:11px;text-align:center}
 .ctx-d-tip .ctx-d-rows{grid-template-columns:auto 1fr}
 `
     const el = document.createElement('style')

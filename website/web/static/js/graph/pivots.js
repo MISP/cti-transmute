@@ -6,8 +6,8 @@
 //  the full document holds: no request ever leaves the page.
 //
 //    neighbours   what the node links to in the full document
-//    sameValue    the same value elsewhere: another event of the input, or the
-//                 other side of a MISP ↔ STIX Conversion
+//    sameValue    the same value elsewhere in the input (another event, or a
+//                 duplicate observable)
 //    context      the tags and galaxy clusters the node carries
 //
 //  Results land grouped by type (Pivotick's `pivotIngestGrouped`), and each

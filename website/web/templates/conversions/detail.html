@@ -434,9 +434,6 @@
                                 </template>
                             </span>
                             <div class="d-flex gap-2 align-items-center flex-wrap">
-                                <label class="visually-hidden" for="graph-view-select">Graph view</label>
-                                <select class="form-select form-select-sm" id="graph-view-select"
-                                    style="width:auto;" title="How to look at the document"></select>
                                 <button class="btn btn-sm btn-outline-secondary"
                                     id="graph-view-input">
                                     <i class="fas fa-file-import me-1"></i>
@@ -455,7 +452,6 @@
                                 </button>
                             </div>
                         </div>
-                        <div id="graph-view-hint" class="px-3 py-1" style="font-size:0.78rem;color:var(--text-3);"></div>
                         <!-- graph-container starts with a spinner, replaced once Pivotick renders -->
                         <div id="graph-container" style="width:100%;height:max(560px,75vh);">
                             <div class="graph-spinner-overlay">
@@ -477,23 +473,27 @@
                             <div class="graph-legend-body">
                                 <div class="graph-legend-section">
                                     <h6>Navigation</h6>
-                                    <p>Scroll to zoom, drag the background to pan, drag a node to move it. Click a node or a link to read its details in the sidebar; hover for a short summary. Right-click for more actions.</p>
+                                    <p>Scroll to zoom, drag the background to pan, drag a node to move it. <strong>Hover</strong> a node or a link for a short card; <strong>click</strong> it for every detail in the side panel. The panel starts closed: a pulsing red dot on its button (bottom left) means a selection is waiting there. Right-click for more actions.</p>
                                 </div>
                                 <div class="graph-legend-section">
                                     <h6>Nodes</h6>
                                     <p>Each node is an <strong>icon</strong> in the colour of its <strong>family</strong> (network, file &amp; payload, email, threat, technique…). The same thing looks the same on both sides: a MISP <code>ip-dst</code> and a STIX <code>ipv4-addr</code> share colour and icon. Labels appear as you zoom in. A dot on a node's rim is its <strong>TLP</strong>; a number below is how many times it was <strong>sighted</strong>.</p>
                                 </div>
                                 <div class="graph-legend-section">
-                                    <h6>Groups</h6>
-                                    <p>Nodes playing the same role are <strong>folded into a group</strong> (an icon on a double ring with a count): attributes under the same parent, chains like <em>indicator → observable</em>, and, on large documents, everything of one type. Double-click a group to open it; the <strong>Simplify</strong> button on the left switches each rule on or off. Nothing is hidden: search and the table still list every node.</p>
+                                    <h6>Links</h6>
+                                    <p>Thin grey lines are <strong>containment</strong> (event → attribute, report → object). Coloured arrows are <strong>relationships</strong> and object references, coloured by type and labelled with it (<em>indicates</em>, <em>uses</em>, <em>resolves-to</em>, <em>filename</em>…); dashed ones are sightings and galaxy links. The legend switches each kind of link on or off.</p>
                                 </div>
                                 <div class="graph-legend-section">
-                                    <h6>Links</h6>
-                                    <p>Thin grey lines are <strong>containment</strong> (event → attribute, report → object). Coloured arrows are <strong>relationships</strong> and object references, coloured by type (<em>indicates</em>, <em>uses</em>, <em>drops</em>…); dashed ones are sightings and galaxy links. The legend switches each kind of link on or off.</p>
+                                    <h6>Groups</h6>
+                                    <p>Nodes playing the same role are <strong>folded into a group</strong>: their icon on a double ring with a count. The canvas never draws more than about 250 elements; past that, things of one type, then of one family, fold together. Double-click a group to open it; <strong>Simplify</strong> (left rail) switches each folding rule on or off. Nothing is lost: search and the table still list every node.</p>
                                 </div>
                                 <div class="graph-legend-section">
                                     <h6>Views</h6>
-                                    <p><strong>Structure</strong> shows what the document holds; <strong>Relations</strong> keeps only the meaningful links. Use <strong>Filter Graph</strong> to narrow by family, type, MISP category, TLP, tag, IDS flag or value.</p>
+                                    <p><strong>Views</strong> (left rail, key <kbd>V</kbd>) looks at the same document differently: <strong>Structure</strong> (what it holds), <strong>Relations</strong> (only the meaningful links), <strong>Infrastructure</strong> (domains, IPs, URLs, emails), <strong>Threat &amp; ATT&amp;CK</strong> (actors, malware, techniques, targets), <strong>Context</strong> (tags and galaxies as nodes), <strong>Detection</strong> (what is flagged for IDS) and <strong>Explore</strong> (start small, then pivot). <strong>Filter Graph</strong> narrows by family, type, MISP category, TLP, tag, IDS flag or value.</p>
+                                </div>
+                                <div class="graph-legend-section">
+                                    <h6>Pivot</h6>
+                                    <p>On a large document, open <strong>Explore</strong>, select a node and open <strong>Pivot</strong> (left rail, key <kbd>P</kbd>): <em>In this document</em> pulls in what the node links to, <em>Same value elsewhere</em> finds the value in another event, <em>Tags &amp; galaxies</em> brings its context. Narrow by type when the count is too high, then fetch: results land grouped, and undo takes them back. Everything is computed from the loaded document; nothing is sent anywhere.</p>
                                 </div>
                                 <div class="graph-legend-section">
                                     <h6>Input vs Output</h6>

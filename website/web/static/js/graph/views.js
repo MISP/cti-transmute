@@ -18,7 +18,7 @@
 const containers = (g) => g.nodes.filter(n => n.data.element === 'container')
 
 /** The rules every view starts from: fold the repetition, keep the shape. */
-function baseRules({ neighbours = 4, chains = 4, communities = false, byType = false } = {}) {
+function baseRules({ neighbours = 4, chains = 4, byType = false } = {}) {
     const rules = [
         { kind: 'neighbours', minSize: neighbours },
         { kind: 'chains', minSize: chains },
@@ -31,9 +31,18 @@ function baseRules({ neighbours = 4, chains = 4, communities = false, byType = f
                 .filter(n => ['indicator', 'observable'].includes(n.getData?.()?.element))
                 .map(n => [n.id, n.getData().type])),
         },
+        {
+            // Last resort for very large documents: one group per family and type of
+            // element (all network observables, all file objects…) still reads as one kind.
+            kind: 'custom', id: 'byFamily', label: 'By family', enabled: false, minSize: 8,
+            description: 'Everything of one family and element folds together: all network observables, all file objects…',
+            partition: (v) => new Map(v.nodes
+                .filter(n => n.getData?.()?.element && n.getData().element !== 'container')
+                .map(n => [n.id, `${n.getData().element}:${n.getData().family}`])),
+        },
         { kind: 'degree', minDegree: 2, enabled: false },
         { kind: 'kcore', k: 2, enabled: false },
-        { kind: 'communities', level: 4, enabled: communities },
+        { kind: 'communities', level: 4, enabled: false },
         {
             kind: 'custom', id: 'byTlp', label: 'By TLP', enabled: false, minSize: 3,
             description: 'Observables sharing a TLP level fold together.',
@@ -81,7 +90,7 @@ export const VIEWS = {
             ? { type: 'tree', radial: true, rootId: containers(g)[0].id }
             : { type: 'force' },
         edgeKinds: { contains: true, reference: true, relationship: true, galaxy: true, sighting: false, correlation: true },
-        simplify: (g) => baseRules({ byType: g.nodes.length > 600, communities: g.nodes.length > 8000 }),
+        simplify: (g) => baseRules({ byType: g.nodes.length > 600 }),
     },
     relations: {
         label: 'Relations',
@@ -91,7 +100,7 @@ export const VIEWS = {
             return dropIsolated(g)
         },
         layout: () => ({ type: 'force' }),
-        simplify: (g) => baseRules({ neighbours: 3, communities: g.nodes.length > 3000 }),
+        simplify: (g) => baseRules({ neighbours: 3 }),
     },
     infrastructure: {
         label: 'Infrastructure',
@@ -149,13 +158,16 @@ export const VIEWS = {
         layout: () => ({ type: 'force' }),
         simplify: (g) => baseRules({ byType: g.nodes.length > 600 }),
     },
-    compare: {
-        label: 'MISP ↔ STIX',
-        description: 'Both sides at once: each MISP element is linked to what the conversion turned it into. Elements with no counterpart stand alone.',
-        compare: true,
-        transform: pruneContainment,
+    explore: {
+        label: 'Explore',
+        description: 'Start small and pivot: the containers and the threat entities only (actors, malware, techniques…). Select a node, open Pivot and pull in what it links to.',
+        transform: (g) => {
+            const keep = new Set(g.nodes.filter(n => ['container', 'entity', 'context'].includes(n.data.element)).map(n => n.id))
+            g.nodes = g.nodes.filter(n => keep.has(n.id))
+            g.edges = g.edges.filter(e => keep.has(e.from) && keep.has(e.to))
+            return g
+        },
         layout: () => ({ type: 'force' }),
-        edgeKinds: { origin: true, contains: true, reference: true, relationship: true, sighting: false, galaxy: false },
-        simplify: (g) => baseRules({ byType: g.nodes.length > 600, communities: g.nodes.length > 8000 }),
+        simplify: (g) => baseRules({ byType: g.nodes.length > 600 }),
     },
 }

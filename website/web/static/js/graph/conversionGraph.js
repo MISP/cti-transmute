@@ -166,7 +166,7 @@ function _showSpinner(containerId, message) {
         </div>`
 }
 
-// The view picker's current choice, shared by both sides.
+// The view chosen in Pivotick's Views mode, shared by both sides.
 let _currentView = 'structure'
 const _mounted = {}
 
@@ -205,24 +205,13 @@ async function _initViewer(containerId, jsonText, format) {
     await new Promise(r => setTimeout(r, 0))
 
     _mounted[containerId]?.destroy()
-    // The MISP ↔ STIX view draws both sides of the Conversion in either container.
-    if (_currentView === 'compare' && _conversionData) {
-        const isStixToMisp = _conversionData.conversion_type === 'STIX_TO_MISP'
-        const misp = isStixToMisp ? _conversionData.output_text : _conversionData.input_text
-        const stix = isStixToMisp ? _conversionData.input_text : _conversionData.output_text
-        try {
-            jsonText = { misp: JSON.parse(misp), stix: JSON.parse(stix) }
-            format = 'compare'
-        } catch {
-            container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Both sides are needed to compare them.</p>'
-            return
-        }
-    }
     try {
         _mounted[containerId] = await mountGraph(container, jsonText, format, {
             view: _currentView,
             dark: _isDarkTheme(),
             maxVisible: GRAPH_CONFIG.maxNodes,
+            // Picking a view in Pivotick's Views mode remounts the graph in it.
+            onViewChange: (id) => _switchView(id),
             ui: {
                 contextMenu: {
                     menuNode: {
@@ -253,27 +242,17 @@ async function _initViewer(containerId, jsonText, format) {
         return
     }
     _guardTooltip(_mounted[containerId].graph)
-    _updateViewHint()
 }
 
-/** Fill the view picker and keep its description under it. */
-function _initViewPicker() {
-    const select = document.getElementById('graph-view-select')
-    if (!select || select.options.length) return
-    for (const [id, v] of Object.entries(VIEWS)) select.add(new Option(v.label, id))
-    select.value = _currentView
-    select.addEventListener('change', () => {
-        _currentView = select.value
-        for (const side of ['input', 'output']) _renderedSides[side] = false
-        const outEl = document.getElementById('graph-container-output')
-        _renderSide(outEl && outEl.style.display !== 'none' ? 'output' : 'input')
-    })
+/** Remount the visible side in another view (both sides re-render lazily). */
+function _switchView(id) {
+    if (!VIEWS[id]) return
+    _currentView = id
+    for (const side of ['input', 'output']) _renderedSides[side] = false
+    const outEl = document.getElementById('graph-container-output')
+    _renderSide(outEl && outEl.style.display !== 'none' ? 'output' : 'input')
 }
 
-function _updateViewHint() {
-    const hint = document.getElementById('graph-view-hint')
-    if (hint) hint.textContent = VIEWS[_currentView]?.description ?? ''
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Public API
@@ -361,7 +340,6 @@ export function initConversionGraph(conversionData) {
     // Called by the template's delegated toolbar handler on first tab open;
     // window-scoped because it only exists once the conversion data is loaded.
     window.onGraphTabClick = function () {
-        _initViewPicker()
         // Render only the default side on first tab open
         const side = GRAPH_CONFIG.defaultSide
         showGraphSide(side)

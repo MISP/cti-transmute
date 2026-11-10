@@ -98,7 +98,7 @@ const bundle = {
     type: 'bundle', objects: [
         { type: 'marking-definition', id: 'marking-definition--1', definition_type: 'tlp', definition: { tlp: 'green' } },
         { type: 'identity', id: 'identity--1', name: 'CIRCL', created: 'x', modified: 'x' },
-        { type: 'report', id: 'report--1', name: 'Report', created: 'x', modified: 'x',
+        { type: 'report', id: 'report--1', name: 'Report', created: 'x', modified: 'x', created_by_ref: 'identity--1',
           object_refs: ['indicator--1', 'observed-data--1', 'malware--1'], object_marking_refs: ['marking-definition--1'] },
         { type: 'indicator', id: 'indicator--1', created: 'x', modified: 'x', created_by_ref: 'identity--1',
           pattern: "[ipv4-addr:value = '203.0.113.9'] AND [network-traffic:dst_ref.type = 'ipv4-addr']",
@@ -143,6 +143,12 @@ check('stix: indicator takes the family of its pattern and the MISP origin', () 
     eq(ind.data.fields.sightings.total, 3, 'sightings')
     const rep = node(g, n => n.data.kind === 'sdo' && n.data.typeLabel === 'report')
     eq(rep.data.tlp, 'green', 'tlp from marking')
+})
+
+check('stix: the author hangs off the report, not off every object', () => {
+    const g = cleanGraph(stixToGraph(bundle))
+    const by = g.edges.filter(e => e.data.relation === 'created by')
+    eq(by.map(e => [e.from, e.to]), [['stix_report--1', 'stix_identity--1']], 'one created-by link')
 })
 
 check('stix: pattern observables skip the type comparisons', () => {

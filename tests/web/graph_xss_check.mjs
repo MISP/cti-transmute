@@ -206,12 +206,11 @@ assert(/normaliseNodeTypes\(/.test(viewSrc),
 assert(viewSrc.indexOf('normaliseNodeTypes(') < viewSrc.indexOf('new window.Pivotick('),
        'the node types are normalised before the graph is handed to Pivotick');
 
-// Header maps return strings Pivotick would parse as HTML: each one is a textCell.
+// Header maps (sidebar and tooltip titles) are plain strings: Pivotick resolves them
+// with tryResolveString and writes them with textContent, never as HTML.
 const headers = viewSrc.slice(viewSrc.indexOf('mainHeader:'), viewSrc.indexOf('extraPanels:'));
-const headerFns = headers.match(/\b(?:title|subtitle):/g) || [];
-const wrappedHeaders = headers.match(/\b(?:title|subtitle):\s*\([^)]*\)\s*=>\s*textCell\(/g) || [];
-assert(headerFns.length >= 4 && headerFns.length === wrappedHeaders.length,
-       'every node and edge header (title and subtitle) is wrapped in textCell');
+assert(!/innerHTML|insertAdjacentHTML/.test(headers),
+       'the header maps never build HTML from a value');
 assert(/propertiesPanel:\s*\{\s*enabled:\s*false/.test(viewSrc),
        'the string-based properties panel is off; details come from render/details.js');
 

@@ -242,6 +242,10 @@ export function stixToGraph(json, opts = {}) {
             for (const r of o.object_refs ?? []) if (byId.get(r)?.type !== 'marking-definition')
                 link(o.id, r, 'contains', { relation: 'object_refs' })
         }
+        // The author is drawn once, from the report or grouping that carries it,
+        // not from every object (see SKIP_REFS): it stays on the graph, attached.
+        if (SDO_CONTAINERS.has(o.type) && o.created_by_ref && byId.has(o.created_by_ref))
+            link(o.id, o.created_by_ref, 'relationship', { relation: 'created by' })
         for (const [key, val] of Object.entries(o)) {
             if (SKIP_REFS.has(key) || !/_refs?$/.test(key)) continue
             for (const r of Array.isArray(val) ? val : [val]) {

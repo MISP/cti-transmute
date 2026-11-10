@@ -24,7 +24,6 @@ function badges(node) {
         const t = TLP[d.tlp]
         out.push({ text: ' ', color: t.color, title: t.label, position: 'ne' })
     }
-    if (d.showSide) out.push({ text: d.side === 'misp' ? 'M' : 'S', color: d.side === 'misp' ? '#1e4fd8' : '#0f766e', title: d.side === 'misp' ? 'MISP side' : 'STIX side', position: 'sw' })
     const s = d.fields?.sightings
     if (s?.total) out.push({ text: String(s.total), color: '#d97706', title: `${s.total} sighting${s.total > 1 ? 's' : ''}`, position: 'se' })
     return out
@@ -69,6 +68,26 @@ const LABEL_CSS = `
 .pvt-node-label { fill: var(--ctx-label-color, #334155); }
 g.label-container text { fill: var(--ctx-edge-label-color, #64748b); font-style: italic; }
 [data-theme="dark"] { --ctx-label-color: #cbd5e1; --ctx-edge-label-color: #94a3b8; }
+/* The tooltip's raw property list is never used: our card (details.js) replaces it. */
+.pvt-tooltip .pvt-properties-container { display: none !important; }
+/* Pivotick's accent (a pink-red by default) becomes cti-transmute's own accent. */
+.pivotick, .pivotick[data-theme], .pvt-portal, .pvt-portal[data-theme] {
+  --pvt-theme-primary: var(--accent, #2563eb) !important;
+  --pvt-selection-color: var(--accent, #2563eb) !important;
+  --pvt-selection-stroke-color: var(--accent, #2563eb) !important;
+  --pvt-node-selected-color: var(--accent, #2563eb) !important;
+  --pvt-badge-color: var(--accent, #2563eb) !important;
+}
+/* With the sidebar closed its open button sank under the dock's strip: lift it. */
+.pvt-sidebar-collapsed .pvt-sidebar-collapse-container { bottom: calc(var(--pvt-dock-height, 0px) + 14px) !important; }
+/* A selection waiting in the closed sidebar: pulsing dot on its open button. */
+.pvt-sidebar-collapse-container.ctx-details-waiting { position: relative; }
+.pvt-sidebar-collapse-container.ctx-details-waiting::after {
+  content: ''; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%;
+  background: #ef4444; box-shadow: 0 0 0 0 rgba(239,68,68,.6); animation: ctx-pulse 1.4s ease-out infinite; pointer-events: none;
+}
+@keyframes ctx-pulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.6); } 70% { box-shadow: 0 0 0 9px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+@media (prefers-reduced-motion: reduce) { .pvt-sidebar-collapse-container.ctx-details-waiting::after { animation: none; } }
 /* Headers of the tooltip and the sidebar: wrap long titles instead of clamping
    them to two lines or eliding the middle of an identifier. */
 [class*="pvt-"].is-clamp, [class*="pvt-"].is-identifier {
