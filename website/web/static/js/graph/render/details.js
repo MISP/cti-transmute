@@ -17,7 +17,7 @@ import { TLP, FAMILIES, EDGE_KINDS, RELATION_COLORS } from '../model/vocabulary.
 function h(tag, cls, ...children) {
     const el = document.createElement(tag)
     if (cls) el.className = cls
-    for (const c of children.flat()) {
+    for (const c of children.flat(Infinity)) {
         if (c === null || c === undefined || c === false) continue
         el.append(c instanceof Node ? c : document.createTextNode(String(c)))
     }
