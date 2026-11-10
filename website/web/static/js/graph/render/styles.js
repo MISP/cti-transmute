@@ -7,9 +7,8 @@
 //    squares. The element (container, observable…) only changes the size;
 //  - its label sits below it, short, and only appears once the zoom makes it
 //    readable (Pivotick's `minLabelFontSize` gate);
-//  - edges carry no text at rest: their kind is read from the line itself
-//    (colour, width, dash) and the legend; the relation name shows at a
-//    close zoom, on hover and in the sidebar;
+//  - edges say what they mean (uses, drops, resolves-to, filename…) once the
+//    zoom makes the text readable; only container → content stays silent;
 //  - badges are kept for two facts only: a restrictive TLP and sightings.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -37,11 +36,15 @@ function edgeColor(edge) {
     return EDGE_KINDS[d.kind]?.color ?? '#94a3b8'
 }
 
-/** Only semantic edges ever get a label, and only at a close zoom. */
-function edgeLabel(edge) {
-    const d = edge.getData() ?? {}
-    if (d.kind === 'contains' || d.kind === 'galaxy' || d.kind === 'correlation') return ''
-    return d.relation || ''
+/**
+ * The text an edge carries. Every edge that means something says so; only
+ * "container → its content" stays silent (it would repeat on hundreds of lines).
+ * Pivotick reads `edge.data.label`, so graphView writes this there at mount.
+ */
+export function edgeLabelText(edgeData, fromNodeData) {
+    if (edgeData.kind === 'contains') return fromNodeData?.element === 'container' ? '' : (edgeData.relation || '')
+    if (edgeData.kind === 'correlation') return 'same value'
+    return edgeData.relation || ''
 }
 
 export function edgeStyleMap() {
@@ -65,6 +68,12 @@ const LABEL_CSS = `
 .pvt-node-label { fill: var(--ctx-label-color, #334155); }
 g.label-container text { fill: var(--ctx-edge-label-color, #64748b); font-style: italic; }
 [data-theme="dark"] { --ctx-label-color: #cbd5e1; --ctx-edge-label-color: #94a3b8; }
+/* Headers of the tooltip and the sidebar: wrap long titles instead of clamping
+   them to two lines or eliding the middle of an identifier. */
+[class*="pvt-"].is-clamp, [class*="pvt-"].is-identifier {
+  display: block !important; -webkit-line-clamp: unset !important; line-clamp: unset !important;
+  white-space: normal !important; overflow: visible !important; overflow-wrap: anywhere;
+}
 `
 let labelCss = false
 function ensureLabelCss() {
@@ -82,7 +91,8 @@ export function renderOptions() {
     return {
         nodeTypeAccessor: (node) => node.getData()?.type ?? 'unknown',
         edgeTypeAccessor: (edge) => edge.getData()?.kind,
-        minLabelFontSize: 9,
+        // Labels show from a moderate zoom: the canvas never draws more than ~250 elements.
+        minLabelFontSize: 7,
         defaultNodeStyle: {
             shape: 'circle',
             color: 'var(--pvt-bg, #ffffff)',
@@ -94,7 +104,7 @@ export function renderOptions() {
             textColor: (node) => node.getData()?.color ?? '#64748b',
             text: (node) => node.getData()?.label ?? '',
             textVerticalShift: -1,
-            textFontSize: 10,
+            textFontSize: 11,
             textTruncate: true,
             textMaxWidth: 150,
             badges,
@@ -114,8 +124,7 @@ export function renderOptions() {
         defaultLabelStyle: {
             backgroundColor: 'transparent',
             color: 'var(--ctx-label-color, #334155)',
-            fontSize: 8,
-            labelAccessor: edgeLabel,
+            fontSize: 10,
         },
     }
 }

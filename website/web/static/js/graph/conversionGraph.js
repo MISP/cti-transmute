@@ -149,7 +149,8 @@ function _guardTooltip(graph) {
         new MutationObserver(() => {
             if (!el.isConnected) {
                 el.classList.remove('shown')
-                document.body.appendChild(el)
+                // In fullscreen only the fullscreen element is painted.
+                ;(document.fullscreenElement ?? document.body).appendChild(el)
             }
         }).observe(document.body, { childList: true })
     }, 250)

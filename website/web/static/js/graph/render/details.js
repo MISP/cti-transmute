@@ -401,7 +401,8 @@ function ensureStyles() {
 .ctx-d-end{display:inline-flex;gap:5px;align-items:center;font-weight:600;overflow-wrap:anywhere}
 .ctx-d-arrow{opacity:.5}
 .ctx-d-rel{font-size:12px;font-weight:600;padding:1px 8px;border:1.5px solid;border-radius:10px}
-.ctx-d-tip{max-width:320px;gap:6px}
+.ctx-d-tip{max-width:340px;gap:6px;white-space:normal;overflow-wrap:anywhere}
+.ctx-d-tip *{white-space:normal}
 .ctx-d-tip .ctx-d-rows{grid-template-columns:auto 1fr}
 `
     const el = document.createElement('style')

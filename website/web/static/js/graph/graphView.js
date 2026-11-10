@@ -15,7 +15,7 @@ import { mispToGraph } from './model/mispToGraph.js'
 import { stixToGraph } from './model/stixToGraph.js'
 import { cleanGraph } from './model/model.js'
 import { EDGE_KINDS, FAMILIES, ELEMENTS, TLP } from './model/vocabulary.js'
-import { renderOptions } from './render/styles.js'
+import { renderOptions, edgeLabelText } from './render/styles.js'
 import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra } from './render/details.js'
 import { VIEWS } from './views.js'
 import { normaliseNodeTypes, textCell } from './graphSafety.js'
@@ -72,6 +72,22 @@ function filterFacets() {
         { key: 'hasSightings', label: 'Sighted', type: 'boolean' },
         { key: 'value', label: 'Value', type: 'regex' },
     ]
+}
+
+/**
+ * Pivotick's hover tooltip lives on <body>. In fullscreen only the fullscreen
+ * element is painted, so the tooltip would exist but never show: move it into
+ * the fullscreen element while it lasts, and back to <body> after.
+ */
+function tooltipFollowsFullscreen(graph) {
+    const onChange = () => {
+        const el = graph?.UIManager?.tooltip?.tooltip
+        if (!el) return
+        const host = document.fullscreenElement ?? document.body
+        if (el.parentElement !== host) host.appendChild(el)
+    }
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
 }
 
 /** How many elements the canvas shows at most before folding further. */
@@ -180,6 +196,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
 
     // Types come from the input document and serve as style keys: keep them plain.
     normaliseNodeTypes(model)
+    const byId = new Map(model.nodes.map(n => [n.id, n.data]))
+    for (const e of model.edges) e.data.label = edgeLabelText(e.data, byId.get(e.from))
     const graph = new window.Pivotick(container, { nodes: model.nodes, edges: model.edges }, options)
 
     // Edge layers the view keeps off at first (embedded refs, pattern links…).
@@ -190,11 +208,12 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
     }
 
     keepWithinBudget(graph, opts.maxVisible ?? MAX_VISIBLE)
+    const stopTooltipFollow = tooltipFollowsFullscreen(graph)
 
     return {
         graph, model, view,
         stats: { nodes: model.nodes.length, edges: model.edges.length },
-        destroy: () => { try { graph.destroy() } catch { /* already gone */ } },
+        destroy: () => { stopTooltipFollow(); try { graph.destroy() } catch { /* already gone */ } },
     }
 }
 

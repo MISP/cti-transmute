@@ -93,4 +93,60 @@ export const VIEWS = {
         layout: () => ({ type: 'force' }),
         simplify: (g) => baseRules({ neighbours: 3, communities: g.nodes.length > 3000 }),
     },
+    infrastructure: {
+        label: 'Infrastructure',
+        description: 'The network side only: domains, IPs, URLs, connections and how they resolve to each other.',
+        transform: (g) => {
+            const keep = new Set(g.nodes.filter(n => n.data.family === 'network' || n.data.family === 'email').map(n => n.id))
+            g.nodes = g.nodes.filter(n => keep.has(n.id))
+            g.edges = g.edges.filter(e => keep.has(e.from) && keep.has(e.to))
+            return dropIsolated(g)
+        },
+        layout: () => ({ type: 'force' }),
+        edgeKinds: { 'embedded-ref': true, pattern: true },
+        simplify: (g) => baseRules({ neighbours: 3, chains: 3, byType: g.nodes.length > 600 }),
+    },
+    threat: {
+        label: 'Threat & ATT&CK',
+        description: 'Who and how: threat actors, malware, tools, ATT&CK techniques, vulnerabilities and what they target.',
+        transform: (g) => {
+            const families = new Set(['threat', 'ttp', 'vuln', 'identity', 'container'])
+            const keep = new Set(g.nodes.filter(n => families.has(n.data.family) || n.data.kind === 'galaxy').map(n => n.id))
+            // Keep the indicators that point at a kept node, so "what detects it" stays visible.
+            for (const e of g.edges) if (keep.has(e.to) && e.data.kind === 'relationship') keep.add(e.from)
+            g.nodes = g.nodes.filter(n => keep.has(n.id))
+            g.edges = g.edges.filter(e => keep.has(e.from) && keep.has(e.to))
+            return dropIsolated(g)
+        },
+        layout: (g) => g.nodes.length <= 150 ? { type: 'tree', horizontal: true } : { type: 'force' },
+        edgeKinds: { contains: true, galaxy: true, relationship: true },
+        simplify: (g) => baseRules({ byType: g.nodes.length > 600 }),
+    },
+    context: {
+        label: 'Context',
+        description: 'Tags and galaxy clusters as nodes: which indicators share a TLP, a technique or an actor.',
+        tagsAsNodes: true,
+        transform: (g) => {
+            const ctx = new Set(g.nodes.filter(n => n.data.element === 'context').map(n => n.id))
+            g.edges = g.edges.filter(e => e.data.kind === 'galaxy' || ctx.has(e.to))
+            // STIX has no tag nodes: its labels become chips, so link objects to their markings' TLP instead.
+            return dropIsolated(g)
+        },
+        layout: () => ({ type: 'force' }),
+        edgeKinds: { galaxy: true },
+        simplify: (g) => baseRules({ neighbours: 3, byType: g.nodes.length > 600 }),
+    },
+    detection: {
+        label: 'Detection',
+        description: 'What a sensor can use: attributes flagged for IDS and STIX indicators, with what they detect.',
+        transform: (g) => {
+            const keep = new Set(g.nodes.filter(n => n.data.toIds === true || n.data.kind === 'indicator' || n.data.element === 'container').map(n => n.id))
+            for (const e of g.edges) if (keep.has(e.from) && e.data.kind === 'relationship') keep.add(e.to)
+            g.nodes = g.nodes.filter(n => keep.has(n.id))
+            g.edges = g.edges.filter(e => keep.has(e.from) && keep.has(e.to))
+            return dropIsolated(g)
+        },
+        layout: () => ({ type: 'force' }),
+        simplify: (g) => baseRules({ byType: g.nodes.length > 600 }),
+    },
 }
