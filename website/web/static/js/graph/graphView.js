@@ -16,6 +16,7 @@ import { stixToGraph } from './model/stixToGraph.js'
 import { cleanGraph } from './model/model.js'
 import { EDGE_KINDS, FAMILIES, ELEMENTS, TLP } from './model/vocabulary.js'
 import { renderOptions } from './render/styles.js'
+import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra } from './render/details.js'
 import { VIEWS } from './views.js'
 
 export { VIEWS }
@@ -28,6 +29,8 @@ export function buildModel(json, format, view) {
     cleanGraph(g)
     return view.transform ? view.transform(g) : g
 }
+
+const isEdge = (el) => (window.Pivotick?.Edge && el instanceof window.Pivotick.Edge) || ('from' in (el ?? {}) && 'to' in (el ?? {}))
 
 /** Distinct values of a data key, sorted by count. */
 function distinct(graph, key) {
@@ -103,6 +106,29 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
                 deletion: { enabled: false },
             },
             notes: { enabled: false },
+            // Details: our own sectioned panel instead of the key/value list.
+            propertiesPanel: { enabled: false },
+            mainHeader: {
+                nodeHeaderMap: {
+                    title: (node) => node.getData()?.label ?? String(node.id),
+                    subtitle: (node) => node.getData()?.typeLabel ?? '',
+                },
+                edgeHeaderMap: {
+                    title: (edge) => edge.getData()?.relation || 'Link',
+                    subtitle: (edge) => EDGE_KINDS[edge.getData()?.kind]?.label ?? '',
+                },
+            },
+            extraPanels: [{
+                title: 'Details',
+                render: (sel) => {
+                    if (!sel || Array.isArray(sel)) return null
+                    return isEdge(sel) ? edgeDetails(sel) : nodeDetails(sel)
+                },
+            }],
+            tooltip: {
+                render: (el) => isEdge(el) ? edgeTooltip(el) : nodeTooltip(el),
+                renderGroupExtra: (group) => groupTooltipExtra(group),
+            },
             legend: { position: 'bottom-left', sections: legendSections(model) },
             filter: {
                 facets: filterFacets(),
