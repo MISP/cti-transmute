@@ -73,6 +73,36 @@ function filterFacets() {
     ]
 }
 
+/** How many elements the canvas shows at most before folding further. */
+export const MAX_VISIBLE = 250
+
+/**
+ * Past `max` drawn elements, icons and labels stop reading as anything. Turn
+ * on the stronger folds in order until the canvas fits: by type, then
+ * communities (coarser and coarser). Each step is a Simplify rule the reader
+ * can switch back off in the Simplify mode, and any group opens as a
+ * sub-graph with a double-click.
+ */
+function keepWithinBudget(graph, max) {
+    const s = graph.simplify
+    if (!s?.summary) return
+    const steps = [
+        () => s.setRuleEnabled('byType', true),
+        () => { s.setRuleEnabled('communities', true); s.setRuleSetting('communities', 3) },
+        () => s.setRuleSetting('communities', 5),
+        () => s.setRuleSetting('communities', 7),
+    ]
+    const shown = () => s.summary().shown
+    let i = 0
+    const next = () => {
+        if (shown() <= max || i >= steps.length) return
+        try { steps[i++]() } catch { i++ }
+        // Communities are found in a worker: give it a moment before measuring again.
+        setTimeout(next, 400)
+    }
+    next()
+}
+
 /**
  * @returns {Promise<{graph, model, stats, destroy}>}
  */
@@ -154,6 +184,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
     if (on.filter(k => present.has(k)).length < present.size) {
         graph.queryEngine?.setEdgeFilter?.('kind', { value: on, matchMode: 'exact' })
     }
+
+    keepWithinBudget(graph, opts.maxVisible ?? MAX_VISIBLE)
 
     return {
         graph, model, view,

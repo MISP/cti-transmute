@@ -56,15 +56,36 @@ export function edgeStyleMap() {
     return map
 }
 
+const LABEL_CSS = `
+.pvt-node-label-group > rect, g.label-container rect { fill: transparent !important; stroke: none !important; }
+.pvt-node-label, g.label-container text {
+  paint-order: stroke fill; stroke: var(--pvt-bg, #fff); stroke-width: 3.5px; stroke-linejoin: round;
+  font-weight: 500; letter-spacing: .01em;
+}
+.pvt-node-label { fill: var(--ctx-label-color, #334155); }
+g.label-container text { fill: var(--ctx-edge-label-color, #64748b); font-style: italic; }
+[data-theme="dark"] { --ctx-label-color: #cbd5e1; --ctx-edge-label-color: #94a3b8; }
+`
+let labelCss = false
+function ensureLabelCss() {
+    if (labelCss || typeof document === 'undefined') return
+    labelCss = true
+    const el = document.createElement('style')
+    el.dataset.ctx = 'graph-labels'
+    el.textContent = LABEL_CSS
+    document.head.appendChild(el)
+}
+
 /** The `render` block handed to `new Pivotick()`. */
 export function renderOptions() {
+    ensureLabelCss()
     return {
         nodeTypeAccessor: (node) => node.getData()?.type ?? 'unknown',
         edgeTypeAccessor: (edge) => edge.getData()?.kind,
         minLabelFontSize: 9,
         defaultNodeStyle: {
             shape: 'circle',
-            color: 'var(--pvt-bg-color, #ffffff)',
+            color: 'var(--pvt-bg, #ffffff)',
             size: (node) => node.getData()?.size ?? 12,
             strokeColor: (node) => node.getData()?.color ?? '#64748b',
             strokeWidth: 1.2,
@@ -88,7 +109,11 @@ export function renderOptions() {
         },
         edgeStyleMap: edgeStyleMap(),
         groupStyle,
+        // No grey pill behind labels: plain text with a halo of the canvas colour
+        // (see LABEL_CSS), so a label stays readable over the lines it crosses.
         defaultLabelStyle: {
+            backgroundColor: 'transparent',
+            color: 'var(--ctx-label-color, #334155)',
             fontSize: 8,
             labelAccessor: edgeLabel,
         },
@@ -117,8 +142,8 @@ function groupElement(group) {
     const el = document.createElement('div')
     el.className = 'ctx-group'
     el.style.cssText = `position:relative;width:${2 * r}px;height:${2 * r}px;border-radius:50%;` +
-        `background:var(--pvt-bg-color,#fff);border:2px solid ${color};` +
-        `box-shadow:0 0 0 3px var(--pvt-bg-color,#fff),0 0 0 4.5px ${color};` +
+        `background:var(--pvt-bg, #fff);border:2px solid ${color};` +
+        `box-shadow:0 0 0 3px var(--pvt-bg, #fff),0 0 0 4.5px ${color};` +
         `display:grid;place-items:center;color:${color};font-size:${Math.round(r * 0.8)}px;box-sizing:border-box`
     const i = document.createElement('i')
     i.className = `fa-solid ${icon}`
@@ -127,7 +152,7 @@ function groupElement(group) {
     pill.textContent = n > 999 ? '999+' : String(n)
     pill.style.cssText = `position:absolute;right:${-r * 0.55}px;top:${-r * 0.35}px;background:${color};color:#fff;` +
         `font:600 11px/1 system-ui,sans-serif;padding:3px 6px;border-radius:9px;white-space:nowrap;` +
-        `box-shadow:0 0 0 2px var(--pvt-bg-color,#fff)`
+        `box-shadow:0 0 0 2px var(--pvt-bg, #fff)`
     el.appendChild(pill)
     return el
 }

@@ -361,7 +361,7 @@ function ensureStyles() {
     const css = `
 .ctx-d{font-size:13px;line-height:1.45;color:var(--pvt-text-color,inherit);display:flex;flex-direction:column;gap:10px;min-width:0}
 .ctx-d-head{display:flex;gap:10px;align-items:flex-start}
-.ctx-d-badge{flex:none;width:34px;height:34px;border-radius:50%;border:2px solid;display:grid;place-items:center;font-size:15px;background:var(--pvt-bg-color,#fff)}
+.ctx-d-badge{flex:none;width:34px;height:34px;border-radius:50%;border:2px solid;display:grid;place-items:center;font-size:15px;background:var(--pvt-bg, #fff)}
 .ctx-d-titles{min-width:0;display:flex;flex-direction:column;gap:2px}
 .ctx-d-value{font-weight:600;font-size:14px;overflow-wrap:anywhere}
 .ctx-d-sub{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px;opacity:.75}
