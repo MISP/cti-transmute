@@ -207,8 +207,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
             theme: dark ? 'dark' : 'light',
             // Closed at first: the canvas gets the room; a click on a node opens it.
             sidebar: { collapsed: true },
-            // Folded at first too; its toggle stays in the corner.
-            minimap: { collapsed: true, position: 'bottom-left' },
+            // No minimap: the overview is the folded graph itself.
+            minimap: false,
             // Read-only: a Conversion is looked at, never edited from the graph.
             editors: {
                 nodeCreator: { enabled: false }, edgeCreator: { enabled: false },
