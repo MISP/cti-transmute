@@ -1757,7 +1757,7 @@ html.christmas-mode .alert-warning { color: #fde68a; }
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-2);
-  font: 500 0.875rem/1.2 var(--font-ui);
+  font: 600 0.875rem/1.2 var(--font-ui);
   cursor: pointer;
   text-align: left;
   transition: background var(--t), color var(--t), box-shadow var(--t), border-color var(--t);
@@ -1769,8 +1769,8 @@ html.christmas-mode .alert-warning { color: #fde68a; }
   color: var(--accent);
   border-color: var(--border);
   box-shadow: var(--shadow-sm);
-  font-weight: 600;
 }
+/* Same weight in both states: the switch keeps its width when an option is picked. */
 .cti-switch-option.active i { opacity: 1; }
 .cti-switch-option:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
 .cti-switch-text { display: flex; flex-direction: column; gap: 2px; }

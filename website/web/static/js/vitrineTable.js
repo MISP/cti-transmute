@@ -10,6 +10,25 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useVitrine } from './vitrine.js'
+import { getTextColor, nameToColor } from './tags/utils/galaxie.js'
+
+/**
+ * A server-driven table keeps no local filter: hide <vt-table>'s "Show filters"
+ * toggle. It only carries the generic `button` part, so the rule goes into the
+ * element's own (open) shadow root.
+ */
+function hideLocalFilter(table) {
+    const add = () => {
+        const root = table.shadowRoot
+        if (!root || root.querySelector('style[data-cti]')) return !!root
+        const st = document.createElement('style')
+        st.dataset.cti = 'no-local-filter'
+        st.textContent = 'button[data-focus-key="filters"]{display:none!important}'
+        root.append(st)
+        return true
+    }
+    if (!add()) customElements.whenDefined('vt-table').then(() => requestAnimationFrame(add))
+}
 
 export const VitrineTable = {
     props: {
@@ -40,7 +59,10 @@ export const VitrineTable = {
                 // 'simple' and only what the page needs (a boolean attribute is on as
                 // soon as it is present, even as "false", so features are added, not removed).
                 table.setAttribute('variant', 'simple')
-                for (const a of ['header', 'copy', 'download', 'fullscreen', 'column-menu', 'resizable', 'expandable']) table.setAttribute(a, '')
+                // wrap: a cell grows (tags on several lines) instead of being cut.
+                for (const a of ['header', 'copy', 'download', 'fullscreen', 'resizable', 'expandable', 'wrap']) table.setAttribute(a, '')
+                // Column menus sort and filter locally: only when the data is all here.
+                if (!props.serverSide) table.setAttribute('column-menu', '')
                 if (props.search) { table.setAttribute('search', ''); table.setAttribute('filters', '') }
                 table.setAttribute('row-key', props.rowKey)
                 table.setAttribute('page-size', String(props.pageSize))
@@ -55,8 +77,13 @@ export const VitrineTable = {
                 if (props.persist) table.setAttribute('persist', props.persist)
                 table.addEventListener('vt-row-activate', (e) => emit('activate', e.detail?.row))
                 host.value.replaceChildren(table)
+                if (props.serverSide) hideLocalFilter(table)
             }
-            if (props.columns) table.columns = props.columns
+            // Server-driven: no local filtering or sorting at all (it would only act on
+            // the rows of this page, not on the conversions the server holds).
+            if (props.columns) table.columns = props.serverSide
+                ? props.columns.map((c) => ({ ...c, filterable: false, sortable: false }))
+                : props.columns
             table.data = props.rows.map((r) => ({ ...r }))
         }
 
@@ -79,23 +106,42 @@ const SVG = {
     trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
 }
 
-/** Readable text on a tag colour. */
-function inkOn(hex) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '')
-    if (!m) return 'var(--text,#0f172a)'
-    const n = parseInt(m[1], 16)
-    return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 150 ? '#111827' : '#ffffff'
+/** "namespace:value" as the cards show it (SingleTagDisplay). */
+function tagLabel(name) {
+    if (!name) return ''
+    let ns = ''
+    if (name.includes(':')) ns = name.startsWith('misp-galaxy:') && name.includes('=') ? name.split(':')[1].split('=')[0] : name.split(':')[0]
+    const m = name.match(/="(.+)"$/)
+    const val = m ? m[1] : (name.includes(':') ? name.split(':').slice(1).join(':') : name)
+    return ns ? `${ns}:${val}` : val
 }
 
-/** A tag chip in its own colour (text only: the name is never HTML). */
+const TAG_GLYPH = '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Zm4.5-4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/></svg>'
+
+/** A tag as the cards draw it: dark icon part, coloured name part (text only). */
 function tagChip(name, color) {
+    const bg = /^#[0-9a-fA-F]{6}$/.test(color || '') ? color : nameToColor(name || 'tag')
+    const pill = document.createElement('span')
+    pill.title = name
+    pill.style.cssText = 'display:inline-flex;border-radius:.5rem;overflow:hidden;font:800 .78rem/1 var(--font-ui,system-ui);' +
+        'box-shadow:1px 3px 5px rgba(0,0,0,.22);vertical-align:middle;max-width:100%'
+    const left = document.createElement('span')
+    left.style.cssText = 'display:flex;align-items:center;padding:.32rem .5rem;background:#343a40;color:#fff;flex-shrink:0'
+    left.innerHTML = TAG_GLYPH
+    const right = document.createElement('span')
+    right.textContent = tagLabel(name)
+    right.style.cssText = `display:block;padding:.32rem .6rem;white-space:normal;overflow-wrap:anywhere;` +
+        `background:${bg};color:${getTextColor(bg)}`
+    pill.append(left, right)
+    return pill
+}
+
+/** The "+N" after the first tags. */
+function moreChip(n) {
     const c = document.createElement('span')
-    c.textContent = name
-    c.title = name
-    const bg = color || 'var(--surface-2,#f1f5f9)'
-    c.style.cssText = `display:inline-block;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;` +
-        `padding:2px 8px;border-radius:999px;font:500 11.5px/1.5 var(--font-ui,system-ui);background:${bg};` +
-        `color:${color ? inkOn(color) : 'var(--text-2,#475569)'};border:1px solid ${color || 'var(--border,#e3e8f0)'}`
+    c.textContent = `+${n}`
+    c.style.cssText = 'display:inline-flex;align-items:center;padding:.32rem .55rem;border-radius:.5rem;font:700 .75rem/1 var(--font-ui,system-ui);' +
+        'background:var(--surface-2,#f1f5f9);color:var(--text-2,#475569);border:1px solid var(--border,#e3e8f0)'
     return c
 }
 
@@ -184,9 +230,10 @@ export const HistoryTable = {
                 key: 'tags', label: 'Tags', width: 300, sortable: false,
                 render: (value) => {
                     const box = document.createElement('span')
-                    box.style.cssText = 'display:inline-flex;flex-wrap:nowrap;gap:4px;max-width:100%;overflow:hidden'
-                    for (const name of (value || []).slice(0, 2)) box.append(tagChip(name, tagColors.value[name]))
-                    if ((value || []).length > 2) box.append(tagChip(`+${value.length - 2}`, null))
+                    // Tags go to the next line rather than being cut (the table wraps).
+                    box.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;padding:3px 0;white-space:normal'
+                    for (const name of (value || []).slice(0, 6)) box.append(tagChip(name, tagColors.value[name]))
+                    if ((value || []).length > 6) box.append(moreChip(value.length - 6))
                     return box
                 },
             },

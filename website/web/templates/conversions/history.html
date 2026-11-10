@@ -135,7 +135,14 @@
             @change="fetchConversionHistory" class="mb-4">
         </app-pagination>
         <!-- Cards or table (Vitrine <vt-table>), remembered in this browser -->
-        <div v-if="conversion_history.length > 0" class="d-flex justify-content-end mb-2">
+        <div v-if="conversion_history.length > 0" class="d-flex justify-content-end align-items-center gap-3 mb-2 flex-wrap">
+            <label class="d-flex align-items-center gap-2 mb-0" style="font-size:.8rem;color:var(--text-2);">
+                Per page
+                <select class="form-select form-select-sm" style="width:5.5rem;" :value="perPage"
+                    @change="setPerPage(+$event.target.value)" aria-label="Conversions per page">
+                    <option v-for="n in [10, 25, 50, 100]" :key="n" :value="n">[[ n ]]</option>
+                </select>
+            </label>
             <cti-switch :model-value="viewMode" @update:model-value="setViewMode" size="sm" label="Layout" :options="[
                 { value: 'cards', label: 'Cards', icon: 'fas fa-grip' },
                 { value: 'table', label: 'Table', icon: 'fas fa-table' }
@@ -377,9 +384,21 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             let savedMode = 'cards'
             try { savedMode = localStorage.getItem('cti-history-view') || 'cards' } catch { }
             const viewMode = ref(savedMode === 'table' ? 'table' : 'cards')
+            // Page size per layout (cards 10, table 50 by default), remembered in this browser.
+            const pageSizes = { cards: 10, table: 50 }
+            try { Object.assign(pageSizes, JSON.parse(localStorage.getItem('cti-history-page-sizes') || '{}')) } catch { }
+            const perPage = ref(pageSizes[viewMode.value] || 10)
+            function setPerPage(n) {
+                if (![10, 25, 50, 100].includes(n)) return
+                pageSizes[viewMode.value] = n
+                perPage.value = n
+                try { localStorage.setItem('cti-history-page-sizes', JSON.stringify(pageSizes)) } catch { }
+                fetchConversionHistory(1)
+            }
             function setViewMode(mode) {
                 if (viewMode.value === mode) return
                 viewMode.value = mode
+                perPage.value = pageSizes[mode] || 10
                 try { localStorage.setItem('cti-history-view', mode) } catch { }
                 // Page sizes differ (10 cards, 50 rows): start again from page 1.
                 fetchConversionHistory(1)
@@ -527,8 +546,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     tag_names:      selectedTagNames.value.join(','),
                     vis_filter:     vis_filter.value || '',
                     favorites_only: favorites_only.value,
-                    // The table shows 50 a page, the cards 10.
-                    per_page: viewMode.value === 'table' ? 50 : 10,
+                    per_page: perPage.value,
                 })
                 const res = await fetch('/conversions/get_conversion_page_history?' + params.toString())
                 if (res.ok) {
@@ -627,7 +645,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
-                favorites_only, toggleFavorite, viewMode, setViewMode, canEdit, openDelete,
+                favorites_only, toggleFavorite, viewMode, setViewMode, canEdit, openDelete, perPage, setPerPage,
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
                 formatDateTime: ctiDate.formatDateTime
             }
