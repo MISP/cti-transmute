@@ -186,9 +186,10 @@
     import { useVitrine, isVitrineTag } from '/static/js/vitrine.js';
     import JsonViewer from '/static/js/graph/jsonViewer.js';
     import CtiSwitch from '/static/js/ctiSwitch.js';
+    import { readParam, writeParams } from '/static/js/urlState.js';
     useVitrine('openapi');
 
-    const { createApp, ref, reactive, nextTick } = Vue
+    const { createApp, ref, reactive, nextTick, watch } = Vue
 
     // ParamSurface mount proxies, keyed by endpoint path. Deliberately a plain
     // object (not reactive): these are live Vue app handles, not view state.
@@ -198,7 +199,9 @@
         delimiters: ['[[', ']]'],
         components: { 'json-viewer': JsonViewer, 'cti-switch': CtiSwitch },
         setup() {
-            const tab        = ref('try')
+            // The open view lives in the URL (?tab=reference), checked against the views.
+            const tab        = ref(readParam('tab', ['try', 'reference']) ?? 'try')
+            watch(tab, (t) => writeParams({ tab: t }, { tab: 'try' }))
             const endpoints  = ref({})
             const loaded     = ref(false)
             const copied     = ref(null)

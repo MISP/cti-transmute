@@ -361,6 +361,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
     import { useVitrine, isVitrineTag } from '/static/js/vitrine.js'
     import { HistoryTable } from '/static/js/vitrineTable.js'
     import CtiSwitch from '/static/js/ctiSwitch.js'
+    import { readParam, readInt, readDate, readText, writeParams } from '/static/js/urlState.js'
     useVitrine('field')
 
     function adaptTag(t) {
@@ -564,6 +565,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     conversion_history.value = data.list
                     total_pages.value     = data.total_page
                     current_page.value    = page
+                    syncUrl(page)
                 }
                 is_loading.value = false
 
@@ -573,11 +575,41 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 }
             }
 
-            // Pre-fill search from navbar redirect (?search=...)
-            const _urlSearch = new URLSearchParams(window.location.search).get('search')
-            if (_urlSearch) searchQuery.value = _urlSearch
+            // ── The view lives in the URL: filters, page, page size, layout and sort.
+            // Every value is checked against what the page offers; anything else is
+            // ignored. The server still decides what this viewer may list: private
+            // Conversions stay their owner's and the admins', whatever the URL says.
+            const SORTS = ['name', 'type', 'author', 'visibility', 'created', 'updated']
+            searchQuery.value  = readText('search') ?? ''          // also the navbar's ?search=
+            search_scope.value = readParam('scope', ['all', 'name', 'description', 'content']) ?? 'all'
+            exact_match.value  = readParam('exact', ['1']) === '1'
+            filter_type.value  = readParam('type', ['MISP_TO_STIX', 'STIX_TO_MISP']) ?? ''
+            sort_order.value   = readParam('order', ['asc', 'desc']) ?? 'desc'
+            sort_by.value      = readParam('sort', SORTS) ?? 'created'
+            date_from.value    = readDate('from') ?? ''
+            date_to.value      = readDate('to') ?? ''
+            vis_filter.value   = readParam('visibility', ['public', 'private']) ?? ''
+            only_mine.value    = readParam('mine', ['1']) === '1'
+            favorites_only.value = readParam('favorites', ['1']) === '1'
+            selectedTagNames.value = (readText('tags', 4000) ?? '').split(',').map(t => t.trim())
+                .filter(t => t && t.length <= 200).slice(0, 20)
+            const urlView = readParam('layout', ['cards', 'table'])
+            if (urlView) { viewMode.value = urlView; perPage.value = pageSizes[urlView] || perPage.value }
+            const urlPerPage = readInt('per_page', 1, 100)
+            if ([10, 25, 50, 100].includes(urlPerPage)) perPage.value = urlPerPage
 
-            fetchConversionHistory(1)
+            /** Write the current view into the URL (defaults left out). */
+            function syncUrl(page) {
+                writeParams({
+                    search: searchQuery.value, scope: search_scope.value, exact: exact_match.value ? '1' : '',
+                    type: filter_type.value, order: sort_order.value, sort: sort_by.value,
+                    from: date_from.value, to: date_to.value, visibility: vis_filter.value,
+                    mine: only_mine.value ? '1' : '', favorites: favorites_only.value ? '1' : '',
+                    tags: selectedTagNames.value, page, layout: viewMode.value, per_page: perPage.value,
+                }, { scope: 'all', order: 'desc', sort: 'created', page: 1, layout: 'cards', per_page: pageSizes[viewMode.value] })
+            }
+
+            fetchConversionHistory(readInt('page', 1, 100000) ?? 1)
 
             async function deleteItem(id) {
                 const params = new URLSearchParams({ id })

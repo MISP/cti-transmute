@@ -887,6 +887,7 @@
     import ConversionTable from '/static/js/graph/conversionTable.js';
     import DiagnosticsPanel from '/static/js/diagnosticsPanel.js';
     import { useVitrine, isVitrineTag } from '/static/js/vitrine.js';
+    import { readParam, writeParams } from '/static/js/urlState.js';
     // Delegated because Vue's in-DOM mount recreates these nodes, dropping any
     // listener attached to them directly (and CSP forbids inline on*= handlers).
     const GRAPH_TOOLBAR_ACTIONS = {
@@ -907,6 +908,23 @@
 
     // Raw text lives outside Vue to avoid reactivity overhead on large strings
     let rawInput = '', rawOutput = ''
+
+    // ── The open tab lives in the URL (?tab=graph): shareable, and kept on reload.
+    // Only the tab name goes there; who may see the Conversion is still the
+    // server's decision (a private one stays its owner's and the admins').
+    const TABS = { input: 'input-pane', output: 'output-pane', history: 'compare-pane', graph: 'graph-pane',
+                   sunburst: 'sunburst-pane', table: 'table-pane', comments: 'comments-pane', evaluation: 'eval-pane' }
+    function openTabFromUrl() {
+        const tab = readParam('tab', Object.keys(TABS))
+        if (!tab || tab === 'input') return
+        // A real click, so each tab's own loader runs (graph, comments…).
+        document.querySelector(`a[data-bs-toggle="tab"][href^="#${TABS[tab]}-"]`)?.click()
+    }
+    document.addEventListener('shown.bs.tab', (e) => {
+        const href = e.target?.getAttribute?.('href') || ''
+        const tab = Object.keys(TABS).find(k => href.startsWith(`#${TABS[k]}-`))
+        if (tab) writeParams({ tab }, { tab: 'input' })
+    })
 
     /** The input and output documents in Vitrine's JSON viewer: tree and raw tabs,
      *  search, JSONPath, copy and download. Follows the site theme (vitrine.js). */
@@ -992,6 +1010,7 @@
                     setTimeout(() => {
                         renderJsonPanes(c.name)
                         initConversionGraph(c)
+                        openTabFromUrl()
                     }, 0)
 
                 } else {

@@ -1,5 +1,6 @@
 import { sanitizeConfigPatch, textCell } from './graphSafety.js'
 import { mountGraph, VIEWS } from './graphView.js'
+import { readParam, writeParams } from '../urlState.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GRAPH CONFIG - edit this object to change graph behaviour & appearance.
@@ -167,6 +168,7 @@ function _showSpinner(containerId, message) {
 }
 
 // The view chosen in Pivotick's Views mode, shared by both sides.
+// Read from the URL (?view=threat), checked against the known views.
 let _currentView = 'structure'
 const _mounted = {}
 
@@ -225,6 +227,7 @@ async function _initViewer(containerId, jsonText, format) {
 function _switchView(id) {
     if (!VIEWS[id]) return
     _currentView = id
+    writeParams({ view: id }, { view: 'structure' })
     for (const side of ['input', 'output']) _renderedSides[side] = false
     const outEl = document.getElementById('graph-container-output')
     _renderSide(outEl && outEl.style.display !== 'none' ? 'output' : 'input')
@@ -253,6 +256,8 @@ function _renderSide(side) {
 
 /** Switch the visible graph side. Triggers lazy render of the new side if needed. */
 export function showGraphSide(side) {
+    if (side !== 'input' && side !== 'output') return
+    writeParams({ side }, { side: GRAPH_CONFIG.defaultSide })
     const inEl = document.getElementById('graph-container')
     const outEl = document.getElementById('graph-container-output')
     const btnIn = document.getElementById('graph-view-input')
@@ -317,8 +322,10 @@ export function initConversionGraph(conversionData) {
     // Called by the template's delegated toolbar handler on first tab open;
     // window-scoped because it only exists once the conversion data is loaded.
     window.onGraphTabClick = function () {
-        // Render only the default side on first tab open
-        const side = GRAPH_CONFIG.defaultSide
+        // The URL may name the view and the side (?view=threat&side=output).
+        const view = readParam('view', Object.keys(VIEWS))
+        if (view) _currentView = view
+        const side = readParam('side', ['input', 'output']) || GRAPH_CONFIG.defaultSide
         showGraphSide(side)
     }
 }

@@ -71,7 +71,7 @@ export const VitrineTable = {
                 // soon as it is present, even as "false", so features are added, not removed).
                 table.setAttribute('variant', 'simple')
                 // wrap: a cell grows (tags on several lines) instead of being cut.
-                for (const a of ['header', 'copy', 'download', 'fullscreen', 'resizable', 'expandable', 'wrap']) table.setAttribute(a, '')
+                for (const a of ['header', 'fullscreen', 'resizable', 'expandable', 'wrap']) table.setAttribute(a, '')
                 // Column menus sort and filter locally: only when the data is all here.
                 if (!props.serverSide) table.setAttribute('column-menu', '')
                 if (props.search) { table.setAttribute('search', ''); table.setAttribute('filters', '') }

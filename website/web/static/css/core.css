@@ -1788,3 +1788,9 @@ html.christmas-mode .alert-warning { color: #fde68a; }
   display: block;
   min-height: 2.5rem;
 }
+
+/* An open <vt-field> list must sit above the fields after it in the grid. */
+.vt-filter-grid vt-field { position: relative; z-index: 1; }
+.vt-filter-grid vt-field:focus-within,
+.vt-filter-grid vt-field:hover { z-index: 30; }
+.history-filter-body, .history-filter-panel { overflow: visible !important; }
