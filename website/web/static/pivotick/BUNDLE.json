@@ -1,7 +1,7 @@
 {
   "version": "3.0.0",
   "sha256": {
-    "pivotick.iife.js": "e3472a1ad9dbc047b4e379d657276311fd7726180550133c25b68423b288c59d",
-    "pivotick.umd.js": "62876cd0c6eb4cb120e17dda3bc697e3159e5bba43fd828843c6ec42d41189ef"
+    "pivotick.iife.js": "a0ddfde6bac96b3fc522113ecb5a602ef91310a2966b31d2b0e66889c98bfecb",
+    "pivotick.umd.js": "92611bbbb852d4c256d46217cb15d8b0f950b14dead7df44cbdd81098e22b0fa"
   }
 }
