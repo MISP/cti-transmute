@@ -451,7 +451,10 @@ def test_list_for_user_sorts_by_a_whitelisted_column(app_db):
     admin = _make_user(admin=True, email="admin-sort@test.test")
     for n in ("bravo", "alpha", "charlie"):
         _make_conv(user_id=admin.id, public=True, name=n)
-    names = lambda **kw: [c.name for c in conv_repo.list_for_user(admin, 1, **kw).items]
+
+    def names(**kw):
+        return [c.name for c in conv_repo.list_for_user(admin, 1, **kw).items]
+
     assert names(sort_by="name", sort_order="asc") == ["alpha", "bravo", "charlie"]
     assert names(sort_by="name", sort_order="desc") == ["charlie", "bravo", "alpha"]
     assert names(sort_by="author", sort_order="asc")          # joins users without failing
