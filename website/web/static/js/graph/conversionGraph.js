@@ -205,6 +205,19 @@ async function _initViewer(containerId, jsonText, format) {
     await new Promise(r => setTimeout(r, 0))
 
     _mounted[containerId]?.destroy()
+    // The MISP ↔ STIX view draws both sides of the Conversion in either container.
+    if (_currentView === 'compare' && _conversionData) {
+        const isStixToMisp = _conversionData.conversion_type === 'STIX_TO_MISP'
+        const misp = isStixToMisp ? _conversionData.output_text : _conversionData.input_text
+        const stix = isStixToMisp ? _conversionData.input_text : _conversionData.output_text
+        try {
+            jsonText = { misp: JSON.parse(misp), stix: JSON.parse(stix) }
+            format = 'compare'
+        } catch {
+            container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Both sides are needed to compare them.</p>'
+            return
+        }
+    }
     try {
         _mounted[containerId] = await mountGraph(container, jsonText, format, {
             view: _currentView,

@@ -24,6 +24,7 @@ function badges(node) {
         const t = TLP[d.tlp]
         out.push({ text: ' ', color: t.color, title: t.label, position: 'ne' })
     }
+    if (d.showSide) out.push({ text: d.side === 'misp' ? 'M' : 'S', color: d.side === 'misp' ? '#1e4fd8' : '#0f766e', title: d.side === 'misp' ? 'MISP side' : 'STIX side', position: 'sw' })
     const s = d.fields?.sightings
     if (s?.total) out.push({ text: String(s.total), color: '#d97706', title: `${s.total} sighting${s.total > 1 ? 's' : ''}`, position: 'se' })
     return out

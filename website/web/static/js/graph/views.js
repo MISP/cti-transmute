@@ -149,4 +149,13 @@ export const VIEWS = {
         layout: () => ({ type: 'force' }),
         simplify: (g) => baseRules({ byType: g.nodes.length > 600 }),
     },
+    compare: {
+        label: 'MISP ↔ STIX',
+        description: 'Both sides at once: each MISP element is linked to what the conversion turned it into. Elements with no counterpart stand alone.',
+        compare: true,
+        transform: pruneContainment,
+        layout: () => ({ type: 'force' }),
+        edgeKinds: { origin: true, contains: true, reference: true, relationship: true, sighting: false, galaxy: false },
+        simplify: (g) => baseRules({ byType: g.nodes.length > 600, communities: g.nodes.length > 8000 }),
+    },
 }

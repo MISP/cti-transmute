@@ -13,7 +13,7 @@
 
 import { mispToGraph } from './model/mispToGraph.js'
 import { stixToGraph } from './model/stixToGraph.js'
-import { cleanGraph } from './model/model.js'
+import { cleanGraph, makeEdge } from './model/model.js'
 import { EDGE_KINDS, FAMILIES, ELEMENTS, TLP } from './model/vocabulary.js'
 import { renderOptions, edgeLabelText } from './render/styles.js'
 import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra } from './render/details.js'
@@ -22,8 +22,31 @@ import { normaliseNodeTypes, textCell } from './graphSafety.js'
 
 export { VIEWS }
 
+/**
+ * Both sides of a Conversion in one graph, each MISP element linked to what it
+ * became in STIX. misp-stix keeps the MISP UUID as the STIX id's suffix
+ * (`indicator--<attribute uuid>`, `grouping--<event uuid>`), so the link is
+ * an exact match, never a guess on values.
+ */
+export function buildCompareModel(mispJson, stixJson) {
+    const misp = cleanGraph(mispToGraph(mispJson))
+    const stix = cleanGraph(stixToGraph(stixJson))
+    const byUuid = new Map()
+    for (const n of misp.nodes) if (n.data.uuid) byUuid.set(String(n.data.uuid).toLowerCase(), n.id)
+    const origin = []
+    for (const n of stix.nodes) {
+        const suffix = String(n.data.uuid ?? '').split('--')[1]?.toLowerCase()
+        const from = suffix && byUuid.get(suffix)
+        if (from) origin.push(makeEdge(from, n.id, 'origin', { relation: 'became' }))
+    }
+    // Side badge (M / S) only matters when both sides share the canvas.
+    for (const n of [...misp.nodes, ...stix.nodes]) n.data.showSide = true
+    return { nodes: [...misp.nodes, ...stix.nodes], edges: [...misp.edges, ...stix.edges, ...origin] }
+}
+
 /** Parse a document into the common model, for one view. */
 export function buildModel(json, format, view) {
+    if (format === 'compare') return view.transform ? view.transform(buildCompareModel(json.misp, json.stix)) : buildCompareModel(json.misp, json.stix)
     const g = format === 'misp'
         ? mispToGraph(json, { tagsAsNodes: !!view.tagsAsNodes })
         : stixToGraph(json, { observedDataAsNodes: !!view.observedDataAsNodes })
@@ -124,8 +147,9 @@ function keepWithinBudget(graph, max) {
  * @returns {Promise<{graph, model, stats, destroy}>}
  */
 export async function mountGraph(container, jsonText, format, opts = {}) {
-    const view = VIEWS[opts.view] ?? VIEWS.structure
+    const view = format === 'compare' ? VIEWS.compare : (VIEWS[opts.view] ?? VIEWS.structure)
     const json = typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText
+    if (format === 'compare' && !view.compare) throw new Error('compare needs the MISP ↔ STIX view')
     const model = buildModel(json, format, view)
     const dark = opts.dark ?? document.body.classList.contains('dark')
         ?? document.documentElement.classList.contains('dark-mode')
