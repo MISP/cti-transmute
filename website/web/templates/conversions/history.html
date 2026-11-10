@@ -77,7 +77,7 @@
                 <vt-field type="select" label="Type" :value="filter_type || 'all'"
                     @vt-change="filter_type = $event.detail.value === 'all' ? '' : $event.detail.value; onSearchInput()">[{"value":"all","label":"All types"},{"value":"MISP_TO_STIX","label":"MISP → STIX"},{"value":"STIX_TO_MISP","label":"STIX → MISP"}]</vt-field>
                 <vt-field type="select" label="Sort" :value="sort_order"
-                    @vt-change="sort_order = $event.detail.value; onSearchInput()">[{"value":"desc","label":"Newest first"},{"value":"asc","label":"Oldest first"}]</vt-field>
+                    @vt-change="sort_order = $event.detail.value; sort_by = 'created'; onSearchInput()">[{"value":"desc","label":"Newest first"},{"value":"asc","label":"Oldest first"}]</vt-field>
                 <vt-field type="date" label="From" :value="date_from" clearable
                     @vt-change="date_from = $event.detail.value; onSearchInput()"></vt-field>
                 <vt-field type="date" label="To" :value="date_to" clearable
@@ -129,11 +129,6 @@
     
     <!-- List -->
     <div v-else v-cloak>
-        <!-- Pagination -->
-        <app-pagination v-if="conversion_history.length > 0"
-            :page="current_page" :total="total_pages"
-            @change="fetchConversionHistory" class="mb-4">
-        </app-pagination>
         <!-- Cards or table (Vitrine <vt-table>), remembered in this browser -->
         <!-- Per page on the left, Cards / Table on the right, one line -->
         <div v-if="conversion_history.length > 0" class="d-flex justify-content-between align-items-center gap-3 mb-2 flex-wrap">
@@ -144,6 +139,8 @@
                     <option v-for="n in [10, 25, 50, 100]" :key="n" :value="n">[[ n ]]</option>
                 </select>
             </label>
+            <app-pagination :page="current_page" :total="total_pages"
+                @change="fetchConversionHistory" class="history-top-pager"></app-pagination>
             <cti-switch :model-value="viewMode" @update:model-value="setViewMode" size="sm" label="Layout" :options="[
                 { value: 'cards', label: 'Cards', icon: 'fas fa-grip' },
                 { value: 'table', label: 'Table', icon: 'fas fa-table' }
@@ -409,9 +406,12 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             const CURRENT_USER_ID = parseInt('{{ current_user.id if current_user.is_authenticated else 0 }}')
             function canEdit(item) { return !!CURRENT_USER_ID && (item.user_id === CURRENT_USER_ID || !!current_user_is_admin.value) }
             // Clicking the Created header sorts on the server, like the Sort filter.
-            function onTableSort({ direction }) {
+            // A table header sorts on the server, by that column (the Sort filter follows).
+            const sort_by = ref('created')
+            function onTableSort({ key, direction }) {
                 const order = direction === 'asc' ? 'asc' : 'desc'
-                if (sort_order.value === order) return
+                if (sort_order.value === order && sort_by.value === key) return
+                sort_by.value = key
                 sort_order.value = order
                 fetchConversionHistory(1)
             }
@@ -556,6 +556,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     vis_filter:     vis_filter.value || '',
                     favorites_only: favorites_only.value,
                     per_page: perPage.value,
+                    sort_by:  sort_by.value,
                 })
                 const res = await fetch('/conversions/get_conversion_page_history?' + params.toString())
                 if (res.ok) {
@@ -654,7 +655,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
-                favorites_only, toggleFavorite, viewMode, setViewMode, canEdit, openDelete, perPage, setPerPage, onTableSort,
+                favorites_only, toggleFavorite, viewMode, setViewMode, canEdit, openDelete, perPage, setPerPage, onTableSort, sort_by,
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
                 formatDateTime: ctiDate.formatDateTime
             }

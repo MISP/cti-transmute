@@ -443,3 +443,16 @@ def test_list_for_user_page_size_is_clamped(app_db):
     assert conv_repo.list_for_user(admin, 1, per_page=5000).per_page == 100
     assert conv_repo.list_for_user(admin, 1, per_page=0).per_page == 10   # 0: the default
     assert conv_repo.list_for_user(admin, 1).per_page == 10
+
+
+def test_list_for_user_sorts_by_a_whitelisted_column(app_db):
+    """sort_by picks the column (name, author…); unknown values sort by date."""
+    from website.repos import conversions as conv_repo
+    admin = _make_user(admin=True, email="admin-sort@test.test")
+    for n in ("bravo", "alpha", "charlie"):
+        _make_conv(user_id=admin.id, public=True, name=n)
+    names = lambda **kw: [c.name for c in conv_repo.list_for_user(admin, 1, **kw).items]
+    assert names(sort_by="name", sort_order="asc") == ["alpha", "bravo", "charlie"]
+    assert names(sort_by="name", sort_order="desc") == ["charlie", "bravo", "alpha"]
+    assert names(sort_by="author", sort_order="asc")          # joins users without failing
+    assert names(sort_by="no-such-column; drop table") == names(sort_by="created")

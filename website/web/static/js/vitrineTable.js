@@ -224,7 +224,8 @@ export const HistoryTable = {
     },
     emits: ['favorite', 'delete', 'sort'],
     template: `<vitrine-table :rows="flat" :columns="columns" row-key="id" label="Conversions"
-        persist="cti-history-table-v2" server-side :server-sortable="['created']"
+        persist="cti-history-table-v2" server-side
+        :server-sortable="['name', 'type', 'author', 'visibility', 'created', 'updated']"
         @activate="open" @sort="$emit('sort', $event)"></vitrine-table>`,
     setup(props, { emit }) {
         const { computed } = Vue
