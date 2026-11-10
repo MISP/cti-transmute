@@ -18,6 +18,7 @@ import { EDGE_KINDS, FAMILIES, ELEMENTS, TLP } from './model/vocabulary.js'
 import { renderOptions, edgeLabelText } from './render/styles.js'
 import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra } from './render/details.js'
 import { VIEWS } from './views.js'
+import { localPivots } from './pivots.js'
 import { normaliseNodeTypes, textCell } from './graphSafety.js'
 
 export { VIEWS }
@@ -154,6 +155,13 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
     const dark = opts.dark ?? document.body.classList.contains('dark')
         ?? document.documentElement.classList.contains('dark-mode')
 
+    // The whole document, tags as nodes: what local pivots expand from.
+    const full = format === 'compare' ? buildCompareModel(json.misp, json.stix)
+        : cleanGraph(format === 'misp' ? mispToGraph(json, { tagsAsNodes: true }) : stixToGraph(json))
+    normaliseNodeTypes(full)
+    const fullById = new Map(full.nodes.map(n => [n.id, n.data]))
+    for (const e of full.edges) e.data.label = edgeLabelText(e.data, fullById.get(e.from))
+
     container.replaceChildren()
     const big = model.nodes.length > 6000
 
@@ -215,6 +223,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
             },
             ...(opts.ui ?? {}),
         },
+        pivots: localPivots(full),
+        pivotIngestGrouped: true,
         ...(opts.extra ?? {}),
     }
 
