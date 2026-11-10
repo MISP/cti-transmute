@@ -568,6 +568,11 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                     total_pages.value     = data.total_page
                     current_page.value    = page
                     syncUrl(page)
+                } else if (page > 1) {
+                    // A page past the end (an old shared link, rows deleted since):
+                    // start again from the first page rather than show nothing.
+                    is_loading.value = false
+                    return fetchConversionHistory(1)
                 }
                 is_loading.value = false
 
