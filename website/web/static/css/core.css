@@ -1776,6 +1776,8 @@ html.christmas-mode .alert-warning { color: #fde68a; }
 .cti-switch-text { display: flex; flex-direction: column; gap: 2px; }
 .cti-switch-hint { font-size: 0.72rem; font-weight: 400; color: var(--text-3); }
 .cti-switch-option.active .cti-switch-hint { color: var(--text-2); }
+.cti-switch a.cti-switch-option { text-decoration: none; }
+.cti-switch-ext { font-size: .62rem; margin-left: 6px; opacity: .6; width: auto; }
 .cti-switch-sm .cti-switch-option { padding: 5px 12px; font-size: 0.8rem; gap: 7px; }
 @media (prefers-reduced-motion: reduce) { .cti-switch-option { transition: none; } }
 

@@ -93,6 +93,8 @@ function startThemeSync() {
 }
 /* Server-paginated tables: the page's own pagination is the pager. */
 vt-table.cti-server-table::part(pager) { display: none; }
+/* ...and the page scrolls, not the table: every row of the page is on the page. */
+vt-table.cti-server-table::part(body) { max-height: none !important; height: auto !important; overflow-y: visible !important; }
 /* A chart already sits in a site card: no second frame around it. */
 vt-chart.cti-bare::part(container) { border: 0; box-shadow: none; background: transparent; }
 `

@@ -15,19 +15,14 @@
             Browse all conversion endpoints and their accepted parameters.
             Use them directly via HTTP or explore the interactive documentation.
         </p>
-        <a href="/api" target="_blank" rel="noopener" class="api-swagger-link">
-            <i class="fas fa-book-open"></i>
-            Interactive API Docs
-            <span class="api-swagger-badge">Swagger</span>
-            <i class="fas fa-arrow-up-right-from-square api-swagger-ext"></i>
-        </a>
     </div>
 
     <!-- Two views: the converter tester (first) and the full reference (Vitrine <vt-openapi>) -->
     <div class="d-flex justify-content-center mb-4">
         <cti-switch v-model="tab" label="API page view" :options="[
             { value: 'try', label: 'Try it out', icon: 'fas fa-flask', hint: 'Send real conversions from the page' },
-            { value: 'reference', label: 'API reference', icon: 'fas fa-book-open', hint: 'Every endpoint, parameter and schema' }
+            { value: 'reference', label: 'API reference', icon: 'fas fa-book-open', hint: 'Every endpoint, parameter and schema' },
+            { value: 'swagger', label: 'Swagger', icon: 'fas fa-code', hint: 'The interactive Swagger UI', href: '/api', external: true }
         ]"></cti-switch>
     </div>
 

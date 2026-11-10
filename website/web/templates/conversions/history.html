@@ -135,7 +135,8 @@
             @change="fetchConversionHistory" class="mb-4">
         </app-pagination>
         <!-- Cards or table (Vitrine <vt-table>), remembered in this browser -->
-        <div v-if="conversion_history.length > 0" class="d-flex justify-content-end align-items-center gap-3 mb-2 flex-wrap">
+        <!-- Per page on the left, Cards / Table on the right, one line -->
+        <div v-if="conversion_history.length > 0" class="d-flex justify-content-between align-items-center gap-3 mb-2 flex-wrap">
             <label class="d-flex align-items-center gap-2 mb-0" style="font-size:.8rem;color:var(--text-2);">
                 Per page
                 <select class="form-select form-select-sm" style="width:5.5rem;" :value="perPage"
@@ -150,7 +151,8 @@
         </div>
         <history-table v-if="conversion_history.length > 0 && viewMode === 'table'"
             :rows="conversion_history" :signed-in="{{ 'true' if current_user.is_authenticated else 'false' }}"
-            :can-edit="canEdit" @favorite="toggleFavorite" @delete="openDelete"></history-table>
+            :can-edit="canEdit" @favorite="toggleFavorite" @delete="openDelete"
+            @sort="onTableSort"></history-table>
         <div v-if="conversion_history.length > 0 && viewMode === 'cards'">
 
             <div v-for="item in conversion_history" :key="item.id"
@@ -406,6 +408,13 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
             // Same rule as the cards' delete button: the owner or an admin.
             const CURRENT_USER_ID = parseInt('{{ current_user.id if current_user.is_authenticated else 0 }}')
             function canEdit(item) { return !!CURRENT_USER_ID && (item.user_id === CURRENT_USER_ID || !!current_user_is_admin.value) }
+            // Clicking the Created header sorts on the server, like the Sort filter.
+            function onTableSort({ direction }) {
+                const order = direction === 'asc' ? 'asc' : 'desc'
+                if (sort_order.value === order) return
+                sort_order.value = order
+                fetchConversionHistory(1)
+            }
             function openDelete(id) {
                 const el = document.getElementById('del_modal_' + id)
                 if (el && window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(el).show()
@@ -645,7 +654,7 @@ import EvaluationPanel from '/static/js/evaluationPanel.js'
                 onSearchInput, is_loading, snippets, scopeLabel, searchPlaceholder,
                 highlight, highlightSnippet, resetFilters, adaptTag,
                 selectedTagNames, filtersOpen, activeFilterCount, vis_filter,
-                favorites_only, toggleFavorite, viewMode, setViewMode, canEdit, openDelete, perPage, setPerPage,
+                favorites_only, toggleFavorite, viewMode, setViewMode, canEdit, openDelete, perPage, setPerPage, onTableSort,
                 expandedIds, tagExpandedIds, toggleExpand, openExpand, toggleTagExpand,
                 formatDateTime: ctiDate.formatDateTime
             }

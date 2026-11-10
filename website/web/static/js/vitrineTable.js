@@ -13,18 +13,27 @@ import { useVitrine } from './vitrine.js'
 import { getTextColor, nameToColor } from './tags/utils/galaxie.js'
 
 /**
- * A server-driven table keeps no local filter: hide <vt-table>'s "Show filters"
- * toggle. It only carries the generic `button` part, so the rule goes into the
- * element's own (open) shadow root.
+ * Rules that must live inside <vt-table>'s own (open) shadow root:
+ *  - a server-driven table has no local filter: its "Show filters" toggle,
+ *    which only carries the generic `button` part, is hidden;
+ *  - a column's render hook draws the cell and the expanded row details alike:
+ *    .cti-cell-only shows in the cell, .cti-detail-only in the details (all the
+ *    tags, the direction in words…).
  */
-function hideLocalFilter(table) {
+function tableShadowStyle(table, { noFilter }) {
+    const css = (noFilter ? 'button[data-focus-key="filters"]{display:none!important}' : '') +
+        '.cti-detail-only{display:none!important}' +
+        '.tb-detail .cti-detail-only{display:inline-flex!important}' +
+        '.tb-detail .cti-cell-only{display:none!important}'
     const add = () => {
         const root = table.shadowRoot
-        if (!root || root.querySelector('style[data-cti]')) return !!root
-        const st = document.createElement('style')
-        st.dataset.cti = 'no-local-filter'
-        st.textContent = 'button[data-focus-key="filters"]{display:none!important}'
-        root.append(st)
+        if (!root) return false
+        if (!root.querySelector('style[data-cti]')) {
+            const st = document.createElement('style')
+            st.dataset.cti = 'table'
+            st.textContent = css
+            root.append(st)
+        }
         return true
     }
     if (!add()) customElements.whenDefined('vt-table').then(() => requestAnimationFrame(add))
@@ -42,8 +51,10 @@ export const VitrineTable = {
         search: { type: Boolean, default: false },
         // Rows already sorted and paginated by the server: no local sort or pager.
         serverSide: { type: Boolean, default: false },
+        // Server-driven columns that may still be sorted (the server sorts them).
+        serverSortable: { type: Array, default: () => [] },
     },
-    emits: ['activate'],
+    emits: ['activate', 'sort'],
     template: `<div ref="host" class="vt-table-host"></div>`,
     setup(props, { emit }) {
         const { ref, watch, onMounted } = Vue
@@ -66,7 +77,7 @@ export const VitrineTable = {
                 if (props.search) { table.setAttribute('search', ''); table.setAttribute('filters', '') }
                 table.setAttribute('row-key', props.rowKey)
                 table.setAttribute('page-size', String(props.pageSize))
-                if (!props.serverSide) table.setAttribute('sortable', '')
+                if (!props.serverSide || props.serverSortable.length) table.setAttribute('sortable', '')
                 table.setAttribute('density', 'comfortable')
                 if (props.serverSide) {
                     // Sorted and paginated by the server: no local sort, one page.
@@ -76,13 +87,21 @@ export const VitrineTable = {
                 if (props.label) table.setAttribute('label', props.label)
                 if (props.persist) table.setAttribute('persist', props.persist)
                 table.addEventListener('vt-row-activate', (e) => emit('activate', e.detail?.row))
+                // A header click on a server-sortable column asks the page to refetch.
+                table.addEventListener('vt-sort', (e) => {
+                    // detail: { column: 'created', direction: 'ascending' | 'descending' | … }
+                    const col = e.detail?.column
+                    const key = typeof col === 'string' ? col : col?.key
+                    const direction = String(e.detail?.direction || '').startsWith('asc') ? 'asc' : 'desc'
+                    if (props.serverSortable.includes(key)) emit('sort', { key, direction })
+                })
                 host.value.replaceChildren(table)
-                if (props.serverSide) hideLocalFilter(table)
+                tableShadowStyle(table, { noFilter: props.serverSide })
             }
             // Server-driven: no local filtering or sorting at all (it would only act on
             // the rows of this page, not on the conversions the server holds).
             if (props.columns) table.columns = props.serverSide
-                ? props.columns.map((c) => ({ ...c, filterable: false, sortable: false }))
+                ? props.columns.map((c) => ({ ...c, filterable: false, sortable: props.serverSortable.includes(c.key) }))
                 : props.columns
             table.data = props.rows.map((r) => ({ ...r }))
         }
@@ -145,6 +164,34 @@ function moreChip(n) {
     return c
 }
 
+const LOGO = { MISP: '/static/image/misp.svg', STIX: '/static/image/logo_stix.svg' }
+
+/** "MISP → STIX" as two logos and an arrow, the words as the tooltip. */
+function directionLogos(value) {
+    const [from, to] = String(value || '').split('→').map((x) => x.trim())
+    const box = document.createElement('span')
+    box.title = value || ''
+    box.setAttribute('aria-label', value || '')
+    box.style.cssText = 'display:inline-flex;align-items:center;gap:6px'
+    const logo = (name) => {
+        if (!LOGO[name]) { const t = document.createElement('span'); t.textContent = name || ''; return t }
+        const img = document.createElement('img')
+        img.src = LOGO[name]; img.alt = name; img.width = 20; img.height = 20
+        return img
+    }
+    const arrow = document.createElement('span')
+    arrow.textContent = '→'
+    arrow.style.cssText = 'color:var(--text-3,#94a3b8);font-weight:700'
+    box.append(logo(from), arrow, logo(to))
+    // Words next to the logos in the expanded details only.
+    const words = document.createElement('span')
+    words.className = 'cti-detail-only'
+    words.textContent = value || ''
+    words.style.cssText = 'margin-left:6px;font-weight:600'
+    box.append(words)
+    return box
+}
+
 /** A small button for a table cell (it lives in Vitrine's shadow DOM, so it is
  *  styled with the site's CSS variables, not with Bootstrap classes). */
 function cellButton(icon, title, onClick, { tone = 'default', filled = false } = {}) {
@@ -153,7 +200,7 @@ function cellButton(icon, title, onClick, { tone = 'default', filled = false } =
     b.title = title
     b.setAttribute('aria-label', title)
     const color = tone === 'danger' ? 'var(--danger,#ef4444)' : tone === 'star' ? 'var(--warning,#f59e0b)' : 'var(--accent,#2563eb)'
-    b.style.cssText = 'display:inline-grid;place-items:center;width:30px;height:30px;margin-right:6px;padding:0;cursor:pointer;' +
+    b.style.cssText = 'display:inline-grid;place-items:center;flex:none;width:30px;height:30px;padding:0;cursor:pointer;' +
         `border:1px solid var(--border,#e3e8f0);border-radius:var(--radius-sm,6px);background:var(--surface,#fff);color:${color}`
     b.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SVG[icon]}</svg>`
     b.addEventListener('click', (e) => { e.stopPropagation(); onClick() })
@@ -175,9 +222,10 @@ export const HistoryTable = {
         signedIn: { type: Boolean, default: false },
         canEdit: { type: Function, default: () => false },
     },
-    emits: ['favorite', 'delete'],
+    emits: ['favorite', 'delete', 'sort'],
     template: `<vitrine-table :rows="flat" :columns="columns" row-key="id" label="Conversions"
-        persist="cti-history-table" server-side @activate="open"></vitrine-table>`,
+        persist="cti-history-table-v2" server-side :server-sortable="['created']"
+        @activate="open" @sort="$emit('sort', $event)"></vitrine-table>`,
     setup(props, { emit }) {
         const { computed } = Vue
         const byId = computed(() => new Map(props.rows.map((c) => [c.id, c])))
@@ -206,22 +254,14 @@ export const HistoryTable = {
         })
         const open = (row) => { if (row?.id) window.location.href = `/conversions/detail/${row.id}` }
         const columns = computed(() => [
-            {
-                key: 'actions', label: 'Actions', width: 130, sortable: false, filterable: false,
-                render: (_, row) => {
-                    const item = byId.value.get(row.id)
-                    const box = document.createElement('span')
-                    box.append(cellButton('open', 'Open', () => open(row)))
-                    if (props.signedIn && item) box.append(cellButton('star', item.is_favorite ? 'Remove from favorites' : 'Add to favorites',
-                        () => emit('favorite', item), { tone: 'star', filled: !!item.is_favorite }))
-                    if (item && props.canEdit(item)) box.append(cellButton('trash', 'Delete', () => emit('delete', item.id), { tone: 'danger' }))
-                    return box
-                },
-            },
             { key: 'name', label: 'Name', width: 300 },
             // Vitrine's badge palette is named: the closest to the site's tokens.
-            { key: 'type', label: 'Direction', display: 'badge', width: 130,
-              colors: { 'MISP → STIX': 'blue', 'STIX → MISP': 'teal' } },
+            {
+                // The cell shows the two logos (as the cards do); the value stays the
+                // words "MISP → STIX", which the expanded row details print in full.
+                key: 'type', label: 'Direction', width: 100, align: 'center',
+                render: (value) => directionLogos(value),
+            },
             { key: 'author', label: 'Author', width: 140 },
             { key: 'visibility', label: 'Visibility', display: 'badge', width: 110,
               colors: { Public: 'green', Private: 'gray' } },
@@ -232,14 +272,38 @@ export const HistoryTable = {
                     const box = document.createElement('span')
                     // Tags go to the next line rather than being cut (the table wraps).
                     box.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;padding:3px 0;white-space:normal'
-                    for (const name of (value || []).slice(0, 6)) box.append(tagChip(name, tagColors.value[name]))
-                    if ((value || []).length > 6) box.append(moreChip(value.length - 6))
+                    // The cell shows six and "+N"; the expanded details show them all.
+                    ;(value || []).forEach((name, i) => {
+                        const chip = tagChip(name, tagColors.value[name])
+                        if (i >= 6) chip.classList.add('cti-detail-only')
+                        box.append(chip)
+                    })
+                    if ((value || []).length > 6) {
+                        const more = moreChip(value.length - 6)
+                        more.classList.add('cti-cell-only')
+                        box.append(more)
+                    }
                     return box
                 },
             },
             { key: 'created', label: 'Created', type: 'date', display: 'relative', width: 140 },
             { key: 'updated', label: 'Updated', type: 'date', display: 'relative', width: 140, hidden: true },
             { key: 'description', label: 'Description', maxLength: 160, hidden: true },
+            // Actions last: the right edge of the table, as on the cards.
+            {
+                key: 'actions', label: 'Actions', width: 140, align: 'end', sortable: false, filterable: false,
+                render: (_, row) => {
+                    const item = byId.value.get(row.id)
+                    const box = document.createElement('span')
+                    // The three buttons on one line.
+                    box.style.cssText = 'display:inline-flex;flex-wrap:nowrap;gap:6px;white-space:nowrap'
+                    box.append(cellButton('open', 'Open', () => open(row)))
+                    if (props.signedIn && item) box.append(cellButton('star', item.is_favorite ? 'Remove from favorites' : 'Add to favorites',
+                        () => emit('favorite', item), { tone: 'star', filled: !!item.is_favorite }))
+                    if (item && props.canEdit(item)) box.append(cellButton('trash', 'Delete', () => emit('delete', item.id), { tone: 'danger' }))
+                    return box
+                },
+            },
         ])
         return { flat, columns, open }
     },
