@@ -17,7 +17,7 @@ import { cleanGraph } from './model/model.js'
 import { EDGE_KINDS, FAMILIES, ELEMENTS, TLP } from './model/vocabulary.js'
 import { renderOptions, edgeLabelText } from './render/styles.js'
 import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra } from './render/details.js'
-import { VIEWS } from './views.js'
+import { VIEWS, ruleContext } from './views.js'
 import { localPivots } from './pivots.js'
 import { viewModePlugin } from './render/viewMode.js'
 import { normaliseNodeTypes } from './graphSafety.js'
@@ -82,6 +82,29 @@ function filterFacets() {
 }
 
 /**
+ * Place the hover card beside the node, inside the canvas. Pivotick's own
+ * placement mixes viewport coordinates (the node's rect) with page ones (the
+ * canvas plus window.scroll), so on a scrolled page such as a Conversion's the
+ * card was pushed to the top of the canvas. Everything here is in the
+ * coordinates of the card's offset parent: the page on <body>, the viewport
+ * in fullscreen (where the card lives in the fullscreen element).
+ */
+function placeTooltip(tooltip, node, canvas) {
+    const inFullscreen = !!document.fullscreenElement && document.fullscreenElement.contains(tooltip)
+    const sx = inFullscreen ? 0 : window.scrollX, sy = inFullscreen ? 0 : window.scrollY
+    const w = tooltip.offsetWidth, hgt = tooltip.offsetHeight, gap = 14, margin = 12
+    const left = canvas.left + sx, top = canvas.top + sy
+    const right = left + canvas.width, bottom = top + canvas.height
+    let x = node.right + sx + gap
+    if (x + w + margin > right) x = node.left + sx - w - gap          // no room on the right: go left
+    x = Math.max(left + margin, Math.min(x, right - w - margin))
+    let y = node.top + sy + node.height / 2 - 24                      // header level with the node
+    y = Math.max(top + margin, Math.min(y, bottom - hgt - margin))    // keep it inside the canvas
+    tooltip.style.left = `${Math.round(x)}px`
+    tooltip.style.top = `${Math.round(y)}px`
+}
+
+/**
  * Pivotick's hover tooltip lives on <body>. In fullscreen only the fullscreen
  * element is painted, so the tooltip would exist but never show: move it into
  * the fullscreen element while it lasts, and back to <body> after.
@@ -120,11 +143,13 @@ function pointToDetails(graph, container) {
 
 /** How many elements the canvas shows at most before folding further. */
 export const MAX_VISIBLE = 250
+/** Past this many groups the canvas is a field of badges: fold by family. */
+const MAX_GROUPS = 40
 
 /**
- * Past `max` drawn elements, icons and labels stop reading as anything. Turn
- * on the stronger folds in order until the canvas fits: by type, then by
- * family (Network, File & payload…). Both keep groups of one kind, so a
+ * Past `max` drawn elements (or MAX_GROUPS groups), icons and labels stop
+ * reading as anything. Turn on the stronger folds in order until the canvas
+ * fits: by type, then by family (Network, File & payload…). Both keep groups of one kind, so a
  * group always reads as "N × something"; communities, which mix kinds, stay
  * a manual choice in the Simplify mode. Any group opens as a sub-graph.
  */
@@ -135,10 +160,11 @@ function keepWithinBudget(graph, max) {
         () => s.setRuleEnabled('byType', true),
         () => s.setRuleEnabled('byFamily', true),
     ]
-    const shown = () => s.summary().shown
+    // Too much to draw, or too many groups to tell apart: fold one step further.
+    const crowded = () => { const x = s.summary(); return x.shown > max || x.groups > MAX_GROUPS }
     let i = 0
     const next = () => {
-        if (shown() <= max || i >= steps.length) return
+        if (!crowded() || i >= steps.length) return
         try { steps[i++]() } catch { i++ }
         setTimeout(next, 200)
     }
@@ -217,6 +243,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
                     title: (edge) => String(edge.getData()?.relation || 'Link'),
                     subtitle: (edge) => EDGE_KINDS[edge.getData()?.kind]?.label ?? '',
                 },
+                // Next to the hovered node, in one coordinate space (see placeTooltip).
+                setPosition: placeTooltip,
                 // No raw property list: our card says what matters.
                 nodePropertiesMap: () => [],
                 edgePropertiesMap: () => [],
@@ -252,6 +280,7 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
     const byId = new Map(model.nodes.map(n => [n.id, n.data]))
     for (const e of model.edges) e.data.label = edgeLabelText(e.data, byId.get(e.from))
     const graph = new window.Pivotick(container, { nodes: model.nodes, edges: model.edges }, options)
+    ruleContext.graph = graph
 
     // Edge layers the view keeps off at first (embedded refs, pattern links…).
     const on = Object.keys(EDGE_KINDS).filter(k => (view.edgeKinds ?? {})[k] ?? EDGE_KINDS[k].on)

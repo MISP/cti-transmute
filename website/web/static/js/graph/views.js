@@ -17,28 +17,49 @@
 
 const containers = (g) => g.nodes.filter(n => n.data.element === 'container')
 
+/**
+ * The graph being drawn, set by graphView once Pivotick exists. Custom rules
+ * read it to leave alone the members of a group the reader opened: without
+ * that, opening "135 × ip-dst" let "By type" fold the same 135 nodes again at
+ * once, and the group only stayed open on the second try.
+ */
+export const ruleContext = { graph: null }
+
+function openMembers() {
+    const groups = ruleContext.graph?.simplify?.getGroups?.() ?? []
+    const ids = new Set()
+    for (const g of groups) if (g.open) for (const m of g.members ?? []) ids.add(m.id)
+    return ids
+}
+
+/** A custom rule's partition, minus the nodes an opened group gave back. */
+function partitionBy(filter, key) {
+    return (v) => {
+        const opened = openMembers()
+        return new Map(v.nodes.filter(n => !opened.has(n.id) && filter(n.getData?.() ?? {})).map(n => [n.id, key(n.getData())]))
+    }
+}
+
 /** The rules every view starts from: fold the repetition, keep the shape. */
 function baseRules({ neighbours = 4, chains = 4, byType = false } = {}) {
     const rules = [
-        { kind: 'neighbours', minSize: neighbours },
+        // chains first: placed after neighbours, Pivotick's chains rule folded
+        // again the members of a neighbours group the reader had just opened.
         { kind: 'chains', minSize: chains },
+        { kind: 'neighbours', minSize: neighbours },
         {
             // What the structural rules leave (nodes with one extra link, a
             // sighting, an opinion…) still folds by type: "349 × indicator".
             kind: 'custom', id: 'byType', label: 'By type', enabled: byType, minSize: 8,
             description: 'Indicators and observables of the same type fold together, whatever they link to.',
-            partition: (v) => new Map(v.nodes
-                .filter(n => ['indicator', 'observable'].includes(n.getData?.()?.element))
-                .map(n => [n.id, n.getData().type])),
+            partition: partitionBy(d => ['indicator', 'observable'].includes(d.element), d => d.type),
         },
         {
             // Last resort for very large documents: one group per family and type of
             // element (all network observables, all file objects…) still reads as one kind.
             kind: 'custom', id: 'byFamily', label: 'By family', enabled: false, minSize: 8,
             description: 'Everything of one family and element folds together: all network observables, all file objects…',
-            partition: (v) => new Map(v.nodes
-                .filter(n => n.getData?.()?.element && n.getData().element !== 'container')
-                .map(n => [n.id, `${n.getData().element}:${n.getData().family}`])),
+            partition: partitionBy(d => d.element && d.element !== 'container', d => `${d.element}:${d.family}`),
         },
         { kind: 'degree', minDegree: 2, enabled: false },
         { kind: 'kcore', k: 2, enabled: false },
@@ -46,14 +67,12 @@ function baseRules({ neighbours = 4, chains = 4, byType = false } = {}) {
         {
             kind: 'custom', id: 'byTlp', label: 'By TLP', enabled: false, minSize: 3,
             description: 'Observables sharing a TLP level fold together.',
-            partition: (v) => new Map(v.nodes.filter(n => n.getData?.()?.element === 'observable')
-                .map(n => [n.id, `tlp:${n.getData().tlp ?? 'none'}`])),
+            partition: partitionBy(d => d.element === 'observable', d => `tlp:${d.tlp ?? 'none'}`),
         },
         {
             kind: 'custom', id: 'byCategory', label: 'By MISP category', enabled: false, minSize: 3,
             description: 'Attributes of the same MISP category fold together.',
-            partition: (v) => new Map(v.nodes.filter(n => n.getData?.()?.category)
-                .map(n => [n.id, `cat:${n.getData().category}`])),
+            partition: partitionBy(d => !!d.category, d => `cat:${d.category}`),
         },
     ]
     return rules

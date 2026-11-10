@@ -28,7 +28,8 @@ export function viewModePlugin(views, current, onPick, only) {
                 id: 'ctx-views',
                 label: 'Views',
                 icon: ICON,
-                shortcut: 'V',
+                // V is Pivotick's own View mode.
+                shortcut: 'Shift+V',
                 order: 10,
                 tools: ids.map(id => ({
                     id: `view-${id}`,
