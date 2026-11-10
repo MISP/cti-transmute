@@ -1,4 +1,4 @@
-import { renderRawJson, sanitizeConfigPatch, textCell } from './graphSafety.js'
+import { sanitizeConfigPatch, textCell } from './graphSafety.js'
 import { mountGraph, VIEWS } from './graphView.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -212,29 +212,6 @@ async function _initViewer(containerId, jsonText, format) {
             maxVisible: GRAPH_CONFIG.maxNodes,
             // Picking a view in Pivotick's Views mode remounts the graph in it.
             onViewChange: (id) => _switchView(id),
-            ui: {
-                contextMenu: {
-                    menuNode: {
-                        topbar: [{
-                            text: 'Copy value',
-                            iconClass: 'fas fa-copy',
-                            onclick: (evt, node) => {
-                                const d = node.getData() ?? {}
-                                navigator.clipboard.writeText(String(d.value || d.label || node.id)).catch(() => { })
-                            }
-                        }],
-                        menu: [{
-                            text: 'Open raw JSON',
-                            iconClass: 'fas fa-code',
-                            onclick: (evt, node) => {
-                                const raw = node.getData()?.raw ?? {}
-                                const win = window.open('', '_blank')
-                                if (win) renderRawJson(win, raw, _isDarkTheme())
-                            }
-                        }]
-                    }
-                }
-            }
         })
     } catch (err) {
         console.error('Graph:', err)

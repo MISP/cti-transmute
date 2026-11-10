@@ -1,0 +1,5 @@
+/*! Vitrine v0.0.0 | MIT License | https://github.com/ecrou-exact/vitrine
+ * Includes: highlight.js 11.12.0 (BSD-3-Clause), marked 18.1.3 (MIT), DOMPurify 3.4.17 (Apache-2.0 OR MPL-2.0), Lucide 1.52.0 (ISC; icons derived from Feather: MIT).
+ * Full license texts: THIRD_PARTY_NOTICES.md */
+import{a as m}from"./chunks/chunk-KM6HZXR4.js";import"./chunks/chunk-SHDFJ7RA.js";import"./chunks/chunk-MLN6RLQM.js";import"./chunks/chunk-TENZ3ECF.js";import"./chunks/chunk-JZ3PJRDP.js";import"./chunks/chunk-M662NQ6S.js";import"./chunks/chunk-B7F4FUUX.js";import"./chunks/chunk-R54KMXV6.js";import{N as r,Q as s,S as l,T as f,U as i,V as p,W as n,e as t,p as o,q as e}from"./chunks/chunk-ROOVB7KQ.js";t(new URL("../",import.meta.url));customElements.get("vt-toml")||customElements.define("vt-toml",m);export{l as BUILT_IN_THEMES,r as EVENTS,m as VtToml,e as configure,o as getConfig,p as getTheme,n as listSyntaxThemes,i as listThemes,s as registerLocale,f as registerTheme};
+//# sourceMappingURL=vt-toml.js.map

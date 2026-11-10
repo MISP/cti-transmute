@@ -195,10 +195,16 @@ assert(!rows.some(r => r.value.textContent === ''),
 
 // ── The component actually uses the safe helpers ────────────────────────────
 const src = readFileSync(join(graphJs, 'conversionGraph.js'), 'utf8');
+const viewSrcEarly = () => readFileSync(join(graphJs, 'graphView.js'), 'utf8');
 assert(!/document\.write/.test(src),
        'conversionGraph.js no longer calls document.write');
-assert(/renderRawJson\(/.test(src),
-       'conversionGraph.js opens the raw-JSON popup via renderRawJson');
+assert(/openJsonOverlay\(/.test(viewSrcEarly()) && !/window\.open\(/.test(src),
+       'raw JSON opens in the in-graph Vitrine overlay (graphView.js), never in a popup');
+const vitrineSrc = readFileSync(join(graphJs, 'render', 'vitrine.js'), 'utf8');
+assert(!/\.innerHTML\s*=|insertAdjacentHTML/.test(vitrineSrc),
+       'render/vitrine.js hands content to Vitrine as text, never as HTML');
+assert(/setAttribute\('images', 'block'\)/.test(vitrineSrc),
+       '<vt-markdown> blocks remote images from converted content');
 // The graph is mounted by graphView.js (conversionGraph.js only wires the page).
 const viewSrc = readFileSync(join(graphJs, 'graphView.js'), 'utf8');
 assert(/normaliseNodeTypes\(/.test(viewSrc),

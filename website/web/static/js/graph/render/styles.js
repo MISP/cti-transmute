@@ -68,6 +68,8 @@ const LABEL_CSS = `
 .pvt-node-label { fill: var(--ctx-label-color, #334155); }
 g.label-container text { fill: var(--ctx-edge-label-color, #64748b); font-style: italic; }
 [data-theme="dark"] { --ctx-label-color: #cbd5e1; --ctx-edge-label-color: #94a3b8; }
+/* A wider side panel: details, JSON trees and Markdown need the room. */
+.pivotick .pvt-layout { --pvt-sidebar-width: min(480px, 42vw) !important; }
 /* The tooltip's raw property list is never used: our card (details.js) replaces it. */
 .pvt-tooltip .pvt-properties-container { display: none !important; }
 /* Pivotick's accent (a pink-red by default) becomes cti-transmute's own accent. */

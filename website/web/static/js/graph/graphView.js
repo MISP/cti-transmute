@@ -20,6 +20,7 @@ import { nodeDetails, edgeDetails, nodeTooltip, edgeTooltip, groupTooltipExtra }
 import { VIEWS, ruleContext } from './views.js'
 import { localPivots } from './pivots.js'
 import { viewModePlugin } from './render/viewMode.js'
+import { openJsonOverlay } from './render/vitrine.js'
 import { normaliseNodeTypes } from './graphSafety.js'
 
 export { VIEWS }
@@ -188,6 +189,8 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
     for (const e of full.edges) e.data.label = edgeLabelText(e.data, fullById.get(e.from))
 
     container.replaceChildren()
+    let lastClick = { id: null, at: 0 }
+    let graph = null
     const big = model.nodes.length > 6000
 
     const options = {
@@ -263,9 +266,41 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
                 typeOf: (node) => node.getData()?.type,
                 colorOf: (node) => node.getData()?.color,
                 typeLabel: (type, count) => `${count} × ${String(type).replace(/^(attr|obj|stix|galaxy|tag)[:_]/, '')}`,
-                openConfirmAbove: 150,
+                // Family groups hold hundreds of nodes; opening one drills down into
+                // sub-groups, so it never floods the canvas: no confirmation step.
+                openConfirmAbove: 5000,
+            },
+            contextMenu: {
+                menuNode: {
+                    topbar: [{
+                        text: 'Copy value', iconClass: 'fas fa-copy',
+                        onclick: (evt, node) => {
+                            const d = node.getData() ?? {}
+                            navigator.clipboard?.writeText(String(d.value || d.label || node.id)).catch(() => { })
+                        },
+                    }],
+                    // Over the graph, not in a popup window: visible in fullscreen too.
+                    menu: [{
+                        text: 'Open raw JSON', iconClass: 'fas fa-code',
+                        onclick: (evt, node) => openJsonOverlay(container, node.getData()?.raw ?? {}, node.getData()?.label || 'Raw JSON'),
+                    }],
+                },
             },
             ...(opts.ui ?? {}),
+        },
+        callbacks: {
+            // A group's drawing is rebuilt when the first click selects it, so the
+            // browser never sees a double-click on one element: count two clicks
+            // on the same group within 450 ms as one, and open it.
+            onNodeClick: (event, node) => {
+                const now = performance.now()
+                const twice = lastClick.id === node.id && now - lastClick.at < 450
+                lastClick = { id: node.id, at: twice ? 0 : now }
+                if (twice && node.isGroup && graph?.simplify) {
+                    const info = graph.simplify.getGroups().find(g => g.id === node.id)
+                    if (info && !info.open) graph.simplify.open(info)
+                }
+            },
         },
         pivots: localPivots(full),
         plugins: opts.onViewChange
@@ -280,8 +315,9 @@ export async function mountGraph(container, jsonText, format, opts = {}) {
     normaliseNodeTypes(model)
     const byId = new Map(model.nodes.map(n => [n.id, n.data]))
     for (const e of model.edges) e.data.label = edgeLabelText(e.data, byId.get(e.from))
-    const graph = new window.Pivotick(container, { nodes: model.nodes, edges: model.edges }, options)
+    graph = new window.Pivotick(container, { nodes: model.nodes, edges: model.edges }, options)
     ruleContext.graph = graph
+    ruleContext.opened = new Set()
 
     // Edge layers the view keeps off at first (embedded refs, pattern links…).
     const on = Object.keys(EDGE_KINDS).filter(k => (view.edgeKinds ?? {})[k] ?? EDGE_KINDS[k].on)

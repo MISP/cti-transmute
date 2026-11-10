@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { TLP, FAMILIES, EDGE_KINDS, RELATION_COLORS } from '../model/vocabulary.js'
+import { jsonView, markdownView, codeView, looksLikeMarkdown } from './vitrine.js'
 
 // ── tiny DOM helpers ────────────────────────────────────────────────────────
 function h(tag, cls, ...children) {
@@ -159,16 +160,21 @@ function attributeTable(attrs) {
 
 function patternBlock(pattern, observables) {
     if (!pattern) return null
-    const pre = h('pre', 'ctx-d-pattern', pattern.replace(/\s+(AND|OR|FOLLOWEDBY)\s+/g, '\n$1 '))
-    return h('div', null, pre, observables?.length
+    const code = codeView(pattern.replace(/\s+(AND|OR|FOLLOWEDBY)\s+/g, '\n$1 '), { label: 'STIX pattern' })
+    return h('div', null, code, observables?.length
         ? rows(observables.map(o => [o.path === 'value' ? o.type : `${o.type} ${o.path}`, value(o.value, { copy: true })]))
         : null)
 }
 
+/** Prose: Markdown through Vitrine when it reads as Markdown, a paragraph otherwise. */
 function description(text) {
     if (!text) return null
-    return h('p', 'ctx-d-text', text)
+    return looksLikeMarkdown(text) || String(text).length > 400 ? markdownView(text) : h('p', 'ctx-d-text', text)
 }
+
+/** Rule and signature types whose value is code, shown with Vitrine's code viewer. */
+const CODE_TYPES = { yara: 'plaintext', sigma: 'yaml', snort: 'plaintext', 'pattern-in-file': 'plaintext',
+    'pattern-in-traffic': 'plaintext', 'pattern-in-memory': 'plaintext', 'email-body': 'plaintext', 'email-header': 'plaintext' }
 
 const SECTIONS = {
     event: (d, f) => [
@@ -179,7 +185,9 @@ const SECTIONS = {
         ]), { iconName: 'fa-circle-info' }),
         section('Content', rows([['Attributes', f.attributeCount], ['Objects', f.objectCount]]), { iconName: 'fa-cubes' }),
         tags(d),
-        section('Reports', f.reports?.length ? h('ul', 'ctx-d-list', f.reports.map(r => h('li', null, r.name))) : null, { iconName: 'fa-file-lines' }),
+        section('Reports', f.reports?.length
+            ? h('div', 'ctx-d-reports', f.reports.map(r => h('div', null, h('div', 'ctx-d-report-name', r.name || 'Report'), r.content ? markdownView(r.content) : null)))
+            : null, { iconName: 'fa-file-lines' }),
     ],
     attribute: (d, f) => [
         section('Classification', rows([
@@ -191,6 +199,8 @@ const SECTIONS = {
         ]), { iconName: 'fa-clock' }),
         tags(d),
         sightingsSection(f.sightings),
+        section('Content', CODE_TYPES[f.attributeType] || /\n/.test(d.value ?? '')
+            ? codeView(d.value, { language: CODE_TYPES[f.attributeType] ?? 'plaintext', label: f.attributeType }) : null, { iconName: 'fa-code' }),
         section('Comment', description(f.comment), { iconName: 'fa-comment' }),
         section('Belongs to', rows([['Object', f.parentObject?.name]]), { iconName: 'fa-cube' }),
     ],
@@ -267,12 +277,12 @@ function provenance(f) {
     ]), { iconName: 'fa-fingerprint', open: false })
 }
 
-function rawSection(raw) {
+function rawSection(raw, label = 'raw') {
     if (!raw) return null
-    const pre = h('pre', 'ctx-d-raw')
-    const d = section('Raw document', pre, { open: false, iconName: 'fa-code' })
-    // Serialise only when opened: a large object costs nothing until asked for.
-    d.addEventListener('toggle', () => { if (d.open && !pre.textContent) pre.textContent = JSON.stringify(raw, null, 2) })
+    const holder = h('div', null)
+    const d = section('Raw document', holder, { open: false, iconName: 'fa-code' })
+    // Built only when opened: a large object costs nothing until asked for.
+    d.addEventListener('toggle', () => { if (d.open && !holder.firstChild) holder.append(jsonView(raw, { label })) })
     return d
 }
 
@@ -284,7 +294,7 @@ export function nodeDetails(node) {
     const d = node.getData() ?? {}
     if (!d.kind) return null      // a Simplify group: Pivotick's own panel lists its members
     const build = SECTIONS[d.kind] ?? SECTIONS.sdo
-    return h('div', 'ctx-d', header(d), build(d, d.fields ?? {}), rawSection(d.raw))
+    return h('div', 'ctx-d', header(d), build(d, d.fields ?? {}), rawSection(d.raw, d.typeLabel || 'raw'))
 }
 
 function edgeEnd(node) {
@@ -428,6 +438,9 @@ function ensureStyles() {
 .ctx-d-pattern{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:rgba(127,127,127,.1);padding:8px;border-radius:4px;margin:6px 0}
 .ctx-d-raw{font:11px/1.45 ui-monospace,monospace;max-height:320px;overflow:auto;background:rgba(127,127,127,.1);padding:8px;border-radius:4px;margin:6px 0}
 .ctx-d-text{margin:6px 0;white-space:pre-wrap}
+.ctx-vt{margin:6px 0;min-width:0}
+.ctx-d-reports{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.ctx-d-report-name{font-weight:600;margin-bottom:4px}
 .ctx-d-list{margin:6px 0;padding-left:18px}
 .ctx-d-muted{opacity:.65;font-size:12px}
 .ctx-d-edge{display:flex;flex-wrap:wrap;gap:6px;align-items:center}

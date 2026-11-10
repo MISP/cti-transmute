@@ -23,13 +23,18 @@ const containers = (g) => g.nodes.filter(n => n.data.element === 'container')
  * that, opening "135 × ip-dst" let "By type" fold the same 135 nodes again at
  * once, and the group only stayed open on the second try.
  */
-export const ruleContext = { graph: null }
+export const ruleContext = { graph: null, opened: new Set() }
 
+/**
+ * Nodes the reader has opened a group on. Kept for the life of the graph: an
+ * opened family group whose members all fold into sub-groups is no longer
+ * listed by Pivotick, and without this memory the family rule folded them back
+ * at the next pass (the group "would not open").
+ */
 function openMembers() {
     const groups = ruleContext.graph?.simplify?.getGroups?.() ?? []
-    const ids = new Set()
-    for (const g of groups) if (g.open) for (const m of g.members ?? []) ids.add(m.id)
-    return ids
+    for (const g of groups) if (g.open) for (const m of g.members ?? []) ruleContext.opened.add(m.id)
+    return ruleContext.opened
 }
 
 /** A custom rule's partition, minus the nodes an opened group gave back. */

@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container my-5" v-cloak>
+<div class="container-fluid conversion-detail-page my-5" v-cloak>
     <template v-if="is_loading">
         <div class="d-flex justify-content-center align-items-center" style="min-height:400px;">
             <div class="text-center">
@@ -453,13 +453,13 @@
                             </div>
                         </div>
                         <!-- graph-container starts with a spinner, replaced once Pivotick renders -->
-                        <div id="graph-container" style="width:100%;height:max(560px,75vh);">
+                        <div id="graph-container" style="width:100%;height:max(640px,85vh);">
                             <div class="graph-spinner-overlay">
                                 <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
                                 <span>Click the Graph tab to load…</span>
                             </div>
                         </div>
-                        <div id="graph-container-output" style="width:100%;height:max(560px,75vh);display:none;">
+                        <div id="graph-container-output" style="width:100%;height:max(640px,85vh);display:none;">
                             <div class="graph-spinner-overlay">
                                 <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
                                 <span>Loading graph…</span>

@@ -204,6 +204,14 @@
      border-bottom: 1px solid var(--border);
  }
 
+ /* The Conversion page uses the width of the screen (up to 1800px): the graph,
+    the sunburst, the table and the code panes all show more at once. */
+ .conversion-detail-page {
+     max-width: 1800px;
+     padding-left: max(16px, 2vw);
+     padding-right: max(16px, 2vw);
+ }
+
  /* Input / Output toggle: the site's .btn-primary padding overrode btn-sm, so the
     selected side grew. Same box for both states. */
  .graph-panel-toolbar .btn {
@@ -947,7 +955,7 @@ html.christmas-mode .btn-action:focus {
 
 .csb-chart {
     width: 100%;
-    height: 520px;
+    height: max(620px, 75vh);
 }
 
 .csb-state {
