@@ -203,7 +203,7 @@
 
 <!-- Edit modal -->
 <teleport to="body">
-    <div v-if="showEditModal" class="du-modal-backdrop" @click.self="showEditModal = false">
+    <div v-if="showEditModal" v-cloak class="du-modal-backdrop" @click.self="showEditModal = false">
         <div class="du-modal">
             <div class="du-modal-head">
                 <span><i class="fas fa-pen me-2"></i>Edit user</span>
@@ -244,7 +244,7 @@
 
 <!-- Regenerate API key modal -->
 <teleport to="body">
-    <div v-if="showRegenModal" class="du-modal-backdrop" @click.self="showRegenModal = false">
+    <div v-if="showRegenModal" v-cloak class="du-modal-backdrop" @click.self="showRegenModal = false">
         <div class="du-modal du-modal-sm">
             <div class="du-modal-head du-modal-head-danger">
                 <span><i class="fas fa-key me-2"></i>Regenerate API key</span>
@@ -271,7 +271,7 @@
 
 <!-- Delete modal -->
 <teleport to="body">
-    <div v-if="showDeleteModal" class="du-modal-backdrop" @click.self="showDeleteModal = false">
+    <div v-if="showDeleteModal" v-cloak class="du-modal-backdrop" @click.self="showDeleteModal = false">
         <div class="du-modal du-modal-sm">
             <div class="du-modal-head du-modal-head-danger">
                 <span><i class="fas fa-trash me-2"></i>Delete user</span>
