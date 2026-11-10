@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
+import ipaddress
 import os
 import secrets
 from importlib.metadata import version as _dist_version
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
-from flask import Flask, g, request, url_for
+from flask import Flask, g, jsonify, request, url_for
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from flask_session import Session
@@ -27,15 +29,66 @@ application.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://cti_user:
 application.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 application.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
 application.config['SESSION_TYPE'] = 'filesystem'
-session_file_dir = os.environ.get("SESSION_FILE_DIR")
-if session_file_dir:
-    Path(session_file_dir).mkdir(parents=True, exist_ok=True)
-    application.config["SESSION_FILE_DIR"] = session_file_dir
+
+# Where the session files live. flask-session's own fallback is
+# <cwd>/flask_session, so the store moves with however the process happened to
+# be launched: a service unit that sets its own WorkingDirectory reads an empty
+# directory and silently signs out every logged-in user, with nothing anywhere
+# to explain it. The default is therefore the checkout - the same directory
+# whatever the working directory is - with SESSION_FILE_DIR as the operator
+# override for an install that keeps state outside the code.
+_default_session_file_dir = Path(__file__).resolve().parents[2] / "flask_session"
+
+# What the operator reads when the service user cannot write that directory -
+# an ordinary deployment: the checkout owned by root or shipped read-only, the
+# unit running as its own service user. Unguarded, the mkdir raises at import,
+# before any route exists, and the traceback points at a path nobody
+# configured, which reads like a bug in flask-session rather than the
+# permissions decision it is. So name the directory, what it holds, and the
+# override that moves it.
+_SESSION_FILE_DIR_HELP = (
+    "{problem}: {path}\n"
+    "That directory is the session store - it holds every logged-in user's "
+    "session, and the user the service runs as has to be able to write it. "
+    "Either give that user write access, or set SESSION_FILE_DIR to a "
+    "directory it owns. Under systemd that is two lines in the unit: "
+    "StateDirectory=cti-transmute, which creates /var/lib/cti-transmute owned "
+    "by the User= the service runs as, and "
+    "Environment=SESSION_FILE_DIR=/var/lib/cti-transmute/flask-session."
+)
+
+
+def _session_file_dir_error(problem: str, path: Path) -> RuntimeError:
+    return RuntimeError(_SESSION_FILE_DIR_HELP.format(problem=problem, path=path))
+
+
+def _ensure_session_file_dir(path: Path) -> Path:
+    """``path``, created if it is missing; raises when the service cannot write it.
+
+    The write check is not what the mkdir already proved: mkdir(exist_ok=True)
+    succeeds on a directory that exists and belongs to somebody else, which is
+    what a deploy run as root leaves behind for a service user to inherit. The
+    store is then read-only, flask-session's own probe fails to stderr and is
+    swallowed, and the service comes up with every session write failing.
+    """
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise _session_file_dir_error(
+            f"Cannot create the session directory ({error.strerror or error})", path) from error
+    if not os.access(path, os.W_OK | os.X_OK):
+        raise _session_file_dir_error("Cannot write the session directory", path)
+    return path
+
+
+_session_file_dir = _ensure_session_file_dir(
+    Path(os.environ.get("SESSION_FILE_DIR") or _default_session_file_dir))
+application.config["SESSION_FILE_DIR"] = str(_session_file_dir)
 
 # Flask 3.x defaults MAX_FORM_MEMORY_SIZE to 500 KB which rejects large MISP JSON payloads.
 # Set both limits to 50 MB to accommodate large events.
-application.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024   # 50 MB — total request size
-application.config["MAX_FORM_MEMORY_SIZE"] = 50 * 1024 * 1024  # 50 MB — non-file form fields
+application.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024   # 50 MB - total request size
+application.config["MAX_FORM_MEMORY_SIZE"] = 50 * 1024 * 1024  # 50 MB - non-file form fields
 
 csrf = CSRFProtect(application)
 
@@ -54,7 +107,6 @@ migrate.init_app(application, db, directory='website/migrations', render_as_batc
 login_manager.login_view = "account.login"
 login_manager.init_app(application)
 
-application.config["SESSION_SQLALCHEMY"] = db
 sess.init_app(application)
 
 
@@ -72,6 +124,74 @@ application.config["SESSION_COOKIE_SECURE"] = _secure_cookies
 application.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 application.config["REMEMBER_COOKIE_SECURE"] = _secure_cookies
 application.config["REMEMBER_COOKIE_SAMESITE"] = "Lax"
+
+
+# What a failed CSRF check tells the reader. An instance served over plain
+# HTTP at an IP or hostname keeps the Secure flag set above, the browser then
+# refuses to store the cookie, no session forms, and every POST fails this
+# check - so for that deployment the stock "reload" advice is a loop with no
+# way out, and the cause has to be named instead.
+_DROPPED_SECURE_COOKIE_MESSAGE = (
+    "No session cookie was received. This site marks its session cookie "
+    "Secure, and browsers only keep Secure cookies over HTTPS. Serve the site "
+    "over HTTPS, or set SESSION_COOKIE_SECURE=false if it is only reachable "
+    "on a trusted network."
+)
+
+
+def _is_loopback_host() -> bool:
+    """Whether the browser would treat this origin as trustworthy anyway.
+
+    Browsers exempt loopback from the HTTPS requirement, so a ``Secure`` cookie
+    survives there over plain HTTP. The set mirrors the secure-context rule:
+    ``localhost`` and any ``.localhost`` name, ``127.0.0.0/8``, and ``::1``.
+    """
+    host = urlsplit(request.host_url).hostname or ""
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def _session_cookie_was_dropped() -> bool:
+    """Whether the browser refused to keep the session cookie.
+
+    True only when all of these hold: the cookie is stamped ``Secure``, the
+    origin is not one the browser treats as secure, and nothing came back.
+    A TLS-terminating proxy sets ``X-Forwarded-Proto``, which `ProxyFix`
+    applies, so an ordinary HTTPS install never reaches this.
+    """
+    return (
+        application.config["SESSION_COOKIE_SECURE"]
+        and not request.is_secure
+        and not _is_loopback_host()
+        and application.config["SESSION_COOKIE_NAME"] not in request.cookies
+    )
+
+
+def _csrf_failure_message(exc: CSRFError) -> str:
+    """Why the CSRF check failed, in terms the reader can act on."""
+    if _session_cookie_was_dropped():
+        return _DROPPED_SECURE_COOKIE_MESSAGE
+    return f"{exc.description} Reload the page and try again."
+
+
+@application.errorhandler(CSRFError)
+def _handle_csrf_error(exc: CSRFError):
+    """Answer a fetch/JSON caller's CSRF failure with the `{error}` envelope.
+
+    Flask-WTF's default is an HTML page. The pages that submit by fetch read
+    the body as JSON and fall back to a bare "HTTP 400" when that parse fails,
+    which hides both the cause and the remedy. Classic form posts - the login
+    page among them - keep the HTML page, carrying the same explanation.
+    """
+    message = _csrf_failure_message(exc)
+    if request.is_json:
+        return jsonify({"error": message}), 400
+    exc.description = message
+    return exc.get_response()
 
 
 # Content-Security-Policy. Inline <script> blocks run only when stamped with
@@ -96,7 +216,7 @@ _CSP_TEMPLATE = "; ".join((
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self'",
+    "form-action 'self'"
 ))
 
 

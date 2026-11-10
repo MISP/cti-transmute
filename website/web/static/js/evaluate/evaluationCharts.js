@@ -1,10 +1,10 @@
-// EvaluationCharts — approval donut + tag-reaction bar chart for a conversion.
+// EvaluationCharts - approval donut + tag-reaction bar chart for a conversion.
 // Register with: app.component('evaluation-charts', EvaluationCharts)
 
 const EvaluationCharts = {
     delimiters: ['[[', ']]'],
     props: {
-        conversionId: { type: Number, required: true },
+        conversionId: { type: Number, required: true }
     },
     template: `
 <div>
@@ -106,8 +106,8 @@ const EvaluationCharts = {
                                 data: [data.value.likes, data.value.dislikes],
                                 backgroundColor: ['#2563eb', '#dc2626'],
                                 borderWidth: 0,
-                                hoverOffset: 6,
-                            }],
+                                hoverOffset: 6
+                            }]
                         },
                         options: {
                             responsive: true,
@@ -118,11 +118,11 @@ const EvaluationCharts = {
                                 legend: { display: false },
                                 tooltip: {
                                     callbacks: {
-                                        label: ctx => ` ${ctx.label}: ${ctx.raw}`,
-                                    },
-                                },
-                            },
-                        },
+                                        label: ctx => ` ${ctx.label}: ${ctx.raw}`
+                                    }
+                                }
+                            }
+                        }
                     })
                 }
 
@@ -143,8 +143,8 @@ const EvaluationCharts = {
                                 data: tagEntries.value.map(([, v]) => v),
                                 backgroundColor: tagEntries.value.map(([k]) => defMap[k] || '#888888'),
                                 borderWidth: 0,
-                                borderRadius: 4,
-                            }],
+                                borderRadius: 4
+                            }]
                         },
                         options: {
                             indexAxis: 'y',
@@ -156,23 +156,23 @@ const EvaluationCharts = {
                                 tooltip: {
                                     callbacks: {
                                         title: (items) => tagEntries.value[items[0].dataIndex]?.[0] || '',
-                                        label: ctx => ` ${ctx.raw} user${ctx.raw !== 1 ? 's' : ''}`,
-                                    },
-                                },
+                                        label: ctx => ` ${ctx.raw} user${ctx.raw !== 1 ? 's' : ''}`
+                                    }
+                                }
                             },
                             scales: {
                                 x: {
                                     min: 0,
                                     ticks: { color: text3, font: { size: 11 }, stepSize: 1 },
                                     grid: { color: border },
-                                    border: { display: false },
+                                    border: { display: false }
                                 },
                                 y: {
                                     ticks: { color: text2, font: { size: 11 } },
-                                    grid: { display: false },
-                                },
-                            },
-                        },
+                                    grid: { display: false }
+                                }
+                            }
+                        }
                     })
                 }
             } catch (e) {
@@ -227,9 +227,9 @@ const EvaluationCharts = {
 
         return {
             loading, data, score, hasVotes, hasTagReactions, hasData,
-            tagEntries, barHeight, donutRef, barRef,
+            tagEntries, barHeight, donutRef, barRef
         }
-    },
+    }
 }
 
 export default EvaluationCharts

@@ -3,8 +3,8 @@
 Repoints the ``conversions_core`` comment gates to the shared
 ``website/lib/access.py`` predicates (and changes their signatures from
 ``(requesting_user_id, is_admin)`` primitives to the Submitter object). These
-tests pin the externally observable rules — who may delete/edit/toggle a
-comment, who sees which comments — so the repoint stays behavior-preserving:
+tests pin the externally observable rules - who may delete/edit/toggle a
+comment, who sees which comments - so the repoint stays behavior-preserving:
 
 - delete: comment author, the Conversion's owner, or an admin
 - edit: the comment's author only (not even an admin)
@@ -48,7 +48,7 @@ def _make_user(email, admin=False):
 
 def _login(client, user):
     # One auth state per test: flask-login caches the loaded user in ``g``,
-    # and the app context `app_db` holds open spans every request in a test —
+    # and the app context `app_db` holds open spans every request in a test -
     # so the first request's identity sticks. Log in before the first request
     # and don't switch users mid-test (the norm across tests/web/).
     with client.session_transaction() as sess:
@@ -64,7 +64,7 @@ def _make_conversion(user_id, public=True):
     conv = Conversion(
         user_id=user_id, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
-        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()

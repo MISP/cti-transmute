@@ -12,13 +12,15 @@
  *      if that resolution changes. Fires on hover (tooltip) and click (sidebar).
  * Run by the pytest wrapper (test_graph_xss_js.py): node graph_xss_check.mjs
  * Prints one line per check; exits non-zero on any failure. */
+import { createHash } from 'crypto';
 import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const graphJs = join(repoRoot, 'website/web/static/js/graph');
-const { renderRawJson, sanitizeGraphData, textCell } = await import(join(graphJs, 'graphSafety.js'));
+const pivotickStatic = join(repoRoot, 'website/web/static/pivotick');
+const { renderRawJson, normaliseNodeTypes, textCell } = await import(join(graphJs, 'graphSafety.js'));
 const { _nodeProperties } = await import(join(graphJs, 'conversionGraph.js'));
 
 const assert = (cond, msg) => {
@@ -39,7 +41,7 @@ function fakeWindow() {
         set textContent(v) { this._text = String(v); },
         get textContent() { return this._text; },
         set innerHTML(v) { innerHTMLWrites.push(v); },
-        appendChild(child) { this.children.push(child); },
+        appendChild(child) { this.children.push(child); }
     });
     const body = makeEl('body');
     return { innerHTMLWrites, body, win: { document: { body, createElement: makeEl } } };
@@ -63,11 +65,11 @@ const parsed = {
     nodes: [{ id: 'n1', data: {
         label: '<img src=x onerror=alert(1)>',
         sublabel: '<svg onload=alert(2)>',
-        type: 'x', raw: { value: '<img src=x onerror=alert(1)>' },
+        type: 'x', raw: { value: '<img src=x onerror=alert(1)>' }
     } }],
-    edges: [{ from: 'n1', to: 'n2', data: { label: '<b onmouseover=alert(3)>' } }],
+    edges: [{ from: 'n1', to: 'n2', data: { label: '<b onmouseover=alert(3)>' } }]
 };
-sanitizeGraphData(parsed);
+normaliseNodeTypes(parsed);
 
 assert(parsed.nodes[0].data.label === '<img src=x onerror=alert(1)>',
        'a hostile node label is passed through verbatim (Pivotick inserts it as text)');
@@ -82,25 +84,54 @@ assert(parsed.nodes[0].data.raw.value === '<img src=x onerror=alert(1)>',
 // event info or a URL attribute must not arrive as entities.
 const benign = {
     nodes: [{ id: 'a', data: { label: 'Phishing "ACME" & co', sublabel: 'filename' } }],
-    edges: [{ from: 'a', to: 'b', data: { label: 'http://x/?a=1&b=2' } }],
+    edges: [{ from: 'a', to: 'b', data: { label: 'http://x/?a=1&b=2' } }]
 };
-sanitizeGraphData(benign);
+normaliseNodeTypes(benign);
 assert(benign.nodes[0].data.label === 'Phishing "ACME" & co',
        'an event info keeps its ampersand and quotes, not &amp;/&quot;');
 assert(benign.edges[0].data.label === 'http://x/?a=1&b=2',
        'a URL label keeps its query-string ampersand');
 
 // Label safety is Pivotick's guarantee from 1.5.0 on ("a string always renders
-// as text", docs/security.md), so pin the vendored version that promise came
-// with. Skipped where the submodule is not checked out (CI clones without it).
-const pivotickPkg = join(repoRoot, 'submodules/pivotick/package.json');
-if (existsSync(pivotickPkg)) {
-    const { version } = JSON.parse(readFileSync(pivotickPkg, 'utf8'));
+// as text", docs/security.md), so pin the version that promise came with. What
+// gets pinned is the copy the browser loads, not the submodule: the two are
+// coupled only by a manual bin/build_assets.py run, so a static/ copy left
+// behind by a submodule bump would pass a check that read the submodule.
+// build_assets.py records the version and the digests beside the bundle.
+const bundleRecord = join(pivotickStatic, 'BUNDLE.json');
+const hasRecord = existsSync(bundleRecord);
+assert(hasRecord,
+       'static/pivotick/BUNDLE.json exists, recording which Pivotick is served');
+
+// Everything below reads the record, so a missing one stops here: assert only
+// marks the run failed, and reading on would bury that FAIL under a stack.
+if (hasRecord) {
+    const { version, sha256 } = JSON.parse(readFileSync(bundleRecord, 'utf8'));
     const [major, minor] = version.split('.').map(Number);
     assert(major > 1 || (major === 1 && minor >= 5),
-           `vendored Pivotick is >= 1.5.0, which renders labels as text (found ${version})`);
-} else {
-    console.log('skip: Pivotick submodule not checked out, version floor not verified');
+           `served Pivotick is >= 1.5.0, which renders labels as text (found ${version})`);
+
+    for (const [name, digest] of Object.entries(sha256)) {
+        const served = join(pivotickStatic, name);
+        if (!existsSync(served)) {
+            assert(false, `${name} is where BUNDLE.json says it is`);
+            continue;
+        }
+        const actual = createHash('sha256').update(readFileSync(served)).digest('hex');
+        assert(actual === digest,
+               `${name} is the build BUNDLE.json recorded, not an edited or stale copy`);
+    }
+
+    // When the submodule is checked out it must agree, or static/ is a rebuild
+    // behind. CI clones without it, so this part alone stays conditional.
+    const pivotickPkg = join(repoRoot, 'submodules/pivotick/package.json');
+    if (existsSync(pivotickPkg)) {
+        const pkg = JSON.parse(readFileSync(pivotickPkg, 'utf8'));
+        assert(pkg.version === version,
+               `the served bundle is built from the vendored submodule (static ${version}, submodule ${pkg.version})`);
+    } else {
+        console.log('skip: Pivotick submodule not checked out, rebuild staleness not verified');
+    }
 }
 
 // ── Sink 3: properties-panel cells ──────────────────────────────────────────
@@ -132,7 +163,7 @@ const typed = {
     ],
     edges: []
 };
-sanitizeGraphData(typed);
+normaliseNodeTypes(typed);
 assert(!/[<>"']/.test(typed.nodes[0].data.type),
        'a hostile node type keeps no HTML specials for the ego-graph property map');
 assert(typed.nodes[1].data.type === 'ipv4-addr',
@@ -168,10 +199,10 @@ assert(!/document\.write/.test(src),
        'conversionGraph.js no longer calls document.write');
 assert(/renderRawJson\(/.test(src),
        'conversionGraph.js opens the raw-JSON popup via renderRawJson');
-assert(/sanitizeGraphData\(/.test(src),
-       'conversionGraph.js routes the parsed graph through sanitizeGraphData');
-assert(src.indexOf('sanitizeGraphData(') < src.indexOf('new window.Pivotick('),
-       'the parsed graph is sanitized before it is handed to Pivotick');
+assert(/normaliseNodeTypes\(/.test(src),
+       'conversionGraph.js routes the parsed graph through normaliseNodeTypes');
+assert(src.indexOf('normaliseNodeTypes(') < src.indexOf('new window.Pivotick('),
+       'the node types are normalised before the graph is handed to Pivotick');
 
 // The inline edgePropertiesMap cannot be imported, so assert on its source that
 // no cell is left as a bare string (Fix: stop relying on label escaping).

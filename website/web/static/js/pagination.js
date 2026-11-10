@@ -1,5 +1,5 @@
 /**
- * AppPagination — dots numérotés avec ellipsis automatique.
+ * AppPagination - dots numérotés avec ellipsis automatique.
  * Props : page (courant), total (total pages).
  * Émet  : change(newPage)
  *
@@ -15,7 +15,7 @@ const AppPagination = {
     delimiters: ['[[', ']]'],
     props: {
         page:  { type: Number, default: 1 },
-        total: { type: Number, default: 1 },
+        total: { type: Number, default: 1 }
     },
     emits: ['change'],
     computed: {
@@ -33,13 +33,13 @@ const AppPagination = {
             if (we < t - 1) pages.push('...');
             pages.push(t);
             return pages;
-        },
+        }
     },
     methods: {
         go(p) {
             if (p < 1 || p > this.total || p === this.page) return;
             this.$emit('change', p);
-        },
+        }
     },
     template: `
 <nav v-if="total > 1" class="pg-nav" aria-label="Pagination">
@@ -62,7 +62,7 @@ const AppPagination = {
     <i class="fas fa-chevron-right"></i>
   </button>
 </nav>
-    `,
+    `
 };
 
 export default AppPagination;

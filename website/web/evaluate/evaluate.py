@@ -267,7 +267,7 @@ def export_evaluation_markdown(conversion_id):
     return Response(
         md_text,
         mimetype="text/markdown",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 
 
@@ -290,5 +290,5 @@ def export_evaluation_pdf(conversion_id):
     return Response(
         pdf_bytes,
         mimetype="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )

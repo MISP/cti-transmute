@@ -53,7 +53,7 @@ def test_restsearch_response_collection_converts(misp_event):
 
 def test_top_level_event_list_converts(misp_event):
     """A top-level list of events used to crash inside misp-stix; it now routes
-    cleanly and converts (misp-stix ADR-0008)."""
+    cleanly and converts."""
     payload = [misp_event]
 
     result = MispToStix().process(payload, MispToStixParams())
@@ -63,7 +63,7 @@ def test_top_level_event_list_converts(misp_event):
 
 def test_empty_object_raises_invalid_payload():
     """An empty object matches no MISP shape -> InvalidPayload (not a silent
-    empty bundle, the pre-ADR-0008 behaviour)."""
+    empty bundle, which is what payload routing used to answer with)."""
     with pytest.raises(InvalidPayload):
         MispToStix().process({}, MispToStixParams())
 

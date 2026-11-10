@@ -81,7 +81,7 @@ def test_strips_server_assigned_fields_and_never_duplicates_an_existing_tag(misp
     already_tagged = 'cti-evaluation:accuracy="high"'
     misp_event["Event"].update({
         "id": "42", "publish_timestamp": "1704067300",
-        "Tag": [{"name": already_tagged}],
+        "Tag": [{"name": already_tagged}]
     })
     conversion = _conversion(json.dumps(misp_event))
 
@@ -98,7 +98,7 @@ def test_strips_server_assigned_fields_and_never_duplicates_an_existing_tag(misp
     lambda event: {"Event": event},                    # the canonical wrapper
     lambda event: {"response": [{"Event": event}]},    # restSearch wrapper
     lambda event: [{"Event": event}],                  # list of wrapped events
-    lambda event: event,                               # bare event dict
+    lambda event: event                               # bare event dict
 ])
 def test_accepts_every_misp_envelope_shape(misp_event, envelope):
     conversion = _conversion(json.dumps(envelope(misp_event["Event"])))

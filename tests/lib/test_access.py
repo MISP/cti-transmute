@@ -1,7 +1,7 @@
 """Pure authorization predicates over the acting Submitter (website/lib/access.py).
 
 Every predicate takes the Submitter (``User | None``) and the target row
-explicitly — no ``current_user``, no DB. Lightweight stand-in objects are
+explicitly - no ``current_user``, no DB. Lightweight stand-in objects are
 enough: a Submitter quacks with ``id`` + ``is_admin()``, a Conversion-shaped
 target with ``user_id`` (+ ``public`` for visibility).
 """
@@ -17,7 +17,7 @@ from website.lib.access import (
     can_see,
     is_admin,
     is_owner,
-    is_owner_or_admin,
+    is_owner_or_admin
 )
 from website.lib.exceptions import PermissionDenied
 
@@ -69,7 +69,7 @@ def test_none_owns_nothing():
 
 def test_none_does_not_own_an_anonymously_created_row():
     # A row created anonymously has user_id NULL; an anonymous Submitter must
-    # still fail ownership — None == None never counts.
+    # still fail ownership - None == None never counts.
     assert is_owner(None, _conversion(owner_id=None)) is False
 
 

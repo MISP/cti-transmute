@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 """
-manage.py — CTI-Transmute management script
+manage.py - CTI-Transmute management script
 
 Usage:
     uv run manage <command>
 
 Commands:
-    init      First-time setup on a new machine (submodules + deps + DB)
-    start     Start the website (applies pending DB migrations first)
-    update    Pull latest code + sync deps + run DB migrations
-    backup    Backup the PostgreSQL database
-    deploy    Full deployment: backup + update + start
-    db        Run Flask-Migrate commands (upgrade by default)
-    help      Show this help message
+    init             First-time setup on a new machine (submodules + deps + DB)
+    start            Run the website in the foreground (development)
+    update           Pull latest code + sync deps + run DB migrations
+    update-datasets  Refresh the MISP taxonomy/galaxy submodules to upstream HEAD
+    backup           Backup the PostgreSQL database
+    deploy           Full deployment: backup + update + restart the service
+    db               Run Flask-Migrate commands (upgrade by default)
+    help             Show this help message
 """
 
 import datetime
 import os
 import secrets
+import shutil
 import string
 import subprocess
 import sys
@@ -25,6 +27,16 @@ from pathlib import Path
 
 ROOT    = Path(__file__).resolve().parent.parent
 VENV_UV = ["uv", "run"]
+
+# The unit documented in README.md, and the one both dev-container
+# provisioners generate.
+SERVICE_NAME = "cti-transmute.service"
+# The submodules `update-datasets` refreshes to upstream HEAD. pivotick is
+# left out on purpose: it is a pinned library, not a MISP dataset.
+DATASET_SUBMODULES = ["submodules/misp-taxonomies", "submodules/misp-galaxy"]
+# Present only where systemd is PID 1: a container image can ship systemctl
+# without ever running systemd.
+SYSTEMD_MARKER = Path("/run/systemd/system")
 
 # ── Database config ───────────────────────────────────────────────────────────
 DB_USER     = "cti_user"
@@ -98,18 +110,27 @@ def cmd_help() -> None:
               {D}  init submodules → sync deps → create DB → run migrations{R}
               {D}→ Run once right after cloning the repo{R}
 
-  {G}start{R}     {D}Start the website (applies pending DB migrations first){R}
-              {D}→ Use this every time you want to run the app{R}
+  {G}start{R}     {D}Run the website in the foreground (applies pending DB migrations first){R}
+              {D}→ Development command: it dies with your shell and nothing{R}
+              {D}  restarts it. In production the systemd unit owns the service{R}
+              {D}  — see the deployment section of README.md{R}
 
   {G}update{R}    {D}Pull latest code from git + sync deps + run DB migrations{R}
               {D}→ Use this after someone pushed new code{R}
+
+  {G}update-datasets{R}  {D}Refresh misp-taxonomies + misp-galaxy to upstream HEAD{R}
+              {D}→ Deliberately separate from 'update', which checks out the{R}
+              {D}  pinned pointers so deploys stay reproducible{R}
+              {D}→ Then import the new tags from the Tag Management admin page{R}
+              {D}→ Commit the moved pointers, or the next 'update' reverts them{R}
 
   {G}backup{R}    {D}Backup the PostgreSQL database to backups/{R}
               {D}→ Use this before any risky operation{R}
 
   {G}deploy{R}    {D}Full deployment in one command:{R}
-              {D}  backup → update → start{R}
+              {D}  backup → update → systemctl restart {SERVICE_NAME}{R}
               {D}→ Use this on your production server{R}
+              {D}→ Without systemd it prints the restart command instead{R}
 
   {G}db{R}        {D}Run Flask-Migrate commands (defaults to 'upgrade'){R}
               {D}→ uv run manage db          # same as flask db upgrade{R}
@@ -133,7 +154,7 @@ def cmd_help() -> None:
   {G}uv run manage init{R}
   {G}uv run manage start{R}
 
-  {D}# Daily use — just start the app{R}
+  {D}# Daily development — run the app in this terminal{R}
   {G}uv run manage start{R}
 
   {D}# After a git push from your dev machine{R}
@@ -171,7 +192,7 @@ def _db_state() -> str:
         conn = psycopg2.connect(
             host=DB_HOST, port=int(DB_PORT),
             user=DB_USER, password=DB_PASSWORD,
-            dbname=DB_NAME, connect_timeout=5,
+            dbname=DB_NAME, connect_timeout=5
         )
     except Exception as e:
         error(f"Could not connect to the database: {e}")
@@ -191,14 +212,47 @@ def _db_state() -> str:
     return "unstamped" if has_schema else "fresh"
 
 
+_DRIFT_PROBE = (
+    "from alembic.autogenerate import compare_metadata; "
+    "from alembic.migration import MigrationContext; "
+    "from website.web import application, db; "
+    "import website.db_class.db; "
+    "ctx = application.app_context(); ctx.push(); "
+    "conn = db.engine.connect(); "
+    "diff = compare_metadata(MigrationContext.configure(conn), db.metadata); "
+    "conn.close(); "
+    "print('no-drift' if not diff else 'drift')"
+)
+
+
+def unstamped_target(schema_matches_models: bool) -> str:
+    """Which revision to stamp an unstamped database at.
+
+    An unstamped database was built by ``db.create_all()``, so it embodies the
+    models of whatever checkout bootstrapped it - and that is not necessarily
+    ``CREATE_ALL_SCHEMA_REV``. When the schema still matches today's models
+    there is nothing for the migrations to do, and stamping anything older
+    would replay revisions against tables that already exist: the newest one
+    creates ``bulk_tag_job``, so the upgrade would die on a table it finds in
+    place. Only a schema that has drifted behind the models needs the old
+    stamp-then-upgrade path.
+    """
+    return "head" if schema_matches_models else CREATE_ALL_SCHEMA_REV
+
+
+def _schema_matches_models() -> bool:
+    """True when the live schema already embodies every model."""
+    return run_capture([*VENV_UV, "python", "-c", _DRIFT_PROBE]).endswith("no-drift")
+
+
 def _run_db_upgrade() -> None:
     """Bring the database to the latest migration, whatever its bootstrap.
 
-    - fresh (no tables): build the schema from the models and stamp head —
+    - fresh (no tables): build the schema from the models and stamp head -
       the early migration chain is not replayable on an empty database;
     - unstamped (tables from a db.create_all() bootstrap, no alembic_version):
-      stamp the revision the models already embody, then upgrade so the
-      migrations that follow it (data migrations) run;
+      stamp what the schema actually embodies, then upgrade so any migrations
+      that follow it run;
     - versioned: plain upgrade.
     """
     state = _db_state()
@@ -210,9 +264,15 @@ def _run_db_upgrade() -> None:
              "ctx = application.app_context(); ctx.push(); db.create_all()"])
         _flask_db("stamp", "head")
     elif state == "unstamped":
-        info(f"Schema present but unversioned — stamping {CREATE_ALL_SCHEMA_REV} first…")
-        _flask_db("stamp", CREATE_ALL_SCHEMA_REV)
-        _flask_db("upgrade")
+        target = unstamped_target(_schema_matches_models())
+        if target == "head":
+            info("Schema present but unversioned, and already matching the "
+                 "models — stamping head…")
+            _flask_db("stamp", "head")
+        else:
+            info(f"Schema present but unversioned — stamping {target} first…")
+            _flask_db("stamp", target)
+            _flask_db("upgrade")
     else:
         _flask_db("upgrade")
     ok("Database schema up to date")
@@ -231,7 +291,7 @@ def cmd_init() -> None:
     ok("Dependencies installed")
 
     # Try to create the PostgreSQL user and database if they don't exist yet.
-    # Best-effort — may fail if the OS user has no PostgreSQL superuser rights.
+    # Best-effort - may fail if the OS user has no PostgreSQL superuser rights.
     header("Setting up PostgreSQL database")
     info(f"Attempting to create role '{DB_USER}' and database '{DB_NAME}'…")
     create_role_sql  = f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='{DB_USER}') THEN CREATE ROLE {DB_USER} WITH LOGIN PASSWORD '{DB_PASSWORD}'; END IF; END $$;"
@@ -239,20 +299,20 @@ def cmd_init() -> None:
 
     r1 = subprocess.run(
         ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-c", create_role_sql],
-        cwd=ROOT, capture_output=True, text=True,
+        cwd=ROOT, capture_output=True, text=True
     )
     if r1.returncode == 0:
         ok(f"Role '{DB_USER}' ensured")
         # Check if database exists, create if not
         r2 = subprocess.run(
             ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-tAc", create_db_sql],
-            cwd=ROOT, capture_output=True, text=True,
+            cwd=ROOT, capture_output=True, text=True
         )
         if r2.stdout.strip() != "ok":
             subprocess.run(
                 ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", "postgres", "-c",
                  f"CREATE DATABASE {DB_NAME} OWNER {DB_USER};"],
-                cwd=ROOT, check=True,
+                cwd=ROOT, check=True
             )
             ok(f"Database '{DB_NAME}' created")
         else:
@@ -271,7 +331,8 @@ def cmd_init() -> None:
 
 
 def cmd_start() -> None:
-    header("Starting CTI-Transmute")
+    header("Starting CTI-Transmute (foreground — development)")
+    info("Nothing restarts this process; production runs it under systemd.")
     info("Making sure the database is on the latest migration…")
     _run_db_upgrade()
     try:
@@ -339,10 +400,120 @@ def cmd_update() -> None:
     _run_db_upgrade()
 
 
+def _submodule_sha(path: str) -> str:
+    """The revision checked out in one submodule, or '?' when there is none.
+
+    An uninitialised submodule is an empty directory, where `git rev-parse`
+    walks up and answers with the *superproject's* revision - so the checkout
+    is tested first rather than taking git's answer at face value.
+    """
+    if not (ROOT / path / ".git").exists():
+        return "?"
+    return run_capture(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT / path) or "?"
+
+
+def cmd_update_datasets() -> None:
+    """Refresh the MISP dataset submodules to upstream HEAD.
+
+    Deliberately not part of `update`, which checks out the pinned pointers:
+    advancing misp-taxonomies and misp-galaxy on every update would make
+    deploys irreproducible and hand two operators updating a week apart two
+    different tag sets. Moving the pointers stays an explicit operator act.
+    """
+    header("Refreshing the MISP dataset submodules")
+
+    before = {path: _submodule_sha(path) for path in DATASET_SUBMODULES}
+    run(["git", "submodule", "update", "--remote", *DATASET_SUBMODULES])
+
+    moved, uninitialised = [], []
+    for path in DATASET_SUBMODULES:
+        after = _submodule_sha(path)
+        if after == "?":
+            uninitialised.append(path)
+            error(f"{path} is not initialised — nothing was refreshed")
+        elif after == before[path]:
+            ok(f"{path} already current ({after})")
+        else:
+            moved.append(path)
+            ok(f"{path} {before[path]} → {after}")
+
+    if moved:
+        info("Load the new data from the Tag Management admin page, with the")
+        info("Taxonomies and Galaxies import buttons.")
+        info("The new submodule pointers are uncommitted; the next `manage update`")
+        info("checks the old ones back out until you commit them:")
+        print(f"\n    git add {' '.join(moved)}")
+        print("    git commit -m 'chg: [submodules] Refresh the MISP datasets'\n")
+    elif not uninitialised:
+        info("Nothing moved — the working tree is unchanged.")
+
+    if uninitialised:
+        # `git submodule update --remote` says "not initialized" and still
+        # exits 0, so the refresh has to fail here or it reads as a success.
+        info("A clone made without --recurse-submodules has no dataset to")
+        info("refresh. Check the submodules out first:")
+        print("\n    uv run manage init\n")
+        sys.exit(1)
+
+
+def _service_is_supervised() -> bool:
+    """Whether systemd runs here and knows the unit.
+
+    Both halves matter: a Docker image can carry systemctl without systemd as
+    PID 1, and a host running systemd may never have been given the unit.
+    """
+    if not shutil.which("systemctl") or not SYSTEMD_MARKER.is_dir():
+        return False
+    probe = subprocess.run(
+        ["systemctl", "cat", SERVICE_NAME],
+        capture_output=True, text=True
+    )
+    return probe.returncode == 0
+
+
+def _restart_command() -> list[str]:
+    """The restart, elevated unless this process is already root.
+
+    A deploy runs as whoever owns the checkout - under root, git pull and
+    uv sync leave root-owned files behind - so the restart is the one step
+    that needs elevating, and polkit refuses it unelevated.
+    """
+    command = ["systemctl", "restart", SERVICE_NAME]
+    if os.geteuid() == 0 or not shutil.which("sudo"):
+        return command
+    return ["sudo", *command]
+
+
+def _restart_service() -> None:
+    """Hand the new code to the supervisor, or say that nobody took it.
+
+    Never silently skipped: a deploy that leaves the old code serving without a
+    word is worse than one that names what it did not do.
+    """
+    header("Restarting the service")
+    command = _restart_command()
+    printable = " ".join(command if command[0] == "sudo" else ["sudo", *command])
+
+    if not _service_is_supervised():
+        info(f"No systemd unit named {SERVICE_NAME} on this host.")
+        info("The new code is in place but nothing was restarted — restart")
+        info("the service yourself (see the deployment section of README.md):")
+        print(f"\n    {printable}\n")
+        return
+
+    result = run(command, check=False)
+    if result.returncode != 0:
+        error("Restart failed — the old code is still serving.")
+        info("Run it yourself, as root:")
+        print(f"\n    {printable}\n")
+        sys.exit(result.returncode)
+    ok(f"{SERVICE_NAME} restarted")
+
+
 def cmd_deploy() -> None:
     cmd_backup()
     cmd_update()
-    cmd_start()
+    _restart_service()
 
 
 def cmd_create_admin() -> None:
@@ -394,7 +565,7 @@ def cmd_create_admin() -> None:
         conn = psycopg2.connect(
             host=DB_HOST, port=int(DB_PORT),
             user=DB_USER, password=DB_PASSWORD,
-            dbname=DB_NAME,
+            dbname=DB_NAME
         )
     except Exception as e:
         error(f"Could not connect to the database: {e}")
@@ -424,7 +595,7 @@ def cmd_create_admin() -> None:
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
-            (first_name, last_name, email, True, password_hash, api_key, False),
+            (first_name, last_name, email, True, password_hash, api_key, False)
         )
         new_id = cur.fetchone()[0]
         conn.commit()
@@ -463,7 +634,7 @@ def cmd_psql() -> None:
 
     result = subprocess.run(
         ["psql", "-h", DB_HOST, "-p", DB_PORT, "-U", DB_USER, DB_NAME],
-        env=env,
+        env=env
     )
     if result.returncode not in (0, 1):
         error("psql exited with an error.")
@@ -491,15 +662,16 @@ def cmd_db() -> None:
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 COMMANDS = {
-    "init":         cmd_init,
-    "start":        cmd_start,
-    "backup":       cmd_backup,
-    "update":       cmd_update,
-    "deploy":       cmd_deploy,
-    "db":           cmd_db,
-    "psql":         cmd_psql,
-    "create_admin": cmd_create_admin,
-    "help":         cmd_help,
+    "init":            cmd_init,
+    "start":           cmd_start,
+    "backup":          cmd_backup,
+    "update":          cmd_update,
+    "update-datasets": cmd_update_datasets,
+    "deploy":          cmd_deploy,
+    "db":              cmd_db,
+    "psql":            cmd_psql,
+    "create_admin":    cmd_create_admin,
+    "help":            cmd_help
 }
 
 

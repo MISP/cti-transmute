@@ -417,7 +417,7 @@ def get_user_comments(user_id, page=1, search=None, is_admin=False):
                 Comment.user_id == user_id,
                 ~Comment.is_deleted,
                 Conversion.is_active,
-                or_(Conversion.public, Conversion.user_id == user_id),
+                or_(Conversion.public, Conversion.user_id == user_id)
             )
         )
     if search:
@@ -439,7 +439,7 @@ def create_system_log(event_type, actor_id=None, actor_name=None, target_type=No
             target_id=target_id,
             target_name=target_name,
             details=details,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc)
         )
         db.session.add(log)
         db.session.commit()

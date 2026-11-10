@@ -1,16 +1,16 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  JsonViewer — reusable JSON display component
+//  JsonViewer - reusable JSON display component
 //  Same features as the Input/Output viewer in detail.html:
 //    - Syntax highlighting via highlight.js (already loaded in the page)
 //    - Collapsible tree view (same jtBuildNode renderer as detail.html)
 //    - Format (pretty-print), Download (.json), Copy buttons
 //
 //  Props:
-//    json     : Object | Array | String — data to display
-//    filename : String — base name for the downloaded file (no extension)
+//    json     : Object | Array | String - data to display
+//    filename : String - base name for the downloaded file (no extension)
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Tree builder — exact copy of jtEl / jtPrimitive / jtBuildNode / jtRender
+// ── Tree builder - exact copy of jtEl / jtPrimitive / jtBuildNode / jtRender
 // from detail.html so the viewer is fully self-contained.
 function jtEl(tag, cls, text) {
     const e = document.createElement(tag)
@@ -92,7 +92,7 @@ const JsonViewer = {
     delimiters: ['[[', ']]'],
     props: {
         json:     { type: [Object, Array, String, null], default: null },
-        filename: { type: String, default: 'data' },
+        filename: { type: String, default: 'data' }
     },
     template: `
 <div class="jv-wrapper">
@@ -156,7 +156,7 @@ const JsonViewer = {
             codeEl.value.textContent = currentText
 
             if (currentText.length > HLJS_LIMIT) {
-                // Too large — skip hljs
+                // Too large - skip hljs
                 return
             }
             highlighting.value = true
@@ -202,7 +202,7 @@ const JsonViewer = {
         function download() {
             const a = Object.assign(document.createElement('a'), {
                 href:     URL.createObjectURL(new Blob([currentText], { type: 'application/json' })),
-                download: props.filename + '.json',
+                download: props.filename + '.json'
             })
             a.click()
             URL.revokeObjectURL(a.href)
@@ -222,7 +222,7 @@ const JsonViewer = {
         watch(() => props.json, loadJson, { immediate: true })
 
         return { treeMode, copied, highlighting, codeEl, treeEl, toggleTree, format, download, copy }
-    },
+    }
 }
 
 export default JsonViewer

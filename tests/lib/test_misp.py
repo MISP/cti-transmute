@@ -174,7 +174,7 @@ def test_typed_exceptions_share_the_misp_error_base():
     ("https://misp.example.org", "aRealLookingKey123", True),
     ("https://misp.circl.lu", PLACEHOLDER_KEY, True),
     ("https://misp.goodexample.org", "aRealLookingKey123", False),
-    ("https://misp.circl.lu", "aRealLookingKey123", False),
+    ("https://misp.circl.lu", "aRealLookingKey123", False)
 ])
 def test_placeholder_detection_gates_the_live_round_trips(url, key, fake):
     assert _is_placeholder(url, key) is fake

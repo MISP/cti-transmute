@@ -5,7 +5,7 @@ const MultiTagFilter = {
         modelValue: { type: Array, default: () => [] },
         placeholder: { type: String, default: 'Filter by tags…' },
         apiEndpoint: { type: String, default: '/tags/get_all_tags_usage' },
-        showNamespace: { type: Boolean, default: true },
+        showNamespace: { type: Boolean, default: true }
     },
     emits: ['update:modelValue', 'change'],
     delimiters: ['[[', ']]'],
@@ -21,7 +21,7 @@ const MultiTagFilter = {
             { value: 'all', label: 'All', icon: 'fa-layer-group', color: '#6c757d' },
             { value: 'Taxonomy', label: 'Taxonomy', icon: 'fa-list', color: '#0d6efd' },
             { value: 'Galaxy', label: 'Galaxy', icon: 'fa-atom', color: '#8b5cf6' },
-            { value: 'Manual', label: 'Manual', icon: 'fa-tag', color: '#198754' },
+            { value: 'Manual', label: 'Manual', icon: 'fa-tag', color: '#198754' }
         ];
 
         function namespaceOf(name) {

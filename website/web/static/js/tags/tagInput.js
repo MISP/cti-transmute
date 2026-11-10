@@ -5,7 +5,7 @@ const TagInput = {
     props: {
         conversionId:     { type: Number,  default: null },
         hiddenInputId: { type: String,  default: '' },
-        canEdit:       { type: Boolean, default: true },
+        canEdit:       { type: Boolean, default: true }
     },
     delimiters: ['[[', ']]'],
     data() {
@@ -29,9 +29,10 @@ const TagInput = {
             loadingCurrent:  true,
             searching:     false,
             saving:        false,
+            saveFailed:    false,
             tagsCollapsed: false,
 
-            _debounceTimer: null,
+            _debounceTimer: null
         };
     },
     computed: {
@@ -56,9 +57,9 @@ const TagInput = {
                 { key: 'all',           label: 'All' },
                 { key: 'taxonomy',      label: 'Taxonomy' },
                 { key: 'custom',        label: 'Custom' },
-                { key: 'vulnerability', label: 'Vuln' },
+                { key: 'vulnerability', label: 'Vuln' }
             ];
-        },
+        }
     },
     watch: {
         search(val) {
@@ -73,7 +74,7 @@ const TagInput = {
                 const el = document.getElementById(this.hiddenInputId);
                 if (el) el.value = tags.map(t => t.id).join(',');
             }
-        },
+        }
     },
     async mounted() {
         if (this.conversionId) {
@@ -81,7 +82,7 @@ const TagInput = {
             await Promise.all([
                 this._loadEvaluationTags(),
                 this._loadContentTags(),
-                this._loadAppliedTags(),
+                this._loadAppliedTags()
             ]);
         }
         this.loadingCurrent = false;
@@ -146,7 +147,7 @@ const TagInput = {
                             color:       a.tag_color,
                             icon:        a.tag_icon,
                             visibility:  a.tag_visibility,
-                            description: a.tag_description,
+                            description: a.tag_description
                         }));
                     }
                 }
@@ -199,18 +200,24 @@ const TagInput = {
         async _saveRemote() {
             if (!this.conversionId) return;
             this.saving = true;
+            this.saveFailed = false;
             try {
-                await fetch(`/tags/save_for_conversion/${this.conversionId}`, {
+                const res = await fetch(`/tags/save_for_conversion/${this.conversionId}`, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body:    JSON.stringify({ tag_ids: this.selectedTags.map(t => t.id) }),
+                    body:    JSON.stringify({ tag_ids: this.selectedTags.map(t => t.id) })
                 });
+                // What is on screen is what the user picked, not what the
+                // server kept: saying nothing here leaves them reading the
+                // selection as saved.
+                if (!res.ok) this.saveFailed = true;
             } catch (e) {
                 console.error('TagInput: save error', e);
+                this.saveFailed = true;
             } finally {
                 this.saving = false;
             }
-        },
+        }
 
     },
     template: `
@@ -313,6 +320,9 @@ const TagInput = {
                 <span v-if="saving" style="font-size:0.75rem; color:var(--text-3); margin-left:0.5rem;">
                     <i class="fas fa-spinner fa-spin me-1"></i>Saving…
                 </span>
+                <span v-else-if="saveFailed" style="font-size:0.75rem; color:var(--danger, #dc3545); margin-left:0.5rem;">
+                    <i class="fas fa-triangle-exclamation me-1"></i>Not saved - reload to see the stored tags
+                </span>
             </div>
 
             <div v-if="loadingCurrent" style="font-size:0.82rem; color:var(--text-3); font-style:italic;">
@@ -403,7 +413,7 @@ const TagInput = {
             </template>
             </template>
         </div>
-    `,
+    `
 };
 
 export default TagInput;

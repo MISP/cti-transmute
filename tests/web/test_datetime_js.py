@@ -1,7 +1,7 @@
 """Round-trip test of the shared client date helper (static/js/datetime.js).
 
 Runs datetime_check.mjs under node in a fixed non-UTC zone (the reporter's,
-CEST), so the original symptom — a just-created conversion showing "2h ago" —
+CEST), so the original symptom - a just-created conversion showing "2h ago" -
 would fail the "just now" check. Skips when node is not installed.
 """
 

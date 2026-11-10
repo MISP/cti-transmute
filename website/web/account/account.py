@@ -134,7 +134,7 @@ def edit_user() -> redirect:
 
 @account_blueprint.route("/public/<int:user_id>")
 def public_profile(user_id):
-    """Public profile page — no login required, shows only public data."""
+    """Public profile page - no login required, shows only public data."""
     user = AccountModel.get_user(user_id)
     if not user:
         abort(404)
@@ -146,7 +146,7 @@ def public_profile(user_id):
         profile_user=user,
         is_auth=is_auth,
         is_own=is_own,
-        is_following_init=is_following,
+        is_following_init=is_following
     )
 
 
@@ -184,7 +184,7 @@ def public_conversions(user_id):
         "success": True,
         "list": items,
         "total_page": pagination.pages if pagination else 1,
-        "stats": {"total": total, "misp_to_stix": m2s, "stix_to_misp": s2m},
+        "stats": {"total": total, "misp_to_stix": m2s, "stix_to_misp": s2m}
     }, 200
 
 
@@ -392,7 +392,7 @@ def get_followers():
             items.append({
                 "user_id": user.id,
                 "name":    f"{user.first_name} {user.last_name}",
-                "since":   f.created_at.strftime('%Y-%m-%d') if f.created_at else None,
+                "since":   f.created_at.strftime('%Y-%m-%d') if f.created_at else None
             })
     return {"success": True, "list": items, "total_page": pagination.pages}, 200
 
@@ -410,7 +410,7 @@ def search_users():
             "user_id":      u.id,
             "name":         f"{u.first_name} {u.last_name}",
             "is_following": AccountModel.is_following(current_user.id, u.id),
-            "public_count": public_count.total if public_count else 0,
+            "public_count": public_count.total if public_count else 0
         })
     return {"success": True, "list": result, "total_page": pagination.pages}, 200
 
@@ -556,8 +556,8 @@ def admin_deleted_conversions():
 
 @account_blueprint.route("/admin/deleted_converts", methods=['GET'])
 def legacy_admin_deleted_converts():
-    """301 shim for the pre-rename page URL — bookmarks and ``?highlight=``
-    deep links survive one release, like the ticket-04 ``/convert`` shim."""
+    """301 shim for the pre-rename page URL - bookmarks and ``?highlight=``
+    deep links survive one release, like the ``/convert`` shim."""
     dest = url_for(".admin_deleted_conversions")
     query = request.query_string.decode()
     if query:

@@ -12,7 +12,7 @@ function _snapshot() {
     stixStyles: Object.fromEntries(Object.entries(GRAPH_CONFIG.stixStyles).map(([k, v]) => [k, { ...v }])),
     mispStyles: Object.fromEntries(Object.entries(GRAPH_CONFIG.mispStyles).map(([k, v]) => [k, { ...v }])),
     mispNetworkTypes: [...GRAPH_CONFIG.mispNetworkTypes],
-    mispPayloadTypes: [...GRAPH_CONFIG.mispPayloadTypes],
+    mispPayloadTypes: [...GRAPH_CONFIG.mispPayloadTypes]
   }
 }
 
@@ -105,12 +105,12 @@ function _formToPatch() {
     layout: { type: document.getElementById('gcm-layout').value },
     pivotickUI: {
       mode: document.getElementById('gcm-pvtMode').value,
-      sidebar: { collapsed: sidebar === 'auto' ? 'auto' : sidebar === 'true' },
+      sidebar: { collapsed: sidebar === 'auto' ? 'auto' : sidebar === 'true' }
     },
     stixStyles: {},
     mispStyles: {},
     mispNetworkTypes: document.getElementById('gcm-networkTypes').value.split(',').map(s => s.trim()).filter(Boolean),
-    mispPayloadTypes: document.getElementById('gcm-payloadTypes').value.split(',').map(s => s.trim()).filter(Boolean),
+    mispPayloadTypes: document.getElementById('gcm-payloadTypes').value.split(',').map(s => s.trim()).filter(Boolean)
   }
   document.querySelectorAll('#graph-config-modal [data-style-type]').forEach(el => {
     const type = el.dataset.styleType
@@ -421,7 +421,7 @@ async function _deleteConfig(id, btn) {
     const res = await fetch('/conversions/graph_config/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf() },
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id })
     })
     const data = await res.json()
     if (data.success) {
@@ -453,7 +453,7 @@ async function _saveCurrentConfig() {
     const res = await fetch('/conversions/graph_config/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _csrf() },
-      body: JSON.stringify({ name, config_json: JSON.stringify(_formToPatch()) }),
+      body: JSON.stringify({ name, config_json: JSON.stringify(_formToPatch()) })
     })
     const data = await res.json()
     if (data.success) {

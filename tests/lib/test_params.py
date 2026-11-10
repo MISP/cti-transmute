@@ -23,7 +23,7 @@ def test_build_params_from_a_populated_mapping():
         "organisation_uuid": "org-uuid",
         "single_event": True,
         "producer": "ACME",
-        "title": "My Event",
+        "title": "My Event"
     })
 
     assert params.distribution == 4
@@ -40,7 +40,7 @@ def test_build_params_drops_blank_strings_to_defaults():
     params = build_params(StixToMispParams, {
         "organisation_uuid": "   ",   # whitespace only -> dropped
         "producer": "",               # empty -> dropped
-        "title": "  Padded  ",        # stripped, kept
+        "title": "  Padded  "        # stripped, kept
     })
 
     assert params.organisation_uuid is None
@@ -71,7 +71,7 @@ def test_build_params_raises_on_out_of_range_value():
 
 
 def test_build_params_rejects_unknown_key():
-    # `extra="forbid"` is the sole authority — mirrors additionalProperties:false.
+    # `extra="forbid"` is the sole authority - mirrors additionalProperties:false.
     with pytest.raises(ValidationError):
         build_params(StixToMispParams, {"sharing_group": 5})
 

@@ -10,6 +10,7 @@ from flask_login import current_user, login_required
 
 from website.db_class.db import Conversion, Tag, utc_iso
 from website.lib import access
+from website.repos import bulk_tag_jobs as jobs_repo
 from website.web import csrf, db
 from website.web.tags import bulk_jobs
 from website.web.utils import extract_tag_names_from_misp_json
@@ -39,7 +40,7 @@ tags_blueprint = Blueprint(
     "tags",
     __name__,
     template_folder="templates",
-    static_folder="static",
+    static_folder="static"
 )
 
 
@@ -77,7 +78,7 @@ def admin_list():
     pagination = TagsModel.get_tags_page(
         page, source=source, visibility_filter=visibility,
         search=search, is_admin=True, per_page=per_page,
-        pending_first=(approved == "all"),
+        pending_first=(approved == "all")
     )
 
     items = pagination.items
@@ -89,7 +90,7 @@ def admin_list():
     return {
         "success": True,
         "list": [t.to_json() for t in items],
-        "total_page": pagination.pages,
+        "total_page": pagination.pages
     }, 200
 
 
@@ -108,7 +109,7 @@ def admin_approve(tag_id):
             "tag_approved" if approve else "tag_approval_revoked",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag", target_id=tag_id, target_name=tag_name,
-            details="approved → public + active" if approve else "approval revoked",
+            details="approved → public + active" if approve else "approval revoked"
         )
         return {"success": True, "message": msg, "toast_class": "success"}, 200
     return {"success": False, "message": err or "Error", "toast_class": "danger"}, 404
@@ -127,7 +128,7 @@ def admin_toggle_active(tag_id):
         AccountModel.create_system_log(
             "tag_activated" if new_state else "tag_deactivated",
             actor_id=current_user.id, actor_name=current_user.first_name,
-            target_type="tag", target_id=tag_id, target_name=tag_name,
+            target_type="tag", target_id=tag_id, target_name=tag_name
         )
         return {"success": True, "is_active": new_state, "message": f"Tag {label}", "toast_class": "success"}, 200
     return {"success": False, "message": "Error", "toast_class": "danger"}, 404
@@ -146,7 +147,7 @@ def admin_delete(tag_id):
             "tag_deleted",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag", target_id=tag_id, target_name=tag_name,
-            details="deleted by admin",
+            details="deleted by admin"
         )
         return {"success": True, "message": "Tag deleted", "toast_class": "success"}, 200
     return {"success": False, "message": err or "Error", "toast_class": "danger"}, 404
@@ -163,7 +164,7 @@ def admin_import_galaxies():
             "tags_galaxy_imported",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag",
-            details=f"imported {imported}, skipped {skipped}" + (f", {len(errors)} error(s)" if errors else ""),
+            details=f"imported {imported}, skipped {skipped}" + (f", {len(errors)} error(s)" if errors else "")
         )
     return {
         "success": True,
@@ -171,7 +172,7 @@ def admin_import_galaxies():
         "skipped": skipped,
         "errors": errors[:10],
         "message": f"Imported {imported} new galaxy tags, skipped {skipped} existing",
-        "toast_class": "success" if not errors else "warning",
+        "toast_class": "success" if not errors else "warning"
     }, 200
 
 
@@ -186,11 +187,11 @@ def admin_submodule_status():
         try:
             sha = subprocess.run(
                 ['git', 'rev-parse', '--short', 'HEAD'],
-                cwd=str(path), capture_output=True, text=True, timeout=8,
+                cwd=str(path), capture_output=True, text=True, timeout=8
             ).stdout.strip() or '?'
             date = subprocess.run(
                 ['git', 'log', '-1', '--format=%ci'],
-                cwd=str(path), capture_output=True, text=True, timeout=8,
+                cwd=str(path), capture_output=True, text=True, timeout=8
             ).stdout.strip()[:10] or ''
         except Exception:
             sha, date = '?', ''
@@ -199,24 +200,8 @@ def admin_submodule_status():
     return {
         "success":    True,
         "taxonomies": _git_info(TagsModel.TAXONOMIES_PATH),
-        "galaxies":   _git_info(TagsModel.GALAXY_PATH),
+        "galaxies":   _git_info(TagsModel.GALAXY_PATH)
     }, 200
-
-
-@tags_blueprint.route("/admin/pull_and_import", methods=["POST"])
-@login_required
-def admin_pull_and_import():
-    """Pull latest MISP dataset submodules then import new tags as a background job."""
-    if not current_user.is_admin():
-        return {"success": False, "message": "Forbidden"}, 403
-
-    jid = bulk_jobs.start_pull_and_import(current_app._get_current_object(), current_user.id)
-    AccountModel.create_system_log(
-        "tags_submodule_pull_started",
-        actor_id=current_user.id, actor_name=current_user.first_name,
-        target_type="tag", details=f"job {jid}",
-    )
-    return {"success": True, "job_id": jid}, 200
 
 
 @tags_blueprint.route("/admin/import_taxonomies", methods=["POST"])
@@ -230,7 +215,7 @@ def admin_import_taxonomies():
             "tags_taxonomy_imported",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag",
-            details=f"imported {imported}, skipped {skipped}" + (f", {len(errors)} error(s)" if errors else ""),
+            details=f"imported {imported}, skipped {skipped}" + (f", {len(errors)} error(s)" if errors else "")
         )
     return {
         "success": True,
@@ -238,7 +223,7 @@ def admin_import_taxonomies():
         "skipped": skipped,
         "errors": errors[:10],
         "message": f"Imported {imported} new tags, skipped {skipped} existing",
-        "toast_class": "success" if not errors else "warning",
+        "toast_class": "success" if not errors else "warning"
     }, 200
 
 
@@ -261,13 +246,13 @@ def admin_bulk():
         "activate": "activated", "deactivate": "deactivated",
         "approve": "approved", "disapprove": "approval revoked",
         "delete": "deleted", "make_public": "made public", "make_private": "made private",
-        "enable_evaluation": "enabled for evaluation", "disable_evaluation": "disabled for evaluation",
+        "enable_evaluation": "enabled for evaluation", "disable_evaluation": "disabled for evaluation"
     }[action]
     AccountModel.create_system_log(
         "tag_bulk_action",
         actor_id=current_user.id, actor_name=current_user.first_name,
         target_type="tag",
-        details=f"bulk {action}: {count} tag(s) {label}",
+        details=f"bulk {action}: {count} tag(s) {label}"
     )
     return {"success": True, "message": f"{count} tag(s) {label}", "toast_class": "success", "count": count}, 200
 
@@ -289,7 +274,7 @@ def admin_toggle_visibility(tag_id):
             "tag_visibility_changed",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag", target_id=tag_id, target_name=tag.name,
-            details=f"changed to {tag.visibility}",
+            details=f"changed to {tag.visibility}"
         )
         return {"success": True, "visibility": tag.visibility, "message": f"Tag is now {label}", "toast_class": "success"}, 200
     except Exception:
@@ -312,7 +297,7 @@ def admin_edit(tag_id):
             "tag_edited",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag", target_id=tag_id, target_name=tag.name,
-            details=f"updated: {', '.join(changed)}" if changed else "no fields changed",
+            details=f"updated: {', '.join(changed)}" if changed else "no fields changed"
         )
         return {"success": True, "message": "Tag updated", "tag": tag.to_json(), "toast_class": "success"}, 200
     return {"success": False, "message": err or "Error", "toast_class": "danger"}, 404
@@ -353,7 +338,7 @@ def create_tag():
         created_by=current_user.id,
         visibility="public" if auto_approve else "private",
         is_approved_by_admin=auto_approve,
-        is_active=auto_approve,
+        is_active=auto_approve
     )
     if tag:
         msg = "Vulnerability tag created and published" if auto_approve else "Tag created — pending admin approval"
@@ -361,7 +346,7 @@ def create_tag():
             "tag_created",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag", target_id=tag.id, target_name=tag.name,
-            details=f"source={source}, visibility={tag.visibility}" + (", auto-approved" if auto_approve else ""),
+            details=f"source={source}, visibility={tag.visibility}" + (", auto-approved" if auto_approve else "")
         )
         return {"success": True, "message": msg, "tag": tag.to_json(), "toast_class": "success"}, 201
     return {"success": False, "message": "Failed to create tag", "toast_class": "danger"}, 500
@@ -375,12 +360,12 @@ def list_tags():
     source = request.args.get("source", "", type=str) or None
     pagination = TagsModel.get_tags_page(
         page, source=source, search=search,
-        current_user_id=current_user.id, is_admin=current_user.is_admin(),
+        current_user_id=current_user.id, is_admin=current_user.is_admin()
     )
     return {
         "success": True,
         "list": [t.to_json() for t in pagination.items],
-        "total_page": pagination.pages,
+        "total_page": pagination.pages
     }, 200
 
 
@@ -428,7 +413,16 @@ def save_for_conversion(conversion_id):
         return {"success": False, "message": "Forbidden"}, 403
     data = request.get_json(silent=True) or {}
     tag_ids = [int(i) for i in data.get("tag_ids", []) if str(i).isdigit()]
-    TagsModel.save_conversion_tags(conversion_id, tag_ids, current_user.id)
+    try:
+        TagsModel.save_conversion_tags(conversion_id, tag_ids, current_user.id)
+    except Exception:
+        # The write rolled back, so the conversion still carries the tags it
+        # had. Saying "saved" here would leave the user reading stale tags as
+        # the ones they just chose.
+        db.session.rollback()
+        current_app.logger.exception(
+            "saving tags for conversion %s failed", conversion_id)
+        return {"success": False, "message": "Tags could not be saved"}, 500
     return {"success": True, "message": "Tags saved"}, 200
 
 
@@ -444,7 +438,7 @@ def delete_tag(tag_id):
             "tag_deleted",
             actor_id=current_user.id, actor_name=current_user.first_name,
             target_type="tag", target_id=tag_id, target_name=tag_name,
-            details="deleted by admin" if is_admin else "deleted by owner",
+            details="deleted by admin" if is_admin else "deleted by owner"
         )
         return {"success": True, "message": "Tag deleted", "toast_class": "success"}, 200
     return {"success": False, "message": err or "Error", "toast_class": "danger"}, 403
@@ -546,9 +540,11 @@ def admin_bulk_assign():
 @tags_blueprint.route("/admin/bulk_conversions/job/<job_id>", methods=["GET"])
 @login_required
 def admin_bulk_job_status(job_id):
+    """One job in full. This is where the per-item error messages live - the
+    list route omits them, so the panel asks here when an admin opens them."""
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    job = bulk_jobs.get(job_id)
+    job = jobs_repo.get(job_id)
     if not job:
         return {"success": False, "message": "Job not found"}, 404
     return {"success": True, "job": job}, 200
@@ -559,7 +555,7 @@ def admin_bulk_job_status(job_id):
 def admin_bulk_jobs_list():
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    return {"success": True, "jobs": bulk_jobs.list_recent()}, 200
+    return {"success": True, "jobs": jobs_repo.list_recent()}, 200
 
 
 @tags_blueprint.route("/admin/bulk_conversions/job/<job_id>", methods=["DELETE"])
@@ -568,10 +564,26 @@ def admin_bulk_jobs_list():
 def admin_bulk_job_delete(job_id):
     if not current_user.is_admin():
         return {"success": False, "message": "Forbidden"}, 403
-    removed = bulk_jobs.remove(job_id)
+    removed = jobs_repo.remove(job_id)
     if removed:
         return {"success": True}, 200
     return {"success": False, "message": "Job not found"}, 404
+
+
+@tags_blueprint.route("/admin/bulk_conversions/jobs", methods=["DELETE"])
+@login_required
+@csrf.exempt
+def admin_bulk_jobs_clear_finished():
+    """Dismiss every job that is no longer live, in one call.
+
+    The history survives restarts now, so clearing it one row at a time is
+    thirty clicks. A running job is spared, which is the only thing spared:
+    age is not a factor, so a job that finished seconds ago goes with the rest.
+    """
+    if not current_user.is_admin():
+        return {"success": False, "message": "Forbidden"}, 403
+    jobs_repo.remove_finished()
+    return {"success": True}, 200
 
 
 @tags_blueprint.route("/admin/bulk_conversions/remove_tags", methods=["POST"])

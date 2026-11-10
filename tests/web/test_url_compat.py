@@ -6,7 +6,7 @@ Two concerns share this file:
   URL must keep working via a permanent (301) redirect to its
   ``/conversions/*`` equivalent, so existing links/bookmarks survive at least
   one release.
-- The forward contract of ADR-0004: the API persist envelope advertises
+- The forward contract of the API persist envelope: it advertises
   ``url: /conversions/<id>``, so that address must resolve.
 """
 
@@ -16,12 +16,12 @@ import pytest
 @pytest.fixture
 def web_client():
     """Flask test client with the conversions web blueprint + the legacy
-    ``/convert`` redirect shim mounted, mirroring ``bin/start_website.py``.
+    ``/convert`` redirect shim mounted, mirroring ``website/app.py``.
     """
     from website.web import application
     from website.web.conversions.conversions import (
         conversions_blueprint,
-        legacy_convert_blueprint,
+        legacy_convert_blueprint
     )
 
     application.config["TESTING"] = True
@@ -52,7 +52,7 @@ def test_legacy_share_url_preserves_query_string(web_client):
 
 def test_envelope_url_resolves_to_detail_page(web_client):
     """The API persist envelope advertises ``url: /conversions/<id>``;
-    that URL must resolve — it redirects to the detail page."""
+    that URL must resolve - it redirects to the detail page."""
     resp = web_client.get("/conversions/42")
     assert resp.status_code == 302
     assert resp.headers["Location"].endswith("/conversions/detail/42")
@@ -76,7 +76,7 @@ def test_record_urls_use_canonical_conversions_prefix(app_db, misp_event):
 
     conversion = submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=MispToStixParams(),
+        payload=misp_event, params=MispToStixParams()
     )
     payload = conversion.to_share()
 

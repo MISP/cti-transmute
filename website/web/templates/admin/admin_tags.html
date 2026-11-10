@@ -37,51 +37,21 @@
   color: var(--text-3);
   font-size: 0.72rem;
 }
-.submodule-progress {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
+.submodule-hint {
   padding-top: 8px;
   border-top: 1px solid var(--border);
   margin-top: 8px;
-}
-.submodule-step {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.79rem;
+  font-size: 0.78rem;
   color: var(--text-3);
-  padding: 3px 10px;
-  border-radius: 99px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  transition: border-color .15s, color .15s, background .15s;
 }
-.submodule-step.step-active { border-color: var(--accent); color: var(--text); }
-.submodule-step.step-done   { color: #059669; border-color: rgba(5,150,105,.3); background: rgba(5,150,105,.06); }
-.submodule-step .step-stat  { font-weight: 700; margin-left: 2px; }
-.submodule-result-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 0.82rem;
-  color: var(--text-2);
-}
-.submodule-git-output {
-  margin-top: 6px;
+.submodule-hint code {
   font-family: var(--font-mono, monospace);
-  font-size: 0.73rem;
-  color: var(--text-3);
+  font-size: 0.74rem;
+  color: var(--accent);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 6px 10px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 72px;
-  overflow-y: auto;
+  padding: 1px 5px;
 }
 </style>
 {% endblock %}
@@ -95,7 +65,7 @@
 
   <div class="custom-card p-3">
 
-    <!-- ── GitHub submodule update ──────────────────────────────── -->
+    <!-- ── Loaded MISP dataset revisions ────────────────────────── -->
     <div class="submodule-panel mb-3">
       <div class="d-flex align-items-center gap-2 flex-wrap">
         <span class="submodule-panel-label"><i class="fab fa-github me-1"></i>MISP Data Sources</span>
@@ -116,82 +86,11 @@
         <span v-else style="font-size:0.8rem;color:var(--text-3);">
           <i class="fas fa-spinner fa-spin me-1"></i>Loading…
         </span>
-        <button class="btn btn-sm btn-primary ms-auto"
-                @click="startPullAndImport()"
-                :disabled="pullJob && pullJob.status === 'running'">
-          <i class="fas fa-arrows-rotate me-1"
-             :class="{'fa-spin': pullJob && pullJob.status === 'running'}"></i>
-          <span v-if="pullJob && pullJob.status === 'running'">Updating…</span>
-          <span v-else>Pull &amp; Import</span>
-        </button>
       </div>
-
-      <!-- Job progress / result -->
-      <div v-if="pullJob" class="submodule-progress">
-
-        <!-- Running -->
-        <template v-if="pullJob.status === 'running'">
-          <span class="submodule-step"
-                :class="{ 'step-active': pullJob.phase === 'pulling',
-                          'step-done':   pullJob.progress >= 1 }">
-            <i class="fas fa-fw"
-               :class="pullJob.progress >= 1
-                 ? 'fa-check' : (pullJob.phase === 'pulling' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
-            Pull
-          </span>
-          <span class="submodule-step"
-                :class="{ 'step-active': pullJob.phase === 'importing_taxonomies',
-                          'step-done':   pullJob.progress >= 2 }">
-            <i class="fas fa-fw"
-               :class="pullJob.progress >= 2
-                 ? 'fa-check' : (pullJob.phase === 'importing_taxonomies' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
-            Taxonomies
-            <span v-if="pullJob.progress >= 2" class="step-stat">+[[ pullJob.taxo_imported ]]</span>
-          </span>
-          <span class="submodule-step"
-                :class="{ 'step-active': pullJob.phase === 'importing_galaxies',
-                          'step-done':   pullJob.phase === 'done' }">
-            <i class="fas fa-fw"
-               :class="pullJob.phase === 'done'
-                 ? 'fa-check' : (pullJob.phase === 'importing_galaxies' ? 'fa-spinner fa-spin' : 'fa-circle')"></i>
-            Galaxies <span style="font-size:0.7rem;opacity:.7;">(~1 min)</span>
-          </span>
-        </template>
-
-        <!-- Done -->
-        <template v-else-if="pullJob.status === 'done' && pullJob.phase !== 'failed'">
-          <div class="w-100">
-            <div class="submodule-result-row">
-              <i class="fas fa-circle-check text-success"></i>
-              <strong>Update complete</strong>
-              <span class="ms-2">
-                <i class="fas fa-book-open me-1" style="color:var(--accent);"></i>
-                Taxonomies: <strong>+[[ pullJob.taxo_imported ]]</strong> new, [[ pullJob.taxo_skipped ]] skipped
-              </span>
-              <span class="ms-2">
-                <i class="fas fa-globe me-1" style="color:var(--accent);"></i>
-                Galaxies: <strong>+[[ pullJob.galaxy_imported ]]</strong> new, [[ pullJob.galaxy_skipped ]] skipped
-              </span>
-              <span v-if="pullJob.errors?.length" class="ms-2 text-warning">
-                <i class="fas fa-exclamation-triangle me-1"></i>[[ pullJob.errors.length ]] warning(s)
-              </span>
-            </div>
-            <div v-if="pullJob.pull_output" class="submodule-git-output">[[ pullJob.pull_output ]]</div>
-          </div>
-        </template>
-
-        <!-- Failed -->
-        <template v-else-if="pullJob.phase === 'failed'">
-          <div class="w-100">
-            <div class="submodule-result-row text-danger">
-              <i class="fas fa-circle-xmark"></i>
-              <strong>Update failed:</strong>
-              [[ pullJob.errors?.[0] || 'Unknown error' ]]
-            </div>
-            <div v-if="pullJob.pull_output" class="submodule-git-output">[[ pullJob.pull_output ]]</div>
-          </div>
-        </template>
-
+      <div class="submodule-hint">
+        <i class="fas fa-circle-info me-1"></i>
+        To pick up newer MISP data, run <code>uv run manage update-datasets</code>
+        on the server, then import the new tags with the buttons below.
       </div>
     </div>
 
@@ -547,10 +446,8 @@ createApp({
     const collapsedGroups = ref(new Set())
     const createModal = ref(null)
 
-    /* ── Submodules / GitHub update ──── */
+    /* ── Submodule revisions ─────────── */
     const submoduleStatus = ref(null)
-    const pullJob      = ref(null)
-    let   _pullPollTimer = null
 
     async function loadSubmoduleStatus() {
       try {
@@ -558,47 +455,6 @@ createApp({
         const d = await r.json()
         if (d.success) submoduleStatus.value = d
       } catch {}
-    }
-
-    async function startPullAndImport() {
-      if (!confirm(
-        'Pull latest MISP taxonomies & galaxies from GitHub and import new tags?\n\n' +
-        '• Step 1 — git submodule update (submodules/misp-taxonomies + submodules/misp-galaxy)\n' +
-        '• Step 2 — Import new taxonomy tags (existing skipped)\n' +
-        '• Step 3 — Import new galaxy tags, ~55k entries (~1 min)\n\n' +
-        'Existing tags are never modified or deleted.'
-      )) return
-      try {
-        const r = await fetch('/tags/admin/pull_and_import', {
-          method: 'POST', headers: { 'X-CSRFToken': CSRF() }
-        })
-        const d = await r.json()
-        if (d.success) {
-          pullJob.value = { status: 'running', phase: 'pulling', progress: 0, total: 3,
-                            taxo_imported: 0, galaxy_imported: 0, errors: [], pull_output: '' }
-          _startPollPullJob(d.job_id)
-        } else {
-          create_message(d.message || 'Failed to start', 'danger')
-        }
-      } catch { create_message('Network error', 'danger') }
-    }
-
-    function _startPollPullJob(jid) {
-      clearInterval(_pullPollTimer)
-      _pullPollTimer = setInterval(async () => {
-        try {
-          const r = await fetch(`/tags/admin/bulk_conversions/job/${jid}`)
-          const d = await r.json()
-          if (d.success) {
-            pullJob.value = d.job
-            if (d.job.status === 'done') {
-              clearInterval(_pullPollTimer)
-              await loadSubmoduleStatus()
-              if (d.job.phase !== 'failed') resetPage()
-            }
-          }
-        } catch {}
-      }, 1500)
     }
 
     /* ── Selection ───────────────────── */
@@ -853,8 +709,6 @@ createApp({
       } catch {}
     })
 
-    onUnmounted(()=>{ clearInterval(_pullPollTimer) })
-
     return {
       tags, loading, importing, importingSource, page, total_page,
       search, filterSource, filterApproved, filterVisibility, perPage, viewMode,
@@ -862,7 +716,7 @@ createApp({
       hasPendingSelected, pendingSelectedCount,
       groupedTags, collapsedGroups,
       createModal,
-      submoduleStatus, pullJob, startPullAndImport,
+      submoduleStatus,
       editForm, editErrors, editSaving, editIconOpen,
       iconSearch, filteredIcons, faIcons,
       message_list,

@@ -114,6 +114,27 @@ entries wholesale.
 _Avoid_: audit log (implies an immutability this feed does not promise),
 system log (in prose — it is the class name only).
 
+## Bulk Tag Job
+
+The durable record of one admin-initiated tag operation applied across a
+selected set of **Conversions** — auto-scan, assign, remove, or clear. It
+carries the operation's progress, its counts, and the errors it hit per item.
+
+The record survives a restart; the work it tracks does not. A Bulk Tag Job
+whose process stopped reads as **interrupted**, holding the progress it had
+reached. Interrupted work is re-run by selecting the Conversions again, not
+resumed.
+_Avoid_: task (implies a queue, which this service does not have), batch.
+
+## Dataset
+
+The MISP taxonomy and galaxy content this service imports tags from.
+Refreshing a Dataset to its upstream version is an operator act performed
+outside the running service; importing content already present into the tag
+catalogue is an in-app action.
+_Avoid_: submodule in prose — that is how a Dataset is delivered, not what it
+is.
+
 ---
 
 ## (anti-glossary — terms to avoid)

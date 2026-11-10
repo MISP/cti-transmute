@@ -38,7 +38,7 @@ def _make_conversion(owner_id=None, *, trashed=True, name="c"):
         user_id=owner_id, name=name, source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
         created_at=now, updated_at=now, public=True, uuid=str(_uuid.uuid4()),
-        is_active=not trashed, deleted_at=now if trashed else None,
+        is_active=not trashed, deleted_at=now if trashed else None
     )
     db.session.add(conv)
     db.session.commit()
@@ -151,7 +151,7 @@ def test_an_anonymous_submitter_acts_on_nothing(app_db):
     from website.db_class.db import Conversion, SystemLog
     from website.lib.conversions import bulk_action
 
-    # Anonymous never owns anything — not even anonymously created rows.
+    # Anonymous never owns anything - not even anonymously created rows.
     anonymous_conv = _make_conversion(None)
 
     done = bulk_action(None, "hard_delete", [anonymous_conv.id])

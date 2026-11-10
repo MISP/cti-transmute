@@ -1,4 +1,4 @@
-"""Contract tests for Transmute — the conversion hub (registry + convert API)."""
+"""Contract tests for Transmute - the conversion hub (registry + convert API)."""
 
 import pytest
 
@@ -8,7 +8,7 @@ from cti_transmute.converters.stix_to_misp import StixToMisp, StixToMispParams
 from cti_transmute.exceptions import (
     InvalidParameters,
     InvalidPayload,
-    UnknownConverter,
+    UnknownConverter
 )
 
 # --- registry: resolving a (source, target) family to its Converter ---------

@@ -1,10 +1,10 @@
 """Privacy filtering on the evaluation report exports, pinned at the web seam.
 
 The markdown/PDF exports render ``build_evaluation_report``, which used to copy
-every non-deleted evaluation comment regardless of privacy — leaking private
+every non-deleted evaluation comment regardless of privacy - leaking private
 comments (and their author's first name) to anyone who could see the
 conversion. These tests pin the fix: the exports apply the same visibility rule
-as the interactive comments endpoint (``website.lib.access.can_see_comment`` —
+as the interactive comments endpoint (``website.lib.access.can_see_comment`` -
 a private comment is visible only to the conversion owner, the comment author,
 or an admin).
 
@@ -70,7 +70,7 @@ def _make_conversion(user_id, public=True):
     conv = Conversion(
         user_id=user_id, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
-        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()

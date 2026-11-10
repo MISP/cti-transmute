@@ -155,7 +155,7 @@ def edit(conversion_id: int, data: dict, *, commit: bool = True) -> tuple[bool, 
     """Update a Conversion's name and/or description.
 
     Rejects a name that collides with an existing Conversion. Returns
-    (ok, message) — matching the web layer's existing contract.
+    (ok, message) - matching the web layer's existing contract.
     """
     conversion = get(conversion_id)
     if not conversion:
@@ -296,7 +296,7 @@ def list_for_user(
                     make_filter(Conversion.name),
                     make_filter(Conversion.description),
                     make_filter(Conversion.input_text),
-                    make_filter(Conversion.output_text),
+                    make_filter(Conversion.output_text)
                 )
             )
 
@@ -389,7 +389,7 @@ def list_by_user(
         query = query.filter(
             or_(
                 Conversion.name.ilike(search_lower),
-                Conversion.description.ilike(search_lower),
+                Conversion.description.ilike(search_lower)
             )
         )
 
@@ -425,7 +425,7 @@ def list_deleted(
     Returns rows that have been soft-deleted (``is_active=False``, ``deleted_at``
     stamped), newest deletion first. (The original ``get_deleted_converts``
     filtered ``Conversion.is_active`` by mistake, so the Trash view showed *live*
-    conversions and its "Delete permanently" action could destroy them — fixed
+    conversions and its "Delete permanently" action could destroy them - fixed
     here to ``~Conversion.is_active``.)
     """
     query = Conversion.query.filter(~Conversion.is_active)
@@ -485,7 +485,7 @@ def search_in_content(
                     'field': field_name,
                     'snippet': snippet,
                     'match_start': match_in_snip,
-                    'match_end': match_in_snip + len(query_str),
+                    'match_end': match_in_snip + len(query_str)
                 })
             start = idx + 1
             if len(results) >= 10:  # cap per conversion

@@ -1,4 +1,4 @@
-"""The Converter abstract base — one direction of CTI format transformation."""
+"""The Converter abstract base - one direction of CTI format transformation."""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -11,7 +11,7 @@ from pydantic import BaseModel
 class ConversionResult:
     """What one conversion produced: the document, and what the engine reported.
 
-    ``document`` is the converted content in its native shape — a dict, or a
+    ``document`` is the converted content in its native shape - a dict, or a
     list when one input yields several documents. ``diagnostics`` is the
     underlying library's own report, passed through verbatim:
     ``{"warnings": {identifier: [message, ...]}, "errors": {...},
@@ -29,7 +29,7 @@ class Converter(ABC):
     Subclasses declare the formats they bridge, the Pydantic model that
     describes their parameters, and implement ``process`` to perform the
     transformation. Converters know nothing about users, persistence, or
-    HTTP — they take a payload and parameters in, return transformed
+    HTTP - they take a payload and parameters in, return transformed
     output.
     """
 

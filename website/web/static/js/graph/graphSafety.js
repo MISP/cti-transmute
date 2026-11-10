@@ -5,7 +5,9 @@
 //  can be parsed as HTML.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Node and edge labels reach Pivotick unmodified, and deliberately so.
+// This walk touches each node's `type` and nothing else, so it is not the
+// place to clean a newly added field. Node and edge labels reach Pivotick
+// unmodified, and deliberately so.
 // Pivotick >= 1.5.0 inserts everything it renders from the data as text - node
 // and edge labels through d3's `.text()`/`textContent`, and its
 // `tryResolveHTMLElement` resolves a string to a text span rather than parsing
@@ -19,7 +21,7 @@
 // attribute's query string - and pre-escaping sent those to the viewer as
 // `&amp;` and `&quot;`. The `raw` object was never escaped either, since the
 // tooltip and properties panel read it as text through textCell.
-export function sanitizeGraphData(parsed) {
+export function normaliseNodeTypes(parsed) {
     for (const node of parsed?.nodes ?? []) {
         const d = node.data
         if (!d) continue

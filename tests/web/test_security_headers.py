@@ -1,7 +1,7 @@
 """Security response headers and cookie hardening, pinned at the web seam.
 
-The header hook is registered on the application itself, so any URL — even a
-404 — must carry the headers; that app-wideness is the property under test,
+The header hook is registered on the application itself, so any URL - even a
+404 - must carry the headers; that app-wideness is the property under test,
 which is why these tests hit made-up routes on the plain ``client`` fixture.
 HSTS is conditional: only on responses that arrived over TLS
 (``X-Forwarded-Proto`` via ProxyFix), so a plain-HTTP dev setup never pins
@@ -107,7 +107,7 @@ def test_session_cookie_attributes_reach_the_wire(client, monkeypatch):
     resp = client.get("/x")
     set_cookie = next(
         (h for h in resp.headers.getlist("Set-Cookie") if h.startswith("session=")),
-        None,
+        None
     )
     assert set_cookie is not None, "no session Set-Cookie on the response"
     assert "Secure" in set_cookie

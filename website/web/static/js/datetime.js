@@ -50,5 +50,24 @@ window.ctiDate = (function () {
         return mo < 12 ? `${mo}mo ago` : `${Math.floor(mo / 12)}y ago`;
     }
 
-    return { parse, formatDate, formatDateTime, timeAgo };
+    /* Relative while it is fresh, a calendar day once it is not: "41m ago",
+     * "9h ago", then "16 Oct" - with the year once it is not this one. For a
+     * list that spans weeks rather than a session: "26d ago" and "1mo ago"
+     * are both poor answers to which day that was, and a full timestamp per
+     * row crowds a narrow one. Unparseable input passes through, as the other
+     * formatters do.
+     *
+     * The clock is read once, through Date.now(), so a caller can fix it. */
+    function timeAgoOrDate(str) {
+        if (!str) return '';
+        const d = parse(str);
+        if (!d) return str;
+        const now = new Date(Date.now());
+        if (now - d < 24 * 3600 * 1000) return timeAgo(str);
+        const opts = { month: 'short', day: 'numeric' };
+        if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+        return d.toLocaleDateString(undefined, opts);
+    }
+
+    return { parse, formatDate, formatDateTime, timeAgo, timeAgoOrDate };
 })();

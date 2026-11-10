@@ -1,13 +1,13 @@
 """Shared authorization rules over the acting Submitter.
 
 Pure predicates/asserts: each takes the acting Submitter and the target row
-explicitly — none reads ``current_user``, the request, or the database — so the
+explicitly - none reads ``current_user``, the request, or the database - so the
 same rules serve every transport (web routes, ``lib/`` use-cases, a future API
 surface) without a rewrite.
 
 The Submitter is ``User | None``; ``None`` is an anonymous visitor. flask-login's
 anonymous-user object is tolerated and treated the same as ``None``: an anonymous
-Submitter never owns anything and is never an admin — including rows whose own
+Submitter never owns anything and is never an admin - including rows whose own
 ``user_id`` is ``NULL`` (anonymously created Conversions).
 
 Targets are duck-typed: ownership reads ``target.user_id`` (Conversion, Comment,

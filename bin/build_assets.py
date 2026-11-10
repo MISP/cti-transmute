@@ -10,6 +10,8 @@ submodules/pivotick/dist/ from source (npm run build inside submodules/pivotick/
     python bin/build_assets.py
 """
 
+import hashlib
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -18,6 +20,15 @@ ROOT            = Path(__file__).resolve().parent.parent
 PIVOTICK        = ROOT / "submodules" / "pivotick"
 PIVOTICK_DIST   = PIVOTICK / "dist"
 PIVOTICK_STATIC = ROOT / "website" / "web" / "static" / "pivotick"
+
+# The browser loads the copy under static/, and the bundle carries no version
+# of its own, so the copy is recorded here: which Pivotick it came from, and
+# the digest of each file served. The graph XSS check reads this rather than
+# the submodule, because label safety is the library's guarantee from 1.5.0 on
+# and a static/ copy left behind by a submodule bump would otherwise pass a
+# check that read the submodule's own version.
+BUNDLE_RECORD = "BUNDLE.json"
+RECORDED_FILES = ("pivotick.iife.js", "pivotick.umd.js")
 
 # The page loads the IIFE build (`pivotick.iife.js` + `pivotick.css`, see
 # templates/conversions/detail.html), so the ES build is dropped rather than
@@ -55,7 +66,24 @@ def main() -> None:
             shutil.rmtree(directory)
             print(f"  Removed {name}/")
 
+    print("→ Recording the version and digests of what is now served…")
+    write_bundle_record()
+
     print("\n✓ Done. Remember to commit the updated static/pivotick/ files.")
+
+
+def write_bundle_record() -> None:
+    """Write static/pivotick/BUNDLE.json for the files just copied."""
+    package = json.loads((PIVOTICK / "package.json").read_text())
+    digests = {}
+    for name in RECORDED_FILES:
+        served = PIVOTICK_STATIC / name
+        if served.exists():
+            digests[name] = hashlib.sha256(served.read_bytes()).hexdigest()
+    record = {"version": package["version"], "sha256": digests}
+    path = PIVOTICK_STATIC / BUNDLE_RECORD
+    path.write_text(json.dumps(record, indent=2) + "\n")
+    print(f"  Wrote {BUNDLE_RECORD} for Pivotick {record['version']}")
 
 
 if __name__ == "__main__":

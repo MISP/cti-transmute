@@ -16,7 +16,7 @@ def test_anonymous_submission_creates_a_convert_row(app_db, misp_event):
         source="misp",
         target="stix",
         payload=misp_event,
-        params=MispToStixParams(),
+        params=MispToStixParams()
     )
 
     assert convert.id is not None
@@ -30,7 +30,7 @@ def test_submission_persists_the_params_used(app_db, misp_event):
     params = MispToStixParams()
     convert = submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=params,
+        payload=misp_event, params=params
     )
 
     # the exact dict persisted, and it re-validates against the params class
@@ -43,7 +43,7 @@ def test_submission_records_source_and_target_formats(app_db, misp_event):
 
     convert = submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=MispToStixParams(),
+        payload=misp_event, params=MispToStixParams()
     )
 
     assert convert.source_format == "misp"
@@ -55,7 +55,7 @@ def test_serialized_conversion_exposes_formats_and_params(app_db, misp_event):
 
     convert = submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=MispToStixParams(),
+        payload=misp_event, params=MispToStixParams()
     )
     data = convert.to_json()
 
@@ -73,7 +73,7 @@ def test_conversion_type_is_derived_and_queryable(app_db, misp_event):
 
     submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=MispToStixParams(),
+        payload=misp_event, params=MispToStixParams()
     )
 
     # instance-level derivation
@@ -95,12 +95,12 @@ def test_conversion_history_stores_and_serializes_params(app_db, misp_event):
 
     conv = submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=MispToStixParams(),
+        payload=misp_event, params=MispToStixParams()
     )
     params_dict = MispToStixParams().model_dump(mode="json", exclude_none=True)
     history = ConversionHistory(
         conversion_id=conv.id, version=1, uuid=str(uuid_lib.uuid4()),
-        status="pending", params=params_dict,
+        status="pending", params=params_dict
     )
     db.session.add(history)
     db.session.commit()
@@ -121,7 +121,7 @@ def test_legacy_conversion_with_no_params_serializes_cleanly(app_db):
     legacy = Conversion(
         name="legacy", source_format="misp", target_format="stix",
         input_text="x", output_text="y", params=None,
-        created_at=now, updated_at=now, uuid=str(uuid_lib.uuid4()),
+        created_at=now, updated_at=now, uuid=str(uuid_lib.uuid4())
     )
     db.session.add(legacy)
     db.session.commit()
@@ -139,7 +139,7 @@ def test_authenticated_submission_records_user_id(app_db, misp_event):
         source="misp",
         target="stix",
         payload=misp_event,
-        params=MispToStixParams(),
+        params=MispToStixParams()
     )
 
     assert convert.user_id == 42
@@ -152,7 +152,7 @@ def test_unknown_converter_writes_no_row(app_db, misp_event):
     with pytest.raises(UnknownConverter):
         submit_conversion(
             user=None, source="misp", target="nope",
-            payload=misp_event, params=MispToStixParams(),
+            payload=misp_event, params=MispToStixParams()
         )
 
     assert Conversion.query.count() == 0
@@ -169,7 +169,7 @@ def test_converter_failure_writes_no_row(app_db, misp_event, monkeypatch):
     with pytest.raises(ConverterFailed):
         conversions.submit_conversion(
             user=None, source="misp", target="stix",
-            payload=misp_event, params=MispToStixParams(),
+            payload=misp_event, params=MispToStixParams()
         )
 
     assert Conversion.query.count() == 0
@@ -190,10 +190,10 @@ def test_commit_failure_raises_persistence_failed_and_writes_nothing(
     with pytest.raises(PersistenceFailed):
         conversions.submit_conversion(
             user=None, source="misp", target="stix",
-            payload=misp_event, params=MispToStixParams(),
+            payload=misp_event, params=MispToStixParams()
         )
 
-    assert Conversion.query.count() == 0  # rolled back — nothing persisted
+    assert Conversion.query.count() == 0  # rolled back - nothing persisted
 
 
 def test_successful_submission_writes_one_audit_log(app_db, misp_event):
@@ -202,7 +202,7 @@ def test_successful_submission_writes_one_audit_log(app_db, misp_event):
 
     submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=MispToStixParams(),
+        payload=misp_event, params=MispToStixParams()
     )
 
     assert SystemLog.query.filter_by(event_type="conversion_created").count() == 1
@@ -216,11 +216,11 @@ def test_anonymous_submission_does_not_notify_followers(
     called = []
     monkeypatch.setattr(
         conversions.AccountModel, "notify_followers_new_conversion",
-        lambda *a, **k: called.append(1),
+        lambda *a, **k: called.append(1)
     )
     conversions.submit_conversion(
         user=None, source="misp", target="stix",
-        payload=misp_event, params=MispToStixParams(),
+        payload=misp_event, params=MispToStixParams()
     )
 
     assert called == []
@@ -239,7 +239,7 @@ def test_audit_log_is_atomic_with_the_conversion(app_db, misp_event, monkeypatch
     with pytest.raises(PersistenceFailed):
         conversions.submit_conversion(
             user=None, source="misp", target="stix",
-            payload=misp_event, params=MispToStixParams(),
+            payload=misp_event, params=MispToStixParams()
         )
 
     assert SystemLog.query.count() == 0  # audit rolled back with the conversion
@@ -276,7 +276,7 @@ def _make_conversion(misp_event, owner_id=None, *, output="OLD-OUTPUT", public=T
     conv = Conversion(
         user_id=owner_id, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps(misp_event), output_text=output, params=None,
-        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4()),
+        created_at=now, updated_at=now, public=public, uuid=str(_uuid.uuid4())
     )
     db.session.add(conv)
     db.session.commit()

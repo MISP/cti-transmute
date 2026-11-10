@@ -1,4 +1,4 @@
-// DiagnosticsPanel — Vue 3 component for what a conversion reported about its
+// DiagnosticsPanel - Vue 3 component for what a conversion reported about its
 // own output. Register with: app.component('diagnostics-panel', DiagnosticsPanel)
 //
 // The blob is the converter's own report, kept verbatim, so this only sorts it
@@ -17,8 +17,8 @@ const DiagnosticsPanel = {
         collapsible: { type: Boolean, default: false },
         missingText: {
             type: String,
-            default: 'Diagnostics not recorded — this conversion predates Diagnostics tracking.',
-        },
+            default: 'Diagnostics not recorded — this conversion predates Diagnostics tracking.'
+        }
     },
     template: `
 <div class="custom-card p-3 mb-4">
@@ -72,13 +72,13 @@ const DiagnosticsPanel = {
             const counts = blob.counts || {}
             const groups = [
                 { kind: 'Warnings', css: 'diag-warnings', bucket: blob.warnings || {} },
-                { kind: 'Errors',   css: 'diag-errors',   bucket: blob.errors   || {} },
+                { kind: 'Errors',   css: 'diag-errors',   bucket: blob.errors   || {} }
             ].map(g => ({
                 kind: g.kind,
                 css: g.css,
                 entries: Object.entries(g.bucket).map(
                     ([identifier, messages]) => ({ identifier, messages })
-                ),
+                )
             })).filter(g => g.entries.length > 0)
             return {
                 loaded: true,
@@ -86,10 +86,10 @@ const DiagnosticsPanel = {
                 reported: groups.length > 0,
                 warnings_count: counts.warnings || 0,
                 errors_count: counts.errors || 0,
-                groups,
+                groups
             }
-        },
-    },
+        }
+    }
 }
 
 export default DiagnosticsPanel

@@ -1,50 +1,78 @@
 #!/usr/bin/env python3
 
-from flask import render_template
+"""Production entry point: hand the process over to gunicorn.
+
+Werkzeug's ``application.run()`` lives in ``bin/dev_server.py`` instead, so this
+path never calls it and the interactive debugger does not exist here whatever
+the environment says. The rest of debug mode is settled by
+``gunicorn_environment()``. The process is replaced rather than spawned, so a
+supervisor signals gunicorn directly.
+"""
+
+import os
+import sys
 
 from cti_transmute.default import get_config
-from website.api import api_blueprint
-from website.web import application
+
+DEFAULT_THREADS = 8
 
 
-@application.errorhandler(404)
-def page_not_found(e):
-    return render_template("404.html"), 404
+def gunicorn_command() -> list[str]:
+    """The argv gunicorn is exec'd with."""
+    # Read as one dict so a config file written before website_threads existed
+    # keeps starting the service on the default.
+    generic = get_config('generic')
+    ip = generic['website_listen_ip']
+    port = generic['website_listen_port']
+    threads = generic.get('website_threads', DEFAULT_THREADS)
+    return [
+        # Through the interpreter already running, not through PATH: a service
+        # manager starting the console script by its absolute path hands it the
+        # system PATH, which has no virtualenv on it.
+        sys.executable, '-m', 'gunicorn',
+        # One worker because nobody has measured a need for more, not because
+        # more would break. Bulk tag jobs keep their state in the database now
+        # (website/repos/bulk_tag_jobs.py), and what is left in process memory
+        # is read-only data loaded from disk, identical in every process, so
+        # raising this is a capacity decision. What it buys is GIL parallelism
+        # for CPU-bound STIX parsing; what it costs is N times the Postgres
+        # connection budget, one SQLAlchemy pool per process.
+        '-w', '1',
+        # gthread, not sync: application.run() served requests concurrently
+        # (threaded=True) and a sync worker serves exactly one at a time.
+        '--worker-class', 'gthread',
+        '--threads', str(threads),
+        # Long STIX conversions are CPU-bound and run inside the request;
+        # matches the read timeout documented for the reverse proxy.
+        '--timeout', '300',
+        '--graceful-timeout', '2',
+        # gunicorn logs no request unless told to, and the development server
+        # it replaces logged every one. Standard output, so whatever supervises
+        # the process collects it.
+        '--access-logfile', '-',
+        '-b', f'{ip}:{port}',
+        'website.app:application'
+    ]
 
 
-@application.errorhandler(403)
-def forbidden(e):
-    return render_template("403.html"), 403
+def gunicorn_environment() -> dict[str, str]:
+    """The environment gunicorn is exec'd with, debug settled before the exec."""
+    environment = dict(os.environ)
+    # Flask reads FLASK_DEBUG when the application object is built and keeps it
+    # as the default for DEBUG, which propagates exceptions past the error
+    # handlers and reloads templates. Only the interactive console needs
+    # application.run(), so everything else debug turns on reaches gunicorn
+    # through the environment - from a service unit, or a shell export nobody
+    # remembers. Set rather than removed: the application reads .env itself,
+    # after this exec, and load_dotenv() leaves a variable that already exists
+    # alone. Development reads the operator's own value in bin/dev_server.py.
+    environment['FLASK_DEBUG'] = 'false'
+    return environment
 
 
 def main():
-    ip = get_config('generic', 'website_listen_ip')
-    port = get_config('generic', 'website_listen_port')
-
-
-    from website.web.account.account import account_blueprint
-    from website.web.conversions.conversions import (
-        conversions_blueprint, legacy_convert_blueprint)
-    from website.web.evaluate.evaluate import evaluate_blueprint
-    from website.web.home import home_blueprint
-    from website.web.tags.tags import tags_blueprint
-
-    application.register_blueprint(home_blueprint, url_prefix="/")
-    application.register_blueprint(conversions_blueprint, url_prefix="/conversions")
-    application.register_blueprint(legacy_convert_blueprint, url_prefix="/convert")
-    application.register_blueprint(account_blueprint, url_prefix="/account")
-    application.register_blueprint(tags_blueprint, url_prefix="/tags")
-    application.register_blueprint(evaluate_blueprint, url_prefix="/evaluate")
-
-
-
-    with application.app_context():
-        application.register_blueprint(api_blueprint)
-        # db.drop_all()
-        # db.create_all()
-    import os
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    application.run(host=ip, port=port, debug=debug)
+    command = gunicorn_command()
+    os.execvpe(command[0], command, gunicorn_environment())
 
 
 if __name__ == '__main__':

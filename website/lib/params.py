@@ -23,7 +23,7 @@ def build_params(
     Values arrive already typed. Strings are stripped; blanks (``""`` /
     whitespace) and ``None`` are dropped so the model applies each field's
     default. Everything else is handed to the model, whose ``extra="forbid"``
-    rejects unknown keys — mirroring the published schema's
+    rejects unknown keys - mirroring the published schema's
     ``additionalProperties: false``. Raises ``ValidationError`` on a rejected
     value or unknown key; the caller maps it to the ``{error, fields}`` 400 via
     `param_error`.

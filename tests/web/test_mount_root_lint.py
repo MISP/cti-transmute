@@ -1,6 +1,6 @@
 """No template writes an unprotected user value into a Vue-mounted region.
 
-ADR-0021's rule is that server-rendered user data never reaches Vue as template
+The rule is that server-rendered user data never reaches Vue as template
 markup. `test_delimiter_neutralisation.py` covers the global protection that
 makes forgetting survivable; this covers the structural half, which is the only
 way to assert "no *future* template does this".

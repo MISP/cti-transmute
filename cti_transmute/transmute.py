@@ -1,9 +1,9 @@
-"""Transmute — the conversion engine's hub and public library API.
+"""Transmute - the conversion engine's hub and public library API.
 
 `cti_transmute` is importable on its own; `Transmute` is its front door.
 It is the runtime source of truth for the supported directions: concrete
 Converters self-register into it, it resolves a ``(source, target)`` family to
-its Converter, and ``convert`` runs one in a single call — accepting parameters
+its Converter, and ``convert`` runs one in a single call - accepting parameters
 as a plain dict (validated through the Converter's own schema), an already-built
 params model, or nothing (defaults).
 
@@ -47,11 +47,11 @@ class Transmute:
         source_format: str,
         target_format: str,
         payload: Any,
-        params: BaseModel | dict | None = None,
+        params: BaseModel | dict | None = None
     ) -> ConversionResult:
         """Run the ``source_format`` -> ``target_format`` conversion on ``payload``.
 
-        Returns the ``ConversionResult`` the Converter produced — the document
+        Returns the ``ConversionResult`` the Converter produced - the document
         and the Diagnostics it came with.
         Raises ``UnknownConverter`` for an unsupported pair, ``InvalidParameters``
         for a params dict that fails the Converter's schema, and propagates the

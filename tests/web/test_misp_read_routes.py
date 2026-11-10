@@ -209,8 +209,8 @@ def test_search_maps_events_to_the_table_shape(auth_client):
             "threat_level_id": "1", "published": True, "distribution": "1",
             "EventTag": [
                 {"Tag": {"name": "tlp:green", "colour": "#33FF00"}},
-                {"Tag": {"name": "secret", "hide_tag": True}},
-            ],
+                {"Tag": {"name": "secret", "hide_tag": True}}
+            ]
         }],
         status=200)
 
@@ -268,7 +268,7 @@ def test_test_connection_returns_the_visible_tags(web_client, app_db):
         responses.GET, f"{MISP_URL}/tags/index",
         json={"Tag": [
             {"name": "tlp:red", "colour": "#ff0000"},
-            {"name": "secret", "hide_tag": True},
+            {"name": "secret", "hide_tag": True}
         ]},
         status=200)
     _login(web_client, _make_user())
@@ -343,7 +343,7 @@ def _guard_with_resolution(monkeypatch, addresses, url=MISP_URL):
     "100.64.0.1",       # CGNAT shared space
     "240.0.0.1",        # reserved
     "::1",              # v6 loopback
-    "fd00::1",          # v6 ULA
+    "fd00::1"          # v6 ULA
 ])
 def test_guard_rejects_a_hostname_resolving_to_an_internal_address(monkeypatch, resolved):
     assert _guard_with_resolution(monkeypatch, [resolved]) is not None

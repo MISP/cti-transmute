@@ -1,11 +1,14 @@
 """The tags admin submodule endpoints, pinned at the web seam.
 
 We renamed the ``vendor/`` shelf to ``submodules/`` which sweeps the
-word out of the runtime vocabulary: the status route moves to
+word out of the runtime vocabulary: the status route lives at
 ``/tags/admin/submodule_status`` (no shim - its only caller is our own
-admin page, which changes in the same slice), and the pull job's
-activity-log event becomes ``tags_submodule_pull_started`` (historical
-rows migrated in place).
+admin page, which changed in the same slice).
+
+``submodule_status`` is read-only and is now the only submodule route:
+refreshing the datasets left the HTTP server for ``manage
+update-datasets``, so the page it feeds is where an admin reads which
+revision is loaded.
 
 Fixture/helper prior art: ``test_trash_routes.py``.
 """
@@ -58,24 +61,21 @@ def test_submodule_status_reports_both_dataset_submodules(web_client, app_db):
     assert data["galaxies"]["sha"] != "?"
 
 
-def test_pull_and_import_logs_submodule_event(web_client, app_db, monkeypatch):
-    from website.db_class.db import SystemLog
-    from website.web.tags import bulk_jobs
+def test_tag_management_sends_the_admin_to_the_management_command(full_web_client, app_db):
+    """The page kept the revision chips and the two import buttons; the refresh
+    itself is an operator command now, and the page says which one."""
+    _login(full_web_client, _make_admin(email="page@test.test"))
 
-    # Stub the worker: it would run `git submodule update --remote` on the
-    # real checkout. The route's audit write is what this test pins.
-    monkeypatch.setattr(
-        bulk_jobs, "start_pull_and_import", lambda app, user_id: "stub1234"
-    )
-    admin = _make_admin()
-    _login(web_client, admin)
-
-    resp = web_client.post("/tags/admin/pull_and_import")
+    resp = full_web_client.get("/tags/admin/")
 
     assert resp.status_code == 200
-    assert resp.get_json()["job_id"] == "stub1234"
-    events = [row.event_type for row in SystemLog.query.filter_by(target_type="tag")]
-    assert events == ["tags_submodule_pull_started"]
+    html = resp.get_data(as_text=True)
+    assert "manage update-datasets" in html
+    assert "misp-taxonomies" in html and "misp-galaxy" in html
+    assert 'title="Import MISP Taxonomies"' in html
+    assert 'title="Import MISP Galaxies"' in html
+    assert "pull_and_import" not in html
+    assert "Pull &amp; Import" not in html
 
 
 def test_import_taxonomies_accepts_explicit_path(app_db, tmp_path):

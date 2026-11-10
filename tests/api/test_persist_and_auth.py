@@ -11,7 +11,7 @@ def _make_user(api_key):
 
     user = User(
         first_name="api", last_name="user",
-        email=f"{api_key}@test.test", api_key=api_key,
+        email=f"{api_key}@test.test", api_key=api_key
     )
     db.session.add(user)
     db.session.commit()
@@ -39,7 +39,7 @@ def test_valid_key_without_persist_is_stateless_and_writes_no_row(api_db_client,
 
     resp = api_db_client.post(
         "/api/convert/misp_to_stix",
-        json=misp_event, headers={"X-API-KEY": "valid-key-xyz"},
+        json=misp_event, headers={"X-API-KEY": "valid-key-xyz"}
     )
 
     assert resp.status_code == 200
@@ -92,7 +92,7 @@ def test_authenticated_persist_records_owner(api_db_client, misp_event):
 
     resp = api_db_client.post(
         "/api/convert/misp_to_stix?persist=true",
-        json=misp_event, headers={"X-API-KEY": "valid-key-123"},
+        json=misp_event, headers={"X-API-KEY": "valid-key-123"}
     )
 
     assert resp.status_code == 200
@@ -108,7 +108,7 @@ def test_authenticated_persist_records_owner(api_db_client, misp_event):
 def test_invalid_key_returns_403_and_writes_no_row_with_persist(api_db_client, misp_event):
     resp = api_db_client.post(
         "/api/convert/misp_to_stix?persist=true",
-        json=misp_event, headers={"X-API-KEY": "nope-not-a-key"},
+        json=misp_event, headers={"X-API-KEY": "nope-not-a-key"}
     )
 
     assert resp.status_code == 403
@@ -118,7 +118,7 @@ def test_invalid_key_returns_403_and_writes_no_row_with_persist(api_db_client, m
 def test_invalid_key_returns_403_without_persist_too(api_db_client, misp_event):
     resp = api_db_client.post(
         "/api/convert/misp_to_stix",
-        json=misp_event, headers={"X-API-KEY": "nope-not-a-key"},
+        json=misp_event, headers={"X-API-KEY": "nope-not-a-key"}
     )
 
     assert resp.status_code == 403

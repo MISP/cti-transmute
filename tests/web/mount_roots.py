@@ -1,10 +1,10 @@
 """The page regions Vue mounts over, and what may be rendered inside them.
 
 Vue compiles the DOM it is mounted on, so anything Jinja renders inside a
-mounted region is template markup rather than text. ADR-0021 states the rule
-that follows from that: server-rendered user data may not reach Vue as template
-markup. `website/web/templating.py` enforces it globally at the render
-boundary; this module is the structural half - it records *where* the mounted
+mounted region is template markup rather than text. The rule that follows from
+that: server-rendered user data may not reach Vue as template markup.
+`website/web/templating.py` enforces it globally at the render boundary;
+this module is the structural half - it records *where* the mounted
 regions are and fails when a template writes an unrecognised expression into
 one.
 

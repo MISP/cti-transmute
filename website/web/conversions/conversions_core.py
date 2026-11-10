@@ -1,6 +1,6 @@
 """Feature-level persistence for the conversions blueprint's non-Conversion concerns.
 
-Conversion and ConversionHistory rows — including their listing, access-scoped
+Conversion and ConversionHistory rows - including their listing, access-scoped
 search, and Trash queries - live in ``website/repos/conversions.py``; Comment
 and CommentReaction writes live in ``website/repos/comments.py`` (this module
 keeps only the comment read/query helpers; the comment visibility rule is
@@ -274,7 +274,7 @@ def save_graph_config(name, config_json, created_by):
             is_active=True,
             is_default=False,
             created_at=now,
-            updated_at=now,
+            updated_at=now
         )
         db.session.add(cfg)
         db.session.commit()

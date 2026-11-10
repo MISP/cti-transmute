@@ -1,7 +1,7 @@
 """Docs-page accuracy guards: what the docs page displays must match the code.
 
 Model names: every ``Convert*``/``Conversion*`` model name the docs page
-displays must be a class that actually exists in ``db_class/db.py`` — the
+displays must be a class that actually exists in ``db_class/db.py`` - the
 rename retired the ``Convert*`` names; the docs page kept showing them. JS
 component names are exempt: they are Vue components the docs page documents,
 not model claims.
@@ -16,12 +16,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCS_PAGE = REPO_ROOT / "website" / "web" / "templates" / "docs" / "index.html"
 
-# Vue/JS components the docs page documents — real names, but not models.
+# Vue/JS components the docs page documents - real names, but not models.
 JS_COMPONENT_KEEPS = {
     "ConversionSunburst",
     "ConversionTable",
     "ConversionGraph",
-    "PushConversionToMISP",
+    "PushConversionToMISP"
 }
 
 

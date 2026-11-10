@@ -56,3 +56,35 @@ jobs:
       # Scope to tests/ - a bare `pytest` collects vulnerability-lookup and dies.
       - name: Pytest
         run: uv run pytest tests/
+
+  # The suite above is SQLite in memory, which cannot see what the migrations
+  # do on the database operators actually run: dialect types, server defaults,
+  # the indexes as Postgres builds them. This job runs the migration tests
+  # against a real server; they skip anywhere CTI_TEST_POSTGRES_URL is unset.
+  migrations-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync
+      - name: Pytest (migrations against PostgreSQL)
+        env:
+          CTI_TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: uv run pytest tests/test_postgres_migrations.py -v

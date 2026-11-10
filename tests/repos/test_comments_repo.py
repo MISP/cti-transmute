@@ -24,7 +24,7 @@ def _make_conversion():
     conv = Conversion(
         user_id=None, name="c", source_format="misp", target_format="stix",
         input_text=json.dumps({}), output_text="x", params=None,
-        created_at=now, updated_at=now, public=True, uuid=str(uuid_lib.uuid4()),
+        created_at=now, updated_at=now, public=True, uuid=str(uuid_lib.uuid4())
     )
     db.session.add(conv)
     db.session.commit()
@@ -35,7 +35,7 @@ def _make_comment(conversion_id, user_id=1, content="hi", **kwargs):
     from website.repos import comments as comments_repo
 
     return comments_repo.create(
-        conversion_id=conversion_id, user_id=user_id, content=content, **kwargs,
+        conversion_id=conversion_id, user_id=user_id, content=content, **kwargs
     )
 
 
@@ -47,7 +47,7 @@ def test_create_persists_a_comment_and_assigns_identity(app_db):
 
     conv = _make_conversion()
     comment = comments_repo.create(
-        conversion_id=conv.id, user_id=7, content="  a comment  ",
+        conversion_id=conv.id, user_id=7, content="  a comment  "
     )
 
     assert comment.id is not None
@@ -71,7 +71,7 @@ def test_create_with_commit_false_stages_without_committing(app_db):
 
     conv = _make_conversion()
     comment = comments_repo.create(
-        conversion_id=conv.id, user_id=1, content="staged", commit=False,
+        conversion_id=conv.id, user_id=1, content="staged", commit=False
     )
 
     assert comment.id is not None         # flushed → id assigned within the tx

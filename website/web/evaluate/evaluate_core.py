@@ -112,7 +112,7 @@ def get_summary(conversion_id: int, viewer_id: int | None = None) -> dict:
         'viewer_dislike': viewer_dislike,
         'cti_categories': cti_categories,
         'eval_comments':  eval_comments,
-        'approval_score': approval_score,
+        'approval_score': approval_score
     }
 
 
@@ -175,7 +175,7 @@ def toggle_reaction(conversion_id: int, user_id: int, reaction_key: str) -> dict
         db.session.commit()
         return {'action': 'removed', 'type': 'reaction', 'key': reaction_key}
 
-    # For cti-evaluation: radio semantics — replace any prior pick in the same category
+    # For cti-evaluation: radio semantics - replace any prior pick in the same category
     if ns == 'cti-evaluation' and cat:
         prior_rows = ConversionEvaluation.query.filter_by(
             conversion_id=conversion_id, user_id=user_id, eval_type='reaction'
@@ -213,7 +213,7 @@ def get_admin_list(page: int = 1, per_page: int = 50,
         'total':    paginated.total,
         'pages':    paginated.pages,
         'page':     page,
-        'per_page': per_page,
+        'per_page': per_page
     }
 
 
@@ -295,7 +295,7 @@ def get_consensus_tags(conversion_id: int, threshold: int = 3) -> list[dict]:
             'color':       tag_obj.color if tag_obj else None,
             'icon':        tag_obj.icon if tag_obj else None,
             'description': tag_obj.description if tag_obj else None,
-            'visibility':  'public',
+            'visibility':  'public'
         })
 
     return consensus
@@ -333,7 +333,7 @@ def get_global_stats() -> dict:
             "name":  name,
             "count": count,
             "color": t.color if t else None,
-            "label": f"{cat}: {val}" if cat and val else name,
+            "label": f"{cat}: {val}" if cat and val else name
         })
 
     category_breakdown = {}
@@ -367,7 +367,7 @@ def get_global_stats() -> dict:
         "like_ratio":         like_ratio,
         "top_tags":           top_tags,
         "category_breakdown": category_breakdown,
-        "avg_score":          avg_score,
+        "avg_score":          avg_score
     }
 
 
@@ -379,7 +379,7 @@ def submit_platform_review(user_id: int, rating: int, comment: str) -> dict:
         user_id=user_id,
         rating=rating,
         comment=comment.strip() if comment else None,
-        created_at=datetime.datetime.utcnow(),
+        created_at=datetime.datetime.utcnow()
     )
     db.session.add(rev)
     db.session.commit()
@@ -395,7 +395,7 @@ def get_platform_reviews(page: int = 1, per_page: int = 10) -> dict:
         "items": [r.to_json() for r in paginated.items],
         "total": paginated.total,
         "pages": paginated.pages,
-        "page":  page,
+        "page":  page
     }
 
 
@@ -432,7 +432,7 @@ DIMENSION_LABELS = {
     'source-reliability': 'Source Reliability',
     'specificity':        'Specificity',
     'timeliness':         'Timeliness',
-    'usefulness':         'Usefulness',
+    'usefulness':         'Usefulness'
 }
 
 DIMENSION_DESCRIPTIONS = {
@@ -446,7 +446,7 @@ DIMENSION_DESCRIPTIONS = {
     'source-reliability': 'Reliability of primary and secondary sources underpinning the CTI.',
     'specificity':        'Whether CTI contains concrete details (what, where, when, who, how) needed to act.',
     'timeliness':         'Whether CTI is delivered with enough lead time for effective action.',
-    'usefulness':         'Practical utility of CTI for operations, detection, response, or strategic decisions.',
+    'usefulness':         'Practical utility of CTI for operations, detection, response, or strategic decisions.'
 }
 
 
@@ -500,7 +500,7 @@ def build_evaluation_report(conversion_id: int, actor=None) -> dict | None:
             'distribution': {
                 v: {'count': data['counts'].get(v, 0), 'pct': data['percentages'].get(v, 0)}
                 for v in VALUE_ORDER
-            },
+            }
         })
 
     # Evaluation comments
@@ -535,7 +535,7 @@ def build_evaluation_report(conversion_id: int, actor=None) -> dict | None:
             'source_fmt':  source_fmt,
             'target_fmt':  target_fmt,
             'created_at':  conversion.created_at.strftime('%Y-%m-%d %H:%M UTC') if conversion.created_at else '',
-            'public':      conversion.public,
+            'public':      conversion.public
         },
         'generated_at': datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
         'overall': {
@@ -544,12 +544,12 @@ def build_evaluation_report(conversion_id: int, actor=None) -> dict | None:
             'total_votes': sum(d['total'] for d in summary['cti_categories'].values()),
             'likes':       summary['likes'],
             'dislikes':    summary['dislikes'],
-            'like_ratio':  like_ratio,
+            'like_ratio':  like_ratio
         },
         'dimensions':     dimensions,
         'consensus_tags': consensus_tags,
         'all_tags':       sorted(push_tags),
-        'eval_comments':  eval_comments,
+        'eval_comments':  eval_comments
     }
 
 
@@ -578,7 +578,7 @@ def render_evaluation_markdown(report: dict) -> str:
         f'| **Report generated** | {now} |',
         f'| **UUID** | `{c["uuid"]}` |',
         f'| **Visibility** | {"Public" if c["public"] else "Private"} |',
-        '',
+        ''
     ]
 
     if c['description']:
@@ -598,7 +598,7 @@ def render_evaluation_markdown(report: dict) -> str:
         f'from the CTI-Transmute platform.',
         '',
         f'- 👍 **{ov["likes"]} like(s)**'
-        + (f' · 👎 **{ov["dislikes"]} dislike(s)**' if ov['dislikes'] else ''),
+        + (f' · 👎 **{ov["dislikes"]} dislike(s)**' if ov['dislikes'] else '')
     ]
     if ov['like_ratio'] is not None:
         lines.append(f'- Approval ratio: **{ov["like_ratio"]}%**')
@@ -609,7 +609,7 @@ def render_evaluation_markdown(report: dict) -> str:
         lines += ['## Dimension Scores', '']
         lines += [
             '| Dimension | Level | Score | Votes | Description |',
-            '|---|---|---|---|---|',
+            '|---|---|---|---|---|'
         ]
         for d in report['dimensions']:
             emoji_d = SCORE_EMOJI.get(d['level'], '⚪')
@@ -680,7 +680,7 @@ def render_evaluation_markdown(report: dict) -> str:
         '',
         '---',
         '',
-        f'*Generated by [CTI-Transmute](https://cti-transmute.org) — {now}*',
+        f'*Generated by [CTI-Transmute](https://cti-transmute.org) — {now}*'
     ]
 
     return '\n'.join(lines)
@@ -714,7 +714,7 @@ def render_evaluation_pdf(report: dict) -> bytes:
         'low':       '#d97706',
         'moderate':  '#c9a900',
         'high':      '#18a34a',
-        'very-high': '#2b6fe8',
+        'very-high': '#2b6fe8'
     }
 
     # Build small colored level badges via inline style in the CSS
@@ -777,6 +777,6 @@ def get_recent_to_evaluate(viewer_id=None, limit=8) -> list:
             "description":     c.description,
             "conversion_type": c.conversion_type,
             "created_at":      c.created_at.strftime('%Y-%m-%d') if c.created_at else None,
-            "eval_summary":    summary,
+            "eval_summary":    summary
         })
     return result

@@ -29,12 +29,12 @@ def _report(description=""):
             "id": 1, "name": "Render Test", "uuid": "uuid-1",
             "description": description, "type": "MISP_TO_STIX",
             "source_fmt": "MISP", "target_fmt": "STIX 2.1",
-            "created_at": "2026-01-01 00:00 UTC", "public": True,
+            "created_at": "2026-01-01 00:00 UTC", "public": True
         },
         "generated_at": "2026-01-01 00:00 UTC",
         "overall": {"level": "high", "score": 80, "total_votes": 3,
                     "likes": 2, "dislikes": 1, "like_ratio": 67},
-        "dimensions": [], "consensus_tags": [], "all_tags": [], "eval_comments": [],
+        "dimensions": [], "consensus_tags": [], "all_tags": [], "eval_comments": []
     }
 
 

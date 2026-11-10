@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  ConversionSunburst — CTI data distribution chart
-//  Apache ECharts (Apache 2.0) — https://echarts.apache.org/
+//  ConversionSunburst - CTI data distribution chart
+//  Apache ECharts (Apache 2.0) - https://echarts.apache.org/
 //  Features: sunburst + treemap, input/output side, dark/light theme,
 //            click-slice → JsonViewer panel (highlight, tree, format, download, copy).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11,7 +11,7 @@ const PALETTE = [
     '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444',
     '#06b6d4', '#a855f7', '#f97316', '#14b8a6', '#6366f1',
     '#ec4899', '#84cc16', '#0ea5e9', '#d946ef', '#22c55e',
-    '#f43f5e', '#0891b2', '#7c3aed', '#65a30d', '#ea580c',
+    '#f43f5e', '#0891b2', '#7c3aed', '#65a30d', '#ea580c'
 ]
 
 // ── ECharts lazy loader ───────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ function loadECharts() {
     return _echartsPromise
 }
 
-// ── MISP parser — returns { tree, stats, rows } ───────────────────────────────
+// ── MISP parser - returns { tree, stats, rows } ───────────────────────────────
 function parseMisp(text) {
     let data
     try { data = JSON.parse(text) } catch { return null }
@@ -82,11 +82,11 @@ function parseMisp(text) {
         format: 'misp',
         tree: { name: 'MISP Event', children },
         stats: { types: Object.keys(catMap).length, total },
-        rows,
+        rows
     }
 }
 
-// ── STIX parser — returns { tree, stats, rows } ───────────────────────────────
+// ── STIX parser - returns { tree, stats, rows } ───────────────────────────────
 function parseStix(text) {
     let data
     try { data = JSON.parse(text) } catch { return null }
@@ -138,7 +138,7 @@ function parseStix(text) {
         format: 'stix',
         tree: { name: 'STIX Bundle', children },
         stats: { types: Object.keys(typeMap).length, total },
-        rows: objects,
+        rows: objects
     }
 }
 
@@ -305,10 +305,10 @@ const ConversionSunburst = {
                     levels: [
                         {},
                         { r0: '15%', r: '50%', label: { rotate: 'tangential', fontSize: 11, fontWeight: 600 }, itemStyle: { borderWidth: 2 } },
-                        { r0: '50%', r: '90%', label: { align: 'right', fontSize: 10, formatter: p => p.data.value > 0 ? `${p.name}\n${p.data.value}` : p.name }, itemStyle: { borderWidth: 1 } },
+                        { r0: '50%', r: '90%', label: { align: 'right', fontSize: 10, formatter: p => p.data.value > 0 ? `${p.name}\n${p.data.value}` : p.name }, itemStyle: { borderWidth: 1 } }
                     ],
-                    label: { color: dark ? '#e2e8f0' : '#1e293b' },
-                }],
+                    label: { color: dark ? '#e2e8f0' : '#1e293b' }
+                }]
             }
         }
 
@@ -317,7 +317,7 @@ const ConversionSunburst = {
                 name: cat.name,
                 value: cat.children ? cat.children.reduce((s, c) => s + (c.value || 0), 0) : (cat.value || 0),
                 itemStyle: cat.itemStyle,
-                children: cat.children,
+                children: cat.children
             }))
             return {
                 backgroundColor: 'transparent',
@@ -334,9 +334,9 @@ const ConversionSunburst = {
                     upperLabel: { show: true, height: 28, fontSize: 11, fontWeight: 700, color: '#fff' },
                     levels: [
                         { itemStyle: { borderWidth: 3, borderColor: dark ? '#1a1f2e' : '#f1f5f9', gapWidth: 3 }, upperLabel: { show: true } },
-                        { itemStyle: { borderWidth: 1, borderColor: dark ? '#252d3d' : '#e2e8f0', gapWidth: 1 } },
-                    ],
-                }],
+                        { itemStyle: { borderWidth: 1, borderColor: dark ? '#252d3d' : '#e2e8f0', gapWidth: 1 } }
+                    ]
+                }]
             }
         }
 
@@ -398,7 +398,7 @@ const ConversionSunburst = {
             legendItems.value = (parsed.tree.children || []).map(c => ({
                 name: c.name,
                 color: c.itemStyle?.color ?? '#888',
-                total: c.children ? c.children.reduce((s, cc) => s + (cc.value || 0), 0) : (c.value || 0),
+                total: c.children ? c.children.reduce((s, cc) => s + (cc.value || 0), 0) : (c.value || 0)
             }))
 
             let ec
@@ -423,7 +423,7 @@ const ConversionSunburst = {
 
             chartInst.setOption(option, true)
 
-            // Click handler — find raw items for the clicked slice
+            // Click handler - find raw items for the clicked slice
             chartInst.on('click', params => {
                 const name = params.data?.name || params.name
                 if (!name || name === 'MISP Event' || name === 'STIX Bundle') return
@@ -459,7 +459,7 @@ const ConversionSunburst = {
             chartInst?.dispose()
         })
 
-        // immediate: true — fires right on mount when conversionData is already set
+        // immediate: true - fires right on mount when conversionData is already set
         watch(
             () => props.conversionData,
             v => { if (v?.input_text || v?.output_text) render() },
@@ -469,9 +469,9 @@ const ConversionSunburst = {
         return {
             side, viewMode, loading, error, stats, legendItems, detectedFormat,
             chartEl, selectedSlice,
-            setSide, setView,
+            setSide, setView
         }
-    },
+    }
 }
 
 export default ConversionSunburst

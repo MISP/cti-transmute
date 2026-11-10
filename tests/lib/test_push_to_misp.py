@@ -167,7 +167,7 @@ def test_an_admin_may_push_someone_elses_private_conversion(app_db, misp_event):
 def test_an_anonymous_submitter_may_push_a_public_conversion(app_db, misp_event):
     # The transport-ready seam: the web route keeps @login_required, but the
     # can_see rule lets an anonymous Submitter push a *public* Conversion to
-    # their own MISP instance — the Activity entry stamps "Anonymous".
+    # their own MISP instance - the Activity entry stamps "Anonymous".
     from website.db_class.db import SystemLog
     from website.lib.conversions import push_to_misp
 
