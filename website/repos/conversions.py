@@ -251,6 +251,16 @@ def accepted_history_list(conversion_id: int) -> list[ConversionHistory]:
 
 # --- Conversion: listing / search --------------------------------------------
 
+# Columns the history may be sorted by (anything else falls back to created).
+SORT_COLUMNS = {
+    'created': Conversion.created_at,
+    'updated': Conversion.updated_at,
+    'name': func.lower(Conversion.name),
+    'type': Conversion.source_format,   # misp_to_stix before stix_to_misp
+    'visibility': Conversion.public,
+}
+
+
 def list_for_user(
         user: User | None, page: int, *, filter_type: str | None = None,
         sort_order: str = 'desc', only_mine: str = 'false',
@@ -258,8 +268,13 @@ def list_for_user(
         date_from: str | None = None, date_to: str | None = None,
         exact_match: bool = False, tag_names: list[str] | None = None,
         vis_filter: str | None = None, favorites_only: bool = False,
-        favorites_user_id: int | None = None) -> Pagination:
+        favorites_user_id: int | None = None, per_page: int = 10,
+        sort_by: str = 'created') -> Pagination:
     """Paginated Conversion listing, access-scoped to ``user``.
+
+    ``per_page`` is clamped to 1..100 (the history table asks for 50).
+    ``sort_by`` is one of ``SORT_COLUMNS`` or ``'author'`` (anything else
+    sorts by creation date), in ``sort_order``.
 
     ``user`` is the actor, lifted out of ``flask_login.current_user`` by the
     caller (``current_user._get_current_object()`` when authenticated, else
@@ -344,11 +359,15 @@ def list_for_user(
         # Anonymous user: only public conversions
         query = query.filter(Conversion.public)
 
-    # Order by created_at
-    if sort_order == 'asc':
-        query = query.order_by(asc(Conversion.created_at))
+    # Order by one of SORT_COLUMNS (created_at by default), then by id so a
+    # page boundary never splits ties differently between two requests.
+    direction = asc if sort_order == 'asc' else desc
+    if sort_by == 'author':
+        query = query.outerjoin(User, User.id == Conversion.user_id)
+        key = func.lower(func.coalesce(User.first_name, ''))
     else:
-        query = query.order_by(desc(Conversion.created_at))
+        key = SORT_COLUMNS.get(sort_by, Conversion.created_at)
+    query = query.order_by(direction(key), direction(Conversion.id))
 
     # Tag filter: a conversion must have ALL selected tags (AND logic)
     if tag_names:
@@ -371,7 +390,7 @@ def list_for_user(
         query = query.filter(Conversion.id.in_(fav_subq))
 
     # Pagination
-    return query.paginate(page=page, per_page=10)
+    return query.paginate(page=page, per_page=max(1, min(int(per_page or 10), 100)))
 
 
 def list_by_user(

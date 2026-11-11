@@ -24,6 +24,8 @@ from website.lib.auth import api_actor
 from website.repos import conversions as conv_repo
 from website.web.tags import tags_core as TagsModel
 
+from .docs import CONVERSION_LIST_PARAMS
+
 conversions_ns = Namespace(
     'conversions', description='Read the Conversion catalogue and history.'
 )
@@ -69,7 +71,11 @@ _NOT_FOUND = ({'message': 'Conversion not found'}, 404)
 
 
 @conversions_ns.route('', strict_slashes=False)
-@conversions_ns.doc(description='List Conversions visible to the caller.')
+@conversions_ns.doc(
+    description='List Conversions visible to the caller (anonymous: public only).',
+    params=CONVERSION_LIST_PARAMS,
+    responses={200: '{data, page, per_page, total, total_pages}', 403: 'Invalid X-API-KEY.'},
+)
 class ConversionList(Resource):
     @api_actor
     def get(self):
@@ -110,7 +116,12 @@ class ConversionList(Resource):
 
 
 @conversions_ns.route('/<int:conversion_id>')
-@conversions_ns.doc(description='Fetch one Conversion, including its input/output.')
+@conversions_ns.doc(
+    description='Fetch one Conversion, including its input/output.',
+    params={'conversion_id': 'The Conversion id.'},
+    responses={200: 'The Conversion.', 403: 'Invalid X-API-KEY.',
+               404: 'No such Conversion, or not visible to the caller (private ones are not confirmed).'},
+)
 class ConversionItem(Resource):
     @api_actor
     def get(self, conversion_id):
@@ -123,7 +134,12 @@ class ConversionItem(Resource):
 
 
 @conversions_ns.route('/<int:conversion_id>/history')
-@conversions_ns.doc(description="A Conversion's accepted re-run history, oldest first.")
+@conversions_ns.doc(
+    description="A Conversion's accepted re-run history, oldest first.",
+    params={'conversion_id': 'The Conversion id.'},
+    responses={200: '{data: [history entries]}', 403: 'Invalid X-API-KEY.',
+               404: 'No such Conversion, or not visible to the caller.'},
+)
 class ConversionHistoryList(Resource):
     @api_actor
     def get(self, conversion_id):

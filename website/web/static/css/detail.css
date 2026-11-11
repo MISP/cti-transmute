@@ -204,6 +204,27 @@
      border-bottom: 1px solid var(--border);
  }
 
+ /* The Conversion page is wider than the rest of the site (up to 1600px): the graph,
+    the sunburst, the table and the code panes all show more at once. */
+ .conversion-detail-page {
+     max-width: 1600px;
+     margin-left: auto;
+     margin-right: auto;
+     padding-left: 16px;
+     padding-right: 16px;
+ }
+
+ /* Input / Output toggle: the site's .btn-primary padding overrode btn-sm, so the
+    selected side grew. Same box for both states. */
+ .graph-panel-toolbar .btn {
+     padding: 0.3rem 0.75rem;
+     font-size: 0.8rem;
+     font-weight: 600;
+     border-width: 1px;
+     line-height: 1.4;
+     transform: none;
+ }
+
  .graph-legend {
      border: 1px solid var(--border);
      border-radius: var(--radius-md);
@@ -728,6 +749,76 @@
      color: #5b7a9d;
  }
 
+ /* ── Christmas theme graph ── */
+ html.christmas-mode #graph-container,
+ html.christmas-mode #graph-container-output {
+     --pvt-bg: #0a1128;
+     --pvt-ui-bg: #121b3a;
+     --pvt-bg-color-0: #0a1128;
+     --pvt-bg-color-1: #0c142e;
+     --pvt-bg-color-2: #0e1631;
+     --pvt-bg-color-3: #101936;
+     --pvt-bg-color-4: #121b3a;
+     --pvt-bg-color-5: #172245;
+     --pvt-bg-color-6: #1d2a55;
+     --pvt-bg-color-7: #2c3d70;
+     --pvt-bg-color-8: #3c5090;
+     --pvt-border-color: #22305c;
+     --pvt-text-color-5: #c9d3f0;
+     --pvt-text-color-6: #f1f5ff;
+     --pvt-graph-grid-color: #131c3c;
+     --pvt-graph-background-image: repeating-linear-gradient(0deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, var(--pvt-graph-grid-color) 0px, var(--pvt-graph-grid-color) 1px, transparent 1px, transparent 20px);
+     --pvt-edge-label-color: #c9d3f0;
+     --pvt-edge-label-bg: #172245;
+     --pvt-menu-bg-color: #172245;
+     --pvt-tooltip-floating-bg-color: #2c3d70;
+     --pvt-sidebar-bg: #0a1128;
+ }
+
+ html.christmas-mode .pvt-modal__body,
+ html.christmas-mode .pvt-searchbox {
+     background: #0e1631;
+     color: #f1f5ff;
+ }
+
+ html.christmas-mode .pvt-searchbox .search-container {
+     background: #101936;
+     border-bottom: 1px solid #22305c;
+ }
+
+ html.christmas-mode #pvt-search-input {
+     background: transparent;
+     color: #f1f5ff;
+     border: none;
+     outline: none;
+ }
+
+ html.christmas-mode #pvt-search-input::placeholder {
+     color: #56648f;
+ }
+
+ html.christmas-mode .pvt-search-results {
+     background: #0e1631;
+     color: #f1f5ff;
+ }
+
+ html.christmas-mode .pvt-search-hints {
+     background: #0a1128;
+     border-top: 1px solid #22305c;
+     color: #56648f;
+ }
+
+ html.christmas-mode .pvt-search-icon {
+     background: #121b3a;
+     border: 1px solid #22305c;
+     color: #a9b6dc;
+ }
+
+ html.christmas-mode .pvt-search-summary {
+     background: #0e1631;
+     color: #56648f;
+ }
+
  /* Large-file notice (shown instead of syntax highlighting) */
  .hljs-size-notice {
      padding: 6px 14px;
@@ -766,14 +857,17 @@
 }
 
 html.dark-mode .btn-action,
-html.dusk-mode .btn-action {
+html.dusk-mode .btn-action,
+html.christmas-mode .btn-action {
     color: #2dd4bf;
     border-color: #2dd4bf;
 }
 html.dark-mode .btn-action:hover,
 html.dark-mode .btn-action:focus,
 html.dusk-mode .btn-action:hover,
-html.dusk-mode .btn-action:focus {
+html.dusk-mode .btn-action:focus,
+html.christmas-mode .btn-action:hover,
+html.christmas-mode .btn-action:focus {
     background: #2dd4bf;
     border-color: #2dd4bf;
     color: #0f172a;
@@ -863,7 +957,7 @@ html.dusk-mode .btn-action:focus {
 
 .csb-chart {
     width: 100%;
-    height: 520px;
+    height: max(620px, 75vh);
 }
 
 .csb-state {
@@ -1222,3 +1316,36 @@ html.dusk-mode .btn-action:focus {
     padding: .75rem 1rem;
     background: var(--surface);
 }
+
+/* ── Graph guide ("How to read this graph") ─────────────────────── */
+.graph-guide { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 22px; color: var(--text-2); }
+.graph-guide-toc { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.graph-guide-toc a {
+  font-size: .78rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+  color: var(--text-2); text-decoration: none; background: var(--surface-2);
+}
+.graph-guide-toc a:hover, .graph-guide-toc a:focus-visible { color: var(--accent); border-color: var(--accent); }
+.graph-guide-section { scroll-margin-top: 80px; }
+.graph-guide-section h6 {
+  font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text); margin-bottom: 8px;
+}
+.graph-guide-section p, .graph-guide-section li { font-size: .86rem; line-height: 1.6; max-width: 95ch; }
+.graph-guide-section ul { padding-left: 1.2rem; margin: 0 0 6px; }
+.graph-guide-section code { font-size: .8rem; }
+.graph-guide-section kbd { font-size: .72rem; padding: 1px 5px; }
+.graph-guide-table-wrap { overflow-x: auto; margin: 8px 0 12px; }
+.graph-guide-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.graph-guide-table th {
+  text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-3); padding: 6px 10px; border-bottom: 1px solid var(--border-2);
+}
+.graph-guide-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.graph-guide-table td:first-child { white-space: nowrap; font-weight: 600; color: var(--text); }
+.graph-guide-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; }
+.graph-guide-emblem {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  border: 4px double; background: var(--surface); font-size: .78rem;
+}
+.graph-guide-chips-title { font-size: .76rem; font-weight: 600; color: var(--text-3); align-self: center; margin-right: 4px; }
+.graph-guide-tlp { font: 700 .7rem/1 var(--font-mono); padding: 4px 7px; border-radius: 4px; border: 1px solid var(--border-2); }

@@ -15,14 +15,22 @@
             Browse all conversion endpoints and their accepted parameters.
             Use them directly via HTTP or explore the interactive documentation.
         </p>
-        <a href="/api" target="_blank" rel="noopener" class="api-swagger-link">
-            <i class="fas fa-book-open"></i>
-            Interactive API Docs
-            <span class="api-swagger-badge">Swagger</span>
-            <i class="fas fa-arrow-up-right-from-square api-swagger-ext"></i>
-        </a>
     </div>
 
+    <!-- Two views: the converter tester (first) and the full reference (Vitrine <vt-openapi>) -->
+    <div class="d-flex justify-content-center mb-4">
+        <cti-switch v-model="tab" label="API page view" :options="[
+            { value: 'try', label: 'Try it out', icon: 'fas fa-flask', hint: 'Send real conversions from the page' },
+            { value: 'reference', label: 'API reference', icon: 'fas fa-book-open', hint: 'Every endpoint, parameter and schema' },
+            { value: 'swagger', label: 'Swagger', icon: 'fas fa-code', hint: 'The interactive Swagger UI', href: '/api', external: true }
+        ]"></cti-switch>
+    </div>
+
+    <div v-show="tab === 'reference'" class="api-reference">
+        <vt-openapi variant="full" label="CTI Transmute API" src="/api/swagger.json" expand="false"></vt-openapi>
+    </div>
+
+    <div v-show="tab === 'try'">
     <!-- Loading -->
     <div v-if="!loaded" class="text-center py-5" style="color:var(--text-3);">
         <div class="spinner-border spinner-border-sm me-2" style="color:var(--accent);"></div>
@@ -160,12 +168,13 @@
                             <i class="fas" :class="copiedResp[path] ? 'fa-check' : 'fa-copy'"></i>
                         </button>
                     </div>
-                    <pre class="at-resp-pre">[[ testers[path].response.data ]]</pre>
+                    <json-viewer :json="testers[path].response.data" :filename="'response'"></json-viewer>
                 </div>
 
             </div>
 
         </div>
+    </div>
     </div>
 
 </div>
@@ -174,16 +183,26 @@
 {% block script %}
 <script type="module" nonce="{{ csp_nonce }}">
     import ParamSurface, { scalarType } from '{{ asset_url('js/conversions/paramSurface.js') }}';
+    import { useVitrine, isVitrineTag } from '/static/js/vitrine.js';
+    import JsonViewer from '/static/js/graph/jsonViewer.js';
+    import CtiSwitch from '/static/js/ctiSwitch.js';
+    import { readParam, writeParams } from '/static/js/urlState.js';
+    // <vt-openapi> draws descriptions with <vt-markdown> and examples with <vt-http>.
+    useVitrine('openapi', 'markdown', 'http');
 
-    const { createApp, ref, reactive, nextTick } = Vue
+    const { createApp, ref, reactive, nextTick, watch } = Vue
 
     // ParamSurface mount proxies, keyed by endpoint path. Deliberately a plain
     // object (not reactive): these are live Vue app handles, not view state.
     const paramVms = {}
 
-    createApp({
+    const app = createApp({
         delimiters: ['[[', ']]'],
+        components: { 'json-viewer': JsonViewer, 'cti-switch': CtiSwitch },
         setup() {
+            // The open view lives in the URL (?tab=reference), checked against the views.
+            const tab        = ref(readParam('tab', ['try', 'reference']) ?? 'try')
+            watch(tab, (t) => writeParams({ tab: t }, { tab: 'try' }))
             const endpoints  = ref({})
             const loaded     = ref(false)
             const copied     = ref(null)
@@ -392,7 +411,7 @@
 
             fetchEndpoints()
             return {
-                endpoints, loaded, copied, UI_MAP,
+                tab, endpoints, loaded, copied, UI_MAP,
                 copyPath,
                 testers, copiedCurl, copiedResp,
                 paramList, mountId, toggleTester, onBodyInput,
@@ -401,6 +420,8 @@
                 copyCurl, copyResp, sendRequest,
             }
         }
-    }).mount('#main-containers')
+    })
+    app.config.compilerOptions.isCustomElement = isVitrineTag
+    app.mount('#main-containers')
 </script>
 {% endblock %}

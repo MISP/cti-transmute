@@ -680,3 +680,7 @@
 .filter-toggles-group {
     min-width: 0;
 }
+
+/* Toolbar above the list: per page, top pagination and the Cards / Table
+   switch on one line (the pagination's own vertical margins removed). */
+.history-top-pager, .history-top-pager > * { margin-top: 0 !important; margin-bottom: 0 !important; }

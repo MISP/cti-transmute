@@ -51,13 +51,34 @@
         <div class="profile-section-header"><i class="fas fa-key me-2"></i>API Key</div>
         <div style="padding:1rem;">
           <div class="profile-apikey-row">
-            {# v-pre on the <code> and not on the row: the copy button beside
-               it is Vue's and has to stay compiled. #}
-            <code v-pre class="profile-apikey" id="apiKey">{{ user.api_key }}</code>
+            {# v-pre on the <code> and not on the row: the buttons beside it are
+               Vue's and have to stay compiled. The key is blurred until shown. #}
+            <code v-pre class="profile-apikey is-blurred" id="apiKey"
+                  aria-label="API key (hidden)">{{ user.api_key }}</code>
+            <button class="profile-copy-btn" type="button" @click="toggleApiKey()"
+                    :title="apiKeyShown ? 'Hide API key' : 'Show API key'"
+                    :aria-pressed="apiKeyShown ? 'true' : 'false'">
+              <i :class="apiKeyShown ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+              <span>[[ apiKeyShown ? 'Hide' : 'Show' ]]</span>
+            </button>
             <button class="profile-copy-btn" id="copyBtn" @click="copyApiKey()" title="Copy API Key">
               <i class="fas fa-copy"></i>
               <span id="copyLabel">Copy</span>
             </button>
+            <button class="profile-copy-btn profile-regen-btn" type="button"
+                    @click="confirmRegenerate = true" title="Generate a new API key">
+              <i class="fas fa-rotate"></i>
+              <span>Regenerate</span>
+            </button>
+          </div>
+          <div v-if="confirmRegenerate" class="profile-regen-confirm" role="alert">
+            <p class="mb-2">Generate a new key? The current one stops working at once: every script or tool using it will need the new one.</p>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm btn-danger" :disabled="regenerating" @click="regenerateApiKey()">
+                <i class="fas fa-rotate me-1"></i>[[ regenerating ? 'Generating…' : 'Generate a new key' ]]
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" @click="confirmRegenerate = false">Cancel</button>
+            </div>
           </div>
         </div>
       </div>
@@ -322,6 +343,40 @@
     components: { 'app-pagination': AppPagination },
     delimiters: ['[[', ']]'],
     setup() {
+      // The key is blurred until the user asks to see it.
+      const apiKeyShown = ref(false)
+      function toggleApiKey() {
+        apiKeyShown.value = !apiKeyShown.value
+        const el = document.getElementById('apiKey')
+        el.classList.toggle('is-blurred', !apiKeyShown.value)
+        el.setAttribute('aria-label', apiKeyShown.value ? 'API key' : 'API key (hidden)')
+      }
+
+      const confirmRegenerate = ref(false)
+      const regenerating = ref(false)
+      async function regenerateApiKey() {
+        regenerating.value = true
+        try {
+          const res = await fetch('/account/api_key/regenerate', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' }
+          })
+          const data = await res.json().catch(() => ({}))
+          if (res.ok && data.api_key) {
+            // textContent: the key is shown as text, never parsed.
+            document.getElementById('apiKey').textContent = data.api_key
+            confirmRegenerate.value = false
+            create_message('New API key generated. The previous one no longer works.', 'success-subtle')
+          } else {
+            create_message('The API key could not be regenerated.', 'danger-subtle')
+          }
+        } catch {
+          create_message('The API key could not be regenerated.', 'danger-subtle')
+        } finally {
+          regenerating.value = false
+        }
+      }
+
       function copyApiKey() {
         const apiKey = document.getElementById('apiKey').innerText
         navigator.clipboard.writeText(apiKey).then(() => {
@@ -500,7 +555,7 @@
       })
 
       return {
-        copyApiKey, message_list,
+        copyApiKey, message_list, apiKeyShown, toggleApiKey, confirmRegenerate, regenerating, regenerateApiKey,
         my_comments, comments_loading, comments_page, comments_total_page,
         comments_search, debounceComments, loadMyComments, deleteMyComment,
         following_list, following_loading, following_page, following_total_page,

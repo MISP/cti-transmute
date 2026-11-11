@@ -1016,9 +1016,17 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                     <div>Component</div><div>File</div><div>Description</div>
                 </div>
                 <div class="dc-comp-row"><span class="dc-comp-name">ConversionSunburst</span><span class="dc-comp-file">js/graph/conversionSunburst.js</span><span class="dc-comp-desc">ECharts sunburst + treemap of CTI data by category/type. Click a slice → JsonViewer drill-down.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">ConversionTable</span><span class="dc-comp-file">js/graph/conversionTable.js</span><span class="dc-comp-desc">Flat tabular view with search, sortable columns, pagination (50 rows/page). Click a row → JsonViewer.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">JsonViewer</span><span class="dc-comp-file">js/graph/jsonViewer.js</span><span class="dc-comp-desc">Reusable JSON display: hljs syntax highlighting, collapsible tree, format, download, copy.</span></div>
-                <div class="dc-comp-row"><span class="dc-comp-name">ConversionGraph</span><span class="dc-comp-file">js/graph/conversionGraph.js</span><span class="dc-comp-desc">Force-directed graph via Pivotick. Input/Output toggle. Config modal via graphConfigModal.js.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">ConversionTable</span><span class="dc-comp-file">js/graph/conversionTable.js</span><span class="dc-comp-desc">Flat tabular view with search, sortable columns, pagination (100 rows/page). Click a row → JsonViewer.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">JsonViewer</span><span class="dc-comp-file">js/graph/jsonViewer.js</span><span class="dc-comp-desc">Reusable JSON display: a Vue wrapper around Vitrine's &lt;vt-json&gt; (tree and raw views, search, JSONPath, copy, download).</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">ConversionGraph</span><span class="dc-comp-file">js/graph/conversionGraph.js</span><span class="dc-comp-desc">Wires the Graph tab: Input/Output toggle, view picker, config modal (graphConfigModal.js). Mounts each side through graphView.js.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">graphView</span><span class="dc-comp-file">js/graph/graphView.js</span><span class="dc-comp-desc"><code>mountGraph(container, json, 'misp' | 'stix', { view, onViewChange })</code>: model → view → Pivotick, with legend, filters, Simplify, a 250-element budget and local pivots.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">model/</span><span class="dc-comp-file">js/graph/model/</span><span class="dc-comp-desc"><code>mispToGraph</code> / <code>stixToGraph</code> turn a document into one common model; <code>vocabulary.js</code> gives every MISP and STIX type a family (colour), an element and a Font Awesome icon.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">views</span><span class="dc-comp-file">js/graph/views.js</span><span class="dc-comp-desc">Structure, Relations, Infrastructure, Threat &amp; ATT&amp;CK, Context, Detection, Explore: which nodes and links, which layout, which Simplify rules.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">render/</span><span class="dc-comp-file">js/graph/render/</span><span class="dc-comp-desc"><code>styles.js</code>: icon nodes, edge kinds, labels, group look. <code>details.js</code>: the sectioned sidebar panel and tooltips (text only, never HTML from data).</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">pivots</span><span class="dc-comp-file">js/graph/pivots.js</span><span class="dc-comp-desc">Local pivots (in this document, same value elsewhere, tags &amp; galaxies), computed from the loaded document.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">Vitrine</span><span class="dc-comp-file">js/vitrine.js</span><span class="dc-comp-desc"><code>useVitrine('json', 'table'…)</code> loads Vitrine web components and keeps them in the site theme. Only the components the site uses are shipped in <code>static/vitrine/</code> (listed in its <code>VERSION.json</code>); to add one, add it to <code>COMPONENTS</code> in <code>bin/vendor_vitrine.py</code> and run the script against a Vitrine build. Used for JSON (detail page, drill-downs, API tester), the history table and filters, the API reference on /list, the evaluation charts and the home activity timeline. In a Vue app set <code>app.config.compilerOptions.isCustomElement = isVitrineTag</code>.</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">VitrineTable</span><span class="dc-comp-file">js/vitrineTable.js</span><span class="dc-comp-desc">Vue wrappers: <code>VitrineTable</code> (&lt;vt-table&gt;), <code>HistoryTable</code> (conversions as a table) and <code>ActivityTimeline</code> (&lt;vt-timeline&gt;).</span></div>
+                <div class="dc-comp-row"><span class="dc-comp-name">Graph lab</span><span class="dc-comp-file">tests/web/graph_lab/</span><span class="dc-comp-desc">The graph without Flask: <code>python -m http.server 8765</code> at the repo root, then <code>/tests/web/graph_lab/</code>. Large fixtures from <code>bin/gen_graph_fixtures.py</code>.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">EvaluationPanel</span><span class="dc-comp-file">js/evaluationPanel.js</span><span class="dc-comp-desc">Like / dislike / reaction-tag voting panel per conversion.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">EvaluationCharts</span><span class="dc-comp-file">js/evaluate/evaluationCharts.js</span><span class="dc-comp-desc">Aggregated vote charts for a single conversion's evaluation tab.</span></div>
                 <div class="dc-comp-row"><span class="dc-comp-name">PushConversionToMISP</span><span class="dc-comp-file">js/misp/pushConversionToMISP.js</span><span class="dc-comp-desc">Modal: configure MISP URL + key and push the conversion with evaluation tags.</span></div>
@@ -1038,7 +1046,7 @@ if (data.success) create_message(data.message, data.toast_class)</code></pre>
                     <div class="dc-comp-row"><span class="dc-comp-name">Input</span><span class="dc-comp-file">#input-pane-{id}</span><span class="dc-comp-desc">hljs-highlighted JSON, Tree toggle, Format, Download, Copy</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">Output</span><span class="dc-comp-file">#output-pane-{id}</span><span class="dc-comp-desc">Same as Input for the conversion result</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">History</span><span class="dc-comp-file">#compare-pane-{id}</span><span class="dc-comp-desc">Version table, click row → /conversions/difference/{id}</span></div>
-                    <div class="dc-comp-row"><span class="dc-comp-name">Graph</span><span class="dc-comp-file">#graph-pane-{id}</span><span class="dc-comp-desc">Pivotick force-directed graph, loaded on tab click</span></div>
+                    <div class="dc-comp-row"><span class="dc-comp-name">Graph</span><span class="dc-comp-file">#graph-pane-{id}</span><span class="dc-comp-desc">Pivotick graph in seven views (picker in the toolbar and in Pivotick's rail), loaded on tab click</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">Sunburst</span><span class="dc-comp-file">#sunburst-pane-{id}</span><span class="dc-comp-desc">&lt;conversion-sunburst&gt; — ECharts, lazy CDN load</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">Table</span><span class="dc-comp-file">#table-pane-{id}</span><span class="dc-comp-desc">&lt;conversion-table&gt; — pure JS parse + render</span></div>
                     <div class="dc-comp-row"><span class="dc-comp-name">Comments</span><span class="dc-comp-file">#comments-pane-{id}</span><span class="dc-comp-desc">Discussion thread, loaded on first tab click</span></div>
@@ -1193,7 +1201,7 @@ export default MyViz</code></pre>
         <section class="dc-section" id="theming">
             <h2 class="dc-section-title"><i class="fas fa-palette"></i> CSS &amp; Theming</h2>
             <p class="dc-lead">
-                The app supports 4 themes — <code>light</code>, <code>dark</code>, <code>dusk</code>, <code>ocean</code>
+                The app supports 5 themes — <code>light</code>, <code>dark</code>, <code>dusk</code>, <code>ocean</code>, <code>christmas</code>
                 — applied as a class on <code>&lt;html&gt;</code> (e.g. <code>html.dark-mode</code>).
                 All color values are CSS custom properties defined in <code>core.css</code>.
             </p>
@@ -1228,7 +1236,7 @@ export default MyViz</code></pre>
                         <button class="dc-code-copy"><i class="fas fa-copy"></i> Copy</button>
                     </div>
                     <pre><code class="language-javascript">document.documentElement.addEventListener('themechange', (e) =&gt; {
-    const theme = e.detail?.theme  // 'light' | 'dark' | 'dusk' | 'ocean'
+    const theme = e.detail?.theme  // 'light' | 'dark' | 'dusk' | 'ocean' | 'christmas'
     const isDark = !['light', 'ocean'].includes(theme)
     // re-render charts, swap hljs stylesheet, etc.
 })</code></pre>
@@ -1258,7 +1266,7 @@ export default MyViz</code></pre>
     // ── Apply hljs theme based on page theme ────────────────────
     const _LIGHT = ['light', 'ocean']
     function applyDocsHljs(theme) {
-        const t = theme || ['light','dark','dusk','ocean'].find(
+        const t = theme || ['light','dark','dusk','ocean','christmas'].find(
             x => document.documentElement.classList.contains(x + '-mode')
         ) || 'light'
         const isDark = !_LIGHT.includes(t)

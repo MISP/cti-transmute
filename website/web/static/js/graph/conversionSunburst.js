@@ -285,7 +285,7 @@ const ConversionSunburst = {
 
         function isDark() {
             const cls = document.documentElement.className
-            return cls.includes('dark') || cls.includes('dusk')
+            return cls.includes('dark') || cls.includes('dusk') || cls.includes('christmas')
         }
 
         function buildSunburstOption(tree, dark) {

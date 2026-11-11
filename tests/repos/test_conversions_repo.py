@@ -433,3 +433,29 @@ def test_list_deleted_returns_soft_deleted_rows_only(app_db):
     names = {c.name for c in conv_repo.list_deleted(1).items}
     assert "trashed" in names         # the soft-deleted row belongs in Trash
     assert "still-here" not in names  # the live row must never appear there
+
+
+def test_list_for_user_page_size_is_clamped(app_db):
+    """per_page follows the caller (the history table asks for 50) within 1..100."""
+    from website.repos import conversions as conv_repo
+    admin = _make_user(admin=True, email="admin-pp@test.test")
+    assert conv_repo.list_for_user(admin, 1, per_page=50).per_page == 50
+    assert conv_repo.list_for_user(admin, 1, per_page=5000).per_page == 100
+    assert conv_repo.list_for_user(admin, 1, per_page=0).per_page == 10   # 0: the default
+    assert conv_repo.list_for_user(admin, 1).per_page == 10
+
+
+def test_list_for_user_sorts_by_a_whitelisted_column(app_db):
+    """sort_by picks the column (name, author…); unknown values sort by date."""
+    from website.repos import conversions as conv_repo
+    admin = _make_user(admin=True, email="admin-sort@test.test")
+    for n in ("bravo", "alpha", "charlie"):
+        _make_conv(user_id=admin.id, public=True, name=n)
+
+    def names(**kw):
+        return [c.name for c in conv_repo.list_for_user(admin, 1, **kw).items]
+
+    assert names(sort_by="name", sort_order="asc") == ["alpha", "bravo", "charlie"]
+    assert names(sort_by="name", sort_order="desc") == ["charlie", "bravo", "alpha"]
+    assert names(sort_by="author", sort_order="asc")          # joins users without failing
+    assert names(sort_by="no-such-column; drop table") == names(sort_by="created")

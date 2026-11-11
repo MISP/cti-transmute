@@ -1,17 +1,18 @@
 {% extends "base.html" %}
+{# The Conversion page uses the full width of the screen. #}
+{% block main_class %}container-fluid{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/diagnostics.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='pivotick/pivotick.css') }}">
-<link id="hljs-theme" rel="stylesheet" href="">
 <script src="/static/pivotick/pivotick.iife.js"></script>
 <script nonce="{{ csp_nonce }}">window.dispatchEvent(new Event('pivotick-ready'))</script>
 
 {% endblock %}
 
 {% block content %}
-<div class="container my-5" v-cloak>
+<div class="container-fluid conversion-detail-page my-5" v-cloak>
     <template v-if="is_loading">
         <div class="d-flex justify-content-center align-items-center" style="min-height:400px;">
             <div class="text-center">
@@ -322,30 +323,10 @@
                                 <template v-else>MISP</template>
                                 · JSON
                             </span>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-input">
-                                    <i class="fas fa-sitemap me-1"></i> Tree
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary" @click="formatJson('input', $event)">
-                                    <i class="fas fa-align-left me-1"></i> Format
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary"
-                                    @click="downloadText(conversion.name, getRawInput(), $event)">
-                                    <i class="fas fa-download me-1"></i> Download
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary"
-                                    @click="copyText(getRawInput(), $event)">
-                                    <i class="fas fa-copy me-1"></i> Copy
-                                </button>
-                            </div>
+                            <span class="text-muted" style="font-size:.75rem;">Tree, raw, search, copy and download are in the viewer</span>
                         </div>
-                        <div class="code-loading-overlay" id="spinner-input">
-                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                            Rendering…
-                        </div>
-                        <pre class="code-panel-pre d-none"
-                            id="pre-input"><code class="language-json" id="input-code"></code></pre>
-                        <div class="jt-root d-none" id="tree-input"></div>
+                        <!-- <vt-json> (Vitrine), filled once the conversion is loaded -->
+                        <div class="vt-json-pane" id="json-input"></div>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ formatDateTime(conversion.updated_at) ]]</small>
                         </div>
@@ -360,30 +341,10 @@
                                 <template v-else>STIX</template>
                                 · JSON
                             </span>
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-sm btn-outline-secondary" id="tree-btn-output">
-                                    <i class="fas fa-sitemap me-1"></i> Tree
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary" @click="formatJson('output', $event)">
-                                    <i class="fas fa-align-left me-1"></i> Format
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary"
-                                    @click="downloadText(conversion.name, getRawOutput(), $event)">
-                                    <i class="fas fa-download me-1"></i> Download
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary"
-                                    @click="copyText(getRawOutput(), $event)">
-                                    <i class="fas fa-copy me-1"></i> Copy
-                                </button>
-                            </div>
+                            <span class="text-muted" style="font-size:.75rem;">Tree, raw, search, copy and download are in the viewer</span>
                         </div>
-                        <div class="code-loading-overlay" id="spinner-output">
-                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                            Rendering…
-                        </div>
-                        <pre class="code-panel-pre d-none"
-                            id="pre-output"><code class="language-json" id="output-code"></code></pre>
-                        <div class="jt-root d-none" id="tree-output"></div>
+                        <!-- <vt-json> (Vitrine), filled once the conversion is loaded -->
+                        <div class="vt-json-pane" id="json-output"></div>
                         <div class="code-panel-footer">
                             <small style="color:var(--text-3);">Updated: [[ formatDateTime(conversion.updated_at) ]]</small>
                         </div>
@@ -433,7 +394,7 @@
                                     MISP Input &nbsp;→&nbsp; STIX Output
                                 </template>
                             </span>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
                                 <button class="btn btn-sm btn-outline-secondary"
                                     id="graph-view-input">
                                     <i class="fas fa-file-import me-1"></i>
@@ -453,13 +414,13 @@
                             </div>
                         </div>
                         <!-- graph-container starts with a spinner, replaced once Pivotick renders -->
-                        <div id="graph-container" style="width:100%;height:560px;">
+                        <div id="graph-container" style="width:100%;height:max(640px,85vh);">
                             <div class="graph-spinner-overlay">
                                 <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
                                 <span>Click the Graph tab to load…</span>
                             </div>
                         </div>
-                        <div id="graph-container-output" style="width:100%;height:560px;display:none;">
+                        <div id="graph-container-output" style="width:100%;height:max(640px,85vh);display:none;">
                             <div class="graph-spinner-overlay">
                                 <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
                                 <span>Loading graph…</span>
@@ -470,43 +431,148 @@
                     <div class="graph-legend mt-3">
                         <details>
                             <summary><i class="fas fa-circle-info me-1"></i> How to read this graph</summary>
-                            <div class="graph-legend-body">
-                                <div class="graph-legend-section">
-                                    <h6>Navigation</h6>
-                                    <p>Drag nodes to reposition. Scroll to zoom. Drag background to pan. Click a node to open its details in the sidebar. Right-click for more actions.</p>
-                                </div>
-                                <div class="graph-legend-section">
-                                    <h6>MISP graph</h6>
-                                    <p>The <strong>Event</strong> is the root. It connects to <strong>Objects</strong> (groups like <em>file</em>, <em>domain-ip</em>) and standalone <strong>Attributes</strong>. When 3 or more attributes share the same type, they are collapsed under a <strong>type group node</strong> (hexagon) for readability. Object references (<em>contains</em>, <em>related-to</em>) are shown as labeled arrows.</p>
-                                    <div class="graph-legend-chips">
-                                        <span class="chip" style="--c:#2563eb">■ Event</span>
-                                        <span class="chip" style="--c:#7c3aed">⬡ Object</span>
-                                        <span class="chip" style="--c:#0ea5e9">⬡ Network group</span>
-                                        <span class="chip" style="--c:#0ea5e9">● Network attr (IP, domain, URL)</span>
-                                        <span class="chip" style="--c:#f97316">⬡ Payload group</span>
-                                        <span class="chip" style="--c:#f97316">● Payload attr (hash, file)</span>
-                                        <span class="chip" style="--c:#10b981">● External analysis</span>
-                                        <span class="chip" style="--c:#64748b">● Other</span>
-                                    </div>
-                                </div>
-                                <div class="graph-legend-section">
-                                    <h6>STIX graph</h6>
-                                    <p>The <strong>Report</strong> is the root. Relationships connect indicators, malware, threat-actors and attack-patterns. <code>observed-data</code> wrappers are hidden.</p>
-                                    <div class="graph-legend-chips">
-                                        <span class="chip" style="--c:#1d4ed8">■ Report</span>
-                                        <span class="chip" style="--c:#2563eb">■ Grouping</span>
-                                        <span class="chip" style="--c:#7c3aed">⬡ Indicator</span>
-                                        <span class="chip" style="--c:#ef4444">⬡ Malware</span>
-                                        <span class="chip" style="--c:#f97316">■ Threat Actor</span>
-                                        <span class="chip" style="--c:#eab308">▲ Attack Pattern</span>
-                                        <span class="chip" style="--c:#0ea5e9">● ipv4 / domain / file</span>
-                                        <span class="chip" style="--c:#dc2626">■ TLP marking</span>
-                                    </div>
-                                </div>
-                                <div class="graph-legend-section">
-                                    <h6>Input vs Output</h6>
-                                    <p>Switch between <strong>Input</strong> and <strong>Output</strong> to compare how the conversion reorganized the data.</p>
-                                </div>
+                            <div class="graph-guide" id="graph-guide">
+                                <!-- Full guide to the Graph tab. The tables marked data-guide are
+                                     filled from the graph's own code (static/js/graph/guide.js), so
+                                     they always match what the graph draws. -->
+                                <nav class="graph-guide-toc" aria-label="Guide contents">
+                                    <a href="#gg-start">Getting around</a>
+                                    <a href="#gg-nodes">Nodes</a>
+                                    <a href="#gg-links">Links</a>
+                                    <a href="#gg-misp">From MISP</a>
+                                    <a href="#gg-stix">From STIX</a>
+                                    <a href="#gg-groups">Groups</a>
+                                    <a href="#gg-views">Views</a>
+                                    <a href="#gg-pivot">Pivot</a>
+                                    <a href="#gg-details">Details &amp; hover</a>
+                                    <a href="#gg-filter">Filter, search, table</a>
+                                    <a href="#gg-share">Share a view</a>
+                                </nav>
+
+                                <section id="gg-start" class="graph-guide-section">
+                                    <h6>Getting around</h6>
+                                    <ul>
+                                        <li><strong>Move</strong>: scroll to zoom, drag the background to pan, drag a node to move it. The buttons on the right fit the graph, zoom, and go fullscreen.</li>
+                                        <li><strong>Hover</strong> a node, a group or a link for a short card: its value, type, family, and a few facts with icons.</li>
+                                        <li><strong>Click</strong> one to select it and read everything in the side panel. The panel starts closed: when a selection is waiting, its button (bottom left) turns blue with a pulsing dot and a <em>Details</em> pill.</li>
+                                        <li><strong>Right-click</strong> a node: copy its value, or open its raw JSON over the graph (also in fullscreen).</li>
+                                        <li><strong>Input / Output</strong> (top right) switches between the document you converted and what the conversion produced.</li>
+                                        <li><strong>Left rail</strong>: Select, View (layout), Physics, Simplify (grouping rules), Pivot (<kbd>P</kbd>) and Views (<kbd>Shift</kbd>+<kbd>V</kbd>).</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-nodes" class="graph-guide-section">
+                                    <h6>Nodes</h6>
+                                    <p>Every node is an <strong>icon</strong> on a light disc ringed in the colour of its <strong>family</strong>. The same thing looks the same whichever side it comes from: a MISP <code>ip-dst</code> and a STIX <code>ipv4-addr</code> share colour and icon.</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="families">
+                                        <thead><tr><th>Family</th><th>Colour</th><th>Group emblem</th><th>For example</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                    <p><strong>Size</strong> says what kind of element it is: largest for the event, report or grouping, then entities (actors, malware…), objects, indicators, and smallest for single observables.</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="elements">
+                                        <thead><tr><th>Element</th><th>Size</th><th>What it is</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                    <p><strong>Label</strong>: a short value under the node, shown once the zoom makes it readable. Hashes keep both ends (<code>a3f9…c21e</code>), URLs lose their scheme, long text is cut in the middle.</p>
+                                    <p><strong>Badges</strong> on the rim: a coloured dot for a restrictive <strong>TLP</strong> (green, amber, red; clear is not marked), and a number for how many times it was <strong>sighted</strong>.</p>
+                                    <div class="graph-legend-chips" data-guide="tlp"></div>
+                                </section>
+
+                                <section id="gg-links" class="graph-guide-section">
+                                    <h6>Links</h6>
+                                    <p>A link's <strong>kind</strong> sets its line; a relationship's <strong>type</strong> sets its colour and its label (<em>uses</em>, <em>drops</em>, <em>resolves-to</em>…), shown as you zoom in. Container → content links stay silent, so the canvas is not covered with words. Each kind can be switched off in the legend (bottom right) or in Filter Graph.</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="links">
+                                        <thead><tr><th>Line</th><th>Kind</th><th>Shown at first</th><th>Where it comes from</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                    <div class="graph-legend-chips" data-guide="relations"></div>
+                                </section>
+
+                                <section id="gg-misp" class="graph-guide-section">
+                                    <h6>From MISP</h6>
+                                    <ul>
+                                        <li><strong>Event</strong> → the central container node (date, organisation, threat level, analysis, TLP, tags, galaxies).</li>
+                                        <li><strong>Object</strong> (file, domain-ip, email…) → one node named by its main attribute (a file by its filename), linked to the event and to each of its attributes by <em>contains</em>, labelled with the attribute's relation (<em>filename</em>, <em>md5</em>…).</li>
+                                        <li><strong>Attribute</strong> → an observable node; standalone ones hang off the event.</li>
+                                        <li><strong>Object reference</strong> → a <em>reference</em> link with its relationship type.</li>
+                                        <li><strong>Galaxy cluster</strong> (ATT&amp;CK technique, threat actor…) → a context node, shared by everything that carries it.</li>
+                                        <li><strong>Tags</strong> → chips on the node (their own colours); TLP becomes the badge. In the <em>Context</em> view tags become nodes.</li>
+                                        <li><strong>Sightings</strong> → counted on the attribute (seen, false positive, expired).</li>
+                                        <li><strong>Several events</strong> → the same value in two events is joined by a <em>same value</em> link.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-stix" class="graph-guide-section">
+                                    <h6>From STIX</h6>
+                                    <ul>
+                                        <li><strong>Report / grouping</strong> → the container; its <code>object_refs</code> become <em>contains</em> links. Its author (<code>created_by_ref</code>) hangs off it by <em>created by</em>.</li>
+                                        <li><strong>SDOs</strong> (malware, threat-actor, attack-pattern, vulnerability, identity…) → entity nodes.</li>
+                                        <li><strong>Indicator</strong> → a node in the family of the observable its pattern names; its pattern is shown formatted in the details.</li>
+                                        <li><strong>SCOs</strong> (ipv4-addr, domain-name, file, url…) → observable nodes.</li>
+                                        <li><strong>Relationship</strong> → a <em>relationship</em> link with its type; <strong>sighting</strong> → a dashed <em>sighting</em> link and a count.</li>
+                                        <li><strong>observed-data</strong> is a wrapper: it is not drawn, its observables take its place and keep its first/last observed dates.</li>
+                                        <li><strong>marking-definition</strong> is not drawn either: it becomes each object's TLP badge.</li>
+                                        <li>Other references (<code>resolves_to_refs</code>, <code>src_ref</code>…) are <em>embedded reference</em> links, hidden at first. <code>misp:type</code> labels from a MISP export are kept as the element's MISP origin.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-groups" class="graph-guide-section">
+                                    <h6>Groups</h6>
+                                    <p>Nodes playing the same role are <strong>folded into a group</strong>: their icon on a double ring, with a count. A group is a view, not data: nothing is removed, search and the table still list every node.</p>
+                                    <ul>
+                                        <li><strong>By family</strong> (first in Structure): one group per family and element, <em>445 × Network</em>. Opening it shows its types and chains.</li>
+                                        <li><strong>Same neighbours</strong>: nodes of one type linked to exactly the same nodes (an event's 135 <code>ip-dst</code>).</li>
+                                        <li><strong>By type</strong>: indicators and observables of one type, whatever else they link to.</li>
+                                        <li>Off at first, in the Simplify mode: <em>chains</em>, <em>few links</em>, <em>core</em>, <em>communities</em>, <em>by TLP</em>, <em>by MISP category</em>.</li>
+                                        <li><strong>A canvas that stays readable</strong>: past about 250 drawn elements, or 40 groups, the graph folds one step further on its own (by type, then by family).</li>
+                                        <li><strong>Open</strong> a group with a double-click, Enter, or from its panel; its members come back in a coloured wash. Select a group to list its members; hover it to see the first ones.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-views" class="graph-guide-section">
+                                    <h6>Views</h6>
+                                    <p>A view shows the same document from another angle: which nodes and links, which layout, which grouping. Pick one from <strong>Views</strong> on the left rail (<kbd>Shift</kbd>+<kbd>V</kbd>).</p>
+                                    <div class="graph-guide-table-wrap"><table class="graph-guide-table" data-guide="views">
+                                        <thead><tr><th>View</th><th>What it shows</th></tr></thead><tbody></tbody>
+                                    </table></div>
+                                </section>
+
+                                <section id="gg-pivot" class="graph-guide-section">
+                                    <h6>Pivot</h6>
+                                    <p>For large documents: open <strong>Explore</strong> (only containers and threat entities), select a node, open <strong>Pivot</strong> (<kbd>P</kbd>) and pull in what you need. Pivots run on the loaded document only: nothing is sent anywhere.</p>
+                                    <ul>
+                                        <li><strong>In this document</strong>: what the node links to in the full document.</li>
+                                        <li><strong>Same value elsewhere</strong>: the value in another event of the input, or a duplicate observable.</li>
+                                        <li><strong>Tags &amp; galaxies</strong>: the context the node carries.</li>
+                                    </ul>
+                                    <p>Each pivot says how many results it has and lets you narrow by type when there are too many (over 2,000). Results land grouped by type; undo takes them back.</p>
+                                </section>
+
+                                <section id="gg-details" class="graph-guide-section">
+                                    <h6>Details &amp; hover</h6>
+                                    <p>The side panel is split into sections for each kind of element, with empty fields left out:</p>
+                                    <ul>
+                                        <li><strong>Event</strong>: summary, content counts, tags and galaxies, event reports (rendered Markdown).</li>
+                                        <li><strong>Object</strong>: its attributes as <em>relation → value</em>, then the object's own fields.</li>
+                                        <li><strong>Attribute</strong>: classification (type, category, IDS flag), first/last seen, tags, sightings, comment, parent object; rule values (YARA, Sigma, Snort) as code.</li>
+                                        <li><strong>Indicator</strong>: the pattern formatted, the observables it compares, validity, kill chain.</li>
+                                        <li><strong>SDO / SCO</strong>: description (Markdown), type-specific properties, hashes, kill chain, external references, provenance (author, dates, MISP origin).</li>
+                                        <li><strong>Link</strong>: source → relation → target, description, dates, confidence.</li>
+                                    </ul>
+                                    <p>Values can be copied in one click; links open in a new tab. The raw document is the last section, folded, as a searchable JSON tree.</p>
+                                </section>
+
+                                <section id="gg-filter" class="graph-guide-section">
+                                    <h6>Filter, search, table</h6>
+                                    <ul>
+                                        <li><strong>Filter Graph</strong> (top): family, element, type, MISP category, TLP, tag, IDS flag, sighted, and a value pattern.</li>
+                                        <li><strong>Legend</strong> (bottom right): click a family or a link kind to hide or show it.</li>
+                                        <li><strong>Search</strong> (top) looks into groups too: a match inside one says <em>in 12 × ip</em>, and opens it when picked.</li>
+                                        <li><strong>Table</strong> (bottom dock): every node of the document, sortable and filterable, with its group.</li>
+                                    </ul>
+                                </section>
+
+                                <section id="gg-share" class="graph-guide-section">
+                                    <h6>Share a view</h6>
+                                    <p>The page's address follows what you look at: the open tab, the graph view and the side (for example <code>?tab=graph&amp;view=threat&amp;side=output</code>). Copy it to share or bookmark it. A link only chooses what to show: a private Conversion stays visible to its owner and the admins only.</p>
+                                </section>
                             </div>
                         </details>
                     </div>
@@ -933,12 +999,13 @@
     import ConversionSunburst from '/static/js/graph/conversionSunburst.js';
     import ConversionTable from '/static/js/graph/conversionTable.js';
     import DiagnosticsPanel from '/static/js/diagnosticsPanel.js';
+    import { useVitrine, isVitrineTag } from '/static/js/vitrine.js';
+    import { readParam, writeParams } from '/static/js/urlState.js';
+    import { fillGraphGuide } from '/static/js/graph/guide.js';
     // Delegated because Vue's in-DOM mount recreates these nodes, dropping any
     // listener attached to them directly (and CSP forbids inline on*= handlers).
     const GRAPH_TOOLBAR_ACTIONS = {
         'graph-tab-link': () => window.onGraphTabClick?.(),
-        'tree-btn-input': () => toggleTree('input'),
-        'tree-btn-output': () => toggleTree('output'),
         'graph-view-input': () => showGraphSide('input'),
         'graph-view-output': () => showGraphSide('output'),
         'graph-config-btn': () => openGraphConfigModal()
@@ -953,179 +1020,53 @@
     const CURRENT_USER_ID = "{{ current_user.id if current_user.is_authenticated else 'null' }}";
     const IS_ADMIN = "{{ 'true' if current_user.is_authenticated and current_user.is_admin() else 'false' }}";
 
-    const _LIGHT_THEMES = ['light', 'ocean']
-    function applyHljsTheme(theme) {
-        const t = theme || ['light','dark','dusk','forest'].find(
-            x => document.documentElement.classList.contains(x + '-mode')
-        ) || 'light'
-        const isDark = !_LIGHT_THEMES.includes(t)
-        document.getElementById('hljs-theme').href = isDark
-            ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/tokyo-night-dark.min.css'
-            : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css'
-    }
-
-    applyHljsTheme()
-    document.documentElement.addEventListener('themechange', (e) => {
-        setTimeout(() => { applyHljsTheme(e.detail?.theme); highlightAll() }, 50)
-    })
-
     // Raw text lives outside Vue to avoid reactivity overhead on large strings
     let rawInput = '', rawOutput = ''
 
-    const HLJS_LIMIT = 200 * 1024   // 200 KB — skip highlighting above this
-
-    // ── JSON Tree viewer ──────────────────────────────────────────────────────
-    const treeState = {}
-
-    function jtEl(tag, cls, text) {
-        const e = document.createElement(tag)
-        if (cls) e.className = cls
-        if (text !== undefined) e.textContent = text
-        return e
+    // ── The open tab lives in the URL (?tab=graph): shareable, and kept on reload.
+    // Only the tab name goes there; who may see the Conversion is still the
+    // server's decision (a private one stays its owner's and the admins').
+    const TABS = { input: 'input-pane', output: 'output-pane', history: 'compare-pane', graph: 'graph-pane',
+                   sunburst: 'sunburst-pane', table: 'table-pane', comments: 'comments-pane', evaluation: 'eval-pane' }
+    function openTabFromUrl() {
+        const tab = readParam('tab', Object.keys(TABS))
+        if (!tab || tab === 'input') return
+        // A real click, so each tab's own loader runs (graph, comments…).
+        document.querySelector(`a[data-bs-toggle="tab"][href^="#${TABS[tab]}-"]`)?.click()
     }
+    // The guide's tables come from the graph's code; filled when the guide opens.
+    document.addEventListener('toggle', (e) => {
+        if (e.target?.querySelector?.('#graph-guide') && e.target.open) fillGraphGuide(document.getElementById('graph-guide'))
+    }, true)
+    document.addEventListener('shown.bs.tab', (e) => {
+        const href = e.target?.getAttribute?.('href') || ''
+        const tab = Object.keys(TABS).find(k => href.startsWith(`#${TABS[k]}-`))
+        if (tab) writeParams({ tab }, { tab: 'input' })
+    })
 
-    function jtPrimitive(val) {
-        if (val === null)              return jtEl('span', 'jt-null',  'null')
-        if (typeof val === 'boolean')  return jtEl('span', 'jt-bool',  String(val))
-        if (typeof val === 'number')   return jtEl('span', 'jt-num',   String(val))
-        return jtEl('span', 'jt-str', JSON.stringify(val))
-    }
-
-    function jtBuildNode(val, key, isLast, depth) {
-        const isPrim = val === null || typeof val !== 'object'
-        const isArr  = !isPrim && Array.isArray(val)
-        const open   = isArr ? '[' : '{'
-        const close  = isArr ? ']' : '}'
-        const entries = isPrim ? null : (isArr ? val.map((v, i) => [null, v]) : Object.entries(val))
-
-        // Empty collection or primitive — render as a single row
-        if (isPrim || !entries.length) {
-            const row = document.createElement('div')
-            row.className = 'jt-row'
-            if (key !== null) {
-                row.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
-                row.appendChild(jtEl('span', 'jt-punct', ': '))
-            }
-            row.appendChild(isPrim ? jtPrimitive(val) : jtEl('span', 'jt-punct', open + close))
-            if (!isLast) row.appendChild(jtEl('span', 'jt-punct', ','))
-            return row
-        }
-
-        // Collapsible object / array
-        const n   = entries.length
-        const lbl = isArr ? `${n} item${n !== 1 ? 's' : ''}` : `${n} key${n !== 1 ? 's' : ''}`
-        const det = document.createElement('details')
-        if (depth < 2) det.open = true
-
-        const sum = document.createElement('summary')
-        sum.appendChild(jtEl('span', 'jt-toggle', '▶'))
-        if (key !== null) {
-            sum.appendChild(jtEl('span', 'jt-key', JSON.stringify(key)))
-            sum.appendChild(jtEl('span', 'jt-punct', ': '))
-        }
-        sum.appendChild(jtEl('span', 'jt-punct', open))
-        sum.appendChild(jtEl('span', 'jt-preview', ` ${lbl} ${close}`))
-        det.appendChild(sum)
-
-        const body = document.createElement('div')
-        body.className = 'jt-body'
-        entries.forEach(([k, v], i) => body.appendChild(jtBuildNode(v, k, i === n - 1, depth + 1)))
-        det.appendChild(body)
-
-        const footer = jtEl('div', 'jt-footer')
-        footer.appendChild(jtEl('span', 'jt-punct', close))
-        if (!isLast) footer.appendChild(jtEl('span', 'jt-punct', ','))
-        det.appendChild(footer)
-        return det
-    }
-
-    function jtRender(jsonText, container) {
-        container.innerHTML = ''
-        if (jsonText.length > 800 * 1024) {
-            container.innerHTML = `<p style="padding:2rem;text-align:center;color:var(--text-3)"><i class="fas fa-info-circle me-2"></i>File too large for tree view (${Math.round(jsonText.length / 1024)} KB)</p>`
-            return
-        }
-        try {
-            const wrap = document.createElement('div')
-            wrap.appendChild(jtBuildNode(JSON.parse(jsonText), null, true, 0))
-            container.appendChild(wrap)
-        } catch {
-            container.innerHTML = '<p style="padding:1.5rem;color:var(--danger)"><i class="fas fa-xmark me-2"></i>Invalid JSON</p>'
+    /** The input and output documents in Vitrine's JSON viewer: tree and raw tabs,
+     *  search, JSONPath, copy and download. Follows the site theme (vitrine.js). */
+    async function renderJsonPanes(name) {
+        const [ok] = await useVitrine('json')
+        const vt = ok ? await import('/static/vitrine/esm/vt-json.js') : null
+        // Converted documents can be large: allow up to 32 MB (the default is 2 MB).
+        vt?.configure?.({ maxSize: 32 * 1024 * 1024 })
+        for (const [side, text] of [['input', rawInput], ['output', rawOutput]]) {
+            const host = document.getElementById(`json-${side}`)
+            if (!host) continue
+            if (!ok) { const pre = document.createElement('pre'); pre.className = 'code-panel-pre'; pre.textContent = text; host.replaceChildren(pre); continue }
+            const el = document.createElement('vt-json')
+            el.setAttribute('variant', 'full')
+            el.setAttribute('label', `${name || 'conversion'} · ${side}`)
+            el.setAttribute('download', `${(name || 'conversion').replace(/[^\w.-]+/g, '_')}_${side}.json`)
+            el.setAttribute('depth', '2')
+            el.setAttribute('max-height', '75vh')
+            // Raw view first (the tree is one tab away).
+            el.setAttribute('view', 'raw')
+            el.content = text
+            host.replaceChildren(el)
         }
     }
-
-    function toggleTree(side) {
-        const pre     = document.getElementById(`pre-${side}`)
-        const treeDiv = document.getElementById(`tree-${side}`)
-        const btn     = document.getElementById(`tree-btn-${side}`)
-        if (!pre || !treeDiv || !btn) return
-        const active = !treeState[side]
-        treeState[side] = active
-        if (active) {
-            jtRender(side === 'input' ? rawInput : rawOutput, treeDiv)
-            pre.classList.add('d-none')
-            treeDiv.classList.remove('d-none')
-            btn.classList.replace('btn-outline-secondary', 'btn-primary')
-            btn.innerHTML = '<i class="fas fa-align-left me-1"></i> Raw'
-        } else {
-            treeDiv.classList.add('d-none')
-            pre.classList.remove('d-none')
-            btn.classList.replace('btn-primary', 'btn-outline-secondary')
-            btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Tree'
-        }
-    }
-    // ─────────────────────────────────────────────────────────────────────────
-
-    function highlightSide(side) {
-        const spinner = document.getElementById(`spinner-${side}`)
-        const pre     = document.getElementById(`pre-${side}`)
-        if (!pre) return
-        const block = pre.querySelector('code.language-json')
-        if (!block) return
-
-        const size = block.textContent.length
-
-        // Remove any previous size warning
-        pre.parentElement.querySelector('.hljs-size-notice')?.remove()
-
-        if (size > HLJS_LIMIT) {
-            // File too large — skip hljs, show plain text immediately
-            spinner?.classList.add('d-none')
-            spinner?.classList.remove('d-flex')
-            if (!treeState[side]) pre.classList.remove('d-none')
-            const notice = document.createElement('div')
-            notice.className = 'hljs-size-notice'
-            notice.innerHTML = '<i class="fas fa-info-circle me-1"></i>Syntax highlighting disabled for large files (' + Math.round(size / 1024) + ' KB)'
-            pre.parentElement.insertBefore(notice, pre)
-            if (treeState[side]) {
-                const td = document.getElementById(`tree-${side}`)
-                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
-            }
-            return
-        }
-
-        spinner?.classList.remove('d-none')
-        spinner?.classList.add('d-flex')
-        pre.classList.add('d-none')
-        setTimeout(() => {
-            block.removeAttribute('data-highlighted')
-            hljs.highlightElement(block)
-            spinner?.classList.add('d-none')
-            spinner?.classList.remove('d-flex')
-            if (!treeState[side]) pre.classList.remove('d-none')
-            if (treeState[side]) {
-                const td = document.getElementById(`tree-${side}`)
-                if (td) jtRender(side === 'input' ? rawInput : rawOutput, td)
-            }
-        }, 50)
-    }
-
-    function highlightAll() {
-        highlightSide('input')
-        highlightSide('output')
-    }
-
-    document.addEventListener('shown.bs.tab', highlightAll)
 
     const app = createApp({
         delimiters: ['[[', ']]'],
@@ -1183,17 +1124,11 @@
                     // Wait for Vue to render the v-else block before touching the DOM
                     await nextTick()
 
-                    const elIn  = document.getElementById('input-code')
-                    const elOut = document.getElementById('output-code')
-                    if (elIn)  elIn.textContent = rawInput
-                    if (elOut) elOut.textContent = rawOutput
-
-                    // Pretty-print + highlight deferred so the page stays responsive
+                    // Viewers and graph deferred so the page stays responsive
                     setTimeout(() => {
-                        try { rawInput = JSON.stringify(JSON.parse(rawInput), null, 2); if (elIn) elIn.textContent = rawInput } catch {}
-                        try { rawOutput = JSON.stringify(JSON.parse(rawOutput), null, 2); if (elOut) elOut.textContent = rawOutput } catch {}
-                        highlightAll()
+                        renderJsonPanes(c.name)
                         initConversionGraph(c)
+                        openTabFromUrl()
                     }, 0)
 
                 } else {
@@ -1325,23 +1260,6 @@
                 setTimeout(() => { btn.innerHTML = orig }, 1500)
             }
 
-            function formatJson(side, event) {
-                const btn = event.target.closest('button')
-                const orig = btn.innerHTML
-                const raw = side === 'input' ? rawInput : rawOutput
-                try {
-                    const pretty = JSON.stringify(JSON.parse(raw), null, 2)
-                    const el = document.getElementById(side === 'input' ? 'input-code' : 'output-code')
-                    if (side === 'input') rawInput = pretty
-                    else rawOutput = pretty
-                    if (el) el.textContent = pretty
-                    setTimeout(() => highlightSide(side), 80)
-                    btn.innerHTML = '<i class="fas fa-check"></i> Formatted!'
-                } catch (e) {
-                    btn.innerHTML = '<i class="fas fa-xmark"></i> Invalid JSON'
-                }
-                setTimeout(() => { btn.innerHTML = orig }, 1800)
-            }
 
             // ── Comment functions ────────────────────────────
 
@@ -1577,7 +1495,7 @@
                 current_user_is_admin, copyText, downloadText,
                 is_favorite, toggleFavorite,
                 togglePublic, deleteConversion, regenerateShareKey,
-                goToDiff, formatDateTime, message_list, formatJson,
+                goToDiff, formatDateTime, message_list,
                 getRawInput, getRawOutput,
                 // Comments
                 comments, comments_total, comments_loading,
@@ -1598,6 +1516,7 @@
             }
         }
     })
+    app.config.compilerOptions.isCustomElement = isVitrineTag
     app.component('tag-input', TagInput)
     app.component('evaluation-panel', EvaluationPanel)
     app.component('evaluation-charts', EvaluationCharts)
