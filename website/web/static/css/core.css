@@ -19,7 +19,8 @@ html.light-mode,
 html.dark-mode,
 html.dusk-mode,
 html.ocean-mode,
-html.christmas-mode {
+html.christmas-mode,
+html.warm-mode {
   visibility: visible;
 }
 
@@ -178,6 +179,34 @@ html.christmas-mode {
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.60);
   --shadow-focus: 0 0 0 3px rgba(240, 82, 94, 0.28);
+}
+
+html.warm-mode {
+  --bg: #fbf6ec;
+  --bg-2: #f4ecdc;
+  --surface: #fffdf8;
+  --surface-2: #fbf5e9;
+  --border: #ebdfc6;
+  --border-2: #dccba6;
+  --color-sidebar: #fbf3e2;
+
+  --accent: #b83a2a;
+  --accent-light: rgba(184, 58, 42, 0.09);
+  --accent-hover: #982d20;
+  --accent-2: #4f7d3a;
+  --success: #4f7d3a;
+  --danger: #c2410c;
+  --warning: #c98a12;
+
+  --text: #2b1d14;
+  --text-2: #6b5443;
+  --text-3: #a8927c;
+
+  --shadow-xs: 0 1px 2px rgba(80, 50, 20, 0.07);
+  --shadow-sm: 0 1px 4px rgba(80, 50, 20, 0.09), 0 1px 2px rgba(80, 50, 20, 0.05);
+  --shadow-md: 0 4px 16px rgba(80, 50, 20, 0.10), 0 2px 4px rgba(80, 50, 20, 0.05);
+  --shadow-lg: 0 10px 32px rgba(80, 50, 20, 0.12), 0 4px 8px rgba(80, 50, 20, 0.05);
+  --shadow-focus: 0 0 0 3px rgba(184, 58, 42, 0.20);
 }
 
 /* ═══════════════════════════════════════════════════════════════

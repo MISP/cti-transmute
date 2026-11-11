@@ -175,7 +175,7 @@ const _mounted = {}
 /** The site's colour theme is dark unless a light theme class is on <html>. */
 function _isDarkTheme() {
     const cl = document.documentElement.classList
-    if (cl.contains('light-mode') || cl.contains('ocean-mode') || cl.contains('christmas-mode')) return false
+    if (cl.contains('light-mode') || cl.contains('ocean-mode') || cl.contains('christmas-mode') || cl.contains('warm-mode')) return false
     return [...cl].some(c => c.endsWith('-mode'))
 }
 
