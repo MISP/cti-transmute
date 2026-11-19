@@ -1,4 +1,6 @@
-import { normaliseNodeTypes, renderRawJson, sanitizeConfigPatch, textCell } from './graphSafety.js'
+import { sanitizeConfigPatch, textCell } from './graphSafety.js'
+import { mountGraph, VIEWS } from './graphView.js'
+import { readParam, writeParams } from '../urlState.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  GRAPH CONFIG - edit this object to change graph behaviour & appearance.
@@ -6,9 +8,10 @@ import { normaliseNodeTypes, renderRawJson, sanitizeConfigPatch, textCell } from
 // ─────────────────────────────────────────────────────────────────────────────
 export const GRAPH_CONFIG = {
 
-    // Maximum nodes rendered. Above this the graph is trimmed to the N most
-    // connected nodes so the browser stays responsive on large CTI bundles.
-    maxNodes: 3000,
+    // Most elements the canvas draws at once. Past it the view folds further
+    // (by type, then communities) instead of trimming anything: every node
+    // stays reachable by opening its group, searching or in the table.
+    maxNodes: 250,
 
     // Which side is shown first when the Graph tab opens ('input' | 'output').
     defaultSide: 'input',
@@ -81,216 +84,11 @@ export const GRAPH_CONFIG = {
 //  Internal helpers - no need to edit below unless changing the graph logic.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function safeId(id) {
-    return String(id).replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '_')
-}
 
-function _mispAttrStyle(attr) {
-    const { mispNetworkTypes, mispPayloadTypes } = GRAPH_CONFIG
-    if (mispNetworkTypes.has(attr.type)) return 'attr-network'
-    if (mispPayloadTypes.has(attr.type)) return 'attr-payload'
-    if (attr.category === 'External analysis') return 'attr-external'
-    return 'attr-other'
-}
 
-function _mispGroupStyle(attrType, category) {
-    const { mispNetworkTypes, mispPayloadTypes } = GRAPH_CONFIG
-    if (mispNetworkTypes.has(attrType)) return 'group-network'
-    if (mispPayloadTypes.has(attrType)) return 'group-payload'
-    if (category === 'External analysis') return 'group-external'
-    return 'group-other'
-}
 
-function _parseMispEvent(event, nodes, edges) {
-    const { groupingThreshold } = GRAPH_CONFIG
-    const uuidToSafe = {}
-    const addedAttrIds = new Set()
 
-    const evId = safeId(event.uuid || 'event-root')
-    uuidToSafe[event.uuid || 'event-root'] = evId
-    const tlp = (event.Tag || []).find(t => t.name?.startsWith('tlp:'))?.name || ''
-    nodes.push({
-        id: evId, data: {
-            label: event.info || `Event #${event.id || '?'}`,
-            sublabel: tlp ? 'TLP:' + tlp.split(':')[1].toUpperCase() : 'Event',
-            type: 'Event', raw: event
-        }
-    })
 
-    const standaloneAttrs = (event.Attribute ?? []).filter(
-        a => !a.object_id || String(a.object_id) === '0'
-    )
-
-    const typeGroups = {}
-    for (const attr of standaloneAttrs) {
-        const t = attr.type || '_unknown'
-        if (!typeGroups[t]) typeGroups[t] = []
-        typeGroups[t].push(attr)
-    }
-
-    for (const [type, attrs] of Object.entries(typeGroups)) {
-        if (attrs.length >= groupingThreshold) {
-            const clusterId = safeId(`grp-${evId}-${type}`)
-            const sampleAttr = attrs[0]
-            nodes.push({
-                id: clusterId, data: {
-                    label: `${type} (${attrs.length})`,
-                    sublabel: 'group',
-                    type: _mispGroupStyle(type, sampleAttr.category),
-                    raw: null
-                }
-            })
-            edges.push({ from: evId, to: clusterId, data: { label: type } })
-            for (const attr of attrs) {
-                const nId = safeId(attr.uuid || attr.id)
-                if (addedAttrIds.has(nId)) continue
-                addedAttrIds.add(nId)
-                uuidToSafe[attr.uuid || attr.id] = nId
-                nodes.push({
-                    id: nId, data: {
-                        label: String(attr.value).slice(0, 60),
-                        sublabel: attr.type,
-                        type: _mispAttrStyle(attr), raw: attr
-                    }
-                })
-                edges.push({ from: clusterId, to: nId, data: { label: '' } })
-            }
-        } else {
-            for (const attr of attrs) {
-                const nId = safeId(attr.uuid || attr.id)
-                if (addedAttrIds.has(nId)) continue
-                addedAttrIds.add(nId)
-                uuidToSafe[attr.uuid || attr.id] = nId
-                nodes.push({
-                    id: nId, data: {
-                        label: String(attr.value).slice(0, 60),
-                        sublabel: attr.type,
-                        type: _mispAttrStyle(attr), raw: attr
-                    }
-                })
-                edges.push({ from: evId, to: nId, data: { label: attr.type || '' } })
-            }
-        }
-    }
-
-    const referencedByObject = new Set()
-    for (const obj of event.Object ?? []) {
-        const oId = safeId(obj.uuid || obj.id)
-        uuidToSafe[obj.uuid || obj.id] = oId
-        const childAttrs = (obj.Attribute ?? []).reduce((acc, a) => {
-            if (a.object_relation && a.value) acc[a.object_relation] = a.value
-            return acc
-        }, {})
-        nodes.push({
-            id: oId, data: {
-                label: obj.name || `Object #${obj.id}`,
-                sublabel: obj['meta-category'] || '',
-                type: 'Object', raw: obj, childAttrs
-            }
-        })
-        edges.push({ from: evId, to: oId, data: { label: '', _default: true } })
-
-        for (const attr of obj.Attribute ?? []) {
-            const aId = safeId(attr.uuid || attr.id)
-            if (addedAttrIds.has(aId)) {
-                edges.push({ from: oId, to: aId, data: { label: attr.object_relation || '' } })
-                continue
-            }
-            addedAttrIds.add(aId)
-            uuidToSafe[attr.uuid || attr.id] = aId
-            nodes.push({
-                id: aId, data: {
-                    label: String(attr.value).slice(0, 60),
-                    sublabel: attr.object_relation || attr.type,
-                    type: _mispAttrStyle(attr), raw: attr
-                }
-            })
-            edges.push({ from: oId, to: aId, data: { label: attr.object_relation || '' } })
-        }
-
-        for (const ref of obj.ObjectReference ?? []) {
-            const srcId = uuidToSafe[ref.object_uuid || obj.uuid]
-            const dstId = uuidToSafe[ref.referenced_uuid]
-            if (!srcId || !dstId) continue
-            edges.push({ from: srcId, to: dstId, data: { label: ref.relationship_type || '' } })
-            referencedByObject.add(dstId)
-        }
-    }
-
-    for (let i = edges.length - 1; i >= 0; i--) {
-        if (edges[i].data?._default && referencedByObject.has(edges[i].to))
-            edges.splice(i, 1)
-    }
-}
-
-function parseMisp(json) {
-    const nodes = [], edges = []
-    let raw = Array.isArray(json) ? json[0] : json
-
-    if (raw && !raw.Event && Array.isArray(raw.response)) {
-        for (const item of raw.response) {
-            const event = item?.Event ?? item
-            if (event && typeof event === 'object') _parseMispEvent(event, nodes, edges)
-        }
-        return { nodes, edges }
-    }
-
-    const event = raw?.Event ?? raw
-    if (event && typeof event === 'object') _parseMispEvent(event, nodes, edges)
-    return { nodes, edges }
-}
-
-function parseStix(json) {
-    const bundle = Array.isArray(json) ? json[0] : json
-    const objects = bundle?.objects ?? []
-    const nodes = [], edges = []
-    const SKIP = new Set(['observed-data'])
-    const idMap = {}
-
-    for (const obj of objects) {
-        if (!obj.id || obj.type === 'relationship' || SKIP.has(obj.type)) continue
-        const sid = safeId(obj.id)
-        idMap[obj.id] = sid
-        const label = obj.name || obj.value
-            || (obj.pattern ? obj.pattern.slice(0, 55) + '…' : null)
-            || (obj.definition?.tlp ? 'TLP:' + obj.definition.tlp.toUpperCase() : null)
-            || obj.type
-        const mispType = (obj.labels || []).find(l => l.startsWith('misp:type='))
-        nodes.push({
-            id: sid, data: {
-                label: String(label).slice(0, 60),
-                sublabel: mispType ? mispType.replace('misp:type=', '').replace(/"/g, '') : obj.type,
-                type: obj.type, raw: obj
-            }
-        })
-    }
-
-    const nodeIds = new Set(nodes.map(n => n.id))
-    const linked = new Set()
-
-    for (const obj of objects) {
-        if (obj.type !== 'relationship') continue
-        const from = idMap[obj.source_ref]
-        const to = idMap[obj.target_ref]
-        if (!from || !to || !nodeIds.has(from) || !nodeIds.has(to)) continue
-        edges.push({ from, to, data: { label: obj.relationship_type || '' } })
-        linked.add(from)
-        linked.add(to)
-    }
-
-    for (const obj of objects) {
-        if (obj.type !== 'report') continue
-        const fromId = idMap[obj.id]
-        if (!fromId) continue
-        for (const ref of obj.object_refs ?? []) {
-            const toId = idMap[ref]
-            if (!toId || !nodeIds.has(toId) || linked.has(toId)) continue
-            edges.push({ from: fromId, to: toId, data: { label: '' } })
-        }
-    }
-
-    return { nodes, edges }
-}
 
 export function _nodeProperties(node) {
     const d = node.getData()
@@ -332,44 +130,6 @@ export function _nodeProperties(node) {
         .map(p => ({ name: textCell(p.name), value: textCell(p.value) }))
 }
 
-function _buildTooltip(node) {
-    const d = node.getData()
-    const raw = d?.raw ?? {}
-    const wrap = document.createElement('div')
-    wrap.style.cssText = 'font-size:0.78rem;max-width:300px;line-height:1.6;'
-
-    const addRow = (key, val) => {
-        if (!val) return
-        const row = document.createElement('div')
-        row.style.cssText = 'display:flex;gap:6px;padding:1px 0;'
-        const k = document.createElement('span')
-        k.style.cssText = 'color:#94a3b8;min-width:80px;flex-shrink:0;font-size:0.72rem;padding-top:1px;'
-        k.textContent = key
-        const v = document.createElement('span')
-        v.style.cssText = 'word-break:break-all;font-weight:500;'
-        v.textContent = String(val).slice(0, 120) + (String(val).length > 120 ? '…' : '')
-        row.appendChild(k)
-        row.appendChild(v)
-        wrap.appendChild(row)
-    }
-
-    if (d?.childAttrs && Object.keys(d.childAttrs).length) {
-        for (const [key, val] of Object.entries(d.childAttrs)) addRow(key, val)
-        return wrap
-    }
-
-    if (raw.value) addRow('value', raw.value)
-    if (raw.category) addRow('category', raw.category)
-    if (raw.object_relation) addRow('relation', raw.object_relation)
-    if (raw.hashes) {
-        for (const [algo, hash] of Object.entries(raw.hashes)) addRow(algo, hash)
-    }
-    if (raw.pattern) addRow('pattern', raw.pattern)
-    if (raw.description) addRow('desc', raw.description)
-    if (raw.aliases?.length) addRow('aliases', raw.aliases.join(', '))
-
-    return wrap.children.length ? wrap : null
-}
 
 // Pivotick 1.4.0 workaround: all Pivotick instances on a page share one
 // body-level tooltip element, and rebuilding the sidebar's ego graph (click
@@ -390,7 +150,8 @@ function _guardTooltip(graph) {
         new MutationObserver(() => {
             if (!el.isConnected) {
                 el.classList.remove('shown')
-                document.body.appendChild(el)
+                // In fullscreen only the fullscreen element is painted.
+                ;(document.fullscreenElement ?? document.body).appendChild(el)
             }
         }).observe(document.body, { childList: true })
     }, 250)
@@ -404,6 +165,18 @@ function _showSpinner(containerId, message) {
             <div class="spinner-border spinner-border-sm" role="status" style="color:var(--accent);"></div>
             <span>${message}</span>
         </div>`
+}
+
+// The view chosen in Pivotick's Views mode, shared by both sides.
+// Read from the URL (?view=threat), checked against the known views.
+let _currentView = 'structure'
+const _mounted = {}
+
+/** The site's colour theme is dark unless a light theme class is on <html>. */
+function _isDarkTheme() {
+    const cl = document.documentElement.classList
+    if (cl.contains('light-mode') || cl.contains('ocean-mode') || cl.contains('christmas-mode') || cl.contains('warm-mode')) return false
+    return [...cl].some(c => c.endsWith('-mode'))
 }
 
 async function _initViewer(containerId, jsonText, format) {
@@ -429,127 +202,37 @@ async function _initViewer(containerId, jsonText, format) {
         return
     }
 
-    _showSpinner(containerId, 'Parsing data…')
-
-    // Yield to browser before heavy parsing so the spinner actually renders
-    await new Promise(r => setTimeout(r, 0))
-
-    let parsed
-    try {
-        parsed = format === 'misp' ? parseMisp(JSON.parse(jsonText)) : parseStix(JSON.parse(jsonText))
-        normaliseNodeTypes(parsed)
-    } catch {
-        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not parse JSON.</p>'
-        return
-    }
-
-    if (!parsed.nodes.length) {
-        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">No graph data found.</p>'
-        return
-    }
-
-    const { maxNodes, layout, pivotickUI, stixStyles, mispStyles } = GRAPH_CONFIG
-    if (parsed.nodes.length > maxNodes) {
-        const degree = {}
-        for (const e of parsed.edges) {
-            degree[e.from] = (degree[e.from] || 0) + 1
-            degree[e.to] = (degree[e.to] || 0) + 1
-        }
-        parsed.nodes.sort((a, b) => (degree[b.id] || 0) - (degree[a.id] || 0))
-        const kept = new Set(parsed.nodes.slice(0, maxNodes).map(n => n.id))
-        parsed.nodes = parsed.nodes.filter(n => kept.has(n.id))
-        parsed.edges = parsed.edges.filter(e => kept.has(e.from) && kept.has(e.to))
-        container.insertAdjacentHTML('beforebegin',
-            `<div class="alert alert-warning py-1 px-3 mb-2" style="font-size:0.8rem">
-                <i class="fas fa-triangle-exclamation me-1"></i>
-                Large graph — showing the ${maxNodes} most connected nodes.
-            </div>`)
-    }
-
     _showSpinner(containerId, 'Building graph…')
-
+    // Yield to the browser so the spinner renders before the heavy work.
     await new Promise(r => setTimeout(r, 0))
 
-    container.innerHTML = ''
-    const styleMap = format === 'misp' ? mispStyles : stixStyles
-
-    const graph = new window.Pivotick(container, parsed, {
-        isDirected: true,
-        layout,
-        simulation: {
-            useWorker: false,
-            warmupTicks: parsed.nodes.length > 300 ? 0 : 'auto'
-        },
-        render: {
-            nodeTypeAccessor: (node) => node.getData()?.type ?? '_default',
-            nodeStyleMap: styleMap,
-            defaultNodeStyle: styleMap['_default'],
-            defaultEdgeStyle: { markerEnd: 'arrow' },
-            nodeHeaderMap: {
-                title: (node) => node.getData()?.label ?? '',
-                subtitle: (node) => node.getData()?.sublabel ?? ''
-            }
-        },
-        UI: {
-            ...pivotickUI,
-            mainHeader: {
-                nodeHeaderMap: {
-                    title: (node) => node.getData()?.label ?? String(node.id),
-                    subtitle: (node) => node.getData()?.sublabel ?? node.getData()?.type ?? ''
-                },
-                edgeHeaderMap: {
-                    title: (edge) => edge.getData()?.label || 'Relationship',
-                    subtitle: (edge) => `${edge.from} → ${edge.to}`
-                }
-            },
-            propertiesPanel: {
-                nodePropertiesMap: (node) => _nodeProperties(node),
-                edgePropertiesMap: (edge) => [
-                    { name: textCell('Relationship'), value: textCell(edge.getData()?.label || '—') },
-                    { name: textCell('From'), value: textCell(String(edge.from)) },
-                    { name: textCell('To'), value: textCell(String(edge.to)) }
-                ]
-            },
-            tooltip: {
-                nodeHeaderMap: {
-                    title: (node) => node.getData()?.label ?? '',
-                    subtitle: (node) => node.getData()?.sublabel ?? ''
-                },
-                renderNodeExtra: (node) => _buildTooltip(node)
-            },
-            contextMenu: {
-                menuNode: {
-                    topbar: [{
-                        text: 'Copy value',
-                        iconClass: 'fas fa-copy',
-                        onclick: (evt, node) => {
-                            const d = node.getData()
-                            const raw = d?.raw ?? {}
-                            let val
-                            if (d?.childAttrs && Object.keys(d.childAttrs).length) {
-                                val = Object.entries(d.childAttrs).map(([k, v]) => `${k}: ${v}`).join('\n')
-                            } else {
-                                val = raw.value || raw.name || raw.pattern || d?.label || String(node.id)
-                            }
-                            navigator.clipboard.writeText(val).catch(() => { })
-                        }
-                    }],
-                    menu: [{
-                        text: 'Open raw JSON',
-                        iconClass: 'fas fa-code',
-                        onclick: (evt, node) => {
-                            const raw = node.getData()?.raw ?? {}
-                            const isDark = document.documentElement.classList.contains('dark-mode')
-                            const win = window.open('', '_blank')
-                            if (win) renderRawJson(win, raw, isDark)
-                        }
-                    }]
-                }
-            }
-        }
-    })
-    _guardTooltip(graph)
+    _mounted[containerId]?.destroy()
+    try {
+        _mounted[containerId] = await mountGraph(container, jsonText, format, {
+            view: _currentView,
+            dark: _isDarkTheme(),
+            maxVisible: GRAPH_CONFIG.maxNodes,
+            // Picking a view in Pivotick's Views mode remounts the graph in it.
+            onViewChange: (id) => _switchView(id),
+        })
+    } catch (err) {
+        console.error('Graph:', err)
+        container.innerHTML = '<p style="padding:2rem;text-align:center;color:#888">Could not draw this document as a graph.</p>'
+        return
+    }
+    _guardTooltip(_mounted[containerId].graph)
 }
+
+/** Remount the visible side in another view (both sides re-render lazily). */
+function _switchView(id) {
+    if (!VIEWS[id]) return
+    _currentView = id
+    writeParams({ view: id }, { view: 'structure' })
+    for (const side of ['input', 'output']) _renderedSides[side] = false
+    const outEl = document.getElementById('graph-container-output')
+    _renderSide(outEl && outEl.style.display !== 'none' ? 'output' : 'input')
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Public API
@@ -573,6 +256,8 @@ function _renderSide(side) {
 
 /** Switch the visible graph side. Triggers lazy render of the new side if needed. */
 export function showGraphSide(side) {
+    if (side !== 'input' && side !== 'output') return
+    writeParams({ side }, { side: GRAPH_CONFIG.defaultSide })
     const inEl = document.getElementById('graph-container')
     const outEl = document.getElementById('graph-container-output')
     const btnIn = document.getElementById('graph-view-input')
@@ -637,8 +322,10 @@ export function initConversionGraph(conversionData) {
     // Called by the template's delegated toolbar handler on first tab open;
     // window-scoped because it only exists once the conversion data is loaded.
     window.onGraphTabClick = function () {
-        // Render only the default side on first tab open
-        const side = GRAPH_CONFIG.defaultSide
+        // The URL may name the view and the side (?view=threat&side=output).
+        const view = readParam('view', Object.keys(VIEWS))
+        if (view) _currentView = view
+        const side = readParam('side', ['input', 'output']) || GRAPH_CONFIG.defaultSide
         showGraphSide(side)
     }
 }

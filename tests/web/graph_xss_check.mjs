@@ -195,20 +195,33 @@ assert(!rows.some(r => r.value.textContent === ''),
 
 // ── The component actually uses the safe helpers ────────────────────────────
 const src = readFileSync(join(graphJs, 'conversionGraph.js'), 'utf8');
+const viewSrcEarly = () => readFileSync(join(graphJs, 'graphView.js'), 'utf8');
 assert(!/document\.write/.test(src),
        'conversionGraph.js no longer calls document.write');
-assert(/renderRawJson\(/.test(src),
-       'conversionGraph.js opens the raw-JSON popup via renderRawJson');
-assert(/normaliseNodeTypes\(/.test(src),
-       'conversionGraph.js routes the parsed graph through normaliseNodeTypes');
-assert(src.indexOf('normaliseNodeTypes(') < src.indexOf('new window.Pivotick('),
+assert(/openJsonOverlay\(/.test(viewSrcEarly()) && !/window\.open\(/.test(src),
+       'raw JSON opens in the in-graph Vitrine overlay (graphView.js), never in a popup');
+const vitrineSrc = readFileSync(join(graphJs, 'render', 'vitrine.js'), 'utf8');
+assert(!/\.innerHTML\s*=|insertAdjacentHTML/.test(vitrineSrc),
+       'render/vitrine.js hands content to Vitrine as text, never as HTML');
+assert(/setAttribute\('images', 'block'\)/.test(vitrineSrc),
+       '<vt-markdown> blocks remote images from converted content');
+// The graph is mounted by graphView.js (conversionGraph.js only wires the page).
+const viewSrc = readFileSync(join(graphJs, 'graphView.js'), 'utf8');
+assert(/normaliseNodeTypes\(/.test(viewSrc),
+       'graphView.js routes the parsed graph through normaliseNodeTypes');
+assert(viewSrc.indexOf('normaliseNodeTypes(') < viewSrc.indexOf('new window.Pivotick('),
        'the node types are normalised before the graph is handed to Pivotick');
 
-// The inline edgePropertiesMap cannot be imported, so assert on its source that
-// no cell is left as a bare string (Fix: stop relying on label escaping).
-const edgeMap = src.slice(src.indexOf('edgePropertiesMap:'));
-const edgeMapBody = edgeMap.slice(0, edgeMap.indexOf(']'));
-const edgeCells = edgeMapBody.match(/\b(?:name|value):/g) || [];
-const wrappedCells = edgeMapBody.match(/\b(?:name|value):\s*textCell\(/g) || [];
-assert(edgeCells.length >= 6 && edgeCells.length === wrappedCells.length,
-       'every edge property cell (all three rows, name and value) is wrapped in textCell');
+// Header maps (sidebar and tooltip titles) are plain strings: Pivotick resolves them
+// with tryResolveString and writes them with textContent, never as HTML.
+const headers = viewSrc.slice(viewSrc.indexOf('mainHeader:'), viewSrc.indexOf('extraPanels:'));
+assert(!/innerHTML|insertAdjacentHTML/.test(headers),
+       'the header maps never build HTML from a value');
+assert(/propertiesPanel:\s*\{\s*enabled:\s*false/.test(viewSrc),
+       'the string-based properties panel is off; details come from render/details.js');
+
+// The detail panel and tooltips build DOM themselves: no converted value may reach
+// innerHTML / insertAdjacentHTML / outerHTML there.
+const detailsSrc = readFileSync(join(graphJs, 'render', 'details.js'), 'utf8');
+assert(!/\.innerHTML\s*=|insertAdjacentHTML|outerHTML\s*=/.test(detailsSrc),
+       'render/details.js never writes HTML from a string');

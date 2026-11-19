@@ -6,7 +6,7 @@
 import JsonViewer from '/static/js/graph/jsonViewer.js'
 import { highlightMatches } from './searchHighlight.js'
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 100
 
 // ── MISP parser ───────────────────────────────────────────────────────────────
 function parseMispRows(text) {

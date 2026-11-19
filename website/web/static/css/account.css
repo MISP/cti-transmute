@@ -560,3 +560,24 @@
     .mu-search-wrap { width: 100%; }
     .mu-badges  { display: none; }
 }
+/* API key: blurred until "Show"; it cannot be selected while blurred. */
+.profile-apikey.is-blurred {
+  filter: blur(6px);
+  user-select: none;
+  transition: filter .2s ease;
+}
+.profile-apikey { transition: filter .2s ease; }
+.profile-regen-btn { color: var(--danger, #ef4444); }
+.profile-regen-confirm {
+  margin-top: .75rem; padding: .75rem 1rem; font-size: .85rem;
+  border: 1px solid var(--danger, #ef4444); border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--danger, #ef4444) 8%, transparent); color: var(--text);
+}
+@media (prefers-reduced-motion: reduce) { .profile-apikey, .profile-apikey.is-blurred { transition: none; } }
+/* The key's buttons keep one width whatever their label says ("Copy" /
+   "Copied!", "Show" / "Hide"), so clicking one never pushes the others. */
+.profile-apikey-row .profile-copy-btn {
+  white-space: nowrap;
+  min-width: 7.25rem;
+  justify-content: center;
+}

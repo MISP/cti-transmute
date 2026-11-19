@@ -29,6 +29,38 @@ def index() -> render_template:
     return render_template("account/account_index.html", user=current_user)
 
 
+@account_blueprint.route("/api_key/regenerate", methods=["POST"])
+@login_required
+def regenerate_api_key():
+    """Replace the signed-in user's API key with a new random one.
+
+    POST only, CSRF-protected like every form of the site, and it can only
+    touch the caller's own key: there is no user id to pass. The old key stops
+    working at once. The new key is returned once so the page can show it.
+    """
+    current_user.api_key = generate_api_key()
+    db.session.commit()
+    return {"success": True, "api_key": current_user.api_key}, 200
+
+
+@account_blueprint.route("/api_key/regenerate/<int:user_id>", methods=["POST"])
+@login_required
+def admin_regenerate_api_key(user_id):
+    """Admins only: replace any user's API key (to revoke a leaked one).
+
+    The new key is not returned: the admin revokes, the user reads their new
+    key on their own account page.
+    """
+    if not current_user.is_admin():
+        return abort(403)
+    user = AccountModel.get_user(user_id)
+    if user is None:
+        return {"success": False, "error": "No such user"}, 404
+    user.api_key = generate_api_key()
+    db.session.commit()
+    return {"success": True}, 200
+
+
 @account_blueprint.route("/notifications")
 @login_required
 def notifications_page():

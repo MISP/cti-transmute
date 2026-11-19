@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
+{#- The Christmas theme is only offered to admins -#}
+{% set christmas_ok = current_user.is_authenticated and current_user.is_admin() %}
 
 <head>
     <meta charset="utf-8">
@@ -9,7 +11,7 @@
 
     <script nonce="{{ csp_nonce }}">
         (function () {
-            const THEMES = ['light', 'dark', 'dusk', 'ocean'];
+            const THEMES = ['light', 'dark', 'dusk', 'ocean'{% if christmas_ok %}, 'christmas', 'warm'{% endif %}];
             let t = localStorage.getItem('theme') ||
                 (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
             if (!THEMES.includes(t)) t = 'light';
@@ -26,6 +28,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tags.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/pagination.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+    {% if christmas_ok %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/christmas.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ambient.css') }}">
+    {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/comments.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/select2-bootstrap-5-theme.min.css') }}">
@@ -54,7 +60,7 @@
     {% include 'sidebar.html' %}
 
     <!-- ── MAIN CONTENT ─────────────────────────────────────────── -->
-    <main id="main-containers" class="container">
+    <main id="main-containers" class="{% block main_class %}container{% endblock %}">
 
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -138,7 +144,7 @@
             <span>
                 <i class="fas fa-code-branch"></i>
                 <a href="https://github.com/MISP/cti-transmute.git" target="_blank" rel="noopener"> CTI Transmute</a>
-                <span style="font-family:var(--font-mono); font-size:0.72rem; opacity:0.6; margin-left:4px;">v{{ app_version }}</span>
+                {% if christmas_ok %}<button type="button" id="footer-version" class="footer-version-btn" tabindex="-1">v{{ app_version }}</button>{% else %}<span style="font-family:var(--font-mono); font-size:0.72rem; opacity:0.6; margin-left:4px;">v{{ app_version }}</span>{% endif %}
             </span>
             <span>
                 <i class="fas fa-circle-question"></i>
@@ -157,6 +163,10 @@
     <script src="{{ url_for('static', filename='js/select2.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vue.global.js') }}"></script>
     <script src="{{ url_for('static', filename='js/datetime.js') }}"></script>
+    {% if christmas_ok %}
+    <script src="{{ url_for('static', filename='js/christmas.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/ambient.js') }}" defer></script>
+    {% endif %}
     <script src="{{ url_for('static', filename='bootstrap-5.3.0/js/bootstrap.bundle.min.js') }}"></script>
 
     <script nonce="{{ csp_nonce }}">
@@ -165,12 +175,14 @@
                 const html = document.documentElement;
                 const icon = document.getElementById('theme-icon');
 
-                const THEMES = ['light', 'dark', 'dusk', 'ocean'];
+                const THEMES = ['light', 'dark', 'dusk', 'ocean'{% if christmas_ok %}, 'christmas', 'warm'{% endif %}];
                 const ICONS  = {
                     light:  'fas fa-sun',
                     dark:   'fas fa-moon',
                     dusk:   'fas fa-star',
                     ocean:  'fas fa-water',
+                    christmas: 'fas fa-tree',
+                    warm:  'fas fa-utensils',
                 };
 
                 function applyTheme(t) {
@@ -189,6 +201,8 @@
                     // Notify other scripts (e.g. hljs in detail.html)
                     html.dispatchEvent(new CustomEvent('themechange', { detail: { theme: t } }));
                 }
+
+                window.ctiApplyTheme = applyTheme;
 
                 // Init
                 let saved = localStorage.getItem('theme') ||

@@ -124,6 +124,12 @@
                         <i class="fas fa-water"></i>
                         <span>Ocean</span>
                     </button>
+                    {% if christmas_ok %}
+                    <button class="mobile-theme-btn theme-picker-item" data-theme="christmas">
+                        <i class="fas fa-tree"></i>
+                        <span>Christmas</span>
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -243,6 +249,12 @@
                         <i class="fas fa-water theme-picker-icon"></i> Ocean
                         <i class="fas fa-check theme-picker-check ms-auto"></i>
                     </button>
+                    {% if christmas_ok %}
+                    <button class="top-nav-dropdown-item theme-picker-item" data-theme="christmas">
+                        <i class="fas fa-tree theme-picker-icon"></i> Christmas
+                        <i class="fas fa-check theme-picker-check ms-auto"></i>
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 

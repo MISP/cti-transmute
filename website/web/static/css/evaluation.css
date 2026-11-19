@@ -319,6 +319,12 @@ html.ocean-mode .eval-comment-badge {
   border-color: rgba(30, 58, 138, 0.14);
 }
 
+html.christmas-mode .eval-comment-badge {
+  background: rgba(240, 82, 94, 0.14);
+  color: #f0525e;
+  border-color: rgba(240, 82, 94, 0.25);
+}
+
 /* ── Evaluation comment checkbox in form ────────────────────── */
 .eval-comment-toggle {
   display: flex;
